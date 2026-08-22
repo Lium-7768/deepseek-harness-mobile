@@ -1,25 +1,29 @@
 # DeepSeek Harness Mobile
 
-Independent Expo and React Native client for DeepSeek Harness desktop runtimes.
+Native Expo/React Native companion for a paired **DeepSeek Harness** desktop app.
 
-## Scope
+## Run
 
-This repository owns native routes, presentation, pairing storage, Mobile Gateway API requests, SSE synchronization, and mobile tests. The desktop runtime remains the authority for sessions, tasks, tools, files, credentials, and pairing.
+Requirements: Node 22, pnpm, and a running desktop app with Mobile Gateway enabled.
 
-## Compatibility
+```bash
+pnpm install
+pnpm start
+```
 
-The client communicates only through a paired Mobile Gateway. It does not import DeepSeek Harness runtime source code.
+Use the Expo terminal to open iOS or Android. For a native development build, use `pnpm ios` or `pnpm android`.
 
-## Local contract
+## Pair
 
-`src/shared/dsh-presentation.ts` is the small client-neutral presentation and event-projection contract extracted from the former workspace dependency. Protocol changes must stay compatible with the desktop Gateway and mobile API tests.
+In the desktop app, open the mobile connection page and create a pairing QR code. In the mobile app, choose **Connect** and scan the code. Credentials are stored securely on the device.
 
-## Commands
+## Development
 
-| Command | Purpose |
-| --- | --- |
-| `pnpm install` | Install independent dependencies. |
-| `pnpm test` | Run mobile logic and API tests. |
-| `pnpm typecheck` | Type-check native source. |
-| `pnpm start` | Start Expo Metro. |
-# deepseek-harness-mobile
+```bash
+pnpm test
+pnpm typecheck
+```
+
+The desktop runtime remains the source of truth for sessions, tasks, tools, files, credentials, and pairing. This app provides the native UI and communicates only with the paired Mobile Gateway over authenticated HTTP/SSE.
+
+> `src/shared/dsh-presentation.ts` is a deliberately local presentation contract. Keep it compatible with future desktop Gateway protocol changes.
