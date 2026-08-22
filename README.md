@@ -1,29 +1,95 @@
 # DeepSeek Harness Mobile
 
-Native Expo/React Native companion for a paired **DeepSeek Harness** desktop app.
+A native **Expo / React Native** companion for a paired DeepSeek Harness desktop app. It presents the desktop runtime on iOS and Android; it is not a second desktop runtime.
 
-## Run
+## Architecture
 
-Requirements: Node 22, pnpm, and a running desktop app with Mobile Gateway enabled.
+```text
+Expo Router native UI
+  ├─ SecureStore: paired-device credentials
+  ├─ TanStack Query: bounded screen cache
+  ├─ MobileApi: authenticated HTTP commands
+  └─ MobileSyncBridge: authenticated SSE updates
+                 │
+                 ▼
+        Paired Mobile Gateway
+                 │
+                 ▼
+       Desktop DSH runtime (authority)
+```
+
+| Layer | Responsibility | Does not own |
+| --- | --- | --- |
+| Mobile app | Native navigation, rendering, secure pairing storage, local cache, and mobile interactions | Agent Loop, durable session database, desktop files, provider keys |
+| Mobile Gateway | Paired-device HTTP/SSE boundary, authentication, replay, and activation state | Desktop UI or an independent task runtime |
+| Desktop runtime | Sessions, history, tasks, tools, files, credentials, and pairing authority | Mobile platform UI |
+
+The full component diagram is in [ARCHITECTURE.md](./ARCHITECTURE.md).
+
+## Data flow
+
+1. On launch, the app restores paired-device credentials from SecureStore.
+2. `MobileApi` fetches authoritative snapshots from the desktop Gateway.
+3. `MobileSyncBridge` subscribes to Gateway SSE and updates the React Query cache.
+4. The native UI renders that state. If the connection is interrupted, the client reconnects and converges on the desktop state.
+
+## Quick start
+
+**Requirements:** Node 22, pnpm, Xcode for iOS development, and a running desktop app with Mobile Gateway enabled.
 
 ```bash
 pnpm install
 pnpm start
 ```
 
-Use the Expo terminal to open iOS or Android. For a native development build, use `pnpm ios` or `pnpm android`.
-
-## Pair
-
-In the desktop app, open the mobile connection page and create a pairing QR code. In the mobile app, choose **Connect** and scan the code. Credentials are stored securely on the device.
-
-## Development
+Use the Expo terminal to open iOS or Android. To build and install a native development app, use:
 
 ```bash
-pnpm test
-pnpm typecheck
+pnpm ios
+pnpm android
 ```
 
-The desktop runtime remains the source of truth for sessions, tasks, tools, files, credentials, and pairing. This app provides the native UI and communicates only with the paired Mobile Gateway over authenticated HTTP/SSE.
+For a specific iOS simulator and Metro port, for example:
 
-> `src/shared/dsh-presentation.ts` is a deliberately local presentation contract. Keep it compatible with future desktop Gateway protocol changes.
+```bash
+pnpm ios -- --device "iPhone 16" --port 8090
+```
+
+## Pair a device
+
+1. In the desktop app, open the mobile connection page and create a pairing QR code.
+2. In the mobile app, select **Connect** and scan the QR code.
+3. The app stores the paired-device credential securely and then loads desktop-backed sessions.
+
+If the Gateway reports an expired or revoked device, create a new QR code in the desktop app and pair again. Do not copy provider credentials or desktop runtime tokens into this project.
+
+## Development commands
+
+| Command | Purpose |
+| --- | --- |
+| `pnpm start` | Start the Expo / Metro development server. |
+| `pnpm ios` | Build, install, and open the iOS development app. |
+| `pnpm android` | Build, install, and open the Android development app. |
+| `pnpm test` | Run mobile API and UI-logic tests. |
+| `pnpm test:watch` | Run tests in watch mode. |
+| `pnpm typecheck` | Type-check TypeScript without emitting files. |
+
+## Project map
+
+| Path | Purpose |
+| --- | --- |
+| `app/` | Expo Router screens and modal routes. |
+| `src/api/` | Gateway API client and connection persistence. |
+| `src/components/` | Reusable native UI, conversation, drawer, and sync components. |
+| `src/state/` | React Query-facing selection and sync state. |
+| `src/shared/dsh-presentation.ts` | Local presentation and event-projection contract. |
+| `tests/` | API, routing, synchronization, and UI-logic regression tests. |
+| `ios/`, `android/` | Native projects for development builds. |
+
+## Native build note
+
+This repository contains a pnpm-managed `expo-modules-jsi` compatibility patch for the current Xcode 26.0.1 / Swift 6.2 toolchain. It is applied automatically by `pnpm install`; do not edit `node_modules` manually. After a fresh native dependency install, run `cd ios && pod install` before `pnpm ios` if CocoaPods has not already been run.
+
+## Contract and contribution rules
+
+`src/shared/dsh-presentation.ts` is intentionally local so the mobile client has no direct workspace dependency on the desktop repository. When changing Gateway payloads or durable event projection, update this contract, its tests, and the desktop Gateway compatibility at the same time. Keep desktop authority on the desktop: do not add a mobile Agent Loop, durable session store, desktop file browser, Shell access, or provider credential management.
