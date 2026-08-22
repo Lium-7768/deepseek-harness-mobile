@@ -32,7 +32,10 @@ export const useConnectionStore = create<ConnectionState>((set, get) => ({
     set({ connection })
   },
   async forgetConnection(): Promise<void> {
-    await clearConnection()
-    set({ connection: undefined })
+    try {
+      await clearConnection()
+    } finally {
+      set({ connection: undefined })
+    }
   },
 }))

@@ -81,6 +81,12 @@ def enableMinifyInReleaseBuilds = (findProperty('android.enableMinifyInReleaseBu
  */
 def jscFlavor = 'io.github.react-native-community:jsc-android:2026004.+'
 
+def releaseKeystorePropertiesFile = rootProject.file('keystore.properties')
+def releaseKeystoreProperties = new Properties()
+if (releaseKeystorePropertiesFile.exists()) {
+    releaseKeystorePropertiesFile.withInputStream { releaseKeystoreProperties.load(it) }
+}
+
 android {
     ndkVersion rootProject.ext.ndkVersion
 
@@ -104,15 +110,25 @@ android {
             keyAlias 'androiddebugkey'
             keyPassword 'android'
         }
+        release {
+            if (releaseKeystorePropertiesFile.exists()) {
+                storeFile rootProject.file(releaseKeystoreProperties["storeFile"])
+                storePassword releaseKeystoreProperties["storePassword"]
+                keyAlias releaseKeystoreProperties["keyAlias"]
+                keyPassword releaseKeystoreProperties["keyPassword"]
+            }
+        }
     }
     buildTypes {
         debug {
             signingConfig signingConfigs.debug
         }
         release {
-            // Caution! In production, you need to generate your own keystore file.
-            // see https://reactnative.dev/docs/signed-apk-android.
-            signingConfig signingConfigs.debug
+            if (releaseKeystorePropertiesFile.exists()) {
+                signingConfig signingConfigs.release
+            } else {
+                logger.warn("Release signing is not configured. android:bundle requires android/keystore.properties and a private keystore.")
+            }
             def enableShrinkResources = findProperty('android.enableShrinkResourcesInReleaseBuilds') ?: 'false'
             shrinkResources enableShrinkResources.toBoolean()
             minifyEnabled enableMinifyInReleaseBuilds
@@ -178,5 +194,12 @@ dependencies {
         implementation("com.facebook.react:hermes-android")
     } else {
         implementation jscFlavor
+    }
+}
+
+gradle.taskGraph.whenReady { graph ->
+    def isReleaseBuild = graph.allTasks.any { task -> task.name.toLowerCase().contains('release') }
+    if (isReleaseBuild && !releaseKeystorePropertiesFile.exists()) {
+        throw new GradleException('Release signing is not configured. Copy android/keystore.properties.example to android/keystore.properties and provide a private keystore.')
     }
 }

@@ -8,10 +8,12 @@
   "scripts": {
     "start": "expo start",
     "ios": "expo run:ios",
-    "android": "expo run:android",
+    "android": "./scripts/android-env.sh expo run:android",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "android:assemble": "./scripts/android-env.sh bash -c \"cd android && ./gradlew :app:assembleDebug --no-daemon\"",
+    "android:bundle": "./scripts/android-env.sh bash -c \"cd android && ./gradlew :app:bundleRelease --no-daemon\""
   },
   "dependencies": {
     "@tanstack/react-query": "^5.101.4",
@@ -41,5 +43,10 @@
     "@types/react": "^19.2.0",
     "typescript": "^6.0.3",
     "vitest": "^4.1.8"
+  },
+  "packageManager": "pnpm@10.26.2",
+  "engines": {
+    "node": ">=22.23.2 <23",
+    "pnpm": "10.26.2"
   }
 }

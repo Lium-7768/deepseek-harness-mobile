@@ -29,3 +29,6 @@ android/app/build/
 *.p8
 .DS_Store
 android/app/debug.keystore
+android/keystore.properties
+android/*.jks
+android/*.p12

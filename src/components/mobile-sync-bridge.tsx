@@ -1,10 +1,12 @@
 import { fetch } from 'expo/fetch'
 import { useEffect, useRef } from 'react'
+import { router } from 'expo-router'
 import { AppState, type AppStateStatus } from 'react-native'
 import { useQueryClient } from '@tanstack/react-query'
 import { MobileApi, mobileAuthorization } from '@/api/mobile-api'
 import { useConnectionStore } from '@/state/connection'
 import { useMobileSyncStore } from '@/state/mobile-sync'
+import { MobileEventStreamError, requiresRePair } from '@/components/mobile-sync-bridge-logic'
 import type { MobileStreamEvent, SessionEventItem, SessionEventsPayload } from '@/types/mobile'
 
 const RETRY_DELAYS_MS = [1_000, 2_000, 5_000, 10_000]
@@ -120,11 +122,15 @@ export function MobileSyncBridge(): null {
         .then(() => {
           if (!controller.signal.aborted) scheduleRetry()
         })
-        .catch(() => {
-          if (!controller.signal.aborted) {
-            setStatus('disconnected')
-            scheduleRetry()
+        .catch(error => {
+          if (controller.signal.aborted) return
+          setStatus('disconnected')
+          if (requiresRePair(error)) {
+            queryClient.clear()
+            void useConnectionStore.getState().forgetConnection().finally(() => router.replace('/connect'))
+            return
           }
+          scheduleRetry()
         })
         .finally(() => {
           if (streamAbort.current === controller) streamAbort.current = undefined
@@ -163,7 +169,7 @@ async function consumeMobileEventStream(
     headers: { Accept: 'text/event-stream', Authorization: authorization },
     signal,
   })
-  if (!response.ok || response.body === null) throw new Error(`移动同步连接失败（HTTP ${response.status}）。`)
+  if (!response.ok || response.body === null) throw new MobileEventStreamError(response.status)
   const reader = response.body.getReader()
   const decoder = new TextDecoder()
   let buffer = ''

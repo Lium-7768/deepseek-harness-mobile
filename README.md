@@ -93,3 +93,14 @@ This repository contains a pnpm-managed `expo-modules-jsi` compatibility patch f
 ## Contract and contribution rules
 
 `src/shared/dsh-presentation.ts` is intentionally local so the mobile client has no direct workspace dependency on the desktop repository. When changing Gateway payloads or durable event projection, update this contract, its tests, and the desktop Gateway compatibility at the same time. Keep desktop authority on the desktop: do not add a mobile Agent Loop, durable session store, desktop file browser, Shell access, or provider credential management.
+
+## Android development
+
+Install Android Studio with an Android SDK, then start an emulator or connect a device with USB debugging. The Android commands locate `ANDROID_SDK_ROOT` automatically on macOS and Linux when it is installed in a standard location.
+
+```bash
+pnpm android            # build, install, and open the development app
+pnpm android:assemble   # produce android/app/build/outputs/apk/debug/app-debug.apk
+```
+
+A release bundle is deliberately blocked until a private signing configuration exists. Copy `android/keystore.properties.example` to `android/keystore.properties`, replace every placeholder, and keep both that file and its keystore private. Then run `pnpm android:bundle` to create the release bundle. The project never falls back to the debug keystore for a release build.

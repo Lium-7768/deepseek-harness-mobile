@@ -3,21 +3,29 @@ import 'react-native-gesture-handler'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { Drawer } from 'expo-router/drawer'
 import { ActivityIndicator, View, useWindowDimensions } from 'react-native'
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { MobileSyncBridge } from '@/components/mobile-sync-bridge'
 import { useConnectionStore } from '@/state/connection'
+import { mobileConnectionScope } from '@/state/connection-scope'
 import { SessionDrawer } from '@/components/session-drawer'
 import { drawerWidthForViewport } from '@/components/session-drawer-logic'
 import { mobileTheme } from '@/theme'
 
 export default function RootLayout(): React.JSX.Element {
   const [queryClient] = useState(() => new QueryClient())
+  const connection = useConnectionStore(state => state.connection)
+  const connectionScope = mobileConnectionScope(connection)
+  const previousConnectionScope = useRef(connectionScope)
   const initialized = useConnectionStore(state => state.initialized)
   const initialize = useConnectionStore(state => state.initialize)
   const { width } = useWindowDimensions()
   useEffect(() => {
     void initialize()
   }, [initialize])
+  useEffect(() => {
+    if (previousConnectionScope.current !== connectionScope) queryClient.clear()
+    previousConnectionScope.current = connectionScope
+  }, [connectionScope, queryClient])
   if (!initialized)
     return (
       <View
