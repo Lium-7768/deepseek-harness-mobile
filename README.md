@@ -22,3 +22,4 @@ The client communicates only through a paired Mobile Gateway. It does not import
 | `pnpm test` | Run mobile logic and API tests. |
 | `pnpm typecheck` | Type-check native source. |
 | `pnpm start` | Start Expo Metro. |
+# deepseek-harness-mobile
