@@ -1,0 +1,120 @@
+name: Mobile Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Existing v<major>.<minor>.<patch> tag to release'
+        required: true
+        type: string
+      publish:
+        description: 'Publish the draft GitHub Release after validation'
+        required: true
+        default: false
+        type: boolean
+      eas_build:
+        description: 'Start EAS production builds (requires EXPO_TOKEN and a configured EAS project)'
+        required: true
+        default: false
+        type: boolean
+
+permissions:
+  contents: write
+
+concurrency:
+  group: mobile-release-${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}
+  cancel-in-progress: false
+
+jobs:
+  validate-and-draft:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    outputs:
+      tag: ${{ steps.release.outputs.tag }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref }}
+          fetch-depth: 0
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.26.2
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - name: Resolve release tag
+        id: release
+        shell: bash
+        run: |
+          set -euo pipefail
+          tag='${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}'
+          git rev-parse "$tag^{commit}" >/dev/null
+          printf 'tag=%s\n' "$tag" >> "$GITHUB_OUTPUT"
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm release:verify -- ${{ steps.release.outputs.tag }}
+      - run: pnpm exec expo install --check
+      - run: pnpm audit --prod
+      - run: pnpm test
+      - run: pnpm typecheck
+      - run: pnpm exec expo export --platform ios --output-dir dist/release/ios-export
+      - run: pnpm exec expo export --platform android --output-dir dist/release/android-export
+      - name: Create release manifest
+        shell: bash
+        run: |
+          printf 'tag=%s\ncommit=%s\nios_export=dist/release/ios-export\nandroid_export=dist/release/android-export\n' \
+            '${{ steps.release.outputs.tag }}' '${{ github.sha }}' > dist/release/manifest.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: expo-exports-${{ steps.release.outputs.tag }}
+          path: dist/release
+          if-no-files-found: error
+      - name: Create or update draft GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ steps.release.outputs.tag }}
+        run: |
+          gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1 || \
+            gh release create "$TAG" --repo "$GITHUB_REPOSITORY" --draft --generate-notes --title "$TAG"
+          gh release upload "$TAG" dist/release/manifest.txt --repo "$GITHUB_REPOSITORY" --clobber
+      - name: Publish requested draft
+        if: ${{ github.event_name == 'workflow_dispatch' && inputs.publish }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ steps.release.outputs.tag }}
+        run: gh release edit "$TAG" --repo "$GITHUB_REPOSITORY" --draft=false
+
+  eas-production-build:
+    needs: validate-and-draft
+    if: ${{ github.event_name == 'workflow_dispatch' && inputs.eas_build }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref }}
+      - name: Require EXPO_TOKEN for EAS
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+        shell: bash
+        run: |
+          if [ -z "$EXPO_TOKEN" ]; then
+            echo "Set repository secret EXPO_TOKEN before selecting eas_build." >&2
+            exit 1
+          fi
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.26.2
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm release:verify -- ${{ needs.validate-and-draft.outputs.tag }}
+      - name: Start EAS production builds
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+        run: pnpm dlx eas-cli@22.2.0 build --platform all --profile production --non-interactive --no-wait

@@ -104,3 +104,7 @@ pnpm android:assemble   # produce android/app/build/outputs/apk/debug/app-debug.
 ```
 
 A release bundle is deliberately blocked until a private signing configuration exists. Copy `android/keystore.properties.example` to `android/keystore.properties`, replace every placeholder, and keep both that file and its keystore private. Then run `pnpm android:bundle` to create the release bundle. The project never falls back to the debug keystore for a release build.
+
+## Releases
+
+The tested Android, iOS, EAS, version-tag, signing, and GitHub draft-release process is documented in [docs/RELEASING.md](docs/RELEASING.md). Release signing credentials and store submission tokens must remain outside Git.

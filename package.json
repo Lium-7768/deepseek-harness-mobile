@@ -13,7 +13,11 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "android:assemble": "./scripts/android-env.sh bash -c \"cd android && ./gradlew :app:assembleDebug --no-daemon\"",
-    "android:bundle": "./scripts/android-env.sh bash -c \"cd android && ./gradlew :app:bundleRelease --no-daemon\""
+    "android:bundle": "./scripts/android-env.sh bash -c \"cd android && ./gradlew :app:bundleRelease --no-daemon\"",
+    "release:verify": "node scripts/release-verify.mjs",
+    "release:android": "node scripts/release-verify.mjs \"$RELEASE_TAG\" && ./scripts/android-env.sh bash -c \"cd android && ./gradlew :app:bundleRelease --no-daemon\"",
+    "release:ios": "node scripts/release-verify.mjs \"$RELEASE_TAG\" && ./scripts/ios-release-archive.sh",
+    "release:eas": "node scripts/release-verify.mjs \"$RELEASE_TAG\" && pnpm dlx eas-cli@22.2.0 build --platform all --profile production"
   },
   "dependencies": {
     "@tanstack/react-query": "^5.101.4",
