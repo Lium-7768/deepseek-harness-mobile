@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { router, useLocalSearchParams } from 'expo-router'
 import { useEffect, useMemo, useState } from 'react'
-import { Alert, Pressable, StyleSheet, Text, TextInput, View } from 'react-native'
+import { Alert, KeyboardAvoidingView, Platform, Pressable, StyleSheet, Text, TextInput, View } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { MobileApi, mobileErrorMessage } from '@/api/mobile-api'
 import { NativeActionButton } from '@/components/native-action-button'
@@ -72,7 +72,12 @@ export default function RenameSessionScreen(): React.JSX.Element {
       title="重命名会话"
       showMenu={false}
     >
-      <View style={[styles.canvas, { paddingTop: workspaceKeyboardVerticalOffset(insets.top, false) / 3 }]}>
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? workspaceKeyboardVerticalOffset(insets.top, false) : 0}
+        style={styles.flex}
+      >
+      <View style={styles.canvas}>
         <Text style={styles.label}>会话标题</Text>
         <TextInput
           accessibilityLabel="会话标题"
@@ -97,6 +102,7 @@ export default function RenameSessionScreen(): React.JSX.Element {
           style={styles.submit}
         />
       </View>
+      </KeyboardAvoidingView>
     </WorkspaceShell>
   )
 }
@@ -104,6 +110,7 @@ export default function RenameSessionScreen(): React.JSX.Element {
 const makeStyles = (theme: AppTheme) =>
   StyleSheet.create({
     back: { alignItems: 'center', height: 36, justifyContent: 'center', width: 36 },
+    flex: { flex: 1 },
     canvas: { flex: 1, gap: theme.spacing.sm, padding: theme.spacing.lg },
     hint: { color: theme.colors.inkMuted, fontSize: 13, lineHeight: 19 },
     input: {

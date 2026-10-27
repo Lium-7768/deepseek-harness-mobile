@@ -121,6 +121,39 @@ counts empty-state copy.
 one status line under the header rather than a placeholder in the body; the
 screen is a composer surface, not a list.
 
+## Keyboard
+
+Every screen that renders a `TextInput` wraps its body in `KeyboardAvoidingView`
+with iOS `padding` behaviour and an offset equal to the shell header height, so
+the caret stays above the keyboard instead of under it. Android uses `height`.
+
+| Screen | Offset source |
+| --- | --- |
+| `connect` | `workspaceKeyboardVerticalOffset(insets.top, false)` |
+| `workspace` | `workspaceKeyboardVerticalOffset(insets.top, true)` — has the meta row |
+| `session/[sessionId]` | `workspaceKeyboardVerticalOffset(insets.top, false)` |
+| `session/[sessionId]/interactions` | `workspaceKeyboardVerticalOffset(insets.top, false)` |
+| `session/[sessionId]/rename` | same, wrapping the canvas |
+| `workspace/[workspaceId]/rename` | same, wrapping the canvas |
+
+Scrollable surfaces use `keyboardDismissMode="on-drag"` and
+`keyboardShouldPersistTaps="handled"` so a tap on a row reaches the row instead
+of only dismissing the keyboard. Inputs inside the composer, the drawer, the
+queue dock, and the agent-activity editor inherit the avoidance of the screen
+that renders them.
+
+## Reconnect
+
+`MobileSyncBridge` holds one SSE subscription per visible session.
+
+| Concern | Behaviour |
+| --- | --- |
+| Backoff | `1s → 2s → 5s → 10s`, then held at 10s |
+| Gate | retries only while `AppState` is `active`; a background app does not poll |
+| Resumption | re-reads the last `since` sequence from the query cache and resumes from it |
+| Re-pair | a `401`/`403` on the stream raises `requiresRePair`, which routes the user back to `connect` instead of retrying a dead credential |
+| Cache | a changed connection scope clears the query client, so a second desktop never sees the first one's sessions |
+
 ## Findings
 
 | ID | Severity | Finding | Evidence | Status |
@@ -136,6 +169,7 @@ screen is a composer surface, not a list.
 | F9 | Low | `keyExtractor` falls back to the row index for rows without `rowKey`. | `session/[sessionId].tsx` | **Accepted** — reruns rebuild the whole list anyway |
 | F10 | Info | The desktop device registry is an in-memory `Map`, so a restart forgets every paired device. | `device-registry.ts` on `platform` | **Open** — Desktop plugin work |
 | F11 | Low | The goal editor's cancel and save buttons set `disabled` but never exposed it as `accessibilityState`, so a screen reader announced them as available. | `native-agent-activity.tsx` | **Fixed** — state added |
+| F12 | Medium | Both rename screens rendered a `TextInput` with `autoFocus` and no keyboard avoidance; the canvas used a `paddingTop` guess instead. | `session/…/rename.tsx`, `workspace/…/rename.tsx` | **Fixed** — wrapped in `KeyboardAvoidingView` |
 
 ## What was changed
 
@@ -144,6 +178,7 @@ screen is a composer surface, not a list.
 - `session/[sessionId].tsx`: list windowing.
 - `mobile-api.ts`: the auth path suppresses diagnostics.
 - `native-agent-activity.tsx`: the goal editor's two buttons expose `disabled`.
+- Both rename screens: `KeyboardAvoidingView` replaces the `paddingTop` guess.
 
 ## What is left, in priority order
 

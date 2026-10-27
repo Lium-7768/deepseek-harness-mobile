@@ -1,7 +1,7 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { router, useLocalSearchParams } from 'expo-router'
 import { useMemo, useState } from 'react'
-import { Alert, Pressable, StyleSheet, Text, TextInput, View } from 'react-native'
+import { Alert, KeyboardAvoidingView, Platform, Pressable, StyleSheet, Text, TextInput, View } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { MobileApi, mobileErrorMessage } from '@/api/mobile-api'
 import { NativeActionButton } from '@/components/native-action-button'
@@ -56,7 +56,12 @@ export default function RenameWorkspaceScreen(): React.JSX.Element {
       title="重命名工作区"
       showMenu={false}
     >
-      <View style={[styles.canvas, { paddingTop: workspaceKeyboardVerticalOffset(insets.top, false) / 3 }]}>
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? workspaceKeyboardVerticalOffset(insets.top, false) : 0}
+        style={styles.flex}
+      >
+      <View style={styles.canvas}>
         <Text style={styles.label}>工作区名称</Text>
         <TextInput
           accessibilityLabel="工作区名称"
@@ -81,6 +86,7 @@ export default function RenameWorkspaceScreen(): React.JSX.Element {
           style={styles.submit}
         />
       </View>
+      </KeyboardAvoidingView>
     </WorkspaceShell>
   )
 }
@@ -93,6 +99,7 @@ function firstParam(value: string | string[] | undefined): string | undefined {
 const makeStyles = (theme: AppTheme) =>
   StyleSheet.create({
     back: { alignItems: 'center', height: 36, justifyContent: 'center', width: 36 },
+    flex: { flex: 1 },
     canvas: { flex: 1, gap: theme.spacing.sm, padding: theme.spacing.lg },
     hint: { color: theme.colors.inkMuted, fontSize: 13, lineHeight: 19 },
     input: {
