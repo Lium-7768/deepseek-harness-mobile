@@ -14,6 +14,7 @@ import { useConnectionStore } from '@/state/connection'
 import type { MobileSettingsNamespaceView, MobileSettingsPayload } from '@/types/mobile'
 import type { AppTheme } from '@/theme'
 import { useAppTheme, useThemedStyles } from '@/theme/hooks'
+import { format, t as message } from '@/locale'
 
 type SettingsSection = 'general' | 'models' | 'plugins' | 'presets'
 
@@ -32,7 +33,7 @@ export default function SettingsScreen(): React.JSX.Element {
     section === undefined ? undefined : (
       <Pressable
         accessibilityRole="button"
-        accessibilityLabel="返回设置"
+        accessibilityLabel={message('settings.backToSettings')}
         hitSlop={8}
         onPress={() => router.back()}
         style={styles.back}
@@ -68,12 +69,12 @@ function SettingsIndex({
   return (
     <ScrollView contentContainerStyle={styles.list}>
       <View style={styles.header}>
-        <Text style={styles.subtitle}>管理桌面端运行时和移动端连接</Text>
+        <Text style={styles.subtitle}>{message('settings.subtitle')}</Text>
       </View>
-      <SettingRow title="通用设置" description="默认模式、权限和桌面端行为" section="general" />
-      <SettingRow title="模型" description="查看提供方与模型目录；API 密钥需在桌面端维护" section="models" />
-      <SettingRow title="插件" description="移动端仅查看，插件安装和配置需在桌面端完成" section="plugins" />
-      <SettingRow title="智能体预设" description="查看预设，并为仍为空白的会话选择模式" section="presets" />
+      <SettingRow title={message('settings.sectionGeneral')} description={message('settings.generalDescription')} section="general" />
+      <SettingRow title={message('settings.sectionModels')} description={message('settings.modelsDescription')} section="models" />
+      <SettingRow title={message('settings.sectionPlugins')} description={message('settings.pluginsDescription')} section="plugins" />
+      <SettingRow title={message('settings.sectionPresets')} description={message('settings.presetsDescription')} section="presets" />
       <ConnectionCard connection={connection} />
     </ScrollView>
   )
@@ -140,77 +141,77 @@ function GeneralSettings({
         void queryClient.invalidateQueries({
           queryKey: ['mobile-settings', connection.gatewayUrl, connection.deviceId],
         })
-        Alert.alert('设置已保存', success)
+        Alert.alert(message('settings.savedTitle'), success)
       })
-      .catch(error => Alert.alert('设置保存失败', mobileErrorMessage(error, '无法保存设置，请稍后重试。')))
+      .catch(error => Alert.alert(message('settings.saveFailedTitle'), mobileErrorMessage(error, message('settings.saveFailedBody'))))
       .finally(() => setSaving(false))
   }
-  if (settings.isPending || presets.isPending) return <CenteredState text="正在加载设置…" />
+  if (settings.isPending || presets.isPending) return <CenteredState text={message('settings.loading')} />
   return (
     <ScrollView contentContainerStyle={styles.list}>
       <View style={styles.header}>
-        <Text style={styles.subtitle}>移动端只修改桌面端明确允许的设置；敏感配置仍由桌面端管理。</Text>
+        <Text style={styles.subtitle}>{message('settings.mobileScopeNote')}</Text>
       </View>
       {settings.isError ? (
         <QueryErrorNotice
-          text={mobileErrorMessage(settings.error, '设置加载失败，请稍后重试。')}
+          text={mobileErrorMessage(settings.error, message('settings.loadFailed'))}
           onRetry={() => void settings.refetch()}
         />
       ) : null}
       {presets.isError ? (
         <QueryErrorNotice
-          text={mobileErrorMessage(presets.error, '智能体预设加载失败，请稍后重试。')}
+          text={mobileErrorMessage(presets.error, message('settings.presetsLoadFailed'))}
           onRetry={() => void presets.refetch()}
         />
       ) : null}
-      <OptionSection title="新会话默认智能体模式" description="仅影响之后创建的会话。运行中的会话不会改变。">
+      <OptionSection title={message('settings.modeSectionTitle')} description={message('settings.modeSectionDescription')}>
         {presets.data?.presets.map(item => (
           <OptionRow
             key={item.id}
             label={item.name ?? item.id}
-            description={item.broken ?? item.description ?? '内置模式'}
+            description={item.broken ?? item.description ?? message('settings.builtinMode')}
             selected={item.id === presetDefault}
             disabled={!writable || saving || item.broken !== undefined}
-            onPress={() => save('agent-presets', { default: item.id }, '之后创建的会话将使用此模式。')}
+            onPress={() => save('agent-presets', { default: item.id }, message('settings.modeAppliesToNewSessions'))}
           />
         ))}
-        {presets.data?.presets.length === 0 ? <Text style={styles.muted}>桌面端未配置智能体预设。</Text> : null}
+        {presets.data?.presets.length === 0 ? <Text style={styles.muted}>{message('settings.noPresetsConfigured')}</Text> : null}
       </OptionSection>
-      <OptionSection title="默认权限" description="仅影响之后创建的会话；当前会话的权限请求仍需逐项审批。">
+      <OptionSection title={message('settings.permissionSectionTitle')} description={message('settings.permissionSectionDescription')}>
         <OptionRow
-          label="只读"
-          description="禁止写入工作区"
+          label={message('settings.permissionReadOnlyLabel')}
+          description={message('settings.permissionReadOnlyDetail')}
           selected={permissionDefault === 'read-only'}
           disabled={!writable || saving}
-          onPress={() => save('permission', { defaultPreset: 'read-only' }, '新会话默认使用只读权限。')}
+          onPress={() => save('permission', { defaultPreset: 'read-only' }, message('settings.permissionReadOnly'))}
         />
         <OptionRow
-          label="工作区写入"
-          description="允许在工作区内写入文件"
+          label={message('settings.permissionWorkspaceLabel')}
+          description={message('settings.permissionWorkspaceDetail')}
           selected={permissionDefault === 'workspace-write'}
           disabled={!writable || saving}
-          onPress={() => save('permission', { defaultPreset: 'workspace-write' }, '新会话默认使用工作区写入权限。')}
+          onPress={() => save('permission', { defaultPreset: 'workspace-write' }, message('settings.permissionWorkspace'))}
         />
         <OptionRow
-          label="完全访问"
-          description="不限制工作区访问范围"
+          label={message('settings.permissionFullLabel')}
+          description={message('settings.permissionFullDetail')}
           selected={permissionDefault === 'danger-full-access'}
           disabled={!writable || saving}
           onPress={() =>
             confirmFullAccess(() =>
-              save('permission', { defaultPreset: 'danger-full-access' }, '新会话默认使用完全访问权限。'),
+              save('permission', { defaultPreset: 'danger-full-access' }, message('settings.permissionFull')),
             )
           }
         />
       </OptionSection>
-      <ReadOnlySetting title="外观" value={themeLabel(theme)} detail="移动端当前固定浅色主题；请在桌面端修改主题。" />
-      <ReadOnlySetting title="语言" value="中文" detail="移动端当前提供中文界面；桌面端语言设置不会改变移动端文案。" />
+      <ReadOnlySetting title={message('settings.appearance')} value={themeLabel(theme)} detail={message('settings.appearanceDetail')} />
+      <ReadOnlySetting title={message('settings.language')} value={message('settings.languageValue')} detail={message('settings.languageDetail')} />
       <ReadOnlySetting
-        title="忙碌时 Enter 键行为"
-        value="排队发送"
-        detail="移动端发送按钮不提供桌面端 Enter 行为切换。"
+        title={message('settings.enterBehavior')}
+        value={message('settings.enterBehaviorValue')}
+        detail={message('settings.enterBehaviorDetail')}
       />
-      {!writable ? <Text style={styles.notice}>桌面端设置提供方为只读，修改控件已禁用。</Text> : null}
+      {!writable ? <Text style={styles.notice}>{message('settings.readOnlyProvider')}</Text> : null}
     </ScrollView>
   )
 }
@@ -251,30 +252,30 @@ function ModelSettings({
       })
       .then(() => {
         void queryClient.invalidateQueries({ queryKey: ['mobile-settings', connection.gatewayUrl, connection.deviceId] })
-        Alert.alert('默认模型已保存', '之后创建的会话将使用此模型。')
+        Alert.alert(message('settings.modelSavedTitle'), message('settings.modelAppliesToNewSessions'))
       })
-      .catch(error => Alert.alert('默认模型保存失败', mobileErrorMessage(error, '无法保存默认模型，请稍后重试。')))
+      .catch(error => Alert.alert(message('settings.modelSaveFailedTitle'), mobileErrorMessage(error, message('settings.modelSaveFailedBody'))))
       .finally(() => setSubmitting(undefined))
   }
-  if (models.isPending || settings.isPending) return <CenteredState text="正在加载模型目录…" />
+  if (models.isPending || settings.isPending) return <CenteredState text={message('settings.loadingModels')} />
   return (
     <ScrollView contentContainerStyle={styles.list}>
       <View style={styles.header}>
-        <Text style={styles.subtitle}>仅影响之后创建的会话。会话中的模型可在输入框底部单独切换。</Text>
+        <Text style={styles.subtitle}>{message('settings.modelScopeNote')}</Text>
       </View>
       {models.isError ? (
         <QueryErrorNotice
-          text={mobileErrorMessage(models.error, '模型目录加载失败，请稍后重试。')}
+          text={mobileErrorMessage(models.error, message('settings.modelsLoadFailed'))}
           onRetry={() => void models.refetch()}
         />
       ) : null}
       {settings.isError ? (
         <QueryErrorNotice
-          text={mobileErrorMessage(settings.error, '默认模型加载失败，请稍后重试。')}
+          text={mobileErrorMessage(settings.error, message('settings.defaultModelLoadFailed'))}
           onRetry={() => void settings.refetch()}
         />
       ) : null}
-      <Text style={styles.selectionHint}>新会话默认模型</Text>
+      <Text style={styles.selectionHint}>{message('settings.defaultModel')}</Text>
       {models.data?.groups.map(group => (
         <NativeModelSelectionGroup
           key={group.id}
@@ -285,17 +286,17 @@ function ModelSettings({
           submittingKey={submitting}
         />
       ))}
-      {models.data?.groups.length === 0 ? <Text style={styles.muted}>当前没有可用模型。</Text> : null}
+      {models.data?.groups.length === 0 ? <Text style={styles.muted}>{message('settings.noModels')}</Text> : null}
       {models.data?.failures.map(failure => (
         <Text key={failure.id} style={styles.warning}>
-          {failure.name}：目录暂不可用。
+          {format('settings.modelDirectoryUnavailable', { name: failure.name })}
         </Text>
       ))}
-      {!writable ? <Text style={styles.notice}>默认模型由桌面端配置提供方管理，当前不可在移动端修改。</Text> : null}
+      {!writable ? <Text style={styles.notice}>{message('settings.modelManagedByDesktop')}</Text> : null}
       <ReadOnlySetting
-        title="提供方与 API 密钥"
-        value="桌面端专属"
-        detail="移动端不会接收或保存 API 密钥，也不开放任意提供方配置。"
+        title={message('settings.providers')}
+        value={message('settings.desktopOnly')}
+        detail={message('settings.providersDetail')}
       />
     </ScrollView>
   )
@@ -312,12 +313,12 @@ function PluginSettings({
     queryKey: ['mobile-settings', connection.gatewayUrl, connection.deviceId],
     queryFn: () => client.settingsDescribe(),
   })
-  if (settings.isPending) return <CenteredState text="正在读取插件配置…" />
+  if (settings.isPending) return <CenteredState text={message('settings.loadingPlugins')} />
   if (settings.isError)
     return (
       <ErrorState
         error={settings.error}
-        fallback="插件配置加载失败，请稍后重试。"
+        fallback={message('settings.pluginsLoadFailed')}
         onRetry={() => void settings.refetch()}
       />
     )
@@ -329,22 +330,22 @@ function PluginSettings({
     <ScrollView contentContainerStyle={styles.list}>
       <View style={styles.header}>
         <Text style={styles.subtitle}>
-          移动端不安装、卸载或任意修改插件。下列配置命名空间仅用于确认桌面端已加载的能力。
+          {message('settings.pluginsReadOnlyNote')}
         </Text>
       </View>
-      <OptionSection title="桌面端配置命名空间" description="插件的完整配置表单和敏感字段只在桌面端提供。">
+      <OptionSection title={message('settings.namespacesTitle')} description={message('settings.namespacesDescription')}>
         {namespaces.map(item => (
           <NativeListRow
             key={item.ns}
             description={item.ns}
             multiline
-            right={<Text style={styles.muted}>{item.applies === 'restart' ? '重启生效' : '实时生效'}</Text>}
+            right={<Text style={styles.muted}>{item.applies === 'restart' ? message('settings.effectRestart') : message('settings.effectLive')}</Text>}
             title={pluginLabel(item.ns)}
           />
         ))}
-        {namespaces.length === 0 ? <Text style={styles.muted}>桌面端没有可展示的插件配置。</Text> : null}
+        {namespaces.length === 0 ? <Text style={styles.muted}>{message('settings.noPlugins')}</Text> : null}
       </OptionSection>
-      <ReadOnlySetting title="插件管理" value="桌面端专属" detail="移动端没有可点击但不生效的插件管理入口。" />
+      <ReadOnlySetting title={message('settings.pluginManagement')} value={message('settings.desktopOnly')} detail={message('settings.pluginManagementDetail')} />
     </ScrollView>
   )
 }
@@ -368,12 +369,12 @@ function PresetSettings({
     enabled: selectedPreset !== undefined,
     queryFn: () => client.agentPreset(selectedPreset ?? ''),
   })
-  if (presets.isPending) return <CenteredState text="正在加载智能体预设…" />
+  if (presets.isPending) return <CenteredState text={message('settings.loadingPresets')} />
   if (presets.isError)
     return (
       <ErrorState
         error={presets.error}
-        fallback="智能体预设加载失败，请稍后重试。"
+        fallback={message('settings.presetsLoadFailed')}
         onRetry={() => void presets.refetch()}
       />
     )
@@ -381,36 +382,36 @@ function PresetSettings({
     return (
       <ScrollView contentContainerStyle={styles.list}>
         <View style={styles.header}>
-          <Text style={styles.subtitle}>{detail.data?.description ?? '只读查看预设内容。'}</Text>
+          <Text style={styles.subtitle}>{detail.data?.description ?? message('settings.presetReadOnly')}</Text>
         </View>
         {detail.isPending ? (
-          <CenteredState text="正在读取预设…" />
+          <CenteredState text={message('settings.loadingPresetBody')} />
         ) : detail.isError ? (
           <ErrorState
             error={detail.error}
-            fallback="预设读取失败，请稍后重试。"
+            fallback={message('settings.presetReadFailed')}
             onRetry={() => void detail.refetch()}
           />
         ) : (
           <Text selectable style={styles.code}>
-            {detail.data?.content ?? '预设内容为空。'}
+            {detail.data?.content ?? message('settings.presetEmpty')}
           </Text>
         )}
-        <ReadOnlySetting title="编辑此预设" value="桌面端专属" detail="移动端不打开或修改本地预设文件。" />
+        <ReadOnlySetting title={message('settings.editPreset')} value={message('settings.desktopOnly')} detail={message('settings.editPresetDetail')} />
       </ScrollView>
     )
   return (
     <ScrollView contentContainerStyle={styles.list}>
       <View style={styles.header}>
         <Text style={styles.subtitle}>
-          预设决定会话使用的工具和能力。点击可查看内容；新会话默认值在通用设置中修改。
+          {message('settings.presetsIntro')}
         </Text>
       </View>
       {presets.data?.presets.map(item => (
         <Pressable
           key={item.id}
           accessibilityRole="button"
-          accessibilityLabel={`查看 ${item.name ?? item.id}`}
+          accessibilityLabel={format('settings.viewPreset', { name: item.name ?? item.id })}
           onPress={() => router.push({ pathname: '/settings', params: { section: 'presets', preset: item.id } })}
           style={({ pressed }) => [styles.settingRow, pressed && styles.pressed]}
         >
@@ -422,17 +423,17 @@ function PresetSettings({
           <View style={styles.rowText}>
             <Text style={styles.rowTitle}>
               {item.name ?? item.id}
-              {item.isDefault ? '（默认）' : ''}
+              {item.isDefault ? message('settings.isDefaultSuffix') : ''}
             </Text>
             <Text style={styles.rowDescription}>
-              {item.broken ?? item.description ?? (item.trust === 'system' ? '内置模式' : '自定义模式')}
+              {item.broken ?? item.description ?? (item.trust === 'system' ? message('settings.builtinMode') : message('settings.customMode'))}
             </Text>
           </View>
           <NativeIcon name="chevron-right" color={theme.colors.inkMuted} size={20} />
         </Pressable>
       ))}
-      {presets.data?.presets.length === 0 ? <Text style={styles.muted}>桌面端没有可用的智能体预设。</Text> : null}
-      {!presets.data?.authorable ? <Text style={styles.notice}>当前部署不支持在移动端创建自定义预设。</Text> : null}
+      {presets.data?.presets.length === 0 ? <Text style={styles.muted}>{message('settings.noPresets')}</Text> : null}
+      {!presets.data?.authorable ? <Text style={styles.notice}>{message('settings.customPresetsUnsupported')}</Text> : null}
     </ScrollView>
   )
 }
@@ -446,16 +447,16 @@ function ConnectionCard({
   const forgetConnection = useConnectionStore(state => state.forgetConnection)
   const [forgetting, setForgetting] = useState(false)
   const disconnect = (): void => {
-    Alert.alert('忘记此桌面端？', '这只会移除手机上的凭据。如需阻止后续访问，请在桌面端撤销设备。', [
-      { text: '取消', style: 'cancel' },
+    Alert.alert(message('settings.forgetTitle'), message('settings.forgetBody'), [
+      { text: message('common.cancel'), style: 'cancel' },
       {
-        text: '忘记',
+        text: message('settings.forget'),
         style: 'destructive',
         onPress: () => {
           setForgetting(true)
           void forgetConnection()
             .then(() => router.replace('/connect'))
-            .catch(error => Alert.alert('忘记连接失败', mobileErrorMessage(error, '无法移除本机凭据，请稍后重试。')))
+            .catch(error => Alert.alert(message('settings.forgetFailedTitle'), mobileErrorMessage(error, message('settings.forgetFailedBody'))))
             .finally(() => setForgetting(false))
         },
       },
@@ -464,25 +465,25 @@ function ConnectionCard({
   return (
     <View style={styles.connectionCard}>
       <View style={styles.cardHeader}>
-        <Text style={styles.cardTitle}>桌面端连接</Text>
+        <Text style={styles.cardTitle}>{message('settings.connectionSection')}</Text>
         <View style={styles.connected}>
           <View style={[styles.dot, connection ? styles.dotConnected : styles.dotDisconnected]} />
           <Text style={[styles.connectedText, !connection && styles.disconnectedText]}>
-            {connection ? '已连接' : '未连接'}
+            {connection ? message('settings.connected') : message('settings.disconnected')}
           </Text>
         </View>
       </View>
-      <Text style={styles.label}>移动网关</Text>
+      <Text style={styles.label}>{message('settings.gateway')}</Text>
       <Text selectable style={styles.value}>
-        {connection?.gatewayUrl ?? '未连接'}
+        {connection?.gatewayUrl ?? message('settings.disconnected')}
       </Text>
-      <Text style={styles.label}>设备 ID</Text>
-      <Text accessibilityLabel={connection ? `设备 ID：${connection.deviceId}` : '设备 ID：未连接'} selectable style={styles.value}>
-        {connection ? compactDeviceId(connection.deviceId) : '未连接'}
+      <Text style={styles.label}>{message('settings.deviceId')}</Text>
+      <Text accessibilityLabel={connection ? format('settings.deviceIdValue', { deviceId: connection.deviceId }) : message('settings.deviceIdNone')} selectable style={styles.value}>
+        {connection ? compactDeviceId(connection.deviceId) : message('settings.disconnected')}
       </Text>
       {connection ? (
         <NativeActionButton
-          label="忘记此桌面端"
+          label={message('settings.forgetAction')}
           icon="link-off"
           variant="danger"
           loading={forgetting}
@@ -492,7 +493,7 @@ function ConnectionCard({
         />
       ) : (
         <NativeActionButton
-          label="连接桌面端"
+          label={message('connect.title')}
           icon="link"
           onPress={() => router.replace('/connect')}
           style={styles.actionButton}
@@ -507,9 +508,9 @@ function compactDeviceId(deviceId: string): string {
 }
 
 function confirmFullAccess(onConfirm: () => void): void {
-  Alert.alert('启用完全访问？', '这会让之后创建的会话不受工作区范围限制地访问文件。', [
-    { text: '取消', style: 'cancel' },
-    { text: '继续', style: 'destructive', onPress: onConfirm },
+  Alert.alert(message('settings.fullAccessTitle'), message('settings.fullAccessBody'), [
+    { text: message('common.cancel'), style: 'cancel' },
+    { text: message('common.continue'), style: 'destructive', onPress: onConfirm },
   ])
 }
 
@@ -598,7 +599,7 @@ function ErrorState({
   return (
     <View style={styles.center}>
       <Text style={styles.error}>{mobileErrorMessage(error, fallback)}</Text>
-      {onRetry ? <NativeActionButton label="重新加载" icon="refresh" variant="secondary" onPress={onRetry} /> : null}
+      {onRetry ? <NativeActionButton label={message('common.reload')} icon="refresh" variant="secondary" onPress={onRetry} /> : null}
     </View>
   )
 }
@@ -611,7 +612,7 @@ function QueryErrorNotice({ text, onRetry }: { text: string; onRetry: () => void
       <NativeIcon name="error-outline" color={theme.colors.danger} size={17} />
       <View style={styles.queryErrorBody}>
         <Text style={styles.error}>{text}</Text>
-        <NativeActionButton label="重新加载" icon="refresh" variant="secondary" onPress={onRetry} />
+        <NativeActionButton label={message('common.reload')} icon="refresh" variant="secondary" onPress={onRetry} />
       </View>
     </View>
   )
@@ -643,18 +644,18 @@ function readModelSelection(value: unknown): NativeModelSelection | undefined {
 }
 
 function themeLabel(value: string): string {
-  if (value === 'dark') return '深色（桌面端）'
-  if (value === 'system') return '跟随系统（桌面端）'
-  return '浅色（桌面端）'
+  if (value === 'dark') return message('settings.themeDark')
+  if (value === 'system') return message('settings.themeSystem')
+  return message('settings.themeLight')
 }
 
 function pluginLabel(ns: string): string {
   const labels: Record<string, string> = {
-    'llm-deepseek': 'DeepSeek 模型',
-    'llm-pi-ai': 'Pi AI 模型',
-    'web-search-deepseek': 'DeepSeek 网页搜索',
-    shell: '终端',
-    'agent-loop': '智能体循环',
+    'llm-deepseek': message('settings.groupDeepseekModels'),
+    'llm-pi-ai': message('settings.groupPiAiModels'),
+    'web-search-deepseek': message('settings.groupDeepseekSearch'),
+    shell: message('settings.groupTerminal'),
+    'agent-loop': message('settings.groupAgentLoop'),
   }
   return labels[ns] ?? ns
 }
@@ -664,11 +665,11 @@ function parseSection(value: string | undefined): SettingsSection | undefined {
 }
 
 function sectionTitle(section: SettingsSection | undefined): string {
-  if (section === 'general') return '通用设置'
-  if (section === 'models') return '模型'
-  if (section === 'plugins') return '插件'
-  if (section === 'presets') return '智能体预设'
-  return '设置'
+  if (section === 'general') return message('settings.sectionGeneral')
+  if (section === 'models') return message('settings.sectionModels')
+  if (section === 'plugins') return message('settings.sectionPlugins')
+  if (section === 'presets') return message('settings.sectionPresets')
+  return message('settings.title')
 }
 
 function firstParam(value: string | string[] | undefined): string | undefined {

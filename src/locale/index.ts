@@ -12,6 +12,7 @@
 import { connect } from './connect'
 import { errors } from './errors'
 import { session } from './session'
+import { settings as settingsCopy } from './settings'
 import { trajectory } from './trajectory'
 
 /** Copy shared by more than one screen. */
@@ -20,6 +21,8 @@ const common = {
   save: '保存',
   retry: '请稍后重试。',
   back: '返回',
+  continue: '继续',
+  reload: '重新加载',
   openDrawer: '打开会话列表',
   // Screen-reader suffixes appended to a control's own label.
   selectedSuffix: '，已选中',
@@ -27,7 +30,7 @@ const common = {
   currentModelSuffix: '，当前模型',
 } as const
 
-const areas = { common, connect, errors, session, trajectory }
+const areas = { common, connect, errors, session, settings: settingsCopy, trajectory }
 
 /** Every user-visible string the client renders, keyed as `<area>.<role>`. */
 export const messages = Object.fromEntries(
