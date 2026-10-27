@@ -1,3 +1,4 @@
+import { format, t as message } from '@/locale'
 import type { MobileWorkspace, SessionSummary } from '@/types/mobile'
 
 /** The two session ordering modes supported by the drawer model. */
@@ -70,9 +71,9 @@ export function sessionUpdatedAt(session: SessionSummary): number {
 
 /** Formats a session timestamp in the device's local time zone. */
 export function formatSessionTime(updatedAt: unknown, now = Date.now()): string {
-  if (typeof updatedAt !== 'number' || !Number.isFinite(updatedAt) || updatedAt <= 0) return '时间未知'
+  if (typeof updatedAt !== 'number' || !Number.isFinite(updatedAt) || updatedAt <= 0) return message('session.timeUnknown')
   const date = new Date(updatedAt)
-  if (!Number.isFinite(date.getTime())) return '时间未知'
+  if (!Number.isFinite(date.getTime())) return message('session.timeUnknown')
   const current = new Date(now)
   const reference = Number.isFinite(current.getTime()) ? current : new Date()
   const time = `${twoDigits(date.getHours())}:${twoDigits(date.getMinutes())}`
@@ -84,21 +85,21 @@ export function formatSessionTime(updatedAt: unknown, now = Date.now()): string 
     return time
   const dateLabel =
     date.getFullYear() === reference.getFullYear()
-      ? `${date.getMonth() + 1}月${date.getDate()}日`
-      : `${date.getFullYear()}年${date.getMonth() + 1}月${date.getDate()}日`
+      ? format('session.dateSameYear', { month: date.getMonth() + 1, day: date.getDate() })
+      : format('session.dateWithYear', { year: date.getFullYear(), month: date.getMonth() + 1, day: date.getDate() })
   return `${dateLabel} ${time}`
 }
 
 /** Resolves the desktop-compatible visible title for one session summary. */
 export function sessionDisplayTitle(session: Pick<SessionSummary, 'blank' | 'title'> | undefined): string {
-  if (session?.blank === true) return '新会话'
+  if (session?.blank === true) return message('session.newSession')
   const title = session?.title?.trim()
-  return title === undefined || title === '' ? '新会话' : title
+  return title === undefined || title === '' ? message('session.newSession') : title
 }
 
 /** Returns the drawer's status label, prioritizing an active session over its timestamp. */
 export function sessionTimeLabel(session: Pick<SessionSummary, 'running' | 'updatedAt'>, now = Date.now()): string {
-  return session.running === true ? '处理中' : formatSessionTime(session.updatedAt, now)
+  return session.running === true ? message('session.running') : formatSessionTime(session.updatedAt, now)
 }
 
 /** Reports whether the desktop projected at least one named workspace. */
@@ -155,7 +156,7 @@ export function sessionRows(
     .filter(session => !accounted.has(session.sessionId) && sessionVisible(session, currentSessionId))
     .sort((a, b) => sessionUpdatedAt(b) - sessionUpdatedAt(a))
   if (ungrouped.length > 0) {
-    rows.push({ kind: 'workspace', key: 'workspace:ungrouped', label: '未分组' })
+    rows.push({ kind: 'workspace', key: 'workspace:ungrouped', label: message('session.ungrouped') })
     rows.push(...ungrouped.map(session => ({ kind: 'session' as const, key: `session:${session.sessionId}`, session })))
   }
   return rows

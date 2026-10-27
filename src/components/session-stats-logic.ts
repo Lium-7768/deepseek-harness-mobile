@@ -1,3 +1,4 @@
+import { format } from '@/locale'
 import type { SharedEventItem } from '@/shared/dsh-presentation'
 
 type SessionStatsProjection = {
@@ -53,10 +54,10 @@ export function sessionStatisticsLine(
   const usage = readTokenUsage(projectionValues?.tokenUsage)
   const groups: string[] = []
   if (stats.steps > 0) {
-    groups.push(`${stats.turns} 轮 · ${stats.steps} 步`)
+    groups.push(format('session.statsTurns', { turns: stats.turns, steps: stats.steps }))
     const durations: string[] = []
     if (stats.llmMs > 0) durations.push(`LLM ${formatStatisticsDuration(stats.llmMs)}`)
-    if (stats.toolMs > 0) durations.push(`工具调用 ${formatStatisticsDuration(stats.toolMs)}`)
+    if (stats.toolMs > 0) durations.push(format('session.statsToolTime', { duration: formatStatisticsDuration(stats.toolMs) }))
     if (durations.length > 0) groups.push(durations.join(' · '))
     const speeds: string[] = []
     if (stats.ttftSteps > 0) speeds.push(`首 token 平均 ${formatStatisticsDuration(stats.ttftMs / stats.ttftSteps)}`)
@@ -67,8 +68,8 @@ export function sessionStatisticsLine(
   if (usage !== undefined) {
     const input = usage.uncachedInputTokens + usage.cacheReadTokens + usage.cacheWriteTokens
     if (input > 0 || usage.outputTokens > 0) {
-      if (input > 0) groups.push(`缓存命中 ${Math.round((usage.cacheReadTokens / input) * 100)}%`)
-      groups.push(`输入 ${formatStatisticsTokens(input)} tok · 输出 ${formatStatisticsTokens(usage.outputTokens)} tok`)
+      if (input > 0) groups.push(format('session.statsCacheHit', { percent: Math.round((usage.cacheReadTokens / input) * 100) }))
+      groups.push(format('session.statsTokens', { input: formatStatisticsTokens(input), output: formatStatisticsTokens(usage.outputTokens) }))
     }
   }
   return groups.length > 0 ? groups.join(' | ') : undefined

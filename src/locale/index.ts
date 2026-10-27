@@ -11,6 +11,7 @@
  */
 import { connect } from './connect'
 import { errors } from './errors'
+import { session } from './session'
 
 /** Copy shared by more than one screen. */
 const common = {
@@ -25,7 +26,7 @@ const common = {
   currentModelSuffix: '，当前模型',
 } as const
 
-const areas = { common, connect, errors }
+const areas = { common, connect, errors, session }
 
 /** Every user-visible string the client renders, keyed as `<area>.<role>`. */
 export const messages = Object.fromEntries(
@@ -45,4 +46,24 @@ export type MessageKey = keyof typeof messages
  */
 export function t(key: MessageKey): string {
   return messages[key]
+}
+
+/** Values substituted into a message that carries `{name}` placeholders. */
+export type MessageValues = Record<string, string | number>
+
+/**
+ * Resolve a message and substitute its placeholders.
+ *
+ * Placeholders are `{name}`. A value the message does not name is ignored, and a
+ * placeholder without a value is left in place so a missing value is visible in
+ * the rendered copy instead of disappearing silently.
+ *
+ * @param key - A key declared in {@link messages}.
+ * @param values - Values for the message's placeholders.
+ * @returns The copy with placeholders replaced.
+ */
+export function format(key: MessageKey, values: MessageValues): string {
+  return messages[key].replace(/\{(\w+)\}/g, (match, name: string) =>
+    Object.hasOwn(values, name) ? String(values[name]) : match,
+  )
 }

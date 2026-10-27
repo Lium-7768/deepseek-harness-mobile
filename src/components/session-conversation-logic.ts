@@ -1,3 +1,4 @@
+import { t as message } from '@/locale'
 import type { SharedEventItem } from '@/shared/dsh-presentation'
 
 export type NativeConversationRow =
@@ -143,7 +144,7 @@ export function projectNativeConversationRows(items: readonly SharedEventItem[])
     }
     if (type === 'tool/call') {
       const callId = stringField(data.callId)
-      const toolName = stringField(data.name) ?? '工具调用'
+      const toolName = stringField(data.name) ?? message('session.toolCall')
       const row: NativeConversationRow = {
         kind: 'tool',
         state: 'running',
@@ -176,7 +177,7 @@ export function projectNativeConversationRows(items: readonly SharedEventItem[])
       rows.push({
         kind: 'tool',
         state: result.failed ? 'failed' : 'completed',
-        toolName: '工具结果',
+        toolName: message('session.toolResult'),
         ...(result.output === undefined ? {} : { output: result.output }),
         ...(sourceSeq === undefined ? {} : { sourceSeq }),
       })
@@ -187,7 +188,7 @@ export function projectNativeConversationRows(items: readonly SharedEventItem[])
       const retry = numberField(data.retry) ?? 1
       rows.push({
         delayMs: numberField(data.delayMs) ?? 0,
-        failureMessage: stringField(failure?.message) ?? '模型请求失败。',
+        failureMessage: stringField(failure?.message) ?? message('session.modelRequestFailed'),
         kind: 'retry',
         maxRetries: numberField(data.maxRetries) ?? retry,
         retry,
@@ -200,7 +201,7 @@ export function projectNativeConversationRows(items: readonly SharedEventItem[])
       rows.push({
         ...(commandId === undefined ? {} : { commandId }),
         kind: 'command',
-        name: stringField(data.name) ?? '命令',
+        name: stringField(data.name) ?? message('session.command'),
         state: 'running',
         ...(stringField(data.source) === undefined ? {} : { text: stringField(data.source) }),
         ...(sourceSeq === undefined ? {} : { sourceSeq }),
@@ -227,7 +228,7 @@ export function projectNativeConversationRows(items: readonly SharedEventItem[])
       rows.push({
         ...(commandId === undefined ? {} : { commandId }),
         kind: 'command',
-        name: '命令结果',
+        name: message('session.commandResult'),
         state: stringField(data.kind) === 'error' ? 'error' : 'success',
         ...(stringField(data.text) === undefined ? {} : { text: stringField(data.text) }),
         ...(sourceSeq === undefined ? {} : { sourceSeq }),
