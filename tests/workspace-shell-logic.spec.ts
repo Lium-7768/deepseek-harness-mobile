@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { workspaceHeaderMinHeight, workspaceKeyboardVerticalOffset } from '../src/components/workspace-shell-logic.ts'
-import { mobileTheme } from '../src/theme.ts'
+import { mobileTheme } from '../src/theme'
 
 describe('workspace shell geometry', () => {
   it('keeps the shell header minimums derived from shared chrome tokens', () => {

@@ -9,7 +9,7 @@ import { useConnectionStore } from '@/state/connection'
 import { mobileConnectionScope } from '@/state/connection-scope'
 import { SessionDrawer } from '@/components/session-drawer'
 import { drawerWidthForViewport } from '@/components/session-drawer-logic'
-import { mobileTheme } from '@/theme'
+import { useAppTheme } from '@/theme/hooks'
 
 export default function RootLayout(): React.JSX.Element {
   const [queryClient] = useState(() => new QueryClient())
@@ -19,6 +19,7 @@ export default function RootLayout(): React.JSX.Element {
   const initialized = useConnectionStore(state => state.initialized)
   const initialize = useConnectionStore(state => state.initialize)
   const { width } = useWindowDimensions()
+  const theme = useAppTheme()
   useEffect(() => {
     void initialize()
   }, [initialize])
@@ -31,12 +32,12 @@ export default function RootLayout(): React.JSX.Element {
       <View
         style={{
           alignItems: 'center',
-          backgroundColor: mobileTheme.colors.background,
+          backgroundColor: theme.colors.background,
           flex: 1,
           justifyContent: 'center',
         }}
       >
-        <ActivityIndicator color={mobileTheme.colors.accent} />
+        <ActivityIndicator color={theme.colors.inkFaint} />
       </View>
     )
   return (
@@ -48,8 +49,8 @@ export default function RootLayout(): React.JSX.Element {
           headerShown: false,
           drawerPosition: 'left',
           drawerType: 'front',
-          drawerStyle: { backgroundColor: mobileTheme.colors.drawerBackground, width: drawerWidthForViewport(width) },
-          overlayColor: 'rgba(17, 24, 39, 0.34)',
+          drawerStyle: { backgroundColor: theme.colors.drawerBackground, width: drawerWidthForViewport(width) },
+          overlayColor: theme.colors.overlay,
           drawerItemStyle: { display: 'none' },
         }}
       >

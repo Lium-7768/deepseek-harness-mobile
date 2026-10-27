@@ -2,7 +2,8 @@ import type { PropsWithChildren } from 'react'
 import { Pressable, StyleSheet, Text, View } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useNavigation } from 'expo-router'
-import { mobileTheme } from '@/theme'
+import type { AppTheme } from '@/theme'
+import { useAppTheme, useThemedStyles } from '@/theme/hooks'
 import { NativeIcon } from '@/components/native-icon'
 import { NativeBrandMark } from '@/components/native-brand-mark'
 import { workspaceHeaderMinHeight } from '@/components/workspace-shell-logic'
@@ -53,6 +54,8 @@ export function WorkspaceShell({
 }: PropsWithChildren<WorkspaceShellProps>): React.JSX.Element {
   const navigation = useNavigation<DrawerNavigation>()
   const insets = useSafeAreaInsets()
+  const theme = useAppTheme()
+  const s = useThemedStyles(makeStyles)
   const hasHeaderMeta = headerMeta !== undefined
   const menu = showMenu ? (
     <Pressable
@@ -62,7 +65,7 @@ export function WorkspaceShell({
       hitSlop={4}
       style={({ pressed }) => [s.icon, pressed && s.pressed]}
     >
-      <NativeIcon name="menu" size={22} color={mobileTheme.colors.ink} />
+      <NativeIcon name="menu" size={22} color={theme.colors.ink} />
     </Pressable>
   ) : null
   const titleContent = (
@@ -107,32 +110,33 @@ export function WorkspaceShell({
     </View>
   )
 }
-const s = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: mobileTheme.colors.background },
-  root: { flex: 1 },
-  header: { borderBottomColor: mobileTheme.colors.border, borderBottomWidth: StyleSheet.hairlineWidth },
-  headerTop: {
-    alignItems: 'center',
-    flexDirection: 'row',
-    minHeight: mobileTheme.chrome.headerHeight,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-  },
-  icon: { alignItems: 'center', minHeight: 36, minWidth: 36, justifyContent: 'center' },
-  brandAnchor: { alignItems: 'center', height: 28, justifyContent: 'center', marginHorizontal: 4, width: 28 },
-  titleButton: { flex: 1, minWidth: 0 },
-  titleGroup: { alignItems: 'center', flex: 1, flexDirection: 'row', minWidth: 0 },
-  titleLeading: { alignItems: 'center', marginRight: 7 },
-  title: { color: mobileTheme.colors.ink, flexShrink: 1, fontSize: 16, fontWeight: '500' },
-  right: { alignItems: 'flex-end', minWidth: 36 },
-  metaRow: {
-    alignItems: 'center',
-    flexDirection: 'row',
-    minHeight: mobileTheme.chrome.headerMetaHeight,
-    justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingVertical: 6,
-  },
-  content: { flex: 1 },
-  pressed: { opacity: 0.58 },
-})
+const makeStyles = (theme: AppTheme) =>
+  StyleSheet.create({
+    safe: { flex: 1, backgroundColor: theme.colors.background },
+    root: { flex: 1 },
+    header: { borderBottomColor: theme.colors.border, borderBottomWidth: StyleSheet.hairlineWidth },
+    headerTop: {
+      alignItems: 'center',
+      flexDirection: 'row',
+      minHeight: theme.chrome.headerHeight,
+      paddingHorizontal: 12,
+      paddingVertical: 6,
+    },
+    icon: { alignItems: 'center', minHeight: 36, minWidth: 36, justifyContent: 'center' },
+    brandAnchor: { alignItems: 'center', height: 28, justifyContent: 'center', marginHorizontal: 4, width: 28 },
+    titleButton: { flex: 1, minWidth: 0 },
+    titleGroup: { alignItems: 'center', flex: 1, flexDirection: 'row', minWidth: 0 },
+    titleLeading: { alignItems: 'center', marginRight: 7 },
+    title: { color: theme.colors.ink, flexShrink: 1, fontSize: 16, fontWeight: '500' },
+    right: { alignItems: 'flex-end', minWidth: 36 },
+    metaRow: {
+      alignItems: 'center',
+      flexDirection: 'row',
+      minHeight: theme.chrome.headerMetaHeight,
+      justifyContent: 'space-between',
+      paddingHorizontal: 16,
+      paddingVertical: 6,
+    },
+    content: { flex: 1 },
+    pressed: { opacity: 0.58 },
+  })
