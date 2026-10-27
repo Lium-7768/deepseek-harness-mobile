@@ -125,7 +125,7 @@ screen is a composer surface, not a list.
 
 | ID | Severity | Finding | Evidence | Status |
 | --- | --- | --- | --- | --- |
-| F1 | High | 575 user-visible Chinese literals across 32 files, with no locale layer. Adding a second language means touching every screen. | counted by scanning string literals outside comments | **Open** — needs a decision, see below |
+| F1 | High | 928 user-visible Chinese strings across 32 files: 575 string literals plus 353 JSX text nodes. Adding a second language would mean touching every screen. | counted by scanning literals and JSX text outside comments | **Partial** — the locale layer exists and `connect` is migrated; 30 files remain |
 | F2 | High | The App signs in through `/v1/auth`, which no desktop gateway serves. | endpoint set above | **Open** — Desktop plugin work |
 | F3 | Medium | The Think disclosure and retry rows were 24pt with no hit slop, so the touch target was 24pt. | `native-conversation-status.tsx` | **Fixed** — `hitSlop={10}` restores 44pt |
 | F4 | Medium | The attachment remove button was 20pt with 6pt slop: a 32pt target. | `workspace-composer.tsx` | **Fixed** — slop raised to 12pt |
@@ -149,16 +149,17 @@ screen is a composer surface, not a list.
 
 1. **Desktop plugin** (F2, F10): the only thing between the App and a working
    public connection.
-2. **Locale layer** (F1): extract copy to one module with a `t()` lookup. Do it
-   as its own change per screen group; the mechanical size is the risk, not the
-   design.
+2. **Locale migration** (F1): the layer and its test exist; move the remaining
+   30 files onto `t()` one screen group at a time. Order by copy volume:
+   `settings.tsx` (155), `session-drawer.tsx` (96), `session/[sessionId].tsx`
+   (83), `session-trajectory-logic.ts` (46), `workspace-composer.tsx` (45).
 3. **Dynamic Type** (F8): replace fixed control heights with minimums and add
    `maxFontSizeMultiplier` where a label must not wrap.
 
 ## Verification
 
 - `pnpm typecheck` — clean.
-- `pnpm test` — 84 passing across 15 files, including the theme contract.
+- `pnpm test` — 88 passing across 16 files, including the theme and locale contracts.
 - `npx expo export --platform ios` — bundles.
-- Simulator pass on iPhone 16 Pro: connect screen (light and dark), settings
-  (dark), drawer (light and dark).
+- Simulator pass on iPhone 16 Pro: connect screen (light and dark, before and
+after the locale migration), settings (dark), drawer (light and dark).

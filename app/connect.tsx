@@ -7,6 +7,7 @@ import { NativeActionButton } from '@/components/native-action-button'
 import { NativeIcon } from '@/components/native-icon'
 import { WorkspaceShell } from '@/components/workspace-shell'
 import { workspaceKeyboardVerticalOffset } from '@/components/workspace-shell-logic'
+import { t as message } from '@/locale'
 import { useConnectionStore } from '@/state/connection'
 import type { AppTheme } from '@/theme'
 import { useAppTheme, useThemedStyles } from '@/theme/hooks'
@@ -28,13 +29,13 @@ export default function ConnectScreen(): React.JSX.Element {
       await setConnection(connection)
       router.replace('/workspace')
     } catch (value) {
-      setError(mobileErrorMessage(value, '连接桌面端失败，请检查地址和密码。'))
+      setError(mobileErrorMessage(value, message('connect.failed')))
     } finally {
       setSaving(false)
     }
   }
   return (
-    <WorkspaceShell title="连接桌面端" showMenu={false}>
+    <WorkspaceShell title={message('connect.title')} showMenu={false}>
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         keyboardVerticalOffset={Platform.OS === 'ios' ? workspaceKeyboardVerticalOffset(insets.top, false) : 0}
@@ -47,21 +48,21 @@ export default function ConnectScreen(): React.JSX.Element {
         >
           <View style={styles.hero}>
             <Text style={styles.eyebrow}>DEEPSEEK HARNESS</Text>
-            <Text style={styles.copy}>输入桌面端开启公网访问后显示的地址和密码，即可在任意网络下使用。</Text>
+            <Text style={styles.copy}>{message('connect.intro')}</Text>
           </View>
           <View style={styles.form}>
             <Field
-              label="桌面端地址"
+              label={message('connect.addressLabel')}
               value={gatewayUrl}
               onChangeText={setGatewayUrl}
-              placeholder="https://example.trycloudflare.com"
+              placeholder={message('connect.addressPlaceholder')}
               keyboardType="url"
             />
             <Field
-              label="访问密码"
+              label={message('connect.passwordLabel')}
               value={password}
               onChangeText={setPassword}
-              placeholder="桌面端「手机访问」页显示的密码"
+              placeholder={message('connect.passwordPlaceholder')}
               secureTextEntry
             />
             {error !== '' ? (
@@ -71,15 +72,15 @@ export default function ConnectScreen(): React.JSX.Element {
               </View>
             ) : null}
             <NativeActionButton
-              label="连接"
+              label={message('connect.submit')}
               icon="link"
               loading={saving}
               onPress={() => void connect()}
               style={styles.connectButton}
             />
-            <Text style={styles.manualLabel}>桌面上同时显示了配对二维码时，也可以扫码连接。</Text>
+            <Text style={styles.manualLabel}>{message('connect.scanHint')}</Text>
             <NativeActionButton
-              label="扫描配对二维码"
+              label={message('connect.scanAction')}
               icon="link"
               onPress={() => router.push('/connect/scan')}
               variant="secondary"
