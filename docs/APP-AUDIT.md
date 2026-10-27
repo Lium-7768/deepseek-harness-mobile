@@ -67,10 +67,10 @@ Twenty files under `src/components`.
 
 ## Modules
 
-Twenty-five non-component modules: `api/mobile-api.ts` (617), `types/mobile.ts`
+Twenty-six non-component modules: `api/mobile-api.ts` (617), `types/mobile.ts`
 (426), `shared/dsh-presentation.ts` (253), ten `*-logic.ts` helpers (1 258
-total), three `state/` stores (85), three `theme/` modules (434), and two
-`api/` stores (84).
+total), three `state/` stores (85), three `theme/` modules (434), two `api/`
+stores (84), and `locale/index.ts` for user-visible copy.
 
 ## Gateway surface
 
