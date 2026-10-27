@@ -1,39 +1,3 @@
-/** Shared semantic presentation tokens for desktop and native clients. */
-export const sharedUiTokens = {
-  colors: {
-    background: '#f5f7fb',
-    surface: '#ffffff',
-    surfaceMuted: '#eef2f7',
-    ink: '#172033',
-    inkMuted: '#687386',
-    inkFaint: '#98a2b3',
-    border: '#e2e8f0',
-    accent: '#2563eb',
-    accentSoft: '#e8f0ff',
-    success: '#16845b',
-    successSoft: '#e9f8f1',
-    warning: '#a45b00',
-    warningSoft: '#fff4df',
-    danger: '#b42318',
-    dangerSoft: '#fff0ee',
-    userBubble: '#e8f0ff',
-    assistantBubble: '#ffffff',
-    codeBackground: '#101827',
-    codeForeground: '#dbeafe',
-  },
-  radius: { card: 18, control: 12, bubble: 16, pill: 999 },
-  spacing: { xs: 6, sm: 10, md: 14, lg: 20, xl: 28 },
-  typography: { eyebrow: 11, caption: 12, body: 14, bodyLarge: 16, title: 30, lineBody: 21 },
-  elevation: {
-    card: {
-      shadowColor: '#172033',
-      shadowOpacity: 0.06,
-      shadowRadius: 12,
-      shadowOffset: { width: 0, height: 4 },
-      elevation: 2,
-    },
-  },
-} as const
 /** User-facing category assigned to a projected session event. */
 export type SharedMessageKind = 'user' | 'assistant' | 'tool' | 'system' | 'agent'
 /** Compact execution state displayed for a projected tool event. */
