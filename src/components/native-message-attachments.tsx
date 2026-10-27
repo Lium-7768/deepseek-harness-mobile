@@ -5,7 +5,8 @@ import * as FileSystem from 'expo-file-system/legacy'
 import * as Sharing from 'expo-sharing'
 import { MobileApi, mobileErrorMessage } from '@/api/mobile-api'
 import { NativeIcon } from '@/components/native-icon'
-import { mobileTheme } from '@/theme'
+import type { AppTheme } from '@/theme'
+import { useAppTheme, useThemedStyles } from '@/theme/hooks'
 import type { MobileImageAttachmentRef } from '@/types/mobile'
 
 type Props = {
@@ -22,6 +23,7 @@ type Props = {
  * desktop runtime has proved that this session log references the opaque id.
  */
 export function NativeMessageAttachments({ api, sessionId, event }: Props): React.JSX.Element | null {
+  const styles = useThemedStyles(makeStyles)
   const attachments = useMemo(() => imageAttachmentsFromEvent(event), [event])
   if (attachments.length === 0) return null
   return (
@@ -47,6 +49,8 @@ function NativeMessageAttachment({
   sessionId: string
   attachment: MobileImageAttachmentRef
 }): React.JSX.Element {
+  const theme = useAppTheme()
+  const styles = useThemedStyles(makeStyles)
   const [open, setOpen] = useState(false)
   const [sharing, setSharing] = useState(false)
   const image = useQuery({
@@ -90,10 +94,10 @@ function NativeMessageAttachment({
         {uri !== undefined ? (
           <Image accessibilityLabel={label} resizeMode="cover" source={{ uri }} style={styles.thumbnail} />
         ) : image.isPending ? (
-          <ActivityIndicator color={mobileTheme.colors.accent} />
+          <ActivityIndicator color={theme.colors.accent} />
         ) : (
           <View style={styles.loadFailure}>
-            <NativeIcon name="attach-file" size={20} color={mobileTheme.colors.inkMuted} />
+            <NativeIcon name="attach-file" size={20} color={theme.colors.inkMuted} />
             <Text style={styles.loadFailureText}>轻触重试</Text>
           </View>
         )}
@@ -103,7 +107,7 @@ function NativeMessageAttachment({
         <Modal animationType="fade" transparent visible={open} onRequestClose={() => setOpen(false)}>
           <View style={styles.modalBackdrop}>
             <Pressable accessibilityRole="button" accessibilityLabel="关闭图片预览" onPress={() => setOpen(false)} style={styles.closeButton}>
-              <NativeIcon name="close" size={22} color={mobileTheme.colors.textOnAccent} />
+              <NativeIcon name="close" size={22} color={theme.colors.textOnAccent} />
             </Pressable>
             <Image accessibilityLabel={label} resizeMode="contain" source={{ uri }} style={styles.fullImage} />
             <View style={styles.previewFooter}>
@@ -116,7 +120,7 @@ function NativeMessageAttachment({
                 onPress={() => void share()}
                 style={({ pressed }) => [styles.shareButton, pressed && styles.pressed]}
               >
-                <NativeIcon name="link" size={16} color={mobileTheme.colors.textOnAccent} />
+                <NativeIcon name="link" size={16} color={theme.colors.textOnAccent} />
                 <Text style={styles.shareText}>{sharing ? '正在准备…' : '分享或保存'}</Text>
               </Pressable>
             </View>
@@ -183,13 +187,14 @@ function safeFileStem(value: string): string {
   return normalized || 'attachment'
 }
 
-const styles = StyleSheet.create({
-  rail: { flexDirection: 'row', flexWrap: 'wrap', gap: mobileTheme.spacing.sm, marginTop: mobileTheme.spacing.sm },
+const makeStyles = (theme: AppTheme) =>
+  StyleSheet.create({
+  rail: { flexDirection: 'row', flexWrap: 'wrap', gap: theme.spacing.sm, marginTop: theme.spacing.sm },
   thumbnailFrame: {
     alignItems: 'center',
-    backgroundColor: mobileTheme.colors.surfaceMuted,
-    borderColor: mobileTheme.colors.border,
-    borderRadius: mobileTheme.radius.card,
+    backgroundColor: theme.colors.surfaceMuted,
+    borderColor: theme.colors.border,
+    borderRadius: theme.radius.card,
     borderWidth: StyleSheet.hairlineWidth,
     height: 168,
     justifyContent: 'center',
@@ -198,14 +203,14 @@ const styles = StyleSheet.create({
   },
   thumbnail: { height: '100%', width: '100%' },
   loadFailure: { alignItems: 'center', gap: 5 },
-  loadFailureText: { color: mobileTheme.colors.inkMuted, fontSize: 11 },
-  error: { color: mobileTheme.colors.danger, fontSize: 11, maxWidth: 168 },
+  loadFailureText: { color: theme.colors.inkMuted, fontSize: 11 },
+  error: { color: theme.colors.danger, fontSize: 11, maxWidth: 168 },
   modalBackdrop: { alignItems: 'center', backgroundColor: 'rgba(0, 0, 0, 0.94)', flex: 1, justifyContent: 'center', padding: 18 },
-  closeButton: { alignItems: 'center', height: mobileTheme.touch.iconButton, justifyContent: 'center', position: 'absolute', right: 16, top: 58, width: mobileTheme.touch.iconButton },
+  closeButton: { alignItems: 'center', height: theme.touch.iconButton, justifyContent: 'center', position: 'absolute', right: 16, top: 58, width: theme.touch.iconButton },
   fullImage: { flex: 1, width: '100%' },
   previewFooter: { alignItems: 'center', flexDirection: 'row', gap: 10, marginBottom: 16, maxWidth: '100%', width: '100%' },
-  caption: { color: mobileTheme.colors.textOnAccent, flex: 1, fontSize: 13 },
-  shareButton: { alignItems: 'center', borderColor: 'rgba(255,255,255,0.5)', borderRadius: mobileTheme.radius.pill, borderWidth: 1, flexDirection: 'row', gap: 5, minHeight: 34, paddingHorizontal: 11 },
-  shareText: { color: mobileTheme.colors.textOnAccent, fontSize: 12, fontWeight: '600' },
+  caption: { color: theme.colors.textOnAccent, flex: 1, fontSize: 13 },
+  shareButton: { alignItems: 'center', borderColor: 'rgba(255,255,255,0.5)', borderRadius: theme.radius.pill, borderWidth: 1, flexDirection: 'row', gap: 5, minHeight: 34, paddingHorizontal: 11 },
+  shareText: { color: theme.colors.textOnAccent, fontSize: 12, fontWeight: '600' },
   pressed: { opacity: 0.65 },
 })

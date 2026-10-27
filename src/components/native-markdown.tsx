@@ -2,7 +2,8 @@ import { AccessibilityInfo, Pressable, StyleSheet, Text, View } from 'react-nati
 import { useEffect, useRef, useState } from 'react'
 import * as Clipboard from 'expo-clipboard'
 import { NativeIcon } from '@/components/native-icon'
-import { mobileTheme } from '@/theme'
+import type { AppTheme } from '@/theme'
+import { useAppTheme, useThemedStyles } from '@/theme/hooks'
 type Block = {
   kind: 'paragraph' | 'heading' | 'quote' | 'bullet' | 'ordered' | 'code'
   text: string
@@ -78,7 +79,7 @@ function wrapInlineCode(text: string): string {
   return text.replace(/([/_.:,;=?&-])/g, '$1\u200B')
 }
 
-function inline(text: string, key: string): React.JSX.Element[] {
+function inline(text: string, key: string, styles: ReturnType<typeof makeStyles>): React.JSX.Element[] {
   const re = /(\[[^\]]+\]\([^\)]+\)|`[^`]+`|\*\*[^*]+\*\*|__[^_]+__|\*[^*]+\*|_[^_]+_)/g
   const out: React.JSX.Element[] = []
   let cursor = 0
@@ -122,6 +123,7 @@ export function NativeMarkdown({
   markdown: string
   onCopyCode?: (code: string) => void | Promise<void>
 }): React.JSX.Element {
+  const styles = useThemedStyles(makeStyles)
   const [copiedIndex, setCopiedIndex] = useState<number | null>(null)
   const [copyFailedIndex, setCopyFailedIndex] = useState<number | null>(null)
   const copyTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -166,7 +168,7 @@ export function NativeMarkdown({
             />
           )
         }
-        const content = inline(block.text, key)
+        const content = inline(block.text, key, styles)
         if (block.kind === 'heading')
           return (
             <Text
@@ -211,6 +213,8 @@ function NativeCodeBlock({
   onCopy: () => void
   text: string
 }): React.JSX.Element {
+  const theme = useAppTheme()
+  const styles = useThemedStyles(makeStyles)
   const [expanded, setExpanded] = useState(false)
   const lineCount = text.split('\n').length
   const collapsible = lineCount > 16
@@ -228,7 +232,7 @@ function NativeCodeBlock({
           <NativeIcon
             name={copied ? 'check' : 'content-copy'}
             size={16}
-            color={copied ? mobileTheme.colors.codeSuccess : failed ? mobileTheme.colors.danger : mobileTheme.colors.codeInteractive}
+            color={copied ? theme.colors.codeSuccess : failed ? theme.colors.danger : theme.colors.codeInteractive}
           />
         </Pressable>
       </View>
@@ -243,50 +247,51 @@ function NativeCodeBlock({
           style={styles.codeToggle}
         >
           <Text style={styles.codeToggleText}>{expanded ? '收起' : `展开全部 ${lineCount} 行`}</Text>
-          <NativeIcon name={expanded ? 'expand-less' : 'expand-more'} size={15} color={mobileTheme.colors.codeInteractive} />
+          <NativeIcon name={expanded ? 'expand-less' : 'expand-more'} size={15} color={theme.colors.codeInteractive} />
         </Pressable>
       ) : null}
     </View>
   )
 }
 
-const styles = StyleSheet.create({
-  root: { gap: mobileTheme.spacing.md },
+const makeStyles = (theme: AppTheme) =>
+  StyleSheet.create({
+  root: { gap: theme.spacing.md },
   body: {
-    color: mobileTheme.colors.ink,
+    color: theme.colors.ink,
     flexShrink: 1,
-    fontSize: mobileTheme.typography.body,
-    lineHeight: mobileTheme.typography.lineBody,
+    fontSize: theme.typography.body,
+    lineHeight: theme.typography.lineBody,
   },
-  heading: { color: mobileTheme.colors.ink, fontWeight: '800' },
+  heading: { color: theme.colors.ink, fontWeight: '800' },
   h1: { fontSize: 22, lineHeight: 28 },
   h2: { fontSize: 18, lineHeight: 24 },
   h3: { fontSize: 16, lineHeight: 22 },
   bold: { fontWeight: '800' },
   italic: { fontStyle: 'italic' },
-  link: { color: mobileTheme.colors.accentText, textDecorationLine: 'underline' },
+  link: { color: theme.colors.accentText, textDecorationLine: 'underline' },
   inlineCode: {
-    backgroundColor: mobileTheme.colors.surfaceMuted,
+    backgroundColor: theme.colors.surfaceMuted,
     borderRadius: 4,
     fontFamily: 'Menlo',
     fontSize: 13,
     paddingHorizontal: 3,
   },
-  quote: { borderLeftColor: mobileTheme.colors.accent, borderLeftWidth: 3, paddingLeft: 10 },
-  quoteText: { color: mobileTheme.colors.inkMuted, fontStyle: 'italic', lineHeight: mobileTheme.typography.lineBody },
+  quote: { borderLeftColor: theme.colors.accent, borderLeftWidth: 3, paddingLeft: 10 },
+  quoteText: { color: theme.colors.inkMuted, fontStyle: 'italic', lineHeight: theme.typography.lineBody },
   listRow: { alignItems: 'flex-start', flexDirection: 'row', gap: 8, width: '100%' },
   listBody: { flex: 1, minWidth: 0 },
-  marker: { color: mobileTheme.colors.accent, fontWeight: '800', lineHeight: mobileTheme.typography.lineBody, minWidth: 18 },
-  codeCard: { backgroundColor: mobileTheme.colors.codeBackground, borderRadius: 10, gap: 8, padding: 11 },
+  marker: { color: theme.colors.accent, fontWeight: '800', lineHeight: theme.typography.lineBody, minWidth: 18 },
+  codeCard: { backgroundColor: theme.colors.codeBackground, borderRadius: 10, gap: 8, padding: 11 },
   codeHeader: { alignItems: 'center', flexDirection: 'row', justifyContent: 'space-between' },
-  codeLanguage: { color: mobileTheme.colors.codeLabel, fontSize: 10, fontWeight: '800' },
+  codeLanguage: { color: theme.colors.codeLabel, fontSize: 10, fontWeight: '800' },
   copyButton: {
     alignItems: 'center',
-    height: mobileTheme.touch.iconButton,
+    height: theme.touch.iconButton,
     justifyContent: 'center',
-    width: mobileTheme.touch.iconButton,
+    width: theme.touch.iconButton,
   },
-  codeText: { color: mobileTheme.colors.codeForeground, flexShrink: 1, fontFamily: 'Menlo', fontSize: 13, lineHeight: 22, minWidth: 0 },
-  codeToggle: { alignItems: 'center', flexDirection: 'row', gap: 4, minHeight: mobileTheme.touch.minTarget },
-  codeToggleText: { color: mobileTheme.colors.codeInteractive, fontSize: 12, fontWeight: '700' },
+  codeText: { color: theme.colors.codeForeground, flexShrink: 1, fontFamily: 'Menlo', fontSize: 13, lineHeight: 22, minWidth: 0 },
+  codeToggle: { alignItems: 'center', flexDirection: 'row', gap: 4, minHeight: theme.touch.minTarget },
+  codeToggleText: { color: theme.colors.codeInteractive, fontSize: 12, fontWeight: '700' },
 })

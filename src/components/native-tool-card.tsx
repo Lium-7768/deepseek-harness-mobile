@@ -2,7 +2,8 @@ import { useMemo, useState } from 'react'
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
 import { NativeIcon, type NativeIconName } from '@/components/native-icon'
 import type { NativeConversationRow } from '@/components/session-conversation-logic'
-import { mobileTheme } from '@/theme'
+import type { AppTheme } from '@/theme'
+import { useAppTheme, useThemedStyles } from '@/theme/hooks'
 import type { SharedMessagePresentation } from '@/shared/dsh-presentation'
 
 type Variant = 'search' | 'read' | 'bash' | 'write' | 'edit' | 'code' | 'web' | 'other'
@@ -46,6 +47,8 @@ const META: Record<Variant, [NativeIconName, string]> = {
  * @returns An expandable compact tool row.
  */
 export function NativeToolCard({ presentation, row }: { presentation?: SharedMessagePresentation; row?: ToolRow }): React.JSX.Element {
+  const theme = useAppTheme()
+  const styles = useThemedStyles(makeStyles)
   const [expanded, setExpanded] = useState(false)
   const model = useMemo<ToolCardModel>(() => {
     if (row !== undefined) {
@@ -79,7 +82,7 @@ export function NativeToolCard({ presentation, row }: { presentation?: SharedMes
         onPress={() => setExpanded(value => !value)}
         style={({ pressed }) => [styles.row, hasDetails && pressed && styles.pressed]}
       >
-        <NativeIcon name={icon} size={15} color={model.state === 'failed' ? mobileTheme.colors.danger : mobileTheme.colors.inkMuted} />
+        <NativeIcon name={icon} size={15} color={model.state === 'failed' ? theme.colors.danger : theme.colors.inkMuted} />
         <Text numberOfLines={1} style={styles.label}>
           Tool call
         </Text>
@@ -102,7 +105,7 @@ export function NativeToolCard({ presentation, row }: { presentation?: SharedMes
               model.state === 'completed' ? styles.completedDot : model.state === 'failed' ? styles.failedDot : styles.runningDot,
             ]}
           />
-          {hasDetails ? <NativeIcon name={expanded ? 'expand-less' : 'expand-more'} size={15} color={mobileTheme.colors.inkFaint} /> : null}
+          {hasDetails ? <NativeIcon name={expanded ? 'expand-less' : 'expand-more'} size={15} color={theme.colors.inkFaint} /> : null}
         </View>
       </Pressable>
       {expanded ? (
@@ -117,6 +120,7 @@ export function NativeToolCard({ presentation, row }: { presentation?: SharedMes
 }
 
 function ToolPayload({ label, text, failed = false }: { label: 'IN' | 'OUT'; text: string; failed?: boolean }): React.JSX.Element {
+  const styles = useThemedStyles(makeStyles)
   return (
     <View style={styles.payload}>
       <Text style={styles.payloadLabel}>{label}</Text>
@@ -129,31 +133,32 @@ function ToolPayload({ label, text, failed = false }: { label: 'IN' | 'OUT'; tex
   )
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (theme: AppTheme) =>
+  StyleSheet.create({
   root: { borderLeftColor: 'transparent', borderLeftWidth: 2 },
-  failedRoot: { borderLeftColor: mobileTheme.colors.danger },
+  failedRoot: { borderLeftColor: theme.colors.danger },
   row: { alignItems: 'center', flexDirection: 'row', gap: 5, minHeight: 32, paddingHorizontal: 2, paddingVertical: 4 },
   pressed: { opacity: 0.62 },
-  label: { color: mobileTheme.colors.inkMuted, fontSize: 12 },
-  separator: { color: mobileTheme.colors.inkFaint, fontSize: 12 },
-  title: { color: mobileTheme.colors.inkMuted, fontSize: 12 },
-  summary: { color: mobileTheme.colors.inkMuted, flex: 1, fontSize: 12 },
+  label: { color: theme.colors.inkMuted, fontSize: 12 },
+  separator: { color: theme.colors.inkFaint, fontSize: 12 },
+  title: { color: theme.colors.inkMuted, fontSize: 12 },
+  summary: { color: theme.colors.inkMuted, flex: 1, fontSize: 12 },
   state: { alignItems: 'center', flexDirection: 'row', gap: 4, marginLeft: 'auto' },
   dot: { borderRadius: 4, height: 7, width: 7 },
-  runningDot: { backgroundColor: mobileTheme.colors.warning },
-  completedDot: { backgroundColor: mobileTheme.colors.success },
-  failedDot: { backgroundColor: mobileTheme.colors.danger },
+  runningDot: { backgroundColor: theme.colors.warning },
+  completedDot: { backgroundColor: theme.colors.success },
+  failedDot: { backgroundColor: theme.colors.danger },
   details: {
-    backgroundColor: mobileTheme.colors.surfaceMuted,
-    borderRadius: mobileTheme.radius.control,
+    backgroundColor: theme.colors.surfaceMuted,
+    borderRadius: theme.radius.control,
     marginBottom: 6,
     marginLeft: 20,
-    padding: mobileTheme.spacing.sm,
+    padding: theme.spacing.sm,
   },
-  divider: { backgroundColor: mobileTheme.colors.border, height: StyleSheet.hairlineWidth },
+  divider: { backgroundColor: theme.colors.border, height: StyleSheet.hairlineWidth },
   payload: { gap: 4 },
-  payloadLabel: { color: mobileTheme.colors.inkFaint, fontSize: 10, fontWeight: '800' },
+  payloadLabel: { color: theme.colors.inkFaint, fontSize: 10, fontWeight: '800' },
   payloadScroll: { maxHeight: 208 },
-  detailText: { color: mobileTheme.colors.ink, fontFamily: 'Menlo', fontSize: 12, lineHeight: 18 },
-  failedDetailText: { color: mobileTheme.colors.danger },
+  detailText: { color: theme.colors.ink, fontFamily: 'Menlo', fontSize: 12, lineHeight: 18 },
+  failedDetailText: { color: theme.colors.danger },
 })

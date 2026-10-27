@@ -2,7 +2,8 @@ import { useEffect, useMemo, useState } from 'react'
 import { Alert, Pressable, StyleSheet, Text, TextInput, View } from 'react-native'
 import { NativeIcon } from '@/components/native-icon'
 import type { MobilePromptContent, MobileQueueItem } from '@/types/mobile'
-import { mobileTheme } from '@/theme'
+import type { AppTheme } from '@/theme'
+import { useAppTheme, useThemedStyles } from '@/theme/hooks'
 
 type Props = {
   items: readonly MobileQueueItem[]
@@ -18,6 +19,8 @@ type Editing = { id: string; text: string } | undefined
  * collapsed/editor control state required to operate that snapshot.
  */
 export function NativeQueueDock({ items, onUpdate, running }: Props): React.JSX.Element | null {
+  const theme = useAppTheme()
+  const s = useThemedStyles(makeStyles)
   const queue = useMemo(() => items.filter(item => item.placement === 'queued'), [items])
   const [collapsed, setCollapsed] = useState(true)
   const [editing, setEditing] = useState<Editing>()
@@ -73,9 +76,9 @@ export function NativeQueueDock({ items, onUpdate, running }: Props): React.JSX.
           onPress={() => setCollapsed(value => !value)}
           style={({ pressed }) => [s.header, pressed && s.pressed]}
         >
-          <NativeIcon name="chat" size={15} color={mobileTheme.colors.inkMuted} />
+          <NativeIcon name="chat" size={15} color={theme.colors.inkMuted} />
           <Text style={s.headerText}>{queue.length} 条待发送消息</Text>
-          <NativeIcon name={expanded ? 'expand-less' : 'expand-more'} size={17} color={mobileTheme.colors.inkMuted} />
+          <NativeIcon name={expanded ? 'expand-less' : 'expand-more'} size={17} color={theme.colors.inkMuted} />
         </Pressable>
       ) : null}
       {listVisible ? (
@@ -86,7 +89,7 @@ export function NativeQueueDock({ items, onUpdate, running }: Props): React.JSX.
             const busy = busyId !== undefined
             return (
               <View key={item.id} style={s.row}>
-                {queue.length === 1 ? <NativeIcon name="chat" size={15} color={mobileTheme.colors.inkMuted} /> : null}
+                {queue.length === 1 ? <NativeIcon name="chat" size={15} color={theme.colors.inkMuted} /> : null}
                 {isEditing ? (
                   <TextInput
                     accessibilityLabel="编辑待发送消息"
@@ -157,6 +160,8 @@ function QueueAction({
   label: string
   onPress: () => void
 }): React.JSX.Element {
+  const theme = useAppTheme()
+  const s = useThemedStyles(makeStyles)
   return (
     <Pressable
       accessibilityRole="button"
@@ -167,7 +172,7 @@ function QueueAction({
       onPress={onPress}
       style={({ pressed }) => [s.action, disabled && s.actionDisabled, pressed && s.pressed]}
     >
-      <NativeIcon name={icon} size={15} color={mobileTheme.colors.inkMuted} />
+      <NativeIcon name={icon} size={15} color={theme.colors.inkMuted} />
     </Pressable>
   )
 }
@@ -184,28 +189,29 @@ function queuePreview(item: MobileQueueItem): string {
   return item.message.content.map(part => (part.type === 'text' ? part.text : '[图片]')).join(' ').trim() || '[待发送附件]'
 }
 
-const s = StyleSheet.create({
+const makeStyles = (theme: AppTheme) =>
+  StyleSheet.create({
   dock: {
-    backgroundColor: mobileTheme.colors.surfaceMuted,
-    borderBottomColor: mobileTheme.colors.border,
+    backgroundColor: theme.colors.surfaceMuted,
+    borderBottomColor: theme.colors.border,
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderTopColor: mobileTheme.colors.border,
+    borderTopColor: theme.colors.border,
     borderTopWidth: StyleSheet.hairlineWidth,
     gap: 4,
-    paddingHorizontal: mobileTheme.spacing.lg,
-    paddingVertical: mobileTheme.spacing.sm,
+    paddingHorizontal: theme.spacing.lg,
+    paddingVertical: theme.spacing.sm,
   },
-  header: { alignItems: 'center', flexDirection: 'row', gap: 7, minHeight: mobileTheme.touch.minTarget },
-  headerText: { color: mobileTheme.colors.inkMuted, flex: 1, fontSize: 13, fontWeight: '600' },
+  header: { alignItems: 'center', flexDirection: 'row', gap: 7, minHeight: theme.touch.minTarget },
+  headerText: { color: theme.colors.inkMuted, flex: 1, fontSize: 13, fontWeight: '600' },
   list: { gap: 4 },
-  row: { alignItems: 'center', flexDirection: 'row', gap: 7, minHeight: mobileTheme.touch.minTarget },
-  preview: { color: mobileTheme.colors.ink, flex: 1, fontSize: 13, lineHeight: 18 },
+  row: { alignItems: 'center', flexDirection: 'row', gap: 7, minHeight: theme.touch.minTarget },
+  preview: { color: theme.colors.ink, flex: 1, fontSize: 13, lineHeight: 18 },
   editor: {
-    backgroundColor: mobileTheme.colors.surfaceRaised,
-    borderColor: mobileTheme.colors.borderStrong,
-    borderRadius: mobileTheme.radius.control,
+    backgroundColor: theme.colors.surfaceRaised,
+    borderColor: theme.colors.borderStrong,
+    borderRadius: theme.radius.control,
     borderWidth: 1,
-    color: mobileTheme.colors.ink,
+    color: theme.colors.ink,
     flex: 1,
     fontSize: 13,
     lineHeight: 18,

@@ -8,9 +8,12 @@ import { NativeIcon } from '@/components/native-icon'
 import { WorkspaceShell } from '@/components/workspace-shell'
 import { workspaceKeyboardVerticalOffset } from '@/components/workspace-shell-logic'
 import { useConnectionStore } from '@/state/connection'
-import { mobileTheme } from '@/theme'
+import type { AppTheme } from '@/theme'
+import { useAppTheme, useThemedStyles } from '@/theme/hooks'
 
 export default function ConnectScreen(): React.JSX.Element {
+  const theme = useAppTheme()
+  const styles = useThemedStyles(makeStyles)
   const insets = useSafeAreaInsets()
   const [gatewayUrl, setGatewayUrl] = useState('')
   const [deviceId, setDeviceId] = useState('')
@@ -85,7 +88,7 @@ export default function ConnectScreen(): React.JSX.Element {
             />
             {error !== '' ? (
               <View accessibilityRole="alert" style={styles.error}>
-                <NativeIcon name="error-outline" color={mobileTheme.colors.danger} size={18} />
+                <NativeIcon name="error-outline" color={theme.colors.danger} size={18} />
                 <Text style={styles.errorText}>{error}</Text>
               </View>
             ) : null}
@@ -111,6 +114,8 @@ function Field(props: {
   secureTextEntry?: boolean
   keyboardType?: 'url'
 }): React.JSX.Element {
+  const theme = useAppTheme()
+  const styles = useThemedStyles(makeStyles)
   return (
     <View style={styles.field}>
       <Text style={styles.label}>{props.label}</Text>
@@ -120,7 +125,7 @@ function Field(props: {
         autoCorrect={false}
         keyboardType={props.keyboardType}
         placeholder={props.placeholder}
-        placeholderTextColor={mobileTheme.colors.inkFaint}
+        placeholderTextColor={theme.colors.inkFaint}
         secureTextEntry={props.secureTextEntry}
         style={styles.input}
         value={props.value}
@@ -130,43 +135,44 @@ function Field(props: {
   )
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (theme: AppTheme) =>
+  StyleSheet.create({
   flex: { flex: 1 },
-  content: { paddingHorizontal: mobileTheme.spacing.xl, paddingTop: mobileTheme.spacing.xl },
-  hero: { gap: mobileTheme.spacing.xs, marginBottom: mobileTheme.spacing.lg },
+  content: { paddingHorizontal: theme.spacing.xl, paddingTop: theme.spacing.xl },
+  hero: { gap: theme.spacing.xs, marginBottom: theme.spacing.lg },
   eyebrow: {
-    color: mobileTheme.colors.accentText,
-    fontSize: mobileTheme.typography.eyebrow,
+    color: theme.colors.accentText,
+    fontSize: theme.typography.eyebrow,
     fontWeight: '800',
     letterSpacing: 1.3,
   },
-  title: { color: mobileTheme.colors.ink, fontSize: 28, fontWeight: '800' },
-  copy: { color: mobileTheme.colors.inkMuted, fontSize: mobileTheme.typography.bodyLarge, lineHeight: 23 },
-  form: { gap: mobileTheme.spacing.md },
-  manualLabel: { color: mobileTheme.colors.inkMuted, fontSize: mobileTheme.typography.caption, lineHeight: 18 },
-  field: { gap: mobileTheme.spacing.xs },
-  label: { color: mobileTheme.colors.inkMuted, fontSize: mobileTheme.typography.caption, fontWeight: '700' },
+  title: { color: theme.colors.ink, fontSize: 28, fontWeight: '800' },
+  copy: { color: theme.colors.inkMuted, fontSize: theme.typography.bodyLarge, lineHeight: 23 },
+  form: { gap: theme.spacing.md },
+  manualLabel: { color: theme.colors.inkMuted, fontSize: theme.typography.caption, lineHeight: 18 },
+  field: { gap: theme.spacing.xs },
+  label: { color: theme.colors.inkMuted, fontSize: theme.typography.caption, fontWeight: '700' },
   input: {
-    backgroundColor: mobileTheme.colors.surfaceRaised,
-    borderColor: mobileTheme.colors.border,
-    borderRadius: mobileTheme.radius.control,
+    backgroundColor: theme.colors.surfaceRaised,
+    borderColor: theme.colors.border,
+    borderRadius: theme.radius.control,
     borderWidth: 1,
-    color: mobileTheme.colors.ink,
-    fontSize: mobileTheme.typography.bodyLarge,
-    minHeight: mobileTheme.touch.minTarget,
-    paddingHorizontal: mobileTheme.spacing.md,
-    paddingVertical: mobileTheme.spacing.sm,
+    color: theme.colors.ink,
+    fontSize: theme.typography.bodyLarge,
+    minHeight: theme.touch.minTarget,
+    paddingHorizontal: theme.spacing.md,
+    paddingVertical: theme.spacing.sm,
   },
-  connectButton: { marginTop: mobileTheme.spacing.xs, width: '100%' },
+  connectButton: { marginTop: theme.spacing.xs, width: '100%' },
   error: {
     alignItems: 'flex-start',
-    backgroundColor: mobileTheme.colors.dangerSoft,
-    borderColor: mobileTheme.colors.danger,
-    borderRadius: mobileTheme.radius.card,
+    backgroundColor: theme.colors.dangerSoft,
+    borderColor: theme.colors.danger,
+    borderRadius: theme.radius.card,
     borderWidth: 1,
     flexDirection: 'row',
-    gap: mobileTheme.spacing.sm,
-    padding: mobileTheme.spacing.md,
+    gap: theme.spacing.sm,
+    padding: theme.spacing.md,
   },
-  errorText: { color: mobileTheme.colors.danger, flex: 1, lineHeight: 19 },
+  errorText: { color: theme.colors.danger, flex: 1, lineHeight: 19 },
 })

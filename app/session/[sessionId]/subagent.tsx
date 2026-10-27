@@ -12,11 +12,14 @@ import { NativeToolCard } from '@/components/native-tool-card'
 import { WorkspaceComposer } from '@/components/workspace-composer'
 import { WorkspaceShell } from '@/components/workspace-shell'
 import { useConnectionStore } from '@/state/connection'
-import { mobileTheme } from '@/theme'
+import type { AppTheme } from '@/theme'
+import { useAppTheme, useThemedStyles } from '@/theme/hooks'
 import { projectVisibleMessages, type SharedMessagePresentation } from '@/shared/dsh-presentation'
 
 /** Renders one desktop-owned direct child without treating the child as an ordinary root session. */
 export default function SubagentSessionScreen(): React.JSX.Element {
+  const theme = useAppTheme()
+  const styles = useThemedStyles(makeStyles)
   const { sessionId, parentSessionId, mode } = useLocalSearchParams<{
     sessionId?: string | string[]
     parentSessionId?: string | string[]
@@ -68,7 +71,7 @@ export default function SubagentSessionScreen(): React.JSX.Element {
           onPress={() => router.back()}
           style={({ pressed }) => [styles.headerAction, pressed && styles.pressed]}
         >
-          <NativeIcon name="arrow-back" color={mobileTheme.colors.ink} size={20} />
+          <NativeIcon name="arrow-back" color={theme.colors.ink} size={20} />
         </Pressable>
       }
     >
@@ -77,7 +80,7 @@ export default function SubagentSessionScreen(): React.JSX.Element {
       ) : (
         <View style={styles.canvas}>
           <View style={styles.notice}>
-            <NativeIcon name="smart-toy" size={16} color={mobileTheme.colors.accentText} />
+            <NativeIcon name="smart-toy" size={16} color={theme.colors.accentText} />
             <Text style={styles.noticeText}>
               {childMode === 'continuable' ? '此会话通过父 Agent 的桌面权限继续执行。' : '一次性子 Agent 的历史可查看，但不能继续发送消息。'}
             </Text>
@@ -90,7 +93,7 @@ export default function SubagentSessionScreen(): React.JSX.Element {
                 onPress={() => interrupt.mutate()}
                 style={({ pressed }) => [styles.stopAction, pressed && styles.pressed]}
               >
-                <NativeIcon name="stop" size={15} color={mobileTheme.colors.danger} />
+                <NativeIcon name="stop" size={15} color={theme.colors.danger} />
               </Pressable>
             ) : null}
           </View>
@@ -117,6 +120,7 @@ export default function SubagentSessionScreen(): React.JSX.Element {
 }
 
 function MessageRow({ item }: { item: SharedMessagePresentation }): React.JSX.Element {
+  const styles = useThemedStyles(makeStyles)
   if (item.kind === 'user')
     return (
       <View style={styles.userRow}>
@@ -128,6 +132,7 @@ function MessageRow({ item }: { item: SharedMessagePresentation }): React.JSX.El
 }
 
 function ErrorNotice({ text, onRetry }: { text: string; onRetry: () => void }): React.JSX.Element {
+  const styles = useThemedStyles(makeStyles)
   return (
     <View style={styles.errorNotice}>
       <Text style={styles.error}>{text}</Text>
@@ -137,9 +142,11 @@ function ErrorNotice({ text, onRetry }: { text: string; onRetry: () => void }): 
 }
 
 function Unavailable({ text }: { text: string }): React.JSX.Element {
+  const theme = useAppTheme()
+  const styles = useThemedStyles(makeStyles)
   return (
     <View style={styles.unavailable}>
-      <NativeIcon name="link-off" size={28} color={mobileTheme.colors.inkFaint} />
+      <NativeIcon name="link-off" size={28} color={theme.colors.inkFaint} />
       <Text style={styles.unavailableText}>{text}</Text>
       <NativeActionButton label="返回会话" icon="arrow-back" variant="secondary" onPress={() => router.back()} />
     </View>
@@ -156,20 +163,21 @@ function withErrorContext(prefix: string, error: unknown): string {
   return `${prefix}：${mobileErrorMessage(error, '请稍后重试。')}`
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (theme: AppTheme) =>
+  StyleSheet.create({
   canvas: { flex: 1 },
-  headerAction: { alignItems: 'center', height: mobileTheme.touch.iconButton, justifyContent: 'center', width: mobileTheme.touch.iconButton },
-  notice: { alignItems: 'center', backgroundColor: mobileTheme.colors.accentSoft, flexDirection: 'row', gap: 8, paddingHorizontal: 14, paddingVertical: 10 },
-  noticeText: { color: mobileTheme.colors.inkMuted, flex: 1, fontSize: 12, lineHeight: 18 },
-  stopAction: { alignItems: 'center', height: mobileTheme.touch.iconButton, justifyContent: 'center', width: mobileTheme.touch.iconButton },
-  list: { gap: mobileTheme.spacing.lg, paddingHorizontal: mobileTheme.spacing.lg, paddingVertical: mobileTheme.spacing.lg },
+  headerAction: { alignItems: 'center', height: theme.touch.iconButton, justifyContent: 'center', width: theme.touch.iconButton },
+  notice: { alignItems: 'center', backgroundColor: theme.colors.accentSoft, flexDirection: 'row', gap: 8, paddingHorizontal: 14, paddingVertical: 10 },
+  noticeText: { color: theme.colors.inkMuted, flex: 1, fontSize: 12, lineHeight: 18 },
+  stopAction: { alignItems: 'center', height: theme.touch.iconButton, justifyContent: 'center', width: theme.touch.iconButton },
+  list: { gap: theme.spacing.lg, paddingHorizontal: theme.spacing.lg, paddingVertical: theme.spacing.lg },
   userRow: { alignItems: 'flex-end' },
-  userBubble: { backgroundColor: mobileTheme.colors.userBubble, borderRadius: mobileTheme.radius.bubble, maxWidth: '82%', paddingHorizontal: 16, paddingVertical: 10 },
-  userText: { color: mobileTheme.colors.ink, fontSize: 16, lineHeight: 24 },
-  empty: { color: mobileTheme.colors.inkMuted, paddingVertical: 24, textAlign: 'center' },
+  userBubble: { backgroundColor: theme.colors.userBubble, borderRadius: theme.radius.bubble, maxWidth: '82%', paddingHorizontal: 16, paddingVertical: 10 },
+  userText: { color: theme.colors.ink, fontSize: 16, lineHeight: 24 },
+  empty: { color: theme.colors.inkMuted, paddingVertical: 24, textAlign: 'center' },
   errorNotice: { gap: 6, padding: 12 },
-  error: { color: mobileTheme.colors.danger },
+  error: { color: theme.colors.danger },
   unavailable: { alignItems: 'center', flex: 1, gap: 12, justifyContent: 'center', padding: 28 },
-  unavailableText: { color: mobileTheme.colors.inkMuted, fontSize: 14, textAlign: 'center' },
+  unavailableText: { color: theme.colors.inkMuted, fontSize: 14, textAlign: 'center' },
   pressed: { opacity: 0.62 },
 })

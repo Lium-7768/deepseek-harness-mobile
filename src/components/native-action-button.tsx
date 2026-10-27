@@ -1,6 +1,7 @@
 import { ActivityIndicator, Pressable, StyleSheet, Text, type StyleProp, type ViewStyle } from 'react-native'
 import { NativeIcon, type NativeIconName } from '@/components/native-icon'
-import { mobileTheme } from '@/theme'
+import type { AppTheme } from '@/theme'
+import { useAppTheme, useThemedStyles } from '@/theme/hooks'
 
 type NativeActionButtonProps = {
   label: string
@@ -25,7 +26,10 @@ export function NativeActionButton({
   loading = false,
   style,
 }: NativeActionButtonProps): React.JSX.Element {
-  const colors = buttonColors[variant]
+  const theme = useAppTheme()
+  const styles = useThemedStyles(makeStyles)
+  const surface = surfaceFor(variant, styles)
+  const glyph = glyphFor(variant, theme)
   return (
     <Pressable
       accessibilityRole="button"
@@ -33,37 +37,68 @@ export function NativeActionButton({
       accessibilityState={{ disabled: disabled || loading, busy: loading }}
       disabled={disabled || loading}
       onPress={onPress}
-      style={({ pressed }) => [styles.button, colors.button, style, pressed && styles.pressed]}
+      style={({ pressed }) => [styles.button, surface, style, pressed && styles.pressed]}
     >
-      {loading ? <ActivityIndicator color={colors.icon} /> : <NativeIcon name={icon} color={colors.icon} size={17} />}
-      <Text style={[styles.label, colors.label]}>{label}</Text>
+      {loading ? <ActivityIndicator color={glyph} /> : <NativeIcon name={icon} color={glyph} size={17} />}
+      <Text style={[styles.label, labelTintFor(variant, theme)]}>{label}</Text>
     </Pressable>
   )
 }
 
-const styles = StyleSheet.create({
-  button: {
-    alignItems: 'center',
-    borderRadius: mobileTheme.radius.control,
-    borderWidth: 1,
-    flexDirection: 'row',
-    gap: 7,
-    justifyContent: 'center',
-    minHeight: 44,
-    paddingHorizontal: 16,
-  },
-  primary: { backgroundColor: mobileTheme.colors.accent, borderColor: mobileTheme.colors.accent },
-  secondary: { backgroundColor: mobileTheme.colors.surface, borderColor: mobileTheme.colors.borderStrong },
-  danger: { backgroundColor: mobileTheme.colors.dangerSoft, borderColor: '#efb5b0' },
-  label: { fontSize: 14, fontWeight: '700' },
-  primaryLabel: { color: '#ffffff' },
-  secondaryLabel: { color: mobileTheme.colors.ink },
-  dangerLabel: { color: mobileTheme.colors.danger },
-  pressed: { opacity: 0.68 },
-})
+/**
+ * Pick the container style for a variant.
+ *
+ * @param variant - Button variant.
+ * @param styles - The active appearance's style sheet.
+ * @returns The container style.
+ */
+function surfaceFor(
+  variant: NativeActionButtonProps['variant'],
+  styles: ReturnType<typeof makeStyles>,
+): StyleProp<ViewStyle> {
+  if (variant === 'danger') return styles.danger
+  return variant === 'secondary' ? styles.secondary : styles.primary
+}
 
-const buttonColors = {
-  primary: { button: styles.primary, icon: '#ffffff', label: styles.primaryLabel },
-  secondary: { button: styles.secondary, icon: mobileTheme.colors.ink, label: styles.secondaryLabel },
-  danger: { button: styles.danger, icon: mobileTheme.colors.danger, label: styles.dangerLabel },
-} as const
+/**
+ * Pick the icon and spinner colour for a variant.
+ *
+ * @param variant - Button variant.
+ * @param theme - The active appearance.
+ * @returns A colour value.
+ */
+function glyphFor(variant: NativeActionButtonProps['variant'], theme: AppTheme): string {
+  if (variant === 'danger') return theme.colors.danger
+  return variant === 'secondary' ? theme.colors.ink : theme.colors.onBrand
+}
+
+/**
+ * Pick the label tint for a variant.
+ *
+ * @param variant - Button variant.
+ * @param theme - The active appearance.
+ * @returns A text style carrying the colour.
+ */
+function labelTintFor(variant: NativeActionButtonProps['variant'], theme: AppTheme): { color: string } {
+  if (variant === 'danger') return { color: theme.colors.danger }
+  return { color: variant === 'secondary' ? theme.colors.ink : theme.colors.onBrand }
+}
+
+const makeStyles = (theme: AppTheme) =>
+  StyleSheet.create({
+    button: {
+      alignItems: 'center',
+      borderRadius: theme.radius.control,
+      borderWidth: 1,
+      flexDirection: 'row',
+      gap: 7,
+      justifyContent: 'center',
+      minHeight: 44,
+      paddingHorizontal: 16,
+    },
+    primary: { backgroundColor: theme.colors.brand, borderColor: theme.colors.brand },
+    secondary: { backgroundColor: theme.colors.surface, borderColor: theme.colors.borderStrong },
+    danger: { backgroundColor: theme.colors.dangerSoft, borderColor: theme.colors.dangerBorder },
+    label: { fontSize: 14, fontWeight: '700' },
+    pressed: { opacity: 0.68 },
+  })

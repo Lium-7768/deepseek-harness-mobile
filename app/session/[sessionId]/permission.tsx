@@ -11,10 +11,13 @@ import { permissionOptionsLocked } from '@/components/session-route-logic'
 import { WorkspaceShell } from '@/components/workspace-shell'
 import { useConnectionStore } from '@/state/connection'
 import { useRouteSessionSelection } from '@/state/session-selection'
-import { mobileTheme } from '@/theme'
+import type { AppTheme } from '@/theme'
+import { useAppTheme, useThemedStyles } from '@/theme/hooks'
 
 /** Lists the host-projected permission presets and submits the existing command path. */
 export default function SessionPermissionScreen(): React.JSX.Element {
+  const theme = useAppTheme()
+  const styles = useThemedStyles(makeStyles)
   const { sessionId: rawSessionId } = useLocalSearchParams<{ sessionId?: string | string[] }>()
   const sessionId = firstParam(rawSessionId)
   useRouteSessionSelection(sessionId)
@@ -79,7 +82,7 @@ export default function SessionPermissionScreen(): React.JSX.Element {
           onPress={() => router.back()}
           style={styles.back}
         >
-          <NativeIcon name="arrow-back" color={mobileTheme.colors.ink} size={20} />
+          <NativeIcon name="arrow-back" color={theme.colors.ink} size={20} />
         </Pressable>
       }
       showMenu={false}
@@ -154,11 +157,11 @@ export default function SessionPermissionScreen(): React.JSX.Element {
                     <NativeIcon
                       name="admin-panel-settings"
                       size={20}
-                      color={selected ? mobileTheme.colors.accentText : mobileTheme.colors.inkMuted}
+                      color={selected ? theme.colors.accentText : theme.colors.inkMuted}
                     />
                   }
                   onPress={() => choose(item.value)}
-                  right={selected ? <NativeIcon name="check" color={mobileTheme.colors.accentText} size={20} /> : null}
+                  right={selected ? <NativeIcon name="check" color={theme.colors.accentText} size={20} /> : null}
                   selected={selected}
                   title={permissionLabel(item.value, item.name)}
                 />
@@ -181,12 +184,13 @@ function firstParam(value: string | string[] | undefined): string | undefined {
   return candidate?.trim() || undefined
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (theme: AppTheme) =>
+  StyleSheet.create({
   back: { alignItems: 'center', height: 36, justifyContent: 'center', width: 36 },
   list: { padding: 16, paddingBottom: 28 },
   header: { gap: 6, marginBottom: 4 },
-  title: { color: mobileTheme.colors.ink, fontSize: 22, fontWeight: '700' },
-  description: { color: mobileTheme.colors.inkMuted, lineHeight: 20 },
-  state: { color: mobileTheme.colors.inkMuted, padding: 18, textAlign: 'center' },
-  error: { color: mobileTheme.colors.danger, padding: 18 },
+  title: { color: theme.colors.ink, fontSize: 22, fontWeight: '700' },
+  description: { color: theme.colors.inkMuted, lineHeight: 20 },
+  state: { color: theme.colors.inkMuted, padding: 18, textAlign: 'center' },
+  error: { color: theme.colors.danger, padding: 18 },
 })

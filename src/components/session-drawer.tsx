@@ -21,7 +21,8 @@ import {
 import type { SessionSummary } from '@/types/mobile'
 import { useConnectionStore } from '@/state/connection'
 import { useSessionSelectionStore } from '@/state/session-selection'
-import { mobileTheme } from '@/theme'
+import type { AppTheme } from '@/theme'
+import { useAppTheme, useThemedStyles } from '@/theme/hooks'
 
 /**
  * Renders the root Expo Router drawer content for session navigation.
@@ -34,6 +35,8 @@ import { mobileTheme } from '@/theme'
  * @returns The native session drawer content.
  */
 export function SessionDrawer(props: DrawerContentComponentProps): React.JSX.Element {
+  const theme = useAppTheme()
+  const styles = useThemedStyles(makeStyles)
   const { navigation, state } = props
   const [searchOpen, setSearchOpen] = useState(false)
   const [search, setSearch] = useState('')
@@ -183,7 +186,7 @@ export function SessionDrawer(props: DrawerContentComponentProps): React.JSX.Ele
           keyboardShouldPersistTaps="handled"
           refreshControl={
             <RefreshControl
-              tintColor={mobileTheme.colors.accent}
+              tintColor={theme.colors.accent}
               refreshing={query.isFetching}
               onRefresh={() => void query.refetch()}
             />
@@ -205,7 +208,7 @@ export function SessionDrawer(props: DrawerContentComponentProps): React.JSX.Ele
               onPress={closeDrawer}
               style={({ pressed }) => [styles.topIcon, pressed && styles.pressed]}
             >
-              <NativeIcon name="close" size={22} color={mobileTheme.colors.inkMuted} />
+              <NativeIcon name="close" size={22} color={theme.colors.inkMuted} />
             </Pressable>
           </View>
 
@@ -216,7 +219,7 @@ export function SessionDrawer(props: DrawerContentComponentProps): React.JSX.Ele
             onPress={() => void createSession()}
             style={({ pressed }) => [styles.newSession, !connection && styles.disabledAction, pressed && styles.pressed]}
           >
-            <NativeIcon name="note-add" size={21} color={connection ? mobileTheme.colors.accent : mobileTheme.colors.inkFaint} />
+            <NativeIcon name="note-add" size={21} color={connection ? theme.colors.accent : theme.colors.inkFaint} />
             <View style={styles.newSessionTextWrap}>
               <Text style={connection ? styles.newSessionText : styles.newSessionTextDisabled}>新会话</Text>
               <Text style={styles.newSessionHint}>{connection ? '在当前桌面端创建' : '请先连接桌面端'}</Text>
@@ -233,7 +236,7 @@ export function SessionDrawer(props: DrawerContentComponentProps): React.JSX.Ele
                 onPress={() => setSearchOpen(value => !value)}
                 style={({ pressed }) => [styles.actionIcon, pressed && styles.pressed]}
               >
-                <NativeIcon name="search" size={21} color={mobileTheme.colors.inkMuted} />
+                <NativeIcon name="search" size={21} color={theme.colors.inkMuted} />
               </Pressable>
               <Pressable
                 accessibilityRole="button"
@@ -245,7 +248,7 @@ export function SessionDrawer(props: DrawerContentComponentProps): React.JSX.Ele
                 }}
                 style={({ pressed }) => [styles.actionIcon, pressed && styles.pressed]}
               >
-                <NativeIcon name={optionsOpen ? 'expand-less' : 'tune'} size={21} color={mobileTheme.colors.inkMuted} />
+                <NativeIcon name={optionsOpen ? 'expand-less' : 'tune'} size={21} color={theme.colors.inkMuted} />
               </Pressable>
               <View
                 accessible
@@ -253,7 +256,7 @@ export function SessionDrawer(props: DrawerContentComponentProps): React.JSX.Ele
                 accessibilityState={{ disabled: true }}
                 style={[styles.actionIcon, styles.disabledAction]}
               >
-                <NativeIcon name="create-new-folder" size={21} color={mobileTheme.colors.inkFaint} />
+                <NativeIcon name="create-new-folder" size={21} color={theme.colors.inkFaint} />
               </View>
             </View>
           </View>
@@ -269,7 +272,7 @@ export function SessionDrawer(props: DrawerContentComponentProps): React.JSX.Ele
                   <NativeIcon
                     name={expandedViewSection === 'group' ? 'expand-less' : 'chevron-right'}
                     size={18}
-                    color={mobileTheme.colors.inkMuted}
+                    color={theme.colors.inkMuted}
                   />
                 }
               />
@@ -303,7 +306,7 @@ export function SessionDrawer(props: DrawerContentComponentProps): React.JSX.Ele
                   <NativeIcon
                     name={expandedViewSection === 'sort' ? 'expand-less' : 'chevron-right'}
                     size={18}
-                    color={mobileTheme.colors.inkMuted}
+                    color={theme.colors.inkMuted}
                   />
                 }
               />
@@ -324,13 +327,13 @@ export function SessionDrawer(props: DrawerContentComponentProps): React.JSX.Ele
           ) : null}
           {searchOpen ? (
             <View style={styles.searchBox}>
-              <NativeIcon name="search" size={18} color={mobileTheme.colors.inkMuted} />
+              <NativeIcon name="search" size={18} color={theme.colors.inkMuted} />
               <TextInput
                 accessibilityLabel="搜索会话"
                 autoFocus
                 onChangeText={setSearch}
                 placeholder="搜索所有会话内容"
-                placeholderTextColor={mobileTheme.colors.inkFaint}
+                placeholderTextColor={theme.colors.inkFaint}
                 maxLength={500}
                 style={styles.searchInput}
                 value={search}
@@ -342,7 +345,7 @@ export function SessionDrawer(props: DrawerContentComponentProps): React.JSX.Ele
                 onPress={() => setSearch('')}
                 style={styles.clearSearch}
               >
-                <NativeIcon name="close" size={18} color={mobileTheme.colors.inkMuted} />
+                <NativeIcon name="close" size={18} color={theme.colors.inkMuted} />
               </Pressable>
             </View>
           ) : null}
@@ -351,7 +354,7 @@ export function SessionDrawer(props: DrawerContentComponentProps): React.JSX.Ele
             <View style={styles.list}>
               {rows.length === 0 ? (
                 query.isFetching ? (
-                  <ActivityIndicator color={mobileTheme.colors.accent} style={styles.emptyState} />
+                  <ActivityIndicator color={theme.colors.accent} style={styles.emptyState} />
                 ) : (
                   <Text style={styles.emptyState}>
                     {query.isError
@@ -394,14 +397,14 @@ export function SessionDrawer(props: DrawerContentComponentProps): React.JSX.Ele
                                 params: { workspaceId: item.workspace?.workspaceId ?? '', title: item.workspace?.title ?? item.label },
                               })
                             }
-                            right={<NativeIcon name="edit" size={18} color={mobileTheme.colors.inkMuted} />}
+                            right={<NativeIcon name="edit" size={18} color={theme.colors.inkMuted} />}
                           />
                           <NativeListRow
                             title="移除工作区"
                             description="保留桌面文件夹和会话记录"
                             accessibilityRole="button"
                             onPress={() => confirmDeleteWorkspace(item.workspace?.workspaceId ?? '', item.workspace?.title ?? item.label)}
-                            right={<NativeIcon name="folder-close" size={18} color={mobileTheme.colors.danger} />}
+                            right={<NativeIcon name="folder-close" size={18} color={theme.colors.danger} />}
                           />
                         </View>
                       ) : null}
@@ -419,7 +422,7 @@ export function SessionDrawer(props: DrawerContentComponentProps): React.JSX.Ele
                       <NativeIcon
                         name={item.expanded ? 'expand-less' : 'expand-more'}
                         size={18}
-                        color={mobileTheme.colors.inkMuted}
+                        color={theme.colors.inkMuted}
                       />
                     </Pressable>
                   ) : (
@@ -445,19 +448,19 @@ export function SessionDrawer(props: DrawerContentComponentProps): React.JSX.Ele
                                 params: { sessionId: item.session.sessionId, title: item.session.title ?? '未命名会话' },
                               })
                             }
-                            right={<NativeIcon name="edit" size={18} color={mobileTheme.colors.inkMuted} />}
+                            right={<NativeIcon name="edit" size={18} color={theme.colors.inkMuted} />}
                           />
                           <NativeListRow
                             title="分叉会话"
                             accessibilityRole="button"
                             onPress={() => void forkSession(item.session.sessionId)}
-                            right={<NativeIcon name="route" size={18} color={mobileTheme.colors.inkMuted} />}
+                            right={<NativeIcon name="route" size={18} color={theme.colors.inkMuted} />}
                           />
                           <NativeListRow
                             title="归档会话"
                             accessibilityRole="button"
                             onPress={() => confirmArchive(item.session)}
-                            right={<NativeIcon name="folder-close" size={18} color={mobileTheme.colors.danger} />}
+                            right={<NativeIcon name="folder-close" size={18} color={theme.colors.danger} />}
                           />
                         </View>
                       ) : null}
@@ -475,7 +478,7 @@ export function SessionDrawer(props: DrawerContentComponentProps): React.JSX.Ele
           onPress={openSettings}
           style={({ pressed }) => [styles.settings, pressed && styles.pressed]}
         >
-          <NativeIcon name="settings" size={21} color={mobileTheme.colors.ink} />
+          <NativeIcon name="settings" size={21} color={theme.colors.ink} />
           <Text style={styles.settingsText}>设置</Text>
         </Pressable>
       </View>
@@ -496,6 +499,8 @@ function WorkspaceItem({
   onPress: () => void
   onLongPress?: () => void
 }): React.JSX.Element {
+  const theme = useAppTheme()
+  const styles = useThemedStyles(makeStyles)
   const ungrouped = workspaceKey === 'workspace:ungrouped'
   return (
     <Pressable
@@ -507,11 +512,11 @@ function WorkspaceItem({
       delayLongPress={350}
       style={({ pressed }) => [styles.folder, pressed && styles.pressed]}
     >
-      <NativeIcon name={collapsed ? 'chevron-right' : 'expand-more'} size={18} color={mobileTheme.colors.inkMuted} />
+      <NativeIcon name={collapsed ? 'chevron-right' : 'expand-more'} size={18} color={theme.colors.inkMuted} />
       <NativeIcon
         name={collapsed ? 'folder-close' : 'folder-open'}
         size={20}
-        color={ungrouped ? mobileTheme.colors.inkMuted : mobileTheme.colors.accent}
+        color={ungrouped ? theme.colors.inkMuted : theme.colors.accent}
       />
       <Text numberOfLines={1} style={styles.folderText}>
         {label}
@@ -531,6 +536,7 @@ function SessionItem({
   onPress: () => void
   onLongPress: () => void
 }): React.JSX.Element {
+  const styles = useThemedStyles(makeStyles)
   const title = sessionDisplayTitle(session)
   const time = sessionTimeLabel(session)
   const snippet = typeof session.searchSnippet === 'string' ? session.searchSnippet : undefined
@@ -566,6 +572,8 @@ function OptionRow({
   disabled?: boolean
   onPress?: () => void
 }): React.JSX.Element {
+  const theme = useAppTheme()
+  const styles = useThemedStyles(makeStyles)
   return (
     <Pressable
       accessibilityRole="radio"
@@ -576,7 +584,7 @@ function OptionRow({
       style={({ pressed }) => [styles.optionRow, disabled && styles.disabledOptionRow, pressed && styles.pressed]}
     >
       <Text style={disabled ? styles.disabledOptionLabel : styles.optionLabel}>{label}</Text>
-      {selected ? <NativeIcon name="check" size={17} color={mobileTheme.colors.accentText} /> : null}
+      {selected ? <NativeIcon name="check" size={17} color={theme.colors.accentText} /> : null}
     </Pressable>
   )
 }
@@ -599,11 +607,12 @@ function requireConnection(connection: ReturnType<typeof useConnectionStore.getS
   return connection
 }
 
-const styles = StyleSheet.create({
-  drawerFrame: { backgroundColor: mobileTheme.colors.drawerBackground, flex: 1, position: 'relative' },
-  drawerSafe: { backgroundColor: mobileTheme.colors.drawerBackground, flex: 1 },
-  drawerScroll: { backgroundColor: mobileTheme.colors.drawerBackground },
-  drawerContent: { flexGrow: 1, paddingBottom: 64, paddingTop: mobileTheme.spacing.xs },
+const makeStyles = (theme: AppTheme) =>
+  StyleSheet.create({
+  drawerFrame: { backgroundColor: theme.colors.drawerBackground, flex: 1, position: 'relative' },
+  drawerSafe: { backgroundColor: theme.colors.drawerBackground, flex: 1 },
+  drawerScroll: { backgroundColor: theme.colors.drawerBackground },
+  drawerContent: { flexGrow: 1, paddingBottom: 64, paddingTop: theme.spacing.xs },
   brandRow: {
     alignItems: 'center',
     flexDirection: 'row',
@@ -613,11 +622,11 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
   },
   brand: { alignItems: 'center', flexDirection: 'row', gap: 6, minWidth: 0 },
-  brandWord: { color: mobileTheme.colors.ink, fontSize: 20, fontWeight: '800', letterSpacing: -1 },
+  brandWord: { color: theme.colors.ink, fontSize: 20, fontWeight: '800', letterSpacing: -1 },
   brandTag: {
-    backgroundColor: mobileTheme.colors.ink,
-    borderRadius: mobileTheme.radius.xs,
-    color: mobileTheme.colors.textOnAccent,
+    backgroundColor: theme.colors.ink,
+    borderRadius: theme.radius.xs,
+    color: theme.colors.textOnAccent,
     fontSize: 9,
     fontWeight: '700',
     letterSpacing: 0.8,
@@ -626,45 +635,45 @@ const styles = StyleSheet.create({
   },
   topIcon: {
     alignItems: 'center',
-    height: mobileTheme.touch.iconButton,
+    height: theme.touch.iconButton,
     justifyContent: 'center',
-    width: mobileTheme.touch.iconButton,
+    width: theme.touch.iconButton,
   },
   newSession: {
     alignItems: 'center',
-    borderColor: mobileTheme.colors.border,
-    borderRadius: mobileTheme.radius.bubble,
+    borderColor: theme.colors.border,
+    borderRadius: theme.radius.bubble,
     borderWidth: 1,
     flexDirection: 'row',
     gap: 8,
     justifyContent: 'center',
-    minHeight: mobileTheme.touch.controlHeight,
+    minHeight: theme.touch.controlHeight,
     marginBottom: 8,
   },
   newSessionTextWrap: { alignItems: 'center', gap: 1 },
-  newSessionText: { color: mobileTheme.colors.ink, fontSize: 15, fontWeight: '600' },
-  newSessionTextDisabled: { color: mobileTheme.colors.inkMuted, fontSize: 15, fontWeight: '600' },
-  newSessionHint: { color: mobileTheme.colors.inkFaint, fontSize: 10 },
+  newSessionText: { color: theme.colors.ink, fontSize: 15, fontWeight: '600' },
+  newSessionTextDisabled: { color: theme.colors.inkMuted, fontSize: 15, fontWeight: '600' },
+  newSessionHint: { color: theme.colors.inkFaint, fontSize: 10 },
   workspaceHeader: { alignItems: 'center', flexDirection: 'row', justifyContent: 'space-between', marginBottom: 12 },
-  workspaceTitle: { color: mobileTheme.colors.inkMuted, fontSize: 14, lineHeight: 20 },
+  workspaceTitle: { color: theme.colors.inkMuted, fontSize: 14, lineHeight: 20 },
   workspaceActions: { flexDirection: 'row', gap: 4 },
   actionIcon: {
     alignItems: 'center',
-    height: mobileTheme.touch.iconButton,
+    height: theme.touch.iconButton,
     justifyContent: 'center',
-    width: mobileTheme.touch.iconButton,
+    width: theme.touch.iconButton,
   },
   clearSearch: {
     alignItems: 'center',
-    height: mobileTheme.touch.iconButton,
+    height: theme.touch.iconButton,
     justifyContent: 'center',
-    width: mobileTheme.touch.iconButton,
+    width: theme.touch.iconButton,
   },
   disabledAction: { opacity: 0.45 },
   searchBox: {
     alignItems: 'center',
-    backgroundColor: mobileTheme.colors.surface,
-    borderColor: mobileTheme.colors.borderStrong,
+    backgroundColor: theme.colors.surface,
+    borderColor: theme.colors.borderStrong,
     borderRadius: 10,
     borderWidth: 1,
     flexDirection: 'row',
@@ -672,46 +681,46 @@ const styles = StyleSheet.create({
     marginBottom: 4,
     paddingHorizontal: 8,
   },
-  searchInput: { color: mobileTheme.colors.ink, flex: 1, fontSize: 14, height: 36 },
+  searchInput: { color: theme.colors.ink, flex: 1, fontSize: 14, height: 36 },
   listArea: { flexGrow: 1 },
   list: { flexGrow: 1, paddingBottom: 52 },
   folder: {
     alignItems: 'center',
-    borderRadius: mobileTheme.radius.card,
+    borderRadius: theme.radius.card,
     flexDirection: 'row',
-    gap: mobileTheme.spacing.xs,
-    marginBottom: mobileTheme.spacing.xxs,
-    minHeight: mobileTheme.touch.minTarget,
-    paddingHorizontal: mobileTheme.spacing.xs,
+    gap: theme.spacing.xs,
+    marginBottom: theme.spacing.xxs,
+    minHeight: theme.touch.minTarget,
+    paddingHorizontal: theme.spacing.xs,
   },
-  folderText: { color: mobileTheme.colors.ink, fontSize: mobileTheme.typography.bodyLarge, fontWeight: '500' },
+  folderText: { color: theme.colors.ink, fontSize: theme.typography.bodyLarge, fontWeight: '500' },
   sessionActions: {
-    backgroundColor: mobileTheme.colors.surfaceMuted,
-    borderColor: mobileTheme.colors.border,
-    borderRadius: mobileTheme.radius.control,
+    backgroundColor: theme.colors.surfaceMuted,
+    borderColor: theme.colors.border,
+    borderRadius: theme.radius.control,
     borderWidth: StyleSheet.hairlineWidth,
-    marginBottom: mobileTheme.spacing.xs,
-    marginHorizontal: mobileTheme.spacing.sm,
+    marginBottom: theme.spacing.xs,
+    marginHorizontal: theme.spacing.sm,
     overflow: 'hidden',
   },
   session: {
     alignItems: 'center',
-    borderRadius: mobileTheme.radius.card,
+    borderRadius: theme.radius.card,
     flexDirection: 'row',
-    gap: mobileTheme.spacing.sm,
-    marginLeft: mobileTheme.spacing.md,
-    minHeight: mobileTheme.touch.minTarget,
-    paddingHorizontal: mobileTheme.spacing.md,
+    gap: theme.spacing.sm,
+    marginLeft: theme.spacing.md,
+    minHeight: theme.touch.minTarget,
+    paddingHorizontal: theme.spacing.md,
   },
-  selected: { backgroundColor: mobileTheme.colors.surfaceActive },
-  sessionTitle: { color: mobileTheme.colors.ink, flex: 1, fontSize: 14 },
-  sessionTime: { color: mobileTheme.colors.inkMuted, fontSize: 11 },
-  emptyState: { color: mobileTheme.colors.inkMuted, paddingHorizontal: 8, paddingVertical: 24, textAlign: 'center' },
+  selected: { backgroundColor: theme.colors.surfaceActive },
+  sessionTitle: { color: theme.colors.ink, flex: 1, fontSize: 14 },
+  sessionTime: { color: theme.colors.inkMuted, fontSize: 11 },
+  emptyState: { color: theme.colors.inkMuted, paddingHorizontal: 8, paddingVertical: 24, textAlign: 'center' },
   expandButton: { alignItems: 'center', flexDirection: 'row', gap: 2, paddingHorizontal: 12, paddingVertical: 12 },
-  expandText: { color: mobileTheme.colors.inkMuted, fontSize: 13 },
-  searchHint: { color: mobileTheme.colors.inkMuted, fontSize: 12, lineHeight: 18, paddingHorizontal: 4, paddingVertical: 8 },
+  expandText: { color: theme.colors.inkMuted, fontSize: 13 },
+  searchHint: { color: theme.colors.inkMuted, fontSize: 12, lineHeight: 18, paddingHorizontal: 4, paddingVertical: 8 },
   optionsTitle: {
-    color: mobileTheme.colors.inkMuted,
+    color: theme.colors.inkMuted,
     fontSize: 11,
     fontWeight: '700',
     paddingHorizontal: 9,
@@ -719,29 +728,29 @@ const styles = StyleSheet.create({
     paddingBottom: 3,
   },
   compactOptions: {
-    backgroundColor: mobileTheme.colors.surfaceRaised,
-    borderColor: mobileTheme.colors.border,
-    borderRadius: mobileTheme.radius.card,
+    backgroundColor: theme.colors.surfaceRaised,
+    borderColor: theme.colors.border,
+    borderRadius: theme.radius.card,
     borderWidth: StyleSheet.hairlineWidth,
-    marginBottom: mobileTheme.spacing.sm,
+    marginBottom: theme.spacing.sm,
     overflow: 'hidden',
   },
   compactChoices: {
-    backgroundColor: mobileTheme.colors.surfaceMuted,
-    gap: mobileTheme.spacing.xxs,
-    paddingVertical: mobileTheme.spacing.xs,
+    backgroundColor: theme.colors.surfaceMuted,
+    gap: theme.spacing.xxs,
+    paddingVertical: theme.spacing.xs,
   },
-  optionDivider: { backgroundColor: mobileTheme.colors.border, height: StyleSheet.hairlineWidth },
+  optionDivider: { backgroundColor: theme.colors.border, height: StyleSheet.hairlineWidth },
   inlineOptions: {
-    backgroundColor: mobileTheme.colors.surfaceRaised,
-    borderColor: mobileTheme.colors.border,
-    borderRadius: mobileTheme.radius.card,
+    backgroundColor: theme.colors.surfaceRaised,
+    borderColor: theme.colors.border,
+    borderRadius: theme.radius.card,
     borderWidth: StyleSheet.hairlineWidth,
-    marginBottom: mobileTheme.spacing.sm,
+    marginBottom: theme.spacing.sm,
     overflow: 'hidden',
-    paddingVertical: mobileTheme.spacing.xs,
+    paddingVertical: theme.spacing.xs,
   },
-  inlineOptionSection: { gap: mobileTheme.spacing.xxs, paddingVertical: mobileTheme.spacing.xxs },
+  inlineOptionSection: { gap: theme.spacing.xxs, paddingVertical: theme.spacing.xxs },
   optionRow: {
     alignItems: 'center',
     borderRadius: 7,
@@ -750,7 +759,7 @@ const styles = StyleSheet.create({
     minHeight: 36,
     paddingHorizontal: 9,
   },
-  optionLabel: { color: mobileTheme.colors.ink, fontSize: 13 },
+  optionLabel: { color: theme.colors.ink, fontSize: 13 },
   disabledOptionRow: {
     alignItems: 'center',
     borderRadius: 7,
@@ -758,11 +767,11 @@ const styles = StyleSheet.create({
     minHeight: 36,
     paddingHorizontal: 9,
   },
-  disabledOptionLabel: { color: mobileTheme.colors.inkFaint, fontSize: 13 },
-  menuSeparator: { backgroundColor: mobileTheme.colors.border, height: StyleSheet.hairlineWidth, marginVertical: 6 },
+  disabledOptionLabel: { color: theme.colors.inkFaint, fontSize: 13 },
+  menuSeparator: { backgroundColor: theme.colors.border, height: StyleSheet.hairlineWidth, marginVertical: 6 },
   addWorkspace: {
     alignItems: 'center',
-    borderTopColor: mobileTheme.colors.border,
+    borderTopColor: theme.colors.border,
     borderTopWidth: StyleSheet.hairlineWidth,
     flexDirection: 'row',
     gap: 7,
@@ -770,21 +779,21 @@ const styles = StyleSheet.create({
     paddingHorizontal: 9,
     paddingTop: 10,
   },
-  disabledWorkspaceText: { color: mobileTheme.colors.inkFaint, fontSize: 13, fontWeight: '600' },
+  disabledWorkspaceText: { color: theme.colors.inkFaint, fontSize: 13, fontWeight: '600' },
   settings: {
     alignItems: 'center',
-    backgroundColor: mobileTheme.colors.surfaceRaised,
-    borderTopColor: mobileTheme.colors.border,
+    backgroundColor: theme.colors.surfaceRaised,
+    borderTopColor: theme.colors.border,
     borderTopWidth: StyleSheet.hairlineWidth,
     bottom: 0,
     flexDirection: 'row',
-    gap: mobileTheme.spacing.sm,
+    gap: theme.spacing.sm,
     left: 0,
-    minHeight: mobileTheme.touch.minTarget,
-    paddingHorizontal: mobileTheme.spacing.md,
+    minHeight: theme.touch.minTarget,
+    paddingHorizontal: theme.spacing.md,
     position: 'absolute',
     right: 0,
   },
-  settingsText: { color: mobileTheme.colors.ink, fontSize: 15 },
+  settingsText: { color: theme.colors.ink, fontSize: 15 },
   pressed: { opacity: 0.62 },
 })

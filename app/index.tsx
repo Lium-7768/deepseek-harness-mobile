@@ -2,8 +2,9 @@ import { ActivityIndicator, View } from 'react-native'
 import { Redirect } from 'expo-router'
 import { useEffect } from 'react'
 import { useConnectionStore } from '@/state/connection'
-import { mobileTheme } from '@/theme'
+import { useAppTheme } from '@/theme/hooks'
 export default function IndexScreen(): React.JSX.Element {
+  const theme = useAppTheme()
   const connection = useConnectionStore(state => state.connection)
   const initialized = useConnectionStore(state => state.initialized)
   const initialize = useConnectionStore(state => state.initialize)
@@ -15,12 +16,12 @@ export default function IndexScreen(): React.JSX.Element {
       <View
         style={{
           alignItems: 'center',
-          backgroundColor: mobileTheme.colors.background,
+          backgroundColor: theme.colors.background,
           flex: 1,
           justifyContent: 'center',
         }}
       >
-        <ActivityIndicator color={mobileTheme.colors.accent} />
+        <ActivityIndicator color={theme.colors.inkFaint} />
       </View>
     )
   return <Redirect href={connection ? '/workspace' : '/connect'} />

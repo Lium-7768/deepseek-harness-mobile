@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react'
 import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native'
 import { NativeIcon } from '@/components/native-icon'
-import { mobileTheme } from '@/theme'
+import type { AppTheme } from '@/theme'
+import { useAppTheme, useThemedStyles } from '@/theme/hooks'
 import type { MobileGoalRef, MobileGoalView, MobileJobView, MobileSubagentEntry } from '@/types/mobile'
 
 type MobileChildSubagentEntry = Extract<MobileSubagentEntry, { kind: 'child' }>
@@ -39,6 +40,8 @@ export function NativeGoalBar({
   pending: boolean
   onMutate: (action: 'edit' | 'pause' | 'resume' | 'clear', ref: MobileGoalRef, objective?: string) => void
 }): React.JSX.Element | null {
+  const theme = useAppTheme()
+  const styles = useThemedStyles(makeStyles)
   const [editing, setEditing] = useState(false)
   const [draft, setDraft] = useState('')
   useEffect(() => {
@@ -58,7 +61,7 @@ export function NativeGoalBar({
     <View style={[styles.goal, goal.phase === 'blocked' && styles.goalBlocked]}>
       <View style={styles.goalHeader}>
         <View style={styles.goalTitle}>
-          <NativeIcon name="goal" size={16} color={mobileTheme.colors.accentText} />
+          <NativeIcon name="goal" size={16} color={theme.colors.accentText} />
           <Text style={styles.goalStatus}>{status}</Text>
         </View>
         <View style={styles.goalActions}>
@@ -112,6 +115,8 @@ export function NativeAgentActivity({
   onOpenSubagent: (entry: MobileChildSubagentEntry) => void
   onInterruptSubagent: (entry: MobileContinuableSubagentEntry) => void
 }): React.JSX.Element | null {
+  const theme = useAppTheme()
+  const styles = useThemedStyles(makeStyles)
   const children = subagents.filter((entry): entry is MobileChildSubagentEntry => entry.kind === 'child')
   const diagnostics = subagents.filter((entry): entry is Extract<MobileSubagentEntry, { kind: 'diagnostic' }> => entry.kind === 'diagnostic')
   if (jobs.length === 0 && children.length === 0 && diagnostics.length === 0) return null
@@ -134,12 +139,12 @@ export function NativeAgentActivity({
                 onPress={() => onOpenSubagent(entry)}
                 style={({ pressed }) => [styles.subagentMain, pressed && styles.pressed]}
               >
-                <NativeIcon name="smart-toy" size={16} color={mobileTheme.colors.accentText} />
+                <NativeIcon name="smart-toy" size={16} color={theme.colors.accentText} />
                 <View style={styles.subagentCopy}>
                   <Text numberOfLines={1} style={styles.subagentLabel}>{entry.label ?? entry.id}</Text>
                   <Text style={styles.subagentMeta}>{entry.activity === 'running' ? '运行中' : '空闲'} · {entry.mode === 'continuable' ? '可继续' : '一次性'}</Text>
                 </View>
-                <NativeIcon name="chevron-right" size={16} color={mobileTheme.colors.inkMuted} />
+                <NativeIcon name="chevron-right" size={16} color={theme.colors.inkMuted} />
               </Pressable>
               {entry.mode === 'continuable' && entry.activity === 'running' ? (
                 <Pressable
@@ -150,7 +155,7 @@ export function NativeAgentActivity({
                   onPress={() => onInterruptSubagent({ ...entry, mode: 'continuable' })}
                   style={({ pressed }) => [styles.stopButton, pressed && styles.pressed]}
                 >
-                  <NativeIcon name="stop" size={14} color={mobileTheme.colors.danger} />
+                  <NativeIcon name="stop" size={14} color={theme.colors.danger} />
                 </Pressable>
               ) : null}
             </View>
@@ -173,6 +178,8 @@ function GoalIconButton({
   disabled: boolean
   onPress: () => void
 }): React.JSX.Element {
+  const theme = useAppTheme()
+  const styles = useThemedStyles(makeStyles)
   return (
     <Pressable
       accessibilityRole="button"
@@ -182,12 +189,13 @@ function GoalIconButton({
       onPress={onPress}
       style={({ pressed }) => [styles.iconAction, disabled && styles.disabled, pressed && styles.pressed]}
     >
-      <NativeIcon name={icon} size={15} color={mobileTheme.colors.inkMuted} />
+      <NativeIcon name={icon} size={15} color={theme.colors.inkMuted} />
     </Pressable>
   )
 }
 
 function JobRow({ job }: { job: MobileJobView }): React.JSX.Element {
+  const styles = useThemedStyles(makeStyles)
   const live = job.status === 'running' || job.status === 'stopping'
   return (
     <View style={styles.jobRow}>
@@ -209,63 +217,64 @@ function text(value: unknown): string | undefined {
   return typeof value === 'string' && value.trim() !== '' ? value : undefined
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (theme: AppTheme) =>
+  StyleSheet.create({
   goal: {
-    backgroundColor: mobileTheme.colors.accentSoft,
-    borderBottomColor: mobileTheme.colors.border,
+    backgroundColor: theme.colors.accentSoft,
+    borderBottomColor: theme.colors.border,
     borderBottomWidth: StyleSheet.hairlineWidth,
     gap: 7,
     paddingHorizontal: 14,
     paddingVertical: 10,
   },
-  goalBlocked: { backgroundColor: mobileTheme.colors.warningSoft },
+  goalBlocked: { backgroundColor: theme.colors.warningSoft },
   goalHeader: { alignItems: 'center', flexDirection: 'row', justifyContent: 'space-between' },
   goalTitle: { alignItems: 'center', flexDirection: 'row', gap: 6 },
-  goalStatus: { color: mobileTheme.colors.accentText, fontSize: 12, fontWeight: '700' },
+  goalStatus: { color: theme.colors.accentText, fontSize: 12, fontWeight: '700' },
   goalActions: { alignItems: 'center', flexDirection: 'row', gap: 2 },
   iconAction: { alignItems: 'center', height: 30, justifyContent: 'center', width: 30 },
-  goalObjective: { color: mobileTheme.colors.ink, fontSize: 14, fontWeight: '600', lineHeight: 20 },
-  goalReason: { color: mobileTheme.colors.warning, fontSize: 12, lineHeight: 18 },
+  goalObjective: { color: theme.colors.ink, fontSize: 14, fontWeight: '600', lineHeight: 20 },
+  goalReason: { color: theme.colors.warning, fontSize: 12, lineHeight: 18 },
   editor: { gap: 8 },
   goalInput: {
-    backgroundColor: mobileTheme.colors.surfaceRaised,
-    borderColor: mobileTheme.colors.borderStrong,
-    borderRadius: mobileTheme.radius.control,
+    backgroundColor: theme.colors.surfaceRaised,
+    borderColor: theme.colors.borderStrong,
+    borderRadius: theme.radius.control,
     borderWidth: 1,
-    color: mobileTheme.colors.ink,
+    color: theme.colors.ink,
     minHeight: 70,
     padding: 9,
     textAlignVertical: 'top',
   },
   editorActions: { alignItems: 'center', flexDirection: 'row', gap: 16, justifyContent: 'flex-end' },
-  textAction: { minHeight: mobileTheme.touch.minTarget, justifyContent: 'center', paddingHorizontal: 4 },
-  textActionLabel: { color: mobileTheme.colors.inkMuted, fontSize: 13, fontWeight: '600' },
-  textActionPrimary: { color: mobileTheme.colors.accentText },
+  textAction: { minHeight: theme.touch.minTarget, justifyContent: 'center', paddingHorizontal: 4 },
+  textActionLabel: { color: theme.colors.inkMuted, fontSize: 13, fontWeight: '600' },
+  textActionPrimary: { color: theme.colors.accentText },
   activity: {
-    backgroundColor: mobileTheme.colors.surfaceRaised,
-    borderBottomColor: mobileTheme.colors.border,
+    backgroundColor: theme.colors.surfaceRaised,
+    borderBottomColor: theme.colors.border,
     borderBottomWidth: StyleSheet.hairlineWidth,
     gap: 12,
     paddingHorizontal: 14,
     paddingVertical: 12,
   },
   section: { gap: 7 },
-  sectionTitle: { color: mobileTheme.colors.inkMuted, fontSize: 12, fontWeight: '700' },
+  sectionTitle: { color: theme.colors.inkMuted, fontSize: 12, fontWeight: '700' },
   jobRow: { alignItems: 'center', flexDirection: 'row', gap: 8, minHeight: 30 },
   dot: { borderRadius: 4, height: 7, width: 7 },
-  dotLive: { backgroundColor: mobileTheme.colors.success },
-  dotIdle: { backgroundColor: mobileTheme.colors.inkFaint },
+  dotLive: { backgroundColor: theme.colors.success },
+  dotIdle: { backgroundColor: theme.colors.inkFaint },
   jobCopy: { flex: 1, gap: 1 },
-  jobLabel: { color: mobileTheme.colors.ink, fontSize: 13, fontWeight: '600' },
-  jobMeta: { color: mobileTheme.colors.inkMuted, fontSize: 12 },
-  jobKind: { color: mobileTheme.colors.inkFaint, fontSize: 11 },
+  jobLabel: { color: theme.colors.ink, fontSize: 13, fontWeight: '600' },
+  jobMeta: { color: theme.colors.inkMuted, fontSize: 12 },
+  jobKind: { color: theme.colors.inkFaint, fontSize: 11 },
   subagentRow: { alignItems: 'center', flexDirection: 'row', gap: 4 },
-  subagentMain: { alignItems: 'center', flex: 1, flexDirection: 'row', gap: 8, minHeight: mobileTheme.touch.minTarget },
+  subagentMain: { alignItems: 'center', flex: 1, flexDirection: 'row', gap: 8, minHeight: theme.touch.minTarget },
   subagentCopy: { flex: 1, gap: 1 },
-  subagentLabel: { color: mobileTheme.colors.ink, fontSize: 13, fontWeight: '600' },
-  subagentMeta: { color: mobileTheme.colors.inkMuted, fontSize: 12 },
-  stopButton: { alignItems: 'center', height: mobileTheme.touch.iconButton, justifyContent: 'center', width: mobileTheme.touch.iconButton },
-  diagnostic: { color: mobileTheme.colors.warning, fontSize: 12, lineHeight: 18 },
+  subagentLabel: { color: theme.colors.ink, fontSize: 13, fontWeight: '600' },
+  subagentMeta: { color: theme.colors.inkMuted, fontSize: 12 },
+  stopButton: { alignItems: 'center', height: theme.touch.iconButton, justifyContent: 'center', width: theme.touch.iconButton },
+  diagnostic: { color: theme.colors.warning, fontSize: 12, lineHeight: 18 },
   disabled: { opacity: 0.45 },
   pressed: { opacity: 0.62 },
 })

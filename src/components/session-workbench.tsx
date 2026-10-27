@@ -5,7 +5,8 @@ import {
   projectNativeTrajectoryActivities,
   type NativeTrajectoryActivity,
 } from '@/components/session-trajectory-logic'
-import { mobileTheme } from '@/theme'
+import type { AppTheme } from '@/theme'
+import { useAppTheme, useThemedStyles } from '@/theme/hooks'
 import type { SharedEventItem } from '@/shared/dsh-presentation'
 
 export type WorkbenchTab = 'chat' | 'trajectory'
@@ -17,6 +18,7 @@ export function WorkbenchTabs({
   tab: WorkbenchTab
   onChange: (tab: WorkbenchTab) => void
 }): React.JSX.Element {
+  const s = useThemedStyles(makeStyles)
   return (
     <View style={s.tabs}>
       <Tab active={tab === 'chat'} icon="chat-bubble-outline" label="对话" onPress={() => onChange('chat')} />
@@ -36,6 +38,8 @@ function Tab({
   label: string
   onPress: () => void
 }): React.JSX.Element {
+  const theme = useAppTheme()
+  const s = useThemedStyles(makeStyles)
   return (
     <Pressable
       accessibilityRole="tab"
@@ -45,7 +49,7 @@ function Tab({
       onPress={onPress}
       style={[s.tab, active && s.tabActive]}
     >
-      <NativeIcon name={icon} size={16} color={active ? mobileTheme.colors.accentText : mobileTheme.colors.inkMuted} />
+      <NativeIcon name={icon} size={16} color={active ? theme.colors.accentText : theme.colors.inkMuted} />
       <Text style={[s.tabText, active && s.tabTextActive]}>{label}</Text>
     </Pressable>
   )
@@ -56,6 +60,7 @@ function Tab({
  * session events into compact operations rather than exposing wire-event names.
  */
 export function TrajectoryPanel({ items }: { items: SharedEventItem[] }): React.JSX.Element {
+  const s = useThemedStyles(makeStyles)
   const activities = projectNativeTrajectoryActivities(items)
   return (
     <FlatList
@@ -69,6 +74,8 @@ export function TrajectoryPanel({ items }: { items: SharedEventItem[] }): React.
 }
 
 function TrajectoryActivityRow({ activity }: { activity: NativeTrajectoryActivity }): React.JSX.Element {
+  const theme = useAppTheme()
+  const s = useThemedStyles(makeStyles)
   const stateLabel = activityStateLabel(activity)
   const detailLabel = activity.detail === undefined ? '' : `：${activity.detail}`
   const durationLabel = activity.durationMs === undefined ? '' : `，耗时 ${formatTrajectoryDuration(activity.durationMs)}`
@@ -79,7 +86,7 @@ function TrajectoryActivityRow({ activity }: { activity: NativeTrajectoryActivit
       ) : null}
       <View style={s.activityRow}>
         <View style={[s.traceIndex, activity.state === 'failed' && s.traceIndexFailed]}>
-          <NativeIcon name={activityIcon(activity)} size={13} color={activityColor(activity)} />
+          <NativeIcon name={activityIcon(activity)} size={13} color={activityColor(activity, theme)} />
         </View>
         <View style={s.traceBody}>
           <View style={s.activityTitleRow}>
@@ -112,10 +119,10 @@ function activityIcon(activity: NativeTrajectoryActivity): NativeIconName {
   }
 }
 
-function activityColor(activity: NativeTrajectoryActivity): string {
-  if (activity.state === 'failed' || activity.kind === 'error') return mobileTheme.colors.danger
-  if (activity.kind === 'question') return mobileTheme.colors.warning
-  return mobileTheme.colors.accentText
+function activityColor(activity: NativeTrajectoryActivity, theme: AppTheme): string {
+  if (activity.state === 'failed' || activity.kind === 'error') return theme.colors.danger
+  if (activity.kind === 'question') return theme.colors.warning
+  return theme.colors.accentText
 }
 
 function activityStateLabel(activity: NativeTrajectoryActivity): string | undefined {
@@ -126,13 +133,15 @@ function activityStateLabel(activity: NativeTrajectoryActivity): string | undefi
 }
 
 export function ContextRows({ items }: { items: SharedEventItem[] }): React.JSX.Element | null {
+  const theme = useAppTheme()
+  const s = useThemedStyles(makeStyles)
   const names = Array.from(new Set(items.flatMap(item => contextName(item.event))))
   if (!names.length) return null
   return (
     <View style={s.contextCompact}>
       {names.map(name => (
         <View key={name} style={s.contextCompactRow}>
-          <NativeIcon name="description" size={15} color={mobileTheme.colors.inkMuted} />
+          <NativeIcon name="description" size={15} color={theme.colors.inkMuted} />
           <Text numberOfLines={1} style={s.contextCompactText}>
             上下文注入 · {name}
           </Text>
@@ -157,31 +166,32 @@ function isInternalContextName(name: string): boolean {
   return /agents\.md|system|prompt|skill|internal|mobilegatewayok/i.test(name)
 }
 
-const s = StyleSheet.create({
+const makeStyles = (theme: AppTheme) =>
+  StyleSheet.create({
   tabs: {
-    borderBottomColor: mobileTheme.colors.border,
+    borderBottomColor: theme.colors.border,
     borderBottomWidth: StyleSheet.hairlineWidth,
     flexDirection: 'row',
-    gap: mobileTheme.spacing.sm,
-    paddingHorizontal: mobileTheme.spacing.sm,
+    gap: theme.spacing.sm,
+    paddingHorizontal: theme.spacing.sm,
   },
   tab: {
     alignItems: 'center',
     flexDirection: 'row',
     gap: 6,
-    minHeight: mobileTheme.touch.minTarget,
-    paddingHorizontal: mobileTheme.spacing.sm,
+    minHeight: theme.touch.minTarget,
+    paddingHorizontal: theme.spacing.sm,
   },
-  tabActive: { borderBottomColor: mobileTheme.colors.accent, borderBottomWidth: 2 },
-  tabText: { color: mobileTheme.colors.inkMuted, fontSize: 13, fontWeight: '500' },
-  tabTextActive: { color: mobileTheme.colors.accentText },
+  tabActive: { borderBottomColor: theme.colors.accent, borderBottomWidth: 2 },
+  tabText: { color: theme.colors.inkMuted, fontSize: 13, fontWeight: '500' },
+  tabTextActive: { color: theme.colors.accentText },
   panelList: { gap: 8, padding: 14 },
   activityWrap: { gap: 5 },
-  turnLabel: { color: mobileTheme.colors.inkMuted, fontSize: 12, fontWeight: '600', paddingLeft: 30 },
+  turnLabel: { color: theme.colors.inkMuted, fontSize: 12, fontWeight: '600', paddingLeft: 30 },
   activityRow: { alignItems: 'flex-start', flexDirection: 'row', gap: 10 },
   traceIndex: {
     alignItems: 'center',
-    backgroundColor: mobileTheme.colors.accentSoft,
+    backgroundColor: theme.colors.accentSoft,
     borderRadius: 10,
     flexShrink: 0,
     height: 20,
@@ -189,9 +199,9 @@ const s = StyleSheet.create({
     marginTop: 2,
     width: 20,
   },
-  traceIndexFailed: { backgroundColor: mobileTheme.colors.dangerSoft },
+  traceIndexFailed: { backgroundColor: theme.colors.dangerSoft },
   traceBody: {
-    borderBottomColor: mobileTheme.colors.border,
+    borderBottomColor: theme.colors.border,
     borderBottomWidth: StyleSheet.hairlineWidth,
     flex: 1,
     flexShrink: 1,
@@ -200,13 +210,13 @@ const s = StyleSheet.create({
     paddingBottom: 12,
   },
   activityTitleRow: { alignItems: 'baseline', flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
-  traceLabel: { color: mobileTheme.colors.ink, fontSize: 13, fontWeight: '600' },
-  traceDetail: { color: mobileTheme.colors.inkMuted, fontSize: 12, lineHeight: 18 },
-  state: { color: mobileTheme.colors.inkMuted, fontSize: 11, fontWeight: '500' },
-  stateFailed: { color: mobileTheme.colors.danger },
-  duration: { color: mobileTheme.colors.inkMuted, fontSize: 11, lineHeight: 20 },
+  traceLabel: { color: theme.colors.ink, fontSize: 13, fontWeight: '600' },
+  traceDetail: { color: theme.colors.inkMuted, fontSize: 12, lineHeight: 18 },
+  state: { color: theme.colors.inkMuted, fontSize: 11, fontWeight: '500' },
+  stateFailed: { color: theme.colors.danger },
+  duration: { color: theme.colors.inkMuted, fontSize: 11, lineHeight: 20 },
   contextCompact: { gap: 8, paddingHorizontal: 16, paddingTop: 12 },
   contextCompactRow: { alignItems: 'center', flexDirection: 'row', gap: 7 },
-  contextCompactText: { color: mobileTheme.colors.inkMuted, flex: 1, fontSize: 12 },
-  empty: { color: mobileTheme.colors.inkMuted, paddingVertical: 22, textAlign: 'center' },
+  contextCompactText: { color: theme.colors.inkMuted, flex: 1, fontSize: 12 },
+  empty: { color: theme.colors.inkMuted, paddingVertical: 22, textAlign: 'center' },
 })

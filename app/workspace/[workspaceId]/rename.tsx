@@ -9,10 +9,13 @@ import { NativeIcon } from '@/components/native-icon'
 import { WorkspaceShell } from '@/components/workspace-shell'
 import { workspaceKeyboardVerticalOffset } from '@/components/workspace-shell-logic'
 import { useConnectionStore } from '@/state/connection'
-import { mobileTheme } from '@/theme'
+import type { AppTheme } from '@/theme'
+import { useAppTheme, useThemedStyles } from '@/theme/hooks'
 
 /** Renders the native title editor for one desktop-owned workspace. */
 export default function RenameWorkspaceScreen(): React.JSX.Element {
+  const theme = useAppTheme()
+  const styles = useThemedStyles(makeStyles)
   const { title: rawTitle, workspaceId: rawWorkspaceId } = useLocalSearchParams<{
     title?: string | string[]
     workspaceId?: string | string[]
@@ -47,7 +50,7 @@ export default function RenameWorkspaceScreen(): React.JSX.Element {
           onPress={() => router.back()}
           style={styles.back}
         >
-          <NativeIcon name="arrow-back" color={mobileTheme.colors.ink} size={20} />
+          <NativeIcon name="arrow-back" color={theme.colors.ink} size={20} />
         </Pressable>
       }
       title="重命名工作区"
@@ -63,7 +66,7 @@ export default function RenameWorkspaceScreen(): React.JSX.Element {
           onChangeText={setTitle}
           onSubmitEditing={() => void rename.mutateAsync()}
           placeholder="输入工作区名称"
-          placeholderTextColor={mobileTheme.colors.inkFaint}
+          placeholderTextColor={theme.colors.inkFaint}
           returnKeyType="done"
           style={styles.input}
           value={title}
@@ -87,20 +90,21 @@ function firstParam(value: string | string[] | undefined): string | undefined {
   return candidate?.trim() || undefined
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (theme: AppTheme) =>
+  StyleSheet.create({
   back: { alignItems: 'center', height: 36, justifyContent: 'center', width: 36 },
-  canvas: { flex: 1, gap: mobileTheme.spacing.sm, padding: mobileTheme.spacing.lg },
-  hint: { color: mobileTheme.colors.inkMuted, fontSize: 13, lineHeight: 19 },
+  canvas: { flex: 1, gap: theme.spacing.sm, padding: theme.spacing.lg },
+  hint: { color: theme.colors.inkMuted, fontSize: 13, lineHeight: 19 },
   input: {
-    backgroundColor: mobileTheme.colors.surface,
-    borderColor: mobileTheme.colors.border,
-    borderRadius: mobileTheme.radius.control,
+    backgroundColor: theme.colors.surface,
+    borderColor: theme.colors.border,
+    borderRadius: theme.radius.control,
     borderWidth: StyleSheet.hairlineWidth,
-    color: mobileTheme.colors.ink,
+    color: theme.colors.ink,
     fontSize: 16,
-    minHeight: mobileTheme.touch.minTarget,
-    paddingHorizontal: mobileTheme.spacing.md,
+    minHeight: theme.touch.minTarget,
+    paddingHorizontal: theme.spacing.md,
   },
-  label: { color: mobileTheme.colors.ink, fontSize: 14, fontWeight: '700' },
-  submit: { marginTop: mobileTheme.spacing.md },
+  label: { color: theme.colors.ink, fontSize: 14, fontWeight: '700' },
+  submit: { marginTop: theme.spacing.md },
 })

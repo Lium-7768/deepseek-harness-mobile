@@ -16,7 +16,8 @@ import {
 } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { MobileApi, mobileErrorMessage } from '@/api/mobile-api'
-import { mobileTheme } from '@/theme'
+import type { AppTheme } from '@/theme'
+import { useAppTheme, useThemedStyles } from '@/theme/hooks'
 import { NativeActionButton } from '@/components/native-action-button'
 import { WorkspaceShell } from '@/components/workspace-shell'
 import { workspaceKeyboardVerticalOffset } from '@/components/workspace-shell-logic'
@@ -59,6 +60,8 @@ type QuestionCardProps = {
 
 /** Presents current DSH approvals and questions as native, session-scoped controls. */
 export default function InteractionsScreen(): React.JSX.Element {
+  const theme = useAppTheme()
+  const styles = useThemedStyles(makeStyles)
   const { sessionId } = useLocalSearchParams<{ sessionId: string }>()
   const insets = useSafeAreaInsets()
   useRouteSessionSelection(typeof sessionId === 'string' ? sessionId : undefined)
@@ -100,7 +103,7 @@ export default function InteractionsScreen(): React.JSX.Element {
           onPress={() => router.back()}
           style={({ pressed }) => [styles.headerAction, pressed && styles.pressed]}
         >
-          <NativeIcon name="arrow-back" color={mobileTheme.colors.ink} size={20} />
+          <NativeIcon name="arrow-back" color={theme.colors.ink} size={20} />
         </Pressable>
       }
     >
@@ -127,7 +130,7 @@ export default function InteractionsScreen(): React.JSX.Element {
             <RefreshControl
               refreshing={interactions.isRefetching}
               onRefresh={() => void interactions.refetch()}
-              tintColor={mobileTheme.colors.accent}
+              tintColor={theme.colors.accent}
             />
           }
           ListHeaderComponent={
@@ -150,6 +153,8 @@ function InteractionListStateView({
   query: { error: Error | null; refetch: () => Promise<unknown> }
   state: InteractionListState
 }): React.JSX.Element | null {
+  const theme = useAppTheme()
+  const styles = useThemedStyles(makeStyles)
   if (state === 'ready') return null
   if (state === 'disconnected')
     return (
@@ -170,7 +175,7 @@ function InteractionListStateView({
   if (state === 'loading')
     return (
       <View style={styles.empty}>
-        <ActivityIndicator color={mobileTheme.colors.accent} />
+        <ActivityIndicator color={theme.colors.accent} />
         <Text style={styles.emptyText}>正在加载待处理操作…</Text>
       </View>
     )
@@ -198,6 +203,7 @@ function InteractionCard({ interaction, submitting, onRespond }: InteractionCard
 }
 
 function ApprovalCard({ interaction, submitting, onRespond }: ApprovalCardProps): React.JSX.Element {
+  const styles = useThemedStyles(makeStyles)
   const { payload } = interaction
   const reason = payload.reason ?? 'DSH 请求使用此工具的权限。'
   const answer = (outcome: 'allowed-once' | 'rejected') => {
@@ -238,6 +244,7 @@ function ApprovalCard({ interaction, submitting, onRespond }: ApprovalCardProps)
 }
 
 function QuestionCard({ interaction, submitting, onRespond }: QuestionCardProps): React.JSX.Element {
+  const styles = useThemedStyles(makeStyles)
   const [draft, setDraft] = useState<AnswerDraft>({})
   const questions = interaction.payload.questions
   const review = planReviewOf(questions)
@@ -373,6 +380,7 @@ function PlanReviewCard({
   submitting: boolean
   onRespond: RespondHandler
 }): React.JSX.Element {
+  const styles = useThemedStyles(makeStyles)
   const answer = (selected: string) =>
     onRespond(interaction.rpcId, {
       ok: true,
@@ -434,24 +442,25 @@ function withErrorContext(prefix: string, error: unknown): string {
   return `${prefix}：${detail}`
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (theme: AppTheme) =>
+  StyleSheet.create({
   container: { flex: 1 },
   listContent: { flexGrow: 1, gap: 12, padding: 16, paddingBottom: 28 },
   intro: { gap: 8 },
   headerAction: {
     alignItems: 'center',
-    height: mobileTheme.touch.iconButton,
+    height: theme.touch.iconButton,
     justifyContent: 'center',
-    width: mobileTheme.touch.iconButton,
+    width: theme.touch.iconButton,
   },
-  title: { color: mobileTheme.colors.ink, fontSize: 28, fontWeight: '700' },
-  description: { color: mobileTheme.colors.inkMuted, lineHeight: 21 },
-  error: { color: mobileTheme.colors.danger },
+  title: { color: theme.colors.ink, fontSize: 28, fontWeight: '700' },
+  description: { color: theme.colors.inkMuted, lineHeight: 21 },
+  error: { color: theme.colors.danger },
   card: {
-    ...mobileTheme.elevation.card,
-    backgroundColor: mobileTheme.colors.surfaceRaised,
-    borderColor: mobileTheme.colors.border,
-    borderRadius: mobileTheme.radius.card,
+    ...theme.elevation.card,
+    backgroundColor: theme.colors.surfaceRaised,
+    borderColor: theme.colors.border,
+    borderRadius: theme.radius.card,
     borderWidth: 1,
     gap: 10,
     padding: 16,
@@ -463,20 +472,20 @@ const styles = StyleSheet.create({
   buttonRow: { flexDirection: 'row', gap: 8, marginTop: 4 },
   approvalButton: { flex: 1, paddingHorizontal: 8 },
   question: {
-    borderTopColor: mobileTheme.colors.border,
+    borderTopColor: theme.colors.border,
     borderTopWidth: StyleSheet.hairlineWidth,
     gap: 8,
     paddingTop: 14,
   },
   questionHeader: { color: '#6b7280', fontSize: 12, fontWeight: '700', textTransform: 'uppercase' },
   option: {
-    borderColor: mobileTheme.colors.borderStrong,
-    borderRadius: mobileTheme.radius.control,
+    borderColor: theme.colors.borderStrong,
+    borderRadius: theme.radius.control,
     borderWidth: 1,
     gap: 3,
     padding: 11,
   },
-  optionActive: { backgroundColor: mobileTheme.colors.accentSoft, borderColor: mobileTheme.colors.accent },
+  optionActive: { backgroundColor: theme.colors.accentSoft, borderColor: theme.colors.accent },
   optionLabel: { color: '#1f2937', fontWeight: '600' },
   optionLabelActive: { color: '#1d4ed8' },
   optionDescription: { color: '#6b7280', fontSize: 13, lineHeight: 18 },
@@ -490,9 +499,9 @@ const styles = StyleSheet.create({
   },
   empty: {
     alignItems: 'stretch',
-    backgroundColor: mobileTheme.colors.surfaceRaised,
-    borderColor: mobileTheme.colors.border,
-    borderRadius: mobileTheme.radius.card,
+    backgroundColor: theme.colors.surfaceRaised,
+    borderColor: theme.colors.border,
+    borderRadius: theme.radius.card,
     borderWidth: 1,
     gap: 10,
     padding: 18,

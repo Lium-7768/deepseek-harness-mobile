@@ -1,7 +1,7 @@
 import { ActivityIndicator } from 'react-native'
 import { NativeIcon } from '@/components/native-icon'
 import { NativeListRow } from '@/components/native-list'
-import { mobileTheme } from '@/theme'
+import { useAppTheme } from '@/theme/hooks'
 
 type NativeSelectionRowProps = {
   title: string
@@ -29,6 +29,7 @@ export function NativeSelectionRow({
   onPress,
   accessibilityLabel,
 }: NativeSelectionRowProps): React.JSX.Element {
+  const theme = useAppTheme()
   return (
     <NativeListRow
       accessibilityLabel={accessibilityLabel ?? `${title}${selected ? '，已选中' : ''}${disabled ? '，不可用' : ''}`}
@@ -40,9 +41,9 @@ export function NativeSelectionRow({
       preserveDisabledReadability={preserveDisabledReadability}
       right={
         loading ? (
-          <ActivityIndicator color={mobileTheme.colors.accent} />
+          <ActivityIndicator color={theme.colors.inkFaint} />
         ) : selected ? (
-          <NativeIcon name="check" color={mobileTheme.colors.accentText} size={20} />
+          <NativeIcon name="check" color={theme.colors.accent} size={20} />
         ) : null
       }
       selected={selected}

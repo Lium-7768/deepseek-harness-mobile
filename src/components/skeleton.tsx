@@ -6,8 +6,8 @@
  * Use it for a screen's first paint, and keep `ActivityIndicator` for actions
  * that are already in view (a submit button's pending state).
  */
-import { useEffect, useRef } from 'react'
-import { Animated, Easing, View, type ViewStyle } from 'react-native'
+import { useEffect, useRef, useState } from 'react'
+import { AccessibilityInfo, Animated, Easing, View, type ViewStyle } from 'react-native'
 import { useAppTheme } from '@/theme/hooks'
 
 /** One placeholder block. */
@@ -33,9 +33,14 @@ export interface SkeletonBlockProps {
  */
 export function SkeletonBlock({ width = '100%', height = 14, radius, style }: SkeletonBlockProps): React.JSX.Element {
   const theme = useAppTheme()
+  const reducedMotion = useReducedMotion()
   const pulse = useRef(new Animated.Value(0.55)).current
 
   useEffect(() => {
+    if (reducedMotion) {
+      pulse.setValue(0.8)
+      return
+    }
     const animation = Animated.loop(
       Animated.sequence([
         Animated.timing(pulse, {
@@ -54,7 +59,7 @@ export function SkeletonBlock({ width = '100%', height = 14, radius, style }: Sk
     )
     animation.start()
     return () => animation.stop()
-  }, [pulse])
+  }, [pulse, reducedMotion])
 
   return (
     <Animated.View
@@ -127,4 +132,28 @@ export function SkeletonConversation(): React.JSX.Element {
       ))}
     </View>
   )
+}
+
+/**
+ * Report whether the platform asks for reduced motion.
+ *
+ * The query resolves asynchronously and the setting can change while the app
+ * runs, so this subscribes instead of reading once.
+ *
+ * @returns Whether decorative animation must stay still.
+ */
+function useReducedMotion(): boolean {
+  const [reduced, setReduced] = useState(false)
+  useEffect(() => {
+    let active = true
+    void AccessibilityInfo.isReduceMotionEnabled().then(value => {
+      if (active) setReduced(value)
+    })
+    const subscription = AccessibilityInfo.addEventListener('reduceMotionChanged', setReduced)
+    return () => {
+      active = false
+      subscription.remove()
+    }
+  }, [])
+  return reduced
 }

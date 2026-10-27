@@ -4,7 +4,8 @@ import { Pressable, StyleSheet, Text, View } from 'react-native'
 import { MobileApi, mobileErrorMessage } from '@/api/mobile-api'
 import { NativeIcon } from '@/components/native-icon'
 import { messageActionLayout } from '@/components/session-message-logic'
-import { mobileTheme } from '@/theme'
+import type { AppTheme } from '@/theme'
+import { useAppTheme, useThemedStyles } from '@/theme/hooks'
 import type { MobileFeedbackItem, MobileFeedbackRating } from '@/types/mobile'
 
 type Props = {
@@ -31,6 +32,8 @@ function feedbackMessageId(event: Record<string, unknown> | undefined): string |
  * or unpersisted row renders nothing.
  */
 export function NativeMessageFeedback({ api, sessionId, event }: Props): React.JSX.Element | null {
+  const theme = useAppTheme()
+  const styles = useThemedStyles(makeStyles)
   const messageId = useMemo(() => feedbackMessageId(event), [event])
   const queryClient = useQueryClient()
   const [mutationError, setMutationError] = useState<string | null>(null)
@@ -109,7 +112,7 @@ export function NativeMessageFeedback({ api, sessionId, event }: Props): React.J
       <FeedbackButton
         active={likeActive}
         accessibilityLabel={likeActive ? '已赞成，再按一次取消' : '赞成'}
-        color={likeActive ? mobileTheme.colors.success : mobileTheme.colors.inkMuted}
+        color={likeActive ? theme.colors.success : theme.colors.inkMuted}
         disabled={pending}
         icon="thumb-up"
         onPress={() => void toggle('positive')}
@@ -117,7 +120,7 @@ export function NativeMessageFeedback({ api, sessionId, event }: Props): React.J
       <FeedbackButton
         active={dislikeActive}
         accessibilityLabel={dislikeActive ? '已反对，再按一次取消' : '反对'}
-        color={dislikeActive ? mobileTheme.colors.danger : mobileTheme.colors.inkMuted}
+        color={dislikeActive ? theme.colors.danger : theme.colors.inkMuted}
         disabled={pending}
         icon="thumb-down"
         onPress={() => void toggle('negative')}
@@ -144,6 +147,7 @@ function FeedbackButton({
   icon: 'thumb-up' | 'thumb-down'
   onPress: () => void
 }): React.JSX.Element {
+  const styles = useThemedStyles(makeStyles)
   return (
     <Pressable
       accessibilityRole="button"
@@ -160,6 +164,7 @@ function FeedbackButton({
 }
 
 function FeedbackError({ text }: { text: string | null }): React.JSX.Element | null {
+  const styles = useThemedStyles(makeStyles)
   return text === null ? null : <Text style={styles.failure}>{text}</Text>
 }
 
@@ -201,8 +206,9 @@ function recordOf(value: unknown): Record<string, unknown> | undefined {
     : undefined
 }
 
-const styles = StyleSheet.create({
-  row: { alignItems: 'center', flexDirection: 'row', flexWrap: 'wrap', gap: mobileTheme.spacing.xs, minHeight: 44 },
-  failure: { color: mobileTheme.colors.danger, flexShrink: 1, fontSize: 11 },
+const makeStyles = (theme: AppTheme) =>
+  StyleSheet.create({
+  row: { alignItems: 'center', flexDirection: 'row', flexWrap: 'wrap', gap: theme.spacing.xs, minHeight: 44 },
+  failure: { color: theme.colors.danger, flexShrink: 1, fontSize: 11 },
   pressed: { opacity: 0.62 },
 })

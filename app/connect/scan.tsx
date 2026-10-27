@@ -8,11 +8,14 @@ import { NativeActionButton } from '@/components/native-action-button'
 import { NativeIcon } from '@/components/native-icon'
 import { WorkspaceShell } from '@/components/workspace-shell'
 import { useConnectionStore } from '@/state/connection'
-import { mobileTheme } from '@/theme'
+import type { AppTheme } from '@/theme'
+import { useAppTheme, useThemedStyles } from '@/theme/hooks'
 import type { MobilePairingQrPayload } from '@/types/mobile'
 
 /** Scans a desktop-created one-time pairing QR code and persists only the redeemed device credential. */
 export default function ScanPairingScreen(): React.JSX.Element {
+  const theme = useAppTheme()
+  const styles = useThemedStyles(makeStyles)
   const insets = useSafeAreaInsets()
   const [permission, requestPermission] = useCameraPermissions()
   const [error, setError] = useState('')
@@ -50,17 +53,17 @@ export default function ScanPairingScreen(): React.JSX.Element {
           onPress={() => router.back()}
           style={({ pressed }) => [styles.back, pressed && styles.pressed]}
         >
-          <NativeIcon name="chevron-left" color={mobileTheme.colors.ink} size={22} />
+          <NativeIcon name="chevron-left" color={theme.colors.ink} size={22} />
         </Pressable>
       }
     >
-      <View style={[styles.screen, { paddingBottom: Math.max(insets.bottom, mobileTheme.spacing.lg) }]}>
+      <View style={[styles.screen, { paddingBottom: Math.max(insets.bottom, theme.spacing.lg) }]}>
         <Text style={styles.copy}>在桌面端打开“Mobile devices”，生成二维码后将它置于取景框内。</Text>
         {permission === null ? (
-          <View style={styles.center}><ActivityIndicator color={mobileTheme.colors.accent} /></View>
+          <View style={styles.center}><ActivityIndicator color={theme.colors.accent} /></View>
         ) : !permission.granted ? (
           <View style={styles.permissionCard}>
-            <NativeIcon name="warning-amber" color={mobileTheme.colors.warning} size={22} />
+            <NativeIcon name="warning-amber" color={theme.colors.warning} size={22} />
             <Text style={styles.permissionTitle}>需要相机权限</Text>
             <Text style={styles.permissionCopy}>扫描桌面端配对二维码需要使用本机相机。</Text>
             <NativeActionButton label="允许使用相机" icon="link" onPress={() => void requestPermission()} style={styles.fullWidth} />
@@ -80,7 +83,7 @@ export default function ScanPairingScreen(): React.JSX.Element {
             </View>
             {redeeming ? (
               <View style={styles.busy}>
-                <ActivityIndicator color="#ffffff" />
+                <ActivityIndicator color={theme.colors.onBrand} />
                 <Text style={styles.busyText}>正在完成安全配对…</Text>
               </View>
             ) : null}
@@ -88,7 +91,7 @@ export default function ScanPairingScreen(): React.JSX.Element {
         )}
         {error !== '' ? (
           <View accessibilityRole="alert" style={styles.error}>
-            <NativeIcon name="error-outline" color={mobileTheme.colors.danger} size={18} />
+            <NativeIcon name="error-outline" color={theme.colors.danger} size={18} />
             <Text style={styles.errorText}>{error}</Text>
           </View>
         ) : null}
@@ -130,16 +133,17 @@ function parsePairingPayload(data: string): MobilePairingQrPayload {
   }
 }
 
-const styles = StyleSheet.create({
-  screen: { flex: 1, gap: mobileTheme.spacing.md, paddingHorizontal: mobileTheme.spacing.lg, paddingTop: mobileTheme.spacing.lg },
-  back: { alignItems: 'center', justifyContent: 'center', minHeight: mobileTheme.touch.minTarget, minWidth: mobileTheme.touch.minTarget },
-  copy: { color: mobileTheme.colors.inkMuted, fontSize: mobileTheme.typography.body, lineHeight: 21 },
+const makeStyles = (theme: AppTheme) =>
+  StyleSheet.create({
+  screen: { flex: 1, gap: theme.spacing.md, paddingHorizontal: theme.spacing.lg, paddingTop: theme.spacing.lg },
+  back: { alignItems: 'center', justifyContent: 'center', minHeight: theme.touch.minTarget, minWidth: theme.touch.minTarget },
+  copy: { color: theme.colors.inkMuted, fontSize: theme.typography.body, lineHeight: 21 },
   center: { alignItems: 'center', flex: 1, justifyContent: 'center' },
-  cameraCard: { aspectRatio: 1, borderColor: mobileTheme.colors.borderStrong, borderRadius: mobileTheme.radius.card, borderWidth: 1, overflow: 'hidden', position: 'relative' },
+  cameraCard: { aspectRatio: 1, borderColor: theme.colors.borderStrong, borderRadius: theme.radius.card, borderWidth: 1, overflow: 'hidden', position: 'relative' },
   camera: { flex: 1 },
   frame: {
-    borderColor: mobileTheme.colors.accent,
-    borderRadius: mobileTheme.radius.control,
+    borderColor: theme.colors.accent,
+    borderRadius: theme.radius.control,
     borderWidth: 2,
     height: '58%',
     left: '21%',
@@ -150,22 +154,22 @@ const styles = StyleSheet.create({
   scanHint: {
     alignItems: 'center',
     backgroundColor: 'rgba(15, 23, 42, 0.72)',
-    borderRadius: mobileTheme.radius.pill,
-    bottom: mobileTheme.spacing.lg,
-    left: mobileTheme.spacing.lg,
-    paddingHorizontal: mobileTheme.spacing.md,
-    paddingVertical: mobileTheme.spacing.xs,
+    borderRadius: theme.radius.pill,
+    bottom: theme.spacing.lg,
+    left: theme.spacing.lg,
+    paddingHorizontal: theme.spacing.md,
+    paddingVertical: theme.spacing.xs,
     position: 'absolute',
-    right: mobileTheme.spacing.lg,
+    right: theme.spacing.lg,
   },
-  scanHintText: { color: '#ffffff', fontSize: mobileTheme.typography.caption, fontWeight: '700' },
-  busy: { alignItems: 'center', backgroundColor: 'rgba(0,0,0,0.64)', bottom: 0, flexDirection: 'row', gap: mobileTheme.spacing.sm, justifyContent: 'center', left: 0, position: 'absolute', right: 0, top: 0 },
-  busyText: { color: '#ffffff', fontSize: mobileTheme.typography.body, fontWeight: '700' },
-  permissionCard: { alignItems: 'center', backgroundColor: mobileTheme.colors.surfaceRaised, borderColor: mobileTheme.colors.border, borderRadius: mobileTheme.radius.card, borderWidth: 1, gap: mobileTheme.spacing.sm, padding: mobileTheme.spacing.xl },
-  permissionTitle: { color: mobileTheme.colors.ink, fontSize: mobileTheme.typography.bodyLarge, fontWeight: '800' },
-  permissionCopy: { color: mobileTheme.colors.inkMuted, fontSize: mobileTheme.typography.body, lineHeight: 20, textAlign: 'center' },
+  scanHintText: { color: '#ffffff', fontSize: theme.typography.caption, fontWeight: '700' },
+  busy: { alignItems: 'center', backgroundColor: 'rgba(0,0,0,0.64)', bottom: 0, flexDirection: 'row', gap: theme.spacing.sm, justifyContent: 'center', left: 0, position: 'absolute', right: 0, top: 0 },
+  busyText: { color: '#ffffff', fontSize: theme.typography.body, fontWeight: '700' },
+  permissionCard: { alignItems: 'center', backgroundColor: theme.colors.surfaceRaised, borderColor: theme.colors.border, borderRadius: theme.radius.card, borderWidth: 1, gap: theme.spacing.sm, padding: theme.spacing.xl },
+  permissionTitle: { color: theme.colors.ink, fontSize: theme.typography.bodyLarge, fontWeight: '800' },
+  permissionCopy: { color: theme.colors.inkMuted, fontSize: theme.typography.body, lineHeight: 20, textAlign: 'center' },
   fullWidth: { width: '100%' },
-  error: { alignItems: 'flex-start', backgroundColor: mobileTheme.colors.dangerSoft, borderColor: mobileTheme.colors.danger, borderRadius: mobileTheme.radius.card, borderWidth: 1, flexDirection: 'row', gap: mobileTheme.spacing.sm, padding: mobileTheme.spacing.md },
-  errorText: { color: mobileTheme.colors.danger, flex: 1, lineHeight: 19 },
+  error: { alignItems: 'flex-start', backgroundColor: theme.colors.dangerSoft, borderColor: theme.colors.danger, borderRadius: theme.radius.card, borderWidth: 1, flexDirection: 'row', gap: theme.spacing.sm, padding: theme.spacing.md },
+  errorText: { color: theme.colors.danger, flex: 1, lineHeight: 19 },
   pressed: { opacity: 0.68 },
 })

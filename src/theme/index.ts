@@ -89,6 +89,8 @@ export interface ThemeColors {
   danger: string
   /** Soft destructive fill. */
   dangerSoft: string
+  /** Outline around a destructive action, matched to `dangerSoft`. */
+  dangerBorder: string
   /** User message bubble. */
   userBubble: string
   /** Assistant message bubble. */
@@ -97,6 +99,8 @@ export interface ThemeColors {
   agentBubble: string
   /** Modal and drawer backdrop. */
   overlay: string
+  /** Text and glyphs drawn on a dark scrim, such as a control over a photo. */
+  onScrim: string
   /** Placeholder fill shown while first content loads. */
   skeleton: string
   /** Code block surface. */
@@ -169,10 +173,12 @@ const lightColors: ThemeColors = {
   warningSoft: 'rgb(254, 245, 231)',
   danger: 'rgb(236, 19, 19)',
   dangerSoft: 'rgb(254, 242, 242)',
+  dangerBorder: 'rgb(239, 181, 176)',
   userBubble: 'rgb(237, 243, 254)',
   assistantBubble: 'rgb(255, 255, 255)',
   agentBubble: 'rgb(247, 246, 242)',
   overlay: 'rgba(15, 17, 21, 0.38)',
+  onScrim: 'rgb(255, 255, 255)',
   skeleton: 'rgba(0, 0, 0, 0.04)',
   codeBackground: 'rgb(27, 27, 28)',
   codeForeground: 'rgb(228, 234, 243)',
@@ -210,10 +216,12 @@ const darkColors: ThemeColors = {
   warningSoft: 'rgba(247, 173, 49, 0.16)',
   danger: 'rgb(242, 90, 90)',
   dangerSoft: 'rgba(242, 90, 90, 0.16)',
+  dangerBorder: 'rgba(242, 90, 90, 0.36)',
   userBubble: 'rgb(44, 44, 46)',
   assistantBubble: 'rgb(21, 21, 23)',
   agentBubble: 'rgb(35, 35, 36)',
   overlay: 'rgba(0, 0, 0, 0.5)',
+  onScrim: 'rgb(255, 255, 255)',
   skeleton: 'rgba(255, 255, 255, 0.08)',
   codeBackground: 'rgb(27, 27, 28)',
   codeForeground: 'rgb(228, 234, 243)',

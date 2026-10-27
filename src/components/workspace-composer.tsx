@@ -11,7 +11,8 @@ import {
   permissionLabel,
 } from '@/components/session-composer-logic'
 import type { MobileImageMediaType, MobileModelSelection, MobilePermissionSelect, MobilePromptContent } from '@/types/mobile'
-import { mobileTheme } from '@/theme'
+import type { AppTheme } from '@/theme'
+import { useAppTheme, useThemedStyles } from '@/theme/hooks'
 
 type DraftImage = {
   data: string
@@ -60,6 +61,8 @@ export function WorkspaceComposer({
   sending = false,
   sessionId,
 }: Props): React.JSX.Element {
+  const theme = useAppTheme()
+  const s = useThemedStyles(makeStyles)
   const [text, setText] = useState('')
   const [draftImages, setDraftImages] = useState<DraftImage[]>([])
   const hasContent = text.trim() !== '' || draftImages.length > 0
@@ -161,7 +164,7 @@ export function WorkspaceComposer({
                 onPress={() => setDraftImages(current => current.filter((_, itemIndex) => itemIndex !== index))}
                 style={({ pressed }) => [s.removePreview, pressed && s.pressed]}
               >
-                <NativeIcon name="close" size={13} color="#fff" />
+                <NativeIcon name="close" size={13} color={theme.colors.onScrim} />
               </Pressable>
             </View>
           ))}
@@ -174,7 +177,7 @@ export function WorkspaceComposer({
           value={text}
           onChangeText={setText}
           placeholder={placeholder}
-          placeholderTextColor={mobileTheme.colors.inkFaint}
+          placeholderTextColor={theme.colors.inkFaint}
           style={s.input}
           textAlignVertical="top"
           editable={!controlsDisabled}
@@ -197,7 +200,7 @@ export function WorkspaceComposer({
           <NativeIcon
             name="attach-file"
             size={21}
-            color={controlsDisabled || draftImages.length >= 4 ? mobileTheme.colors.inkFaint : mobileTheme.colors.inkMuted}
+            color={controlsDisabled || draftImages.length >= 4 ? theme.colors.inkFaint : theme.colors.inkMuted}
           />
         </Pressable>
         {onCancel !== undefined && action.kind === 'stop' ? (
@@ -210,7 +213,7 @@ export function WorkspaceComposer({
             onPress={onCancel}
             style={[s.send, action.disabled && s.sendDisabled]}
           >
-            {action.busy ? <ActivityIndicator color="#fff" /> : <NativeIcon name="stop" size={16} color="#fff" />}
+            {action.busy ? <ActivityIndicator color={theme.colors.onBrand} /> : <NativeIcon name="stop" size={16} color={theme.colors.onBrand} />}
           </Pressable>
         ) : (
           <Pressable
@@ -222,7 +225,7 @@ export function WorkspaceComposer({
             onPress={() => void send()}
             style={[s.send, action.disabled && s.sendDisabled]}
           >
-            {action.busy ? <ActivityIndicator color="#fff" /> : <NativeIcon name="send" size={18} color="#fff" />}
+            {action.busy ? <ActivityIndicator color={theme.colors.onBrand} /> : <NativeIcon name="send" size={18} color={theme.colors.onBrand} />}
           </Pressable>
         )}
       </View>
@@ -235,7 +238,7 @@ export function WorkspaceComposer({
             accessibilityState={{ disabled: true }}
             style={s.disabledTool}
           >
-            <NativeIcon name="admin-panel-settings" size={14} color={mobileTheme.colors.inkMuted} />
+            <NativeIcon name="admin-panel-settings" size={14} color={theme.colors.inkMuted} />
             <Text style={s.toolText}>工作区写入</Text>
           </View>
         ) : (
@@ -251,11 +254,11 @@ export function WorkspaceComposer({
             }}
             style={({ pressed }) => [s.tool, controlsDisabled && s.disabledTool, pressed && s.pressed]}
           >
-            <NativeIcon name="admin-panel-settings" size={14} color={mobileTheme.colors.inkMuted} />
+            <NativeIcon name="admin-panel-settings" size={14} color={theme.colors.inkMuted} />
             <Text numberOfLines={1} style={s.toolText}>
               {selectedPermissionLabel}
             </Text>
-            <NativeIcon name="chevron-down" size={13} color={mobileTheme.colors.inkMuted} />
+            <NativeIcon name="chevron-down" size={13} color={theme.colors.inkMuted} />
           </Pressable>
         )}
         {hasSession ? (
@@ -270,11 +273,11 @@ export function WorkspaceComposer({
             }}
             style={({ pressed }) => [s.tool, controlsDisabled && s.disabledTool, pressed && s.pressed]}
           >
-            <NativeIcon name="tune" size={14} color={mobileTheme.colors.inkMuted} />
+            <NativeIcon name="tune" size={14} color={theme.colors.inkMuted} />
             <Text numberOfLines={1} style={s.toolText}>
               {modeLabel}
             </Text>
-            <NativeIcon name="chevron-down" size={13} color={mobileTheme.colors.inkMuted} />
+            <NativeIcon name="chevron-down" size={13} color={theme.colors.inkMuted} />
           </Pressable>
         ) : (
           <View
@@ -284,7 +287,7 @@ export function WorkspaceComposer({
             accessibilityState={{ disabled: true }}
             style={s.disabledTool}
           >
-            <NativeIcon name="tune" size={14} color={mobileTheme.colors.inkMuted} />
+            <NativeIcon name="tune" size={14} color={theme.colors.inkMuted} />
             <Text style={s.toolText}>标准模式</Text>
           </View>
         )}
@@ -301,11 +304,11 @@ export function WorkspaceComposer({
             }}
             style={({ pressed }) => [s.tool, controlsDisabled && s.disabledTool, pressed && s.pressed]}
           >
-            <NativeIcon name="smart-toy" size={14} color={mobileTheme.colors.inkMuted} />
+            <NativeIcon name="smart-toy" size={14} color={theme.colors.inkMuted} />
             <Text numberOfLines={1} style={s.toolText}>
               {selectedModelLabel}
             </Text>
-            <NativeIcon name="chevron-down" size={13} color={mobileTheme.colors.inkMuted} />
+            <NativeIcon name="chevron-down" size={13} color={theme.colors.inkMuted} />
           </Pressable>
         ) : (
           <View
@@ -315,7 +318,7 @@ export function WorkspaceComposer({
             accessibilityState={{ disabled: true }}
             style={s.disabledTool}
           >
-            <NativeIcon name="smart-toy" size={14} color={mobileTheme.colors.inkMuted} />
+            <NativeIcon name="smart-toy" size={14} color={theme.colors.inkMuted} />
             <Text style={s.toolText}>模型由桌面端控制</Text>
           </View>
         )}
@@ -324,20 +327,21 @@ export function WorkspaceComposer({
   )
 }
 
-const s = StyleSheet.create({
+const makeStyles = (theme: AppTheme) =>
+  StyleSheet.create({
   wrap: {
-    backgroundColor: mobileTheme.colors.canvas,
-    paddingBottom: mobileTheme.spacing.sm,
-    paddingHorizontal: mobileTheme.spacing.lg,
-    paddingTop: mobileTheme.spacing.md,
+    backgroundColor: theme.colors.canvas,
+    paddingBottom: theme.spacing.sm,
+    paddingHorizontal: theme.spacing.lg,
+    paddingTop: theme.spacing.md,
   },
-  previewRow: { flexDirection: 'row', gap: mobileTheme.spacing.sm, marginBottom: mobileTheme.spacing.sm },
+  previewRow: { flexDirection: 'row', gap: theme.spacing.sm, marginBottom: theme.spacing.sm },
   preview: { height: 58, position: 'relative', width: 58 },
-  previewImage: { borderRadius: mobileTheme.radius.control, height: 58, width: 58 },
+  previewImage: { borderRadius: theme.radius.control, height: 58, width: 58 },
   removePreview: {
     alignItems: 'center',
     backgroundColor: 'rgba(20, 25, 34, 0.8)',
-    borderColor: mobileTheme.colors.canvas,
+    borderColor: theme.colors.canvas,
     borderRadius: 10,
     borderWidth: 1,
     height: 20,
@@ -349,37 +353,37 @@ const s = StyleSheet.create({
   },
   row: {
     alignItems: 'flex-end',
-    backgroundColor: mobileTheme.colors.surfaceRaised,
-    borderColor: mobileTheme.colors.borderStrong,
-    borderRadius: mobileTheme.chrome.composerRadius,
+    backgroundColor: theme.colors.surfaceRaised,
+    borderColor: theme.colors.borderStrong,
+    borderRadius: theme.chrome.composerRadius,
     borderWidth: 1,
     flexDirection: 'row',
     minHeight: 58,
-    paddingLeft: mobileTheme.spacing.md,
+    paddingLeft: theme.spacing.md,
   },
-  input: { color: mobileTheme.colors.ink, flex: 1, fontSize: 15, maxHeight: 120, minHeight: 52, paddingVertical: 12 },
+  input: { color: theme.colors.ink, flex: 1, fontSize: 15, maxHeight: 120, minHeight: 52, paddingVertical: 12 },
   icon: {
     alignItems: 'center',
-    height: mobileTheme.touch.iconButton,
+    height: theme.touch.iconButton,
     justifyContent: 'center',
-    width: mobileTheme.touch.iconButton,
+    width: theme.touch.iconButton,
   },
   iconDisabled: { opacity: 0.55 },
   send: {
     alignItems: 'center',
-    backgroundColor: mobileTheme.colors.accent,
-    borderRadius: mobileTheme.radius.pill,
-    height: mobileTheme.touch.iconButton,
+    backgroundColor: theme.colors.brand,
+    borderRadius: theme.radius.pill,
+    height: theme.touch.iconButton,
     justifyContent: 'center',
     margin: 5,
-    width: mobileTheme.touch.iconButton,
+    width: theme.touch.iconButton,
   },
-  sendDisabled: { backgroundColor: mobileTheme.colors.borderStrong },
+  sendDisabled: { backgroundColor: theme.colors.borderStrong },
   tools: { alignItems: 'center', flexDirection: 'row', gap: 12, paddingRight: 12, paddingTop: 8 },
   tool: {
     alignItems: 'center',
     backgroundColor: 'transparent',
-    borderRadius: mobileTheme.radius.control,
+    borderRadius: theme.radius.control,
     flexDirection: 'row',
     gap: 4,
     flexShrink: 0,
@@ -389,7 +393,7 @@ const s = StyleSheet.create({
   disabledTool: {
     alignItems: 'center',
     backgroundColor: 'transparent',
-    borderRadius: mobileTheme.radius.control,
+    borderRadius: theme.radius.control,
     flexDirection: 'row',
     gap: 4,
     flexShrink: 0,
@@ -397,6 +401,6 @@ const s = StyleSheet.create({
     opacity: 0.5,
     paddingHorizontal: 8,
   },
-  toolText: { color: mobileTheme.colors.inkMuted, flexShrink: 1, fontSize: 13, fontWeight: '500' },
+  toolText: { color: theme.colors.inkMuted, flexShrink: 1, fontSize: 13, fontWeight: '500' },
   pressed: { opacity: 0.62 },
 })

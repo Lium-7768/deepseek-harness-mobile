@@ -1,9 +1,11 @@
 import type { ReactNode } from 'react'
 import type { AccessibilityRole } from 'react-native'
 import { Pressable, StyleSheet, Text, View } from 'react-native'
-import { mobileTheme } from '@/theme'
+import type { AppTheme } from '@/theme'
+import { useThemedStyles } from '@/theme/hooks'
 
 export function NativeSection({ title, children }: { title?: string; children: ReactNode }): React.JSX.Element {
+  const styles = useThemedStyles(makeStyles)
   return (
     <View style={styles.section}>
       {title ? <Text style={styles.sectionTitle}>{title}</Text> : null}
@@ -39,6 +41,7 @@ export function NativeListRow({
   accessibilityRole = 'button',
   multiline = false,
 }: NativeListRowProps): React.JSX.Element {
+  const styles = useThemedStyles(makeStyles)
   const subdued = disabled && !preserveDisabledReadability
   const content = (
     <>
@@ -88,19 +91,20 @@ export function NativeListRow({
   )
 }
 
-const styles = StyleSheet.create({
-  section: { gap: mobileTheme.spacing.xs, marginBottom: mobileTheme.spacing.lg },
+const makeStyles = (theme: AppTheme) =>
+  StyleSheet.create({
+  section: { gap: theme.spacing.xs, marginBottom: theme.spacing.lg },
   sectionTitle: {
-    color: mobileTheme.colors.inkMuted,
-    fontSize: mobileTheme.typography.caption,
+    color: theme.colors.inkMuted,
+    fontSize: theme.typography.caption,
     fontWeight: '600',
-    paddingHorizontal: mobileTheme.spacing.sm,
+    paddingHorizontal: theme.spacing.sm,
     textTransform: 'uppercase',
   },
   sectionBody: {
-    backgroundColor: mobileTheme.colors.surfaceRaised,
-    borderColor: mobileTheme.colors.border,
-    borderRadius: mobileTheme.radius.card,
+    backgroundColor: theme.colors.surfaceRaised,
+    borderColor: theme.colors.border,
+    borderRadius: theme.radius.card,
     borderWidth: StyleSheet.hairlineWidth,
     overflow: 'hidden',
   },
@@ -108,21 +112,21 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     flexDirection: 'row',
     justifyContent: 'space-between',
-    minHeight: mobileTheme.touch.minTarget,
-    paddingHorizontal: mobileTheme.spacing.md,
+    minHeight: theme.touch.minTarget,
+    paddingHorizontal: theme.spacing.md,
   },
-  rowMultiline: { alignItems: 'flex-start', paddingVertical: mobileTheme.spacing.sm },
+  rowMultiline: { alignItems: 'flex-start', paddingVertical: theme.spacing.sm },
   left: { alignItems: 'center', flex: 1, flexDirection: 'row', minWidth: 0 },
   leftMultiline: { alignItems: 'flex-start' },
-  leading: { alignItems: 'center', justifyContent: 'center', marginRight: mobileTheme.spacing.sm, width: 24 },
+  leading: { alignItems: 'center', justifyContent: 'center', marginRight: theme.spacing.sm, width: 24 },
   leadingMultiline: { marginTop: 2 },
-  copy: { flex: 1, gap: mobileTheme.spacing.xxs, minWidth: 0 },
-  title: { color: mobileTheme.colors.ink, fontSize: mobileTheme.typography.body, fontWeight: '500' },
-  description: { color: mobileTheme.colors.inkMuted, fontSize: mobileTheme.typography.caption, lineHeight: 17 },
-  trailing: { alignItems: 'center', justifyContent: 'center', marginLeft: mobileTheme.spacing.sm },
+  copy: { flex: 1, gap: theme.spacing.xxs, minWidth: 0 },
+  title: { color: theme.colors.ink, fontSize: theme.typography.body, fontWeight: '500' },
+  description: { color: theme.colors.inkMuted, fontSize: theme.typography.caption, lineHeight: 17 },
+  trailing: { alignItems: 'center', justifyContent: 'center', marginLeft: theme.spacing.sm },
   trailingMultiline: { marginTop: 2 },
-  selected: { backgroundColor: mobileTheme.colors.accentSoft },
+  selected: { backgroundColor: theme.colors.accentSoft },
   disabled: { opacity: 0.52 },
-  disabledText: { color: mobileTheme.colors.inkFaint },
+  disabledText: { color: theme.colors.inkFaint },
   pressed: { opacity: 0.68 },
 })

@@ -12,10 +12,13 @@ import { WorkspaceShell } from '@/components/workspace-shell'
 import { workspaceKeyboardVerticalOffset } from '@/components/workspace-shell-logic'
 import { useConnectionStore } from '@/state/connection'
 import { useSessionSelectionStore } from '@/state/session-selection'
-import { mobileTheme } from '@/theme'
+import type { AppTheme } from '@/theme'
+import { useAppTheme, useThemedStyles } from '@/theme/hooks'
 import type { MobilePromptContent } from '@/types/mobile'
 
 export default function WorkspaceScreen(): React.JSX.Element {
+  const theme = useAppTheme()
+  const s = useThemedStyles(makeStyles)
   const navigation = useNavigation<{ openDrawer: () => void }>()
   const insets = useSafeAreaInsets()
   const connection = useConnectionStore(state => state.connection)
@@ -82,7 +85,7 @@ export default function WorkspaceScreen(): React.JSX.Element {
     <WorkspaceShell
       showBrand={false}
       title={workspaceTitle}
-      titleLeading={<NativeIcon name="folder" size={21} color={mobileTheme.colors.ink} />}
+      titleLeading={<NativeIcon name="folder" size={21} color={theme.colors.ink} />}
     >
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
@@ -100,11 +103,11 @@ export default function WorkspaceScreen(): React.JSX.Element {
               onPress={() => navigation.openDrawer()}
               style={({ pressed }) => [s.control, pressed && s.pressed]}
             >
-              <NativeIcon name="chat-bubble-outline" size={16} color={mobileTheme.colors.inkMuted} />
+              <NativeIcon name="chat-bubble-outline" size={16} color={theme.colors.inkMuted} />
               <Text numberOfLines={1} style={s.controlText}>
                 {selectedSession === undefined ? '选择会话' : sessionDisplayTitle(selectedSession)}
               </Text>
-              <NativeIcon name="expand-more" size={18} color={mobileTheme.colors.inkMuted} />
+              <NativeIcon name="expand-more" size={18} color={theme.colors.inkMuted} />
             </Pressable>
             <ModeTrigger agentPreset={selectedSession?.agentPreset} disabled={!connection} sessionId={selectedSession?.sessionId} />
           </View>
@@ -138,6 +141,8 @@ function ModeTrigger({
   disabled: boolean
   sessionId: string | undefined
 }): React.JSX.Element {
+  const theme = useAppTheme()
+  const s = useThemedStyles(makeStyles)
   const label = agentPresetLabel(agentPreset)
   const openMode = (): void => {
     if (disabled) return
@@ -157,11 +162,11 @@ function ModeTrigger({
       onPress={openMode}
       style={({ pressed }) => [s.modeControl, disabled && s.disabledControl, pressed && s.pressed]}
     >
-      <NativeIcon name="agent-preset" size={16} color={mobileTheme.colors.inkMuted} />
+      <NativeIcon name="agent-preset" size={16} color={theme.colors.inkMuted} />
       <Text numberOfLines={1} style={s.controlText}>
         {label}
       </Text>
-      <NativeIcon name="chevron-down" size={17} color={mobileTheme.colors.inkMuted} />
+      <NativeIcon name="chevron-down" size={17} color={theme.colors.inkMuted} />
     </Pressable>
   )
 }
@@ -193,36 +198,37 @@ function errorMessage(error: unknown): string {
   return mobileErrorMessage(error, '请稍后重试。')
 }
 
-const s = StyleSheet.create({
+const makeStyles = (theme: AppTheme) =>
+  StyleSheet.create({
   canvas: { flex: 1, justifyContent: 'space-between' },
-  summary: { gap: mobileTheme.spacing.sm, paddingHorizontal: mobileTheme.spacing.lg, paddingTop: mobileTheme.spacing.lg },
-  summaryLabel: { color: mobileTheme.colors.inkMuted, fontSize: 12, fontWeight: '700' },
-  controls: { alignItems: 'center', flexDirection: 'row', gap: mobileTheme.spacing.sm },
+  summary: { gap: theme.spacing.sm, paddingHorizontal: theme.spacing.lg, paddingTop: theme.spacing.lg },
+  summaryLabel: { color: theme.colors.inkMuted, fontSize: 12, fontWeight: '700' },
+  controls: { alignItems: 'center', flexDirection: 'row', gap: theme.spacing.sm },
   control: {
     alignItems: 'center',
-    backgroundColor: mobileTheme.colors.surface,
-    borderColor: mobileTheme.colors.border,
-    borderRadius: mobileTheme.radius.control,
+    backgroundColor: theme.colors.surface,
+    borderColor: theme.colors.border,
+    borderRadius: theme.radius.control,
     borderWidth: StyleSheet.hairlineWidth,
     flex: 1,
     flexDirection: 'row',
     gap: 7,
-    minHeight: mobileTheme.touch.minTarget,
+    minHeight: theme.touch.minTarget,
     paddingHorizontal: 11,
   },
   modeControl: {
     alignItems: 'center',
-    backgroundColor: mobileTheme.colors.surfaceMuted,
-    borderColor: mobileTheme.colors.border,
-    borderRadius: mobileTheme.radius.control,
+    backgroundColor: theme.colors.surfaceMuted,
+    borderColor: theme.colors.border,
+    borderRadius: theme.radius.control,
     borderWidth: StyleSheet.hairlineWidth,
     flexDirection: 'row',
     gap: 7,
-    minHeight: mobileTheme.touch.minTarget,
+    minHeight: theme.touch.minTarget,
     paddingHorizontal: 11,
   },
   disabledControl: { opacity: 0.5 },
-  controlText: { color: mobileTheme.colors.ink, flexShrink: 1, fontSize: 13, fontWeight: '500' },
-  detail: { color: mobileTheme.colors.inkMuted, fontSize: 12, lineHeight: 18 },
+  controlText: { color: theme.colors.ink, flexShrink: 1, fontSize: 13, fontWeight: '500' },
+  detail: { color: theme.colors.inkMuted, fontSize: 12, lineHeight: 18 },
   pressed: { opacity: 0.62 },
 })

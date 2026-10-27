@@ -10,10 +10,13 @@ import { selectionOptionDisabled, sessionDetailReturnTarget } from '@/components
 import { WorkspaceShell } from '@/components/workspace-shell'
 import { useConnectionStore } from '@/state/connection'
 import { useRouteSessionSelection } from '@/state/session-selection'
-import { mobileTheme } from '@/theme'
+import type { AppTheme } from '@/theme'
+import { useAppTheme, useThemedStyles } from '@/theme/hooks'
 
 /** Lists the session's real provider catalog and records a model selection. */
 export default function SessionModelScreen(): React.JSX.Element {
+  const theme = useAppTheme()
+  const styles = useThemedStyles(makeStyles)
   const { sessionId: rawSessionId } = useLocalSearchParams<{ sessionId?: string | string[] }>()
   const sessionId = firstParam(rawSessionId)
   useRouteSessionSelection(sessionId)
@@ -39,7 +42,7 @@ export default function SessionModelScreen(): React.JSX.Element {
           onPress={() => router.replace(sessionDetailReturnTarget(sessionId))}
           style={styles.back}
         >
-          <NativeIcon name="arrow-back" color={mobileTheme.colors.ink} size={20} />
+          <NativeIcon name="arrow-back" color={theme.colors.ink} size={20} />
         </Pressable>
       }
       showMenu={false}
@@ -112,6 +115,7 @@ function StateView({
   onRetry: () => void
   text: string
 }): React.JSX.Element {
+  const styles = useThemedStyles(makeStyles)
   if (loading) return <Text style={styles.state}>正在加载模型目录…</Text>
   if (error !== null && error !== undefined)
     return (
@@ -133,14 +137,15 @@ function firstParam(value: string | string[] | undefined): string | undefined {
   return candidate?.trim() || undefined
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (theme: AppTheme) =>
+  StyleSheet.create({
   back: { alignItems: 'center', height: 36, justifyContent: 'center', width: 36 },
   list: { gap: 12, padding: 16, paddingBottom: 28 },
   header: { gap: 6, marginBottom: 4 },
-  title: { color: mobileTheme.colors.ink, fontSize: 22, fontWeight: '700' },
-  description: { color: mobileTheme.colors.inkMuted, lineHeight: 20 },
-  state: { color: mobileTheme.colors.inkMuted, padding: 18, textAlign: 'center' },
+  title: { color: theme.colors.ink, fontSize: 22, fontWeight: '700' },
+  description: { color: theme.colors.inkMuted, lineHeight: 20 },
+  state: { color: theme.colors.inkMuted, padding: 18, textAlign: 'center' },
   stateBlock: { alignItems: 'center', gap: 10, padding: 18 },
-  error: { color: mobileTheme.colors.danger, paddingVertical: 4 },
-  failure: { color: mobileTheme.colors.warning, fontSize: 12 },
+  error: { color: theme.colors.danger, paddingVertical: 4 },
+  failure: { color: theme.colors.warning, fontSize: 12 },
 })

@@ -12,12 +12,15 @@ import { settingsSectionIcon } from '@/components/settings-logic'
 import { WorkspaceShell } from '@/components/workspace-shell'
 import { useConnectionStore } from '@/state/connection'
 import type { MobileSettingsNamespaceView, MobileSettingsPayload } from '@/types/mobile'
-import { mobileTheme } from '@/theme'
+import type { AppTheme } from '@/theme'
+import { useAppTheme, useThemedStyles } from '@/theme/hooks'
 
 type SettingsSection = 'general' | 'models' | 'plugins' | 'presets'
 
 /** Renders native settings list/detail screens backed by the desktop settings seam. */
 export default function SettingsScreen(): React.JSX.Element {
+  const theme = useAppTheme()
+  const styles = useThemedStyles(makeStyles)
   const { section: rawSection, preset: rawPreset } = useLocalSearchParams<{
     section?: string | string[]
     preset?: string | string[]
@@ -34,7 +37,7 @@ export default function SettingsScreen(): React.JSX.Element {
         onPress={() => router.back()}
         style={styles.back}
       >
-        <NativeIcon name="arrow-back" color={mobileTheme.colors.ink} size={20} />
+        <NativeIcon name="arrow-back" color={theme.colors.ink} size={20} />
       </Pressable>
     )
   return (
@@ -61,6 +64,7 @@ function SettingsIndex({
 }: {
   connection: ReturnType<typeof useConnectionStore.getState>['connection']
 }): React.JSX.Element {
+  const styles = useThemedStyles(makeStyles)
   return (
     <ScrollView contentContainerStyle={styles.list}>
       <View style={styles.header}>
@@ -84,6 +88,8 @@ function SettingRow({
   description: string
   section: SettingsSection
 }): React.JSX.Element {
+  const theme = useAppTheme()
+  const styles = useThemedStyles(makeStyles)
   return (
     <Pressable
       accessibilityRole="button"
@@ -91,12 +97,12 @@ function SettingRow({
       onPress={() => router.push({ pathname: '/settings', params: { section } })}
       style={({ pressed }) => [styles.settingRow, pressed && styles.pressed]}
     >
-      <NativeIcon name={settingsSectionIcon(section)} color={mobileTheme.colors.accentText} size={21} />
+      <NativeIcon name={settingsSectionIcon(section)} color={theme.colors.accentText} size={21} />
       <View style={styles.rowText}>
         <Text style={styles.rowTitle}>{title}</Text>
         <Text style={styles.rowDescription}>{description}</Text>
       </View>
-      <NativeIcon name="chevron-right" color={mobileTheme.colors.inkMuted} size={20} />
+      <NativeIcon name="chevron-right" color={theme.colors.inkMuted} size={20} />
     </Pressable>
   )
 }
@@ -106,6 +112,7 @@ function GeneralSettings({
 }: {
   connection: NonNullable<ReturnType<typeof useConnectionStore.getState>['connection']>
 }): React.JSX.Element {
+  const styles = useThemedStyles(makeStyles)
   const client = new MobileApi(connection)
   const queryClient = useQueryClient()
   const settings = useQuery({
@@ -213,6 +220,7 @@ function ModelSettings({
 }: {
   connection: NonNullable<ReturnType<typeof useConnectionStore.getState>['connection']>
 }): React.JSX.Element {
+  const styles = useThemedStyles(makeStyles)
   const client = new MobileApi(connection)
   const queryClient = useQueryClient()
   const models = useQuery({
@@ -298,6 +306,7 @@ function PluginSettings({
 }: {
   connection: NonNullable<ReturnType<typeof useConnectionStore.getState>['connection']>
 }): React.JSX.Element {
+  const styles = useThemedStyles(makeStyles)
   const client = new MobileApi(connection)
   const settings = useQuery({
     queryKey: ['mobile-settings', connection.gatewayUrl, connection.deviceId],
@@ -347,6 +356,8 @@ function PresetSettings({
   connection: NonNullable<ReturnType<typeof useConnectionStore.getState>['connection']>
   selectedPreset?: string
 }): React.JSX.Element {
+  const theme = useAppTheme()
+  const styles = useThemedStyles(makeStyles)
   const client = new MobileApi(connection)
   const presets = useQuery({
     queryKey: ['mobile-agent-presets', connection.gatewayUrl, connection.deviceId],
@@ -405,7 +416,7 @@ function PresetSettings({
         >
           <NativeIcon
             name={item.trust === 'system' ? 'check' : 'description'}
-            color={mobileTheme.colors.accentText}
+            color={theme.colors.accentText}
             size={20}
           />
           <View style={styles.rowText}>
@@ -417,7 +428,7 @@ function PresetSettings({
               {item.broken ?? item.description ?? (item.trust === 'system' ? '内置模式' : '自定义模式')}
             </Text>
           </View>
-          <NativeIcon name="chevron-right" color={mobileTheme.colors.inkMuted} size={20} />
+          <NativeIcon name="chevron-right" color={theme.colors.inkMuted} size={20} />
         </Pressable>
       ))}
       {presets.data?.presets.length === 0 ? <Text style={styles.muted}>桌面端没有可用的智能体预设。</Text> : null}
@@ -431,6 +442,7 @@ function ConnectionCard({
 }: {
   connection: ReturnType<typeof useConnectionStore.getState>['connection']
 }): React.JSX.Element {
+  const styles = useThemedStyles(makeStyles)
   const forgetConnection = useConnectionStore(state => state.forgetConnection)
   const [forgetting, setForgetting] = useState(false)
   const disconnect = (): void => {
@@ -510,6 +522,7 @@ function OptionSection({
   description: string
   children: React.ReactNode
 }): React.JSX.Element {
+  const styles = useThemedStyles(makeStyles)
   return (
     <NativeSection title={title}>
       <Text style={styles.sectionDescription}>{description}</Text>
@@ -551,6 +564,7 @@ function ReadOnlySetting({
   value: string
   detail: string
 }): React.JSX.Element {
+  const styles = useThemedStyles(makeStyles)
   return (
     <NativeListRow
       accessibilityLabel={`${title}：${value}。${detail}`}
@@ -561,9 +575,11 @@ function ReadOnlySetting({
   )
 }
 function CenteredState({ text }: { text: string }): React.JSX.Element {
+  const theme = useAppTheme()
+  const styles = useThemedStyles(makeStyles)
   return (
     <View style={styles.center}>
-      <ActivityIndicator color={mobileTheme.colors.accent} />
+      <ActivityIndicator color={theme.colors.accent} />
       <Text style={styles.muted}>{text}</Text>
     </View>
   )
@@ -578,6 +594,7 @@ function ErrorState({
   fallback: string
   onRetry?: () => void
 }): React.JSX.Element {
+  const styles = useThemedStyles(makeStyles)
   return (
     <View style={styles.center}>
       <Text style={styles.error}>{mobileErrorMessage(error, fallback)}</Text>
@@ -587,9 +604,11 @@ function ErrorState({
 }
 
 function QueryErrorNotice({ text, onRetry }: { text: string; onRetry: () => void }): React.JSX.Element {
+  const theme = useAppTheme()
+  const styles = useThemedStyles(makeStyles)
   return (
     <View accessibilityRole="alert" style={styles.queryError}>
-      <NativeIcon name="error-outline" color={mobileTheme.colors.danger} size={17} />
+      <NativeIcon name="error-outline" color={theme.colors.danger} size={17} />
       <View style={styles.queryErrorBody}>
         <Text style={styles.error}>{text}</Text>
         <NativeActionButton label="重新加载" icon="refresh" variant="secondary" onPress={onRetry} />
@@ -657,36 +676,37 @@ function firstParam(value: string | string[] | undefined): string | undefined {
   return candidate?.trim() || undefined
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (theme: AppTheme) =>
+  StyleSheet.create({
   back: { alignItems: 'center', height: 36, justifyContent: 'center', width: 36 },
-  list: { gap: mobileTheme.spacing.sm, padding: mobileTheme.spacing.lg, paddingBottom: mobileTheme.spacing.xl },
-  header: { gap: 4, marginBottom: mobileTheme.spacing.xs },
-  subtitle: { color: mobileTheme.colors.inkMuted, fontSize: 14, lineHeight: 20 },
+  list: { gap: theme.spacing.sm, padding: theme.spacing.lg, paddingBottom: theme.spacing.xl },
+  header: { gap: 4, marginBottom: theme.spacing.xs },
+  subtitle: { color: theme.colors.inkMuted, fontSize: 14, lineHeight: 20 },
   settingRow: {
     alignItems: 'center',
-    borderBottomColor: mobileTheme.colors.border,
+    borderBottomColor: theme.colors.border,
     borderBottomWidth: StyleSheet.hairlineWidth,
     flexDirection: 'row',
-    gap: mobileTheme.spacing.md,
-    minHeight: mobileTheme.touch.minTarget,
-    paddingVertical: mobileTheme.spacing.sm,
+    gap: theme.spacing.md,
+    minHeight: theme.touch.minTarget,
+    paddingVertical: theme.spacing.sm,
   },
   rowText: { flex: 1, gap: 3 },
-  rowTitle: { color: mobileTheme.colors.ink, fontSize: 15, fontWeight: '700' },
-  rowDescription: { color: mobileTheme.colors.inkMuted, fontSize: 13, lineHeight: 18 },
+  rowTitle: { color: theme.colors.ink, fontSize: 15, fontWeight: '700' },
+  rowDescription: { color: theme.colors.inkMuted, fontSize: 13, lineHeight: 18 },
   section: {
-    backgroundColor: mobileTheme.colors.surface,
-    borderColor: mobileTheme.colors.border,
+    backgroundColor: theme.colors.surface,
+    borderColor: theme.colors.border,
     borderRadius: 12,
     borderWidth: 1,
     gap: 8,
     padding: 14,
   },
-  sectionTitle: { color: mobileTheme.colors.ink, fontSize: 16, fontWeight: '500', lineHeight: 24 },
-  sectionDescription: { color: mobileTheme.colors.inkMuted, fontSize: 13, lineHeight: 18, marginBottom: 2 },
+  sectionTitle: { color: theme.colors.ink, fontSize: 16, fontWeight: '500', lineHeight: 24 },
+  sectionDescription: { color: theme.colors.inkMuted, fontSize: 13, lineHeight: 18, marginBottom: 2 },
   optionRow: {
     alignItems: 'center',
-    borderColor: mobileTheme.colors.border,
+    borderColor: theme.colors.border,
     borderRadius: 9,
     borderWidth: 1,
     flexDirection: 'row',
@@ -694,12 +714,12 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     padding: 11,
   },
-  optionSelected: { backgroundColor: mobileTheme.colors.surfaceActive, borderColor: '#b9d1ff' },
+  optionSelected: { backgroundColor: theme.colors.surfaceActive, borderColor: '#b9d1ff' },
   optionDisabled: { opacity: 0.5 },
   readOnly: {
     alignItems: 'center',
-    backgroundColor: mobileTheme.colors.surfaceMuted,
-    borderColor: mobileTheme.colors.border,
+    backgroundColor: theme.colors.surfaceMuted,
+    borderColor: theme.colors.border,
     borderRadius: 10,
     borderWidth: 1,
     flexDirection: 'row',
@@ -708,57 +728,57 @@ const styles = StyleSheet.create({
     padding: 12,
   },
   selectionHint: {
-    color: mobileTheme.colors.inkMuted,
-    fontSize: mobileTheme.typography.caption,
+    color: theme.colors.inkMuted,
+    fontSize: theme.typography.caption,
     fontWeight: '600',
-    marginHorizontal: mobileTheme.spacing.sm,
-    marginBottom: -mobileTheme.spacing.xs,
+    marginHorizontal: theme.spacing.sm,
+    marginBottom: -theme.spacing.xs,
   },
   cardHeader: { alignItems: 'center', flexDirection: 'row', justifyContent: 'space-between', marginBottom: 6 },
   connectionCard: {
-    backgroundColor: mobileTheme.colors.surfaceMuted,
-    borderColor: mobileTheme.colors.border,
-    borderRadius: mobileTheme.radius.control,
+    backgroundColor: theme.colors.surfaceMuted,
+    borderColor: theme.colors.border,
+    borderRadius: theme.radius.control,
     borderWidth: StyleSheet.hairlineWidth,
-    gap: mobileTheme.spacing.sm,
-    padding: mobileTheme.spacing.md,
+    gap: theme.spacing.sm,
+    padding: theme.spacing.md,
   },
-  cardTitle: { color: mobileTheme.colors.ink, fontSize: 16, fontWeight: '800' },
+  cardTitle: { color: theme.colors.ink, fontSize: 16, fontWeight: '800' },
   connected: { alignItems: 'center', flexDirection: 'row', gap: 5 },
   dot: { borderRadius: 4, height: 7, width: 7 },
-  dotConnected: { backgroundColor: mobileTheme.colors.success },
-  dotDisconnected: { backgroundColor: mobileTheme.colors.inkFaint },
-  connectedText: { color: mobileTheme.colors.successText, fontSize: 11, fontWeight: '800' },
-  disconnectedText: { color: mobileTheme.colors.inkMuted },
-  label: { color: mobileTheme.colors.inkMuted, fontSize: 12, fontWeight: '700', marginTop: 7 },
-  value: { color: mobileTheme.colors.ink, fontSize: 14, lineHeight: 20 },
+  dotConnected: { backgroundColor: theme.colors.success },
+  dotDisconnected: { backgroundColor: theme.colors.inkFaint },
+  connectedText: { color: theme.colors.successText, fontSize: 11, fontWeight: '800' },
+  disconnectedText: { color: theme.colors.inkMuted },
+  label: { color: theme.colors.inkMuted, fontSize: 12, fontWeight: '700', marginTop: 7 },
+  value: { color: theme.colors.ink, fontSize: 14, lineHeight: 20 },
   actionButton: { marginTop: 10, width: '100%' },
-  muted: { color: mobileTheme.colors.inkMuted, fontSize: 13 },
-  active: { color: mobileTheme.colors.successText, fontSize: 12, fontWeight: '700' },
-  warning: { color: mobileTheme.colors.warningText, fontSize: 12 },
+  muted: { color: theme.colors.inkMuted, fontSize: 13 },
+  active: { color: theme.colors.successText, fontSize: 12, fontWeight: '700' },
+  warning: { color: theme.colors.warningText, fontSize: 12 },
   notice: {
-    backgroundColor: mobileTheme.colors.warningSoft,
+    backgroundColor: theme.colors.warningSoft,
     borderColor: '#efd9a5',
     borderRadius: 9,
     borderWidth: StyleSheet.hairlineWidth,
-    color: mobileTheme.colors.warningText,
+    color: theme.colors.warningText,
     lineHeight: 19,
     padding: 11,
   },
   code: {
-    backgroundColor: mobileTheme.colors.codeBackground,
+    backgroundColor: theme.colors.codeBackground,
     borderRadius: 10,
-    color: mobileTheme.colors.codeForeground,
+    color: theme.colors.codeForeground,
     fontFamily: 'Menlo',
     fontSize: 12,
     lineHeight: 18,
     padding: 12,
   },
   center: { alignItems: 'center', flex: 1, gap: 10, justifyContent: 'center', padding: 24 },
-  error: { color: mobileTheme.colors.danger, lineHeight: 20 },
+  error: { color: theme.colors.danger, lineHeight: 20 },
   queryError: {
     alignItems: 'flex-start',
-    backgroundColor: mobileTheme.colors.dangerSoft,
+    backgroundColor: theme.colors.dangerSoft,
     borderColor: '#efb5b0',
     borderRadius: 9,
     borderWidth: 1,

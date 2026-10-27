@@ -17,6 +17,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import * as Clipboard from 'expo-clipboard'
 import { NativeActionButton } from '@/components/native-action-button'
+import { SkeletonConversation } from '@/components/skeleton'
 import { MobileApi, mobileErrorMessage } from '@/api/mobile-api'
 import { NativeMarkdown } from '@/components/native-markdown'
 import { NativeMessageAttachments } from '@/components/native-message-attachments'
@@ -47,11 +48,14 @@ import {
 } from '@/components/session-scroll-logic'
 import { useConnectionStore } from '@/state/connection'
 import { useRouteSessionSelection } from '@/state/session-selection'
-import { mobileTheme } from '@/theme'
+import type { AppTheme } from '@/theme'
+import { useAppTheme, useThemedStyles } from '@/theme/hooks'
 import type { MobilePromptContent, SessionEventsPayload } from '@/types/mobile'
 import { type SharedEventItem } from '@/shared/dsh-presentation'
 
 export default function SessionScreen(): React.JSX.Element {
+  const theme = useAppTheme()
+  const s = useThemedStyles(makeStyles)
   const { sessionId: rawSessionId, draft } = useLocalSearchParams<{
     sessionId?: string | string[]
     draft?: string | string[]
@@ -315,9 +319,9 @@ export default function SessionScreen(): React.JSX.Element {
                 onPress={() => router.push({ pathname: '/session/[sessionId]/interactions', params: { sessionId } })}
                 style={({ pressed }) => [s.action, pressed && s.pressed]}
               >
-                <NativeIcon name="warning-amber" size={18} color={mobileTheme.colors.warning} />
+                <NativeIcon name="warning-amber" size={18} color={theme.colors.warning} />
                 <Text style={s.actionText}>{actions} 项操作需要处理</Text>
-                <NativeIcon name="chevron-right" size={18} color={mobileTheme.colors.inkMuted} />
+                <NativeIcon name="chevron-right" size={18} color={theme.colors.inkMuted} />
               </Pressable>
             ) : null}
             {history.isError ? (
@@ -368,17 +372,13 @@ export default function SessionScreen(): React.JSX.Element {
                       onPress={() => void loadOlder.mutateAsync()}
                       style={({ pressed }) => [s.loadOlder, pressed && s.pressed]}
                     >
-                      <NativeIcon name="expand-less" size={16} color={mobileTheme.colors.accentText} />
+                      <NativeIcon name="expand-less" size={16} color={theme.colors.accentText} />
                       <Text style={s.loadOlderText}>{loadOlder.isPending ? '正在加载…' : '加载更早消息'}</Text>
                     </Pressable>
                   ) : null
                 }
                 ListEmptyComponent={
-                  history.isPending ? (
-                    <Text style={s.empty}>正在加载会话消息…</Text>
-                  ) : (
-                    <Text style={s.empty}>此会话暂无可见消息。</Text>
-                  )
+                  history.isPending ? <SkeletonConversation /> : <Text style={s.empty}>此会话暂无可见消息。</Text>
                 }
                 onContentSizeChange={() => {
                   const initialPositionPending = initialLatestPositionPending.current
@@ -413,7 +413,7 @@ export default function SessionScreen(): React.JSX.Element {
                   }}
                   style={({ pressed }) => [s.returnToLatest, pressed && s.pressed]}
                 >
-                  <NativeIcon name="chevron-down" size={20} color={mobileTheme.colors.ink} />
+                  <NativeIcon name="chevron-down" size={20} color={theme.colors.ink} />
                 </Pressable>
               ) : null}
             </View>
@@ -461,6 +461,7 @@ function MessageRow({
   api: MobileApi | undefined
   sessionId: string | undefined
 }): React.JSX.Element {
+  const s = useThemedStyles(makeStyles)
   const attachments = api !== undefined && sessionId !== undefined ? (
     <NativeMessageAttachments api={api} sessionId={sessionId} event={event} />
   ) : null
@@ -507,6 +508,8 @@ function MessageRow({
 }
 
 function MessageActions({ alignment, text }: { alignment: MessageActionAlignment; text: string }): React.JSX.Element {
+  const theme = useAppTheme()
+  const s = useThemedStyles(makeStyles)
   const [copied, setCopied] = useState(false)
   const [copyFailed, setCopyFailed] = useState(false)
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -548,7 +551,7 @@ function MessageActions({ alignment, text }: { alignment: MessageActionAlignment
         name={copied ? 'check' : 'content-copy'}
         size={16}
         color={
-          copied ? mobileTheme.colors.success : copyFailed ? mobileTheme.colors.danger : mobileTheme.colors.inkMuted
+          copied ? theme.colors.success : copyFailed ? theme.colors.danger : theme.colors.inkMuted
         }
       />
     </Pressable>
@@ -556,6 +559,7 @@ function MessageActions({ alignment, text }: { alignment: MessageActionAlignment
 }
 
 function ErrorNotice({ text, onRetry }: { text: string; onRetry: () => void }): React.JSX.Element {
+  const s = useThemedStyles(makeStyles)
   return (
     <View style={s.errorNotice}>
       <Text style={s.error}>{text}</Text>
@@ -573,9 +577,11 @@ function UnavailableState({
   action: string
   onPress: () => void
 }): React.JSX.Element {
+  const theme = useAppTheme()
+  const s = useThemedStyles(makeStyles)
   return (
     <View style={s.unavailable}>
-      <NativeIcon name="link-off" size={28} color={mobileTheme.colors.inkFaint} />
+      <NativeIcon name="link-off" size={28} color={theme.colors.inkFaint} />
       <Text style={s.unavailableText}>{message}</Text>
       <NativeActionButton label={action} icon="arrow-forward" onPress={onPress} style={s.unavailableAction} />
     </View>
@@ -583,6 +589,7 @@ function UnavailableState({
 }
 
 function ConnectionStatus({ status }: { status: string }): React.JSX.Element {
+  const s = useThemedStyles(makeStyles)
   const disconnected = status === 'disconnected'
   const label = disconnected
     ? '未连接'
@@ -608,6 +615,7 @@ function LocalizedSessionStats({
   items: SharedEventItem[]
   projectionValues: Record<string, unknown> | undefined
 }): React.JSX.Element | null {
+  const s = useThemedStyles(makeStyles)
   const line = sessionStatisticsLine(projectionValues, items)
   return line === undefined ? null : (
     <View style={s.stats}>
@@ -640,12 +648,13 @@ function firstParam(value: string | string[] | undefined): string | undefined {
   return normalized || undefined
 }
 
-const s = StyleSheet.create({
+const makeStyles = (theme: AppTheme) =>
+  StyleSheet.create({
   canvas: { flex: 1 },
   hidden: { display: 'none' },
   action: {
     alignItems: 'center',
-    backgroundColor: mobileTheme.colors.warningSoft,
+    backgroundColor: theme.colors.warningSoft,
     borderBottomColor: '#efd9a5',
     borderBottomWidth: StyleSheet.hairlineWidth,
     flexDirection: 'row',
@@ -653,69 +662,69 @@ const s = StyleSheet.create({
     paddingHorizontal: 14,
     paddingVertical: 9,
   },
-  actionText: { color: mobileTheme.colors.warning, flex: 1, fontSize: 13, fontWeight: '600' },
-  error: { color: mobileTheme.colors.danger, padding: 12 },
+  actionText: { color: theme.colors.warning, flex: 1, fontSize: 13, fontWeight: '600' },
+  error: { color: theme.colors.danger, padding: 12 },
   errorNotice: { gap: 6, paddingHorizontal: 12 },
   unavailable: { alignItems: 'center', flex: 1, gap: 12, justifyContent: 'center', padding: 28 },
-  unavailableText: { color: mobileTheme.colors.inkMuted, fontSize: 14, textAlign: 'center' },
+  unavailableText: { color: theme.colors.inkMuted, fontSize: 14, textAlign: 'center' },
   unavailableAction: { minWidth: 132 },
   listStage: { flex: 1, position: 'relative' },
   listView: { flex: 1 },
   returnToLatest: {
     alignItems: 'center',
-    backgroundColor: mobileTheme.colors.surface,
-    borderColor: mobileTheme.colors.border,
-    borderRadius: mobileTheme.radius.pill,
+    backgroundColor: theme.colors.surface,
+    borderColor: theme.colors.border,
+    borderRadius: theme.radius.pill,
     borderWidth: StyleSheet.hairlineWidth,
-    bottom: mobileTheme.spacing.md,
+    bottom: theme.spacing.md,
     height: 40,
     justifyContent: 'center',
     position: 'absolute',
-    right: mobileTheme.spacing.lg,
+    right: theme.spacing.lg,
     width: 40,
-    ...mobileTheme.elevation.card,
+    ...theme.elevation.card,
   },
   loadOlder: {
     alignItems: 'center',
     alignSelf: 'center',
-    backgroundColor: mobileTheme.colors.accentSoft,
-    borderRadius: mobileTheme.radius.control,
+    backgroundColor: theme.colors.accentSoft,
+    borderRadius: theme.radius.control,
     flexDirection: 'row',
-    gap: mobileTheme.spacing.xs,
-    marginBottom: mobileTheme.spacing.sm,
-    minHeight: mobileTheme.touch.minTarget,
-    paddingHorizontal: mobileTheme.spacing.md,
+    gap: theme.spacing.xs,
+    marginBottom: theme.spacing.sm,
+    minHeight: theme.touch.minTarget,
+    paddingHorizontal: theme.spacing.md,
   },
-  loadOlderText: { color: mobileTheme.colors.accentText, fontSize: 13, fontWeight: '700' },
+  loadOlderText: { color: theme.colors.accentText, fontSize: 13, fontWeight: '700' },
   list: {
-    gap: mobileTheme.spacing.lg,
-    paddingHorizontal: mobileTheme.spacing.lg,
-    paddingVertical: mobileTheme.spacing.lg,
+    gap: theme.spacing.lg,
+    paddingHorizontal: theme.spacing.lg,
+    paddingVertical: theme.spacing.lg,
   },
-  empty: { color: mobileTheme.colors.inkMuted, paddingVertical: 24, textAlign: 'center' },
-  assistantRow: { gap: mobileTheme.spacing.lg, maxWidth: '100%', minWidth: 0, width: '100%' },
-  userRow: { alignItems: 'flex-end', gap: mobileTheme.spacing.xs, maxWidth: '100%' },
+  empty: { color: theme.colors.inkMuted, paddingVertical: 24, textAlign: 'center' },
+  assistantRow: { gap: theme.spacing.lg, maxWidth: '100%', minWidth: 0, width: '100%' },
+  userRow: { alignItems: 'flex-end', gap: theme.spacing.xs, maxWidth: '100%' },
   userBubble: {
     alignSelf: 'flex-end',
-    backgroundColor: mobileTheme.colors.userBubble,
-    borderRadius: mobileTheme.radius.bubble,
+    backgroundColor: theme.colors.userBubble,
+    borderRadius: theme.radius.bubble,
     maxWidth: '82%',
     paddingHorizontal: 16,
     paddingVertical: 10,
   },
-  userText: { color: mobileTheme.colors.ink, fontSize: 16, lineHeight: 24 },
+  userText: { color: theme.colors.ink, fontSize: 16, lineHeight: 24 },
   toolRow: { maxWidth: '100%' },
-  turnStatusSlot: { paddingHorizontal: mobileTheme.spacing.lg, paddingVertical: mobileTheme.spacing.xs },
-  stats: { paddingHorizontal: mobileTheme.spacing.lg, paddingVertical: mobileTheme.spacing.xs },
-  statsText: { color: mobileTheme.colors.inkMuted, fontSize: 12, lineHeight: 20, textAlign: 'center' },
+  turnStatusSlot: { paddingHorizontal: theme.spacing.lg, paddingVertical: theme.spacing.xs },
+  stats: { paddingHorizontal: theme.spacing.lg, paddingVertical: theme.spacing.xs },
+  statsText: { color: theme.colors.inkMuted, fontSize: 12, lineHeight: 20, textAlign: 'center' },
   status: { alignItems: 'center', flexDirection: 'row', gap: 5 },
-  statusDot: { backgroundColor: mobileTheme.colors.success, borderRadius: 4, height: 7, width: 7 },
-  statusOffline: { backgroundColor: mobileTheme.colors.inkFaint },
-  statusText: { color: mobileTheme.colors.inkMuted, fontSize: 11 },
+  statusDot: { backgroundColor: theme.colors.success, borderRadius: 4, height: 7, width: 7 },
+  statusOffline: { backgroundColor: theme.colors.inkFaint },
+  statusText: { color: theme.colors.inkMuted, fontSize: 11 },
   headerMeta: { alignItems: 'center', flex: 1, flexDirection: 'row', justifyContent: 'space-between' },
-  headerMetaLabel: { color: mobileTheme.colors.ink, fontSize: 12, fontWeight: '600' },
+  headerMetaLabel: { color: theme.colors.ink, fontSize: 12, fontWeight: '600' },
   headerMetaHint: {
-    color: mobileTheme.colors.inkMuted,
+    color: theme.colors.inkMuted,
     flexShrink: 1,
     fontSize: 11,
     marginLeft: 12,
