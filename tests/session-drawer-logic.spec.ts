@@ -26,9 +26,11 @@ const rowLabel = (row: ReturnType<typeof visibleWorkspaceRows>[number]): string 
 
 describe('session drawer logic', () => {
   it('keeps the mobile drawer at the visual parity width without exceeding its cap', () => {
-    expect(drawerWidthForViewport(390)).toBe(328)
-    expect(drawerWidthForViewport(480)).toBe(360)
+    expect(drawerWidthForViewport(390)).toBe(280)
+    expect(drawerWidthForViewport(480)).toBe(280)
     expect(drawerWidthForViewport(0)).toBe(0)
+    // 92vw still caps a phone too narrow for the 280pt content width.
+    expect(drawerWidthForViewport(300)).toBe(276)
   })
 
   it('sorts recent sessions by numeric gateway timestamps without mutating input', () => {

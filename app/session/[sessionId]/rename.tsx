@@ -103,19 +103,19 @@ export default function RenameSessionScreen(): React.JSX.Element {
 
 const makeStyles = (theme: AppTheme) =>
   StyleSheet.create({
-  back: { alignItems: 'center', height: 36, justifyContent: 'center', width: 36 },
-  canvas: { flex: 1, gap: theme.spacing.sm, padding: theme.spacing.lg },
-  hint: { color: theme.colors.inkMuted, fontSize: 13, lineHeight: 19 },
-  input: {
-    backgroundColor: theme.colors.surface,
-    borderColor: theme.colors.border,
-    borderRadius: theme.radius.control,
-    borderWidth: StyleSheet.hairlineWidth,
-    color: theme.colors.ink,
-    fontSize: 16,
-    minHeight: theme.touch.minTarget,
-    paddingHorizontal: theme.spacing.md,
-  },
-  label: { color: theme.colors.ink, fontSize: 14, fontWeight: '700' },
-  submit: { marginTop: theme.spacing.md },
-})
+    back: { alignItems: 'center', height: 36, justifyContent: 'center', width: 36 },
+    canvas: { flex: 1, gap: theme.spacing.sm, padding: theme.spacing.lg },
+    hint: { color: theme.colors.inkMuted, fontSize: 13, lineHeight: 19 },
+    input: {
+      backgroundColor: theme.colors.surface,
+      borderColor: theme.colors.border,
+      borderRadius: theme.radius.control,
+      borderWidth: StyleSheet.hairlineWidth,
+      color: theme.colors.ink,
+      fontSize: 16,
+      minHeight: theme.touch.minTarget,
+      paddingHorizontal: theme.spacing.md,
+    },
+    label: { color: theme.colors.ink, fontSize: 14, fontWeight: '700' },
+    submit: { marginTop: theme.spacing.md },
+  })

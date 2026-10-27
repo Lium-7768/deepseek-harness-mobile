@@ -21,10 +21,30 @@ export function sessionIdFromRoute(route: { name: string; params?: unknown } | u
   return typeof sessionId === 'string' && sessionId.trim() !== '' ? sessionId : undefined
 }
 
-/** Resolves the mobile drawer width while preserving a usable content column. */
+/**
+ * Logical width the drawer should not exceed: the DSH sidebar's own content
+ * width, which the Pocket adaptation reproduces with `width: max-content`.
+ */
+const DRAWER_CONTENT_WIDTH = 280
+
+/** Fraction of the viewport the drawer may cover at most, matching Pocket's `92vw`. */
+const DRAWER_MAX_VIEWPORT_FRACTION = 0.92
+
+/**
+ * Resolves the mobile drawer width.
+ *
+ * Reproduces DSH Pocket's drawer geometry: the drawer hugs the sidebar's
+ * content width, and `92vw` is only a ceiling for very narrow phones. A
+ * viewport too narrow for the content width therefore narrows the drawer
+ * instead of letting it cover the whole screen.
+ *
+ * @param viewportWidth - Viewport width in logical pixels.
+ * @returns The drawer width, or `0` when the viewport is unusable.
+ */
 export function drawerWidthForViewport(viewportWidth: number): number {
   if (!Number.isFinite(viewportWidth) || viewportWidth <= 0) return 0
-  return Math.min(360, Math.round(viewportWidth * 0.84))
+  const ceiling = Math.floor(viewportWidth * DRAWER_MAX_VIEWPORT_FRACTION)
+  return Math.min(DRAWER_CONTENT_WIDTH, ceiling)
 }
 
 /** Sorts session summaries without mutating the gateway response. */

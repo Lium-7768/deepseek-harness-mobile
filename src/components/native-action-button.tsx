@@ -86,19 +86,19 @@ function labelTintFor(variant: NativeActionButtonProps['variant'], theme: AppThe
 
 const makeStyles = (theme: AppTheme) =>
   StyleSheet.create({
-    button: {
-      alignItems: 'center',
-      borderRadius: theme.radius.control,
-      borderWidth: 1,
-      flexDirection: 'row',
-      gap: 7,
-      justifyContent: 'center',
-      minHeight: 44,
-      paddingHorizontal: 16,
-    },
-    primary: { backgroundColor: theme.colors.brand, borderColor: theme.colors.brand },
-    secondary: { backgroundColor: theme.colors.surface, borderColor: theme.colors.borderStrong },
-    danger: { backgroundColor: theme.colors.dangerSoft, borderColor: theme.colors.dangerBorder },
-    label: { fontSize: 14, fontWeight: '700' },
-    pressed: { opacity: 0.68 },
+      button: {
+        alignItems: 'center',
+        borderRadius: theme.radius.control,
+        borderWidth: 1,
+        flexDirection: 'row',
+        gap: 7,
+        justifyContent: 'center',
+        minHeight: 44,
+        paddingHorizontal: 16,
+      },
+      primary: { backgroundColor: theme.colors.brand, borderColor: theme.colors.brand },
+      secondary: { backgroundColor: theme.colors.surface, borderColor: theme.colors.borderStrong },
+      danger: { backgroundColor: theme.colors.dangerSoft, borderColor: theme.colors.dangerBorder },
+      label: { fontSize: 14, fontWeight: '700' },
+      pressed: { opacity: 0.68 },
   })

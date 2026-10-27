@@ -186,11 +186,11 @@ function firstParam(value: string | string[] | undefined): string | undefined {
 
 const makeStyles = (theme: AppTheme) =>
   StyleSheet.create({
-  back: { alignItems: 'center', height: 36, justifyContent: 'center', width: 36 },
-  list: { padding: 16, paddingBottom: 28 },
-  header: { gap: 6, marginBottom: 4 },
-  title: { color: theme.colors.ink, fontSize: 22, fontWeight: '700' },
-  description: { color: theme.colors.inkMuted, lineHeight: 20 },
-  state: { color: theme.colors.inkMuted, padding: 18, textAlign: 'center' },
-  error: { color: theme.colors.danger, padding: 18 },
-})
+    back: { alignItems: 'center', height: 36, justifyContent: 'center', width: 36 },
+    list: { padding: 16, paddingBottom: 28 },
+    header: { gap: 6, marginBottom: 4 },
+    title: { color: theme.colors.ink, fontSize: 22, fontWeight: '700' },
+    description: { color: theme.colors.inkMuted, lineHeight: 20 },
+    state: { color: theme.colors.inkMuted, padding: 18, textAlign: 'center' },
+    error: { color: theme.colors.danger, padding: 18 },
+  })

@@ -208,7 +208,7 @@ function recordOf(value: unknown): Record<string, unknown> | undefined {
 
 const makeStyles = (theme: AppTheme) =>
   StyleSheet.create({
-  row: { alignItems: 'center', flexDirection: 'row', flexWrap: 'wrap', gap: theme.spacing.xs, minHeight: 44 },
-  failure: { color: theme.colors.danger, flexShrink: 1, fontSize: 11 },
-  pressed: { opacity: 0.62 },
-})
+    row: { alignItems: 'center', flexDirection: 'row', flexWrap: 'wrap', gap: theme.spacing.xs, minHeight: 44 },
+    failure: { color: theme.colors.danger, flexShrink: 1, fontSize: 11 },
+    pressed: { opacity: 0.62 },
+  })

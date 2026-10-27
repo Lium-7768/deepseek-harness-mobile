@@ -1,0 +1,107 @@
+# Mobile parity with DSH Pocket
+
+The native client reproduces the layout and interaction decisions of
+[`dsh-pocket`](https://github.com/shaobeichen/dsh-pocket)'s mobile adaptation.
+That adaptation is a stylesheet over the desktop DOM, so it states the intent
+for a phone explicitly; this document records the extracted values and where
+each one lives in the native client.
+
+Source: `client/mobile/mobile.css.ts` (1031 lines) and the four mobile
+components in the installed `dsh-pocket` package. Line references below point
+at that file.
+
+## Scope
+
+Only the phone-chrome rules apply to a native client. Three groups of rules in
+the source have no counterpart here and are deliberately not ported:
+
+- **Third-party web polish** (lines ~700-1000): `dsh-usage-stats`,
+  `dsh-web-ui` explorer sheet, floating pet, conversation stats line. Those
+  style plugins that have no native presence.
+- **Desktop-DOM workarounds**: grid track repair, `scrollbar-gutter`, the
+  competitor `::after` mask, drag handles, Safari input-zoom guard. React
+  Native has no grid, no scrollbar gutter, and no double-tap zoom.
+- **DOM selector targeting** (`:has()`, `[class$="_scroll"]`). The native
+  client owns its own components, so a rule becomes a style value.
+
+## Phone chrome
+
+| Concern | DSH Pocket | Native |
+| --- | --- | --- |
+| Status-bar clearance | frame `padding-top: env(safe-area-inset-top)` (line ~190) | `useSafeAreaInsets().top` on the shell |
+| Drawer geometry | `position: absolute; inset: 0 auto 0 0; width: max-content; max-width: 92vw` (line ~230) | `drawerWidthForViewport()` — `min(360, 92% of viewport)` |
+| Drawer motion | `transform: translateX(-110%)` → `none`, `transition: transform .28s ease-in-out` (line ~230) | `react-native-drawer-layout` slide, default duration |
+| Drawer elevation | none — "the dimmed backdrop already separates drawer from content" | no shadow |
+| Drawer top inset | `padding-top: env(safe-area-inset-top)` (line ~240) | `paddingTop: insets.top` on drawer content |
+| Drawer edge | `border-right: none` (line ~250) | no right border |
+| Backdrop | `rgba(0, 0, 0, .45)`, `fade .2s` (line ~120) | `theme.colors.scrim` = `rgba(0,0,0,0.45)` |
+| Backdrop input | `pointer-events: none`; outside-tap closes in JS | drawer overlay press closes |
+
+## Header
+
+| Concern | DSH Pocket | Native |
+| --- | --- | --- |
+| Header padding | `padding: 8px 12px 0` (line ~410) | `paddingTop 8`, `paddingHorizontal 12` |
+| Header row height | `min-height: 36px` (line ~415) | `minHeight: 36` |
+| Header row insets | `padding: 0 32px` (line ~415) | `paddingHorizontal: 32` |
+| Title max width | `max-width: calc(100vw - 104px)` (line ~425) | `maxWidth: viewport - 104` |
+| Drawer toggle | `28×28`, absolute `left: 8; top: 12`, radius 50% (lines 17-40, 430) | `IconButton size 28`, absolute `left 8 / top 12` |
+| Files toggle | `28×28`, absolute `right: 8; top: 12` (or `right: 44` with the right bar) (line ~440) | `IconButton size 28`, absolute `right 8` |
+| Control glyph | 16px | `NativeIcon size 16` |
+
+## Headerless screens — not ported
+
+Pocket adds a floating fallback control (`fab`, line 88) because the Web hero
+and blank phases render no session header, so the drawer would be unreachable.
+
+Every native screen wraps `WorkspaceShell` with a title and a menu action, so
+the drawer is always reachable and there is no state that needs a fallback
+control. Adding one would create a second way to open the same drawer. The
+`fab` rule is therefore intentionally absent rather than unfinished.
+
+## Conversation
+
+| Concern | DSH Pocket | Native |
+| --- | --- | --- |
+| Column gutters | `padding-left/right: 20px` (line ~370) | `paddingHorizontal: 20` |
+| Body type | `font-size: 15px` for paragraphs, list items, and user text (line ~380) | `fontSize: 15`, `lineHeight: 22` |
+| User bubble type | covered by the same 15px rule | `fontSize: 15`, `lineHeight: 22` |
+| Consecutive process rows | `[data-turn-process] height 28px`, `margin-bottom 4px` (line ~395) | `minHeight 28`, `marginBottom 4` |
+| Disclosure rows | `min-height: 24px` (line ~400) | `minHeight: 24` |
+
+## Composer
+
+| Concern | DSH Pocket | Native |
+| --- | --- | --- |
+| Bottom row wrap | `flex-wrap: wrap; gap: 6px` (line ~430) | `flexWrap: 'wrap'`, `gap: 6` |
+| Leading control group | `gap: 8px; min-width: 0` | `gap: 8`, `minWidth: 0` |
+
+## Transient surfaces
+
+| Concern | DSH Pocket | Native |
+| --- | --- | --- |
+| Popup placement | snap to a viewport-anchored bottom sheet: `left/right 12px; bottom: calc(env(safe-area-inset-bottom) + 12px); max-height: min(65vh, 480px)` (line ~395) | modal route, bottom presentation |
+| Sheet radius | `14px` (line ~400) | `theme.radius.sheet` = `14` |
+| Sheet shadow | `0 -4px 28px rgba(0, 0, 0, .18)` | same |
+| Sheet entrance | `sheet-in .22s`: `translateY(14px) scale(.98)` → none (line ~140) | the shell's 180ms opacity entrance |
+| Backdrop fade | `fade .2s` | same duration |
+| Reduced motion | animations disabled under `prefers-reduced-motion` (line ~500) | `useReducedMotion()` skips every entrance |
+
+### Where the native client keeps the Web client's desktop layout
+
+Two Pocket rules depend on the Web client's DOM structure and have no native
+counterpart, so the native client keeps its own arrangement:
+
+- **Composer popups as sheets.** Pocket re-anchors the model menu and the `/`
+  palette to the viewport because they are absolutely positioned inside
+  `overflow: hidden` scroll containers. Native routes already render as their
+  own screen, so nothing clips them.
+- **Absolute header controls.** Pocket positions the toggle and files buttons
+  absolutely to escape the header's flex lanes. The native header lays them out
+  in the row itself, which cannot overflow.
+
+## Verification
+
+- `pnpm typecheck` — the whole client compiles.
+- `pnpm test` — the logic and theme contracts, including the appearance tests.
+- `npx expo export --platform ios` — the app bundles for a device.

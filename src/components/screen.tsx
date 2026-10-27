@@ -27,6 +27,6 @@ export function Screen({ children, scroll = true }: ScreenProps): React.JSX.Elem
 }
 const makeStyles = (theme: AppTheme) =>
   StyleSheet.create({
-  safe: { flex: 1, backgroundColor: theme.colors.background },
-  content: { flex: 1, gap: theme.spacing.md, padding: theme.spacing.lg },
-})
+    safe: { flex: 1, backgroundColor: theme.colors.background },
+    content: { flex: 1, gap: theme.spacing.md, padding: theme.spacing.lg },
+  })

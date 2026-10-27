@@ -50,7 +50,7 @@ export default function RootLayout(): React.JSX.Element {
           drawerPosition: 'left',
           drawerType: 'front',
           drawerStyle: { backgroundColor: theme.colors.drawerBackground, width: drawerWidthForViewport(width) },
-          overlayColor: theme.colors.overlay,
+          overlayColor: theme.colors.scrim,
           drawerItemStyle: { display: 'none' },
         }}
       >

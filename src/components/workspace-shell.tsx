@@ -63,10 +63,10 @@ export function WorkspaceShell({
       accessibilityRole="button"
       accessibilityLabel="打开会话列表"
       onPress={() => navigation.openDrawer()}
-      hitSlop={4}
+      hitSlop={8}
       style={({ pressed }) => [s.icon, pressed && s.pressed]}
     >
-      <NativeIcon name="menu" size={22} color={theme.colors.ink} />
+      <NativeIcon name="menu" size={16} color={theme.colors.ink} />
     </Pressable>
   ) : null
   const titleContent = (
@@ -95,7 +95,7 @@ export function WorkspaceShell({
               <Pressable
                 accessibilityLabel={titleAccessibilityLabel ?? title ?? 'DeepSeek Harness'}
                 accessibilityRole="button"
-                hitSlop={4}
+                hitSlop={8}
                 onPress={onTitlePress}
                 style={({ pressed }) => [s.titleButton, pressed && s.pressed]}
               >
@@ -113,33 +113,33 @@ export function WorkspaceShell({
 }
 const makeStyles = (theme: AppTheme) =>
   StyleSheet.create({
-    safe: { flex: 1, backgroundColor: theme.colors.background },
-    root: { flex: 1 },
-    header: { borderBottomColor: theme.colors.border, borderBottomWidth: StyleSheet.hairlineWidth },
-    headerTop: {
-      alignItems: 'center',
-      flexDirection: 'row',
-      minHeight: theme.chrome.headerHeight,
-      paddingHorizontal: 12,
-      paddingVertical: 6,
-    },
-    icon: { alignItems: 'center', minHeight: 36, minWidth: 36, justifyContent: 'center' },
-    brandAnchor: { alignItems: 'center', height: 28, justifyContent: 'center', marginHorizontal: 4, width: 28 },
-    titleButton: { flex: 1, minWidth: 0 },
-    titleGroup: { alignItems: 'center', flex: 1, flexDirection: 'row', minWidth: 0 },
-    titleLeading: { alignItems: 'center', marginRight: 7 },
-    title: { color: theme.colors.ink, flexShrink: 1, fontSize: 16, fontWeight: '500' },
-    right: { alignItems: 'flex-end', minWidth: 36 },
-    metaRow: {
-      alignItems: 'center',
-      flexDirection: 'row',
-      minHeight: theme.chrome.headerMetaHeight,
-      justifyContent: 'space-between',
-      paddingHorizontal: 16,
-      paddingVertical: 6,
-    },
-    content: { flex: 1 },
-    pressed: { opacity: 0.58 },
+      safe: { flex: 1, backgroundColor: theme.colors.background },
+      root: { flex: 1 },
+      header: { borderBottomColor: theme.colors.border, borderBottomWidth: StyleSheet.hairlineWidth },
+      headerTop: {
+        alignItems: 'center',
+        flexDirection: 'row',
+        minHeight: theme.chrome.headerHeight,
+        paddingHorizontal: 12,
+        paddingTop: 8,
+      },
+      icon: { alignItems: 'center', height: 36, justifyContent: 'center', width: 36 },
+      brandAnchor: { alignItems: 'center', height: 28, justifyContent: 'center', marginHorizontal: 4, width: 28 },
+      titleButton: { flex: 1, minWidth: 0 },
+      titleGroup: { alignItems: 'center', flex: 1, flexDirection: 'row', minWidth: 0 },
+      titleLeading: { alignItems: 'center', marginRight: 7 },
+      title: { color: theme.colors.ink, flexShrink: 1, fontSize: 16, fontWeight: '500' },
+      right: { alignItems: 'flex-end', minWidth: 36 },
+      metaRow: {
+        alignItems: 'center',
+        flexDirection: 'row',
+        minHeight: theme.chrome.headerMetaHeight,
+        justifyContent: 'space-between',
+        paddingHorizontal: 16,
+        paddingVertical: 6,
+      },
+      content: { flex: 1 },
+      pressed: { opacity: 0.58 },
   })
 
 /**

@@ -16,14 +16,14 @@ import type { Appearance } from './tokens'
 
 /** Shape and metric tokens shared by both appearances. */
 const shape = {
-  radius: { xs: 4, card: 10, control: 8, bubble: 12, composer: 22, sheet: 20, pill: 999 },
+  radius: { xs: 4, card: 10, control: 8, bubble: 12, composer: 22, sheet: 14, pill: 999 },
   spacing: { xxs: 2, xs: 4, sm: 8, md: 12, lg: 16, xl: 24, xxl: 32 },
-  typography: { eyebrow: 11, caption: 12, body: 14, bodyLarge: 15, title: 22, lineBody: 21 },
+  typography: { eyebrow: 11, caption: 12, body: 14, bodyLarge: 15, message: 15, title: 22, lineBody: 21, lineMessage: 22 },
   rail: { width: 56, button: 36, gap: 12 },
   chrome: {
-    headerHeight: 48,
+    headerHeight: 36,
     headerMetaHeight: 35,
-    headerWithMetaHeight: 83,
+    headerWithMetaHeight: 71,
     tabHeight: 35,
     composerRadius: 22,
     controlHeight: 36,
@@ -99,6 +99,8 @@ export interface ThemeColors {
   agentBubble: string
   /** Modal and drawer backdrop. */
   overlay: string
+  /** Backdrop behind a navigation drawer; darker than a modal scrim. */
+  scrim: string
   /** Text and glyphs drawn on a dark scrim, such as a control over a photo. */
   onScrim: string
   /** Placeholder fill shown while first content loads. */
@@ -178,6 +180,7 @@ const lightColors: ThemeColors = {
   assistantBubble: 'rgb(255, 255, 255)',
   agentBubble: 'rgb(247, 246, 242)',
   overlay: 'rgba(15, 17, 21, 0.38)',
+  scrim: 'rgba(0, 0, 0, 0.45)',
   onScrim: 'rgb(255, 255, 255)',
   skeleton: 'rgba(0, 0, 0, 0.04)',
   codeBackground: 'rgb(27, 27, 28)',
@@ -221,6 +224,7 @@ const darkColors: ThemeColors = {
   assistantBubble: 'rgb(21, 21, 23)',
   agentBubble: 'rgb(35, 35, 36)',
   overlay: 'rgba(0, 0, 0, 0.5)',
+  scrim: 'rgba(0, 0, 0, 0.45)',
   onScrim: 'rgb(255, 255, 255)',
   skeleton: 'rgba(255, 255, 255, 0.08)',
   codeBackground: 'rgb(27, 27, 28)',
