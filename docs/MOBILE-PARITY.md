@@ -73,6 +73,8 @@ control. Adding one would create a second way to open the same drawer. The
 
 | Concern | DSH Pocket | Native |
 | --- | --- | --- |
+| Empty state | hero textarea collapses to one 28px line via `textarea:placeholder-shown { height: 28px }` (line ~700) | multiline input with a `minHeight: 28` single-line floor; it grows with content |
+| Row floor | cleared by the send control | `minHeight: theme.touch.minTarget` (44) |
 | Bottom row wrap | `flex-wrap: wrap; gap: 6px` (line ~430) | `flexWrap: 'wrap'`, `gap: 6` |
 | Leading control group | `gap: 8px; min-width: 0` | `gap: 8`, `minWidth: 0` |
 

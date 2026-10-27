@@ -361,7 +361,15 @@ const makeStyles = (theme: AppTheme) =>
       minHeight: 58,
       paddingLeft: theme.spacing.md,
     },
-    input: { color: theme.colors.ink, flex: 1, fontSize: 15, maxHeight: 120, minHeight: 52, paddingVertical: 12 },
+    input: {
+    color: theme.colors.ink,
+    flex: 1,
+    fontSize: theme.typography.message,
+    lineHeight: theme.typography.lineMessage,
+    maxHeight: 120,
+    minHeight: 28,
+    paddingVertical: 6,
+  },
     icon: {
       alignItems: 'center',
       height: theme.touch.iconButton,
