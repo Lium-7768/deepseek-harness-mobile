@@ -12,6 +12,7 @@
 import { connect } from './connect'
 import { errors } from './errors'
 import { session } from './session'
+import { trajectory } from './trajectory'
 
 /** Copy shared by more than one screen. */
 const common = {
@@ -26,7 +27,7 @@ const common = {
   currentModelSuffix: '，当前模型',
 } as const
 
-const areas = { common, connect, errors, session }
+const areas = { common, connect, errors, session, trajectory }
 
 /** Every user-visible string the client renders, keyed as `<area>.<role>`. */
 export const messages = Object.fromEntries(

@@ -1,3 +1,4 @@
+import { format, t as message } from '@/locale'
 import type { SharedEventItem } from '@/shared/dsh-presentation'
 
 export type NativeTrajectoryActivityKind =
@@ -66,7 +67,7 @@ export function projectNativeTrajectoryActivities(
       pushActivity(activities, {
         id: activityId(item, 'user'),
         kind: 'user',
-        title: '你的请求',
+        title: message('trajectory.userRequest'),
         ...textDetail(messageText(data)),
         ...turnField(turn),
       })
@@ -85,7 +86,7 @@ export function projectNativeTrajectoryActivities(
         pushActivity(activities, {
           id: activityId(item, 'reasoning'),
           kind: 'reasoning',
-          title: '分析问题',
+          title: message('trajectory.analyze'),
           ...textDetail(reasoning),
           ...turnField(turn),
         })
@@ -94,7 +95,7 @@ export function projectNativeTrajectoryActivities(
         pushActivity(activities, {
           id: activityId(item, 'assistant'),
           kind: 'assistant',
-          title: '生成回复',
+          title: message('trajectory.generateReply'),
           ...textDetail(text),
           ...turnField(turn),
         })
@@ -104,7 +105,7 @@ export function projectNativeTrajectoryActivities(
 
     if (type === 'tool/call') {
       const callId = stringField(data.callId)
-      const toolName = stringField(data.name) ?? '工具'
+      const toolName = stringField(data.name) ?? message('trajectory.tool')
       const activity: NativeTrajectoryActivity = {
         id: activityId(item, callId ?? `tool-${activities.length}`),
         kind: 'tool',
@@ -133,7 +134,7 @@ export function projectNativeTrajectoryActivities(
           activities[knownTool.index] = {
             ...current,
             state: result.failed ? 'failed' : 'completed',
-            title: toolActivityTitle(current.toolName ?? '工具'),
+            title: toolActivityTitle(current.toolName ?? message('trajectory.tool')),
             ...textDetail(toolResultDetail(result.output, result.failed)),
             ...(time === undefined || knownTool.startedAt === undefined
               ? {}
@@ -146,7 +147,7 @@ export function projectNativeTrajectoryActivities(
         id: activityId(item, 'tool-result'),
         kind: 'tool',
         state: result.failed ? 'failed' : 'completed',
-        title: '执行操作',
+        title: message('trajectory.executeAction'),
         ...textDetail(toolResultDetail(result.output, result.failed)),
         ...turnField(turn),
       })
@@ -158,7 +159,7 @@ export function projectNativeTrajectoryActivities(
       pushActivity(activities, {
         id: activityId(item, 'retry'),
         kind: 'retry',
-        title: '正在重新连接模型',
+        title: message('trajectory.reconnecting'),
         ...textDetail(stringField(failure?.message)),
         ...turnField(turn),
       })
@@ -169,7 +170,7 @@ export function projectNativeTrajectoryActivities(
       pushActivity(activities, {
         id: activityId(item, 'turn-error'),
         kind: 'error',
-        title: '本次任务未完成',
+        title: message('trajectory.turnIncomplete'),
         ...textDetail(stringField(data.message)),
         ...turnField(turn),
       })
@@ -182,7 +183,7 @@ export function projectNativeTrajectoryActivities(
       pushActivity(activities, {
         id: activityId(item, 'context'),
         kind: 'context',
-        title: '已加载参考资料',
+        title: message('trajectory.referencesLoaded'),
         ...textDetail(source === undefined ? undefined : fileName(source)),
         ...turnField(turn),
       })
@@ -193,7 +194,7 @@ export function projectNativeTrajectoryActivities(
       pushActivity(activities, {
         id: activityId(item, 'compaction'),
         kind: 'compaction',
-        title: '已整理历史内容',
+        title: message('trajectory.historyCompacted'),
         ...textDetail(stringField(data.summary)),
         ...turnField(turn),
       })
@@ -204,7 +205,7 @@ export function projectNativeTrajectoryActivities(
       pushActivity(activities, {
         id: activityId(item, 'question'),
         kind: 'question',
-        title: '需要你的确认',
+        title: message('trajectory.needsConfirmation'),
         ...textDetail(stringField(data.question) ?? stringField(data.message) ?? stringField(data.title)),
         ...turnField(turn),
       })
@@ -222,9 +223,9 @@ export function projectNativeTrajectoryActivities(
 /** Formats a concise native duration without exposing raw timestamps. */
 export function formatTrajectoryDuration(milliseconds: number): string {
   const seconds = Math.max(0, milliseconds) / 1_000
-  if (seconds < 60) return `${Math.round(seconds * 10) / 10}秒`
+  if (seconds < 60) return format('trajectory.durationSeconds', { seconds: Math.round(seconds * 10) / 10 })
   const rounded = Math.round(seconds)
-  return `${Math.floor(rounded / 60)}分${rounded % 60}秒`
+  return format('trajectory.durationMinutesSeconds', { minutes: Math.floor(rounded / 60), seconds: rounded % 60 })
 }
 
 function toolActivityTitle(toolName: string): string {
@@ -233,28 +234,30 @@ function toolActivityTitle(toolName: string): string {
 
 function toolActionName(toolName: string): string {
   const normalized = toolName.toLowerCase()
-  if (normalized === 'bash' || normalized.includes('terminal')) return '运行命令'
-  if (normalized.includes('read') || normalized.includes('open_file')) return '读取文件'
-  if (normalized.includes('write') || normalized.includes('edit')) return '编辑文件'
-  if (normalized.includes('search')) return '搜索资料'
-  if (normalized.includes('todo')) return '更新任务清单'
-  if (normalized.includes('goal')) return '查看当前目标'
-  if (normalized.includes('job_output')) return '查看任务输出'
-  if (normalized.includes('browser')) return '访问网页'
-  return '执行操作'
+  if (normalized === 'bash' || normalized.includes('terminal')) return message('trajectory.actionRunCommand')
+  if (normalized.includes('read') || normalized.includes('open_file')) return message('trajectory.actionReadFile')
+  if (normalized.includes('write') || normalized.includes('edit')) return message('trajectory.actionEditFile')
+  if (normalized.includes('search')) return message('trajectory.actionSearch')
+  if (normalized.includes('todo')) return message('trajectory.actionUpdateTodo')
+  if (normalized.includes('goal')) return message('trajectory.actionViewGoal')
+  if (normalized.includes('job_output')) return message('trajectory.actionViewJobOutput')
+  if (normalized.includes('browser')) return message('trajectory.actionBrowse')
+  return message('trajectory.executeAction')
 }
 
 function toolCallDetail(toolName: string, data: EventRecord): string {
   const description = stringField(data.description)
   if (description !== undefined && !isTechnicalText(description)) return description
   const target = toolTarget(data.arguments)
-  return target === undefined ? `正在${toolActionName(toolName)}。` : `${toolActionName(toolName)}：${target}`
+  return target === undefined
+    ? format('trajectory.running', { action: toolActionName(toolName) })
+    : format('trajectory.runningWithTarget', { action: toolActionName(toolName), target })
 }
 
 function toolResultDetail(output: string | undefined, failed: boolean): string {
   const readable = output === undefined || isTechnicalText(output) ? undefined : previewText(output)
   if (readable !== undefined) return readable
-  return failed ? '操作未完成，请在桌面端查看详细错误信息。' : '操作完成，可在桌面端查看完整结果。'
+  return failed ? message('trajectory.toolFailed') : message('trajectory.toolDone')
 }
 
 function toolTarget(value: unknown): string | undefined {
