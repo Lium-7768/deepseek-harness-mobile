@@ -41,6 +41,28 @@ export type NativeConversationRow =
     rowKey?: string
     sourceSeq?: number
   }
+  | {
+    commandId?: string
+    kind: 'command'
+    name: string
+    state: 'running' | 'success' | 'error'
+    text?: string
+    rowKey?: string
+    sourceSeq?: number
+  }
+  | {
+    kind: 'turn-max-tokens'
+    rowKey?: string
+    sourceSeq?: number
+  }
+  | {
+    kind: 'compaction'
+    shadowedItemCount?: number
+    shadowedTokenCount?: number
+    summary: string
+    rowKey?: string
+    sourceSeq?: number
+  }
 
 type EventRecord = Record<string, unknown>
 type ContentBlock = { type?: unknown; text?: unknown }
@@ -66,6 +88,7 @@ export function projectNativeConversationRows(items: readonly SharedEventItem[])
   )
   const rows: NativeConversationRow[] = []
   const toolRowByCallId = new Map<string, number>()
+  const commandRowByCommandId = new Map<string, number>()
   const streamingRowByBlock = new Map<string, number>()
   for (const item of orderedItems) {
     const event = item.event
@@ -172,13 +195,73 @@ export function projectNativeConversationRows(items: readonly SharedEventItem[])
       })
       continue
     }
-    if (type === 'turn/error') {
+    if (type === 'command/run') {
+      const commandId = stringField(data.commandId)
       rows.push({
-        kind: 'turn-error',
-        message: stringField(data.message) ?? '本回合执行失败。',
-        ...(stringField(data.code) === undefined ? {} : { code: stringField(data.code) }),
+        ...(commandId === undefined ? {} : { commandId }),
+        kind: 'command',
+        name: stringField(data.name) ?? '命令',
+        state: 'running',
+        ...(stringField(data.source) === undefined ? {} : { text: stringField(data.source) }),
         ...(sourceSeq === undefined ? {} : { sourceSeq }),
       })
+      if (commandId !== undefined) commandRowByCommandId.set(commandId, rows.length - 1)
+      continue
+    }
+    if (type === 'command/done') {
+      const commandId = stringField(data.commandId)
+      if (commandId !== undefined) {
+        const rowIndex = commandRowByCommandId.get(commandId)
+        if (rowIndex !== undefined) {
+          const existing = rows[rowIndex]
+          if (existing?.kind === 'command') {
+            rows[rowIndex] = {
+              ...existing,
+              state: stringField(data.kind) === 'error' ? 'error' : 'success',
+              ...(stringField(data.text) === undefined ? {} : { text: stringField(data.text) }),
+            }
+            continue
+          }
+        }
+      }
+      rows.push({
+        ...(commandId === undefined ? {} : { commandId }),
+        kind: 'command',
+        name: '命令结果',
+        state: stringField(data.kind) === 'error' ? 'error' : 'success',
+        ...(stringField(data.text) === undefined ? {} : { text: stringField(data.text) }),
+        ...(sourceSeq === undefined ? {} : { sourceSeq }),
+      })
+      continue
+    }
+    if (type === 'compaction/summary') {
+      rows.push({
+        kind: 'compaction',
+        summary: compactSummaryText(data),
+        ...(summaryBlockCount(data) === undefined ? {} : { shadowedItemCount: summaryBlockCount(data) }),
+        ...(numberField(data.shadowedTokenCount) === undefined ? {} : { shadowedTokenCount: numberField(data.shadowedTokenCount) }),
+        ...(sourceSeq === undefined ? {} : { sourceSeq }),
+      })
+      continue
+    }
+    if (type === 'turn/end') {
+      const reason = recordField(data.reason)
+      const kind = stringField(reason?.kind)
+      if (kind === 'error') {
+        const failure = displayFailure(recordField(reason?.error))
+        rows.push({
+          ...(failure.code === undefined ? {} : { code: failure.code }),
+          kind: 'turn-error',
+          message: failure.message,
+          ...(sourceSeq === undefined ? {} : { sourceSeq }),
+        })
+      } else if (kind === 'max-tokens') {
+        rows.push({
+          kind: 'turn-max-tokens',
+          ...(sourceSeq === undefined ? {} : { sourceSeq }),
+        })
+      }
+      continue
     }
   }
   return rows
@@ -203,6 +286,40 @@ export function activeTurnStartedAt(items: readonly SharedEventItem[]): number |
     } else if (type === 'turn/end') openTurns.delete(turn)
   }
   return [...openTurns.values()].at(-1)
+}
+
+/**
+ * Mirrors the desktop displayFailure mapping for turn-level LLM failures.
+ *
+ * Provider AUTH messages may echo a masked or partially preserved credential;
+ * keep the raw diagnostic in the Session log, but never retain it in UI state.
+ *
+ * @param failure - The `LlmFailure` carried by `turn/end` reason.error.
+ * @returns A code and a model-safe message for the turn error row.
+ */
+function displayFailure(failure: unknown): { code?: string; message: string } {
+  if (failure === null || typeof failure !== 'object') return { message: String(failure) }
+  const record = failure as { code?: unknown; message?: unknown }
+  const code = typeof record.code === 'string' ? record.code : undefined
+  if (code === 'AUTH') return { code, message: '' }
+  return {
+    ...(code === undefined ? {} : { code }),
+    message: typeof record.message === 'string' ? record.message : JSON.stringify(failure),
+  }
+}
+
+function compactSummaryText(data: EventRecord): string {
+  const blocks = Array.isArray(data.summary)
+    ? data.summary.filter((block): block is ContentBlock => block !== null && typeof block === 'object' && !Array.isArray(block))
+    : []
+  return blocks
+    .flatMap(block => (block.type === 'text' && typeof block.text === 'string' ? [block.text] : []))
+    .join('')
+}
+
+function summaryBlockCount(data: EventRecord): number | undefined {
+  const shadowedSeqs = data.shadowedSeqs
+  return Array.isArray(shadowedSeqs) ? shadowedSeqs.length : undefined
 }
 
 function eventStepKey(data: EventRecord): string | undefined {

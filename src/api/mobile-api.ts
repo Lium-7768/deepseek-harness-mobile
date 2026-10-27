@@ -1,6 +1,10 @@
 import type {
   MobileAgentPresetDetail,
   MobileAgentPresetListPayload,
+  MobileFeedbackDeleteResult,
+  MobileFeedbackListResult,
+  MobileFeedbackPutResult,
+  MobileFeedbackRating,
   MobileGoalRef,
   MobileImageAttachmentPayload,
   MobileJobsPayload,
@@ -382,6 +386,38 @@ export class MobileApi {
   /** Selects an Agent preset; the desktop API appends the durable selection event. */
   selectSessionPreset(sessionId: string, agentPreset: string): Promise<{ agentPreset: string }> {
     return this.#post(`/v1/sessions/${encodeURIComponent(sessionId)}/agent-preset`, { agentPreset })
+  }
+
+  /** Reads all desktop-committed feedback for one session, in first-creation order. */
+  listFeedback(sessionId: string): Promise<MobileFeedbackListResult> {
+    return this.#post<MobileFeedbackListResult>(`/v1/sessions/${encodeURIComponent(sessionId)}/feedback/list`, {
+      sessionId,
+    })
+  }
+
+  /** Creates or replaces feedback for one assistant message with the observed version token. */
+  putFeedback(
+    sessionId: string,
+    messageId: string,
+    rating: MobileFeedbackRating,
+    options: { note?: string; ifVersion: string | null },
+  ): Promise<MobileFeedbackPutResult> {
+    return this.#post<MobileFeedbackPutResult>(`/v1/sessions/${encodeURIComponent(sessionId)}/feedback/put`, {
+      sessionId,
+      messageId,
+      rating,
+      ...(options.note === undefined ? {} : { note: options.note }),
+      ifVersion: options.ifVersion,
+    })
+  }
+
+  /** Deletes feedback for one assistant message after observing its current version. */
+  deleteFeedback(sessionId: string, messageId: string, ifVersion: string): Promise<MobileFeedbackDeleteResult> {
+    return this.#post<MobileFeedbackDeleteResult>(`/v1/sessions/${encodeURIComponent(sessionId)}/feedback/delete`, {
+      sessionId,
+      messageId,
+      ifVersion,
+    })
   }
 
   async #post<T>(path: string, body: object): Promise<T> {

@@ -20,10 +20,11 @@ import { NativeActionButton } from '@/components/native-action-button'
 import { MobileApi, mobileErrorMessage } from '@/api/mobile-api'
 import { NativeMarkdown } from '@/components/native-markdown'
 import { NativeMessageAttachments } from '@/components/native-message-attachments'
+import { NativeMessageFeedback } from '@/components/native-message-feedback'
 import { NativeQueueDock } from '@/components/native-queue-dock'
 import { NativeAgentActivity, NativeGoalBar, goalFromProjection } from '@/components/native-agent-activity'
 import { NativeToolCard } from '@/components/native-tool-card'
-import { NativeReasoningRow, NativeRetryRow, NativeTurnErrorRow, NativeTurnStatus } from '@/components/native-conversation-status'
+import { NativeReasoningRow, NativeRetryRow, NativeTurnErrorRow, NativeTurnStatus, NativeCommandRow, NativeTurnMaxTokensRow, NativeCompactionRow } from '@/components/native-conversation-status'
 import {
   activeTurnStartedAt,
   projectNativeConversationRows,
@@ -463,6 +464,9 @@ function MessageRow({
   const attachments = api !== undefined && sessionId !== undefined ? (
     <NativeMessageAttachments api={api} sessionId={sessionId} event={event} />
   ) : null
+  const feedback = api !== undefined && sessionId !== undefined ? (
+    <NativeMessageFeedback api={api} sessionId={sessionId} event={event} />
+  ) : null
   if (item.kind === 'user')
     return (
       <View style={s.userRow}>
@@ -478,6 +482,9 @@ function MessageRow({
   if (item.kind === 'reasoning') return <NativeReasoningRow row={item} />
   if (item.kind === 'retry') return <NativeRetryRow row={item} />
   if (item.kind === 'turn-error') return <NativeTurnErrorRow row={item} />
+  if (item.kind === 'turn-max-tokens') return <NativeTurnMaxTokensRow />
+  if (item.kind === 'command') return <NativeCommandRow row={item} />
+  if (item.kind === 'compaction') return <NativeCompactionRow row={item} />
   if (item.kind === 'tool')
     return (
       <View style={s.toolRow}>
@@ -493,6 +500,7 @@ function MessageRow({
         }}
       />
       {attachments}
+      {feedback}
       <MessageActions alignment="assistant" text={item.text} />
     </View>
   )

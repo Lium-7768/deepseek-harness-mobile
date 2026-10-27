@@ -370,3 +370,57 @@ export interface MobileAgentPresetDetail {
   name?: string
   description?: string
 }
+
+/** Overall positive or negative judgment of one assistant message. */
+export type MobileFeedbackRating = 'positive' | 'negative'
+
+/** One current desktop-owned feedback value and its opaque mutation token. */
+export interface MobileFeedbackItem {
+  /** Stable identity of the assistant message inside the owning session. */
+  messageId: string
+  /** Overall positive or negative judgment. */
+  rating: MobileFeedbackRating
+  /** Optional explanation, preserved verbatim after validation. */
+  note?: string
+  /** Equality-only token replaced by every material create or update. */
+  version: string
+  /** Host-assigned creation time in Unix epoch milliseconds. */
+  createdAt: number
+  /** Host-assigned time of the most recent material update. */
+  updatedAt: number
+}
+
+/** Idempotent deletion acknowledgement. */
+export interface MobileFeedbackDeleteValue {
+  absent: true
+}
+
+/** Rejected business result with a stable desktop feedback failure. */
+export interface MobileFeedbackRejected<E = Record<string, unknown>> {
+  ok: false
+  error: E
+}
+
+/** Result of listing the feedback committed to one session's desktop sidecar. */
+export type MobileFeedbackListResult =
+  | { ok: true; value: { items: MobileFeedbackItem[] } }
+  | MobileFeedbackRejected<{ code: 'session-not-found'; sessionId: string }>
+
+/** Result of creating or replacing feedback for one assistant message. */
+export type MobileFeedbackPutResult =
+  | { ok: true; value: MobileFeedbackItem }
+  | MobileFeedbackRejected<
+    | { code: 'session-not-found'; sessionId: string }
+    | { code: 'target-not-found'; sessionId: string; messageId: string }
+    | { code: 'version-conflict'; current: MobileFeedbackItem | null }
+    | { code: 'note-blank' }
+    | { code: 'note-too-large'; maxBytes: number; actualBytes: number }
+  >
+
+/** Result of deleting feedback for one assistant message. */
+export type MobileFeedbackDeleteResult =
+  | { ok: true; value: MobileFeedbackDeleteValue }
+  | MobileFeedbackRejected<
+    | { code: 'session-not-found'; sessionId: string }
+    | { code: 'version-conflict'; current: MobileFeedbackItem | null }
+  >

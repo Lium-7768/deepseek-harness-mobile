@@ -55,7 +55,13 @@ describe('projectNativeConversationRows', () => {
           data: { retry: 1, maxRetries: 2, delayMs: 5_600, failure: { message: '429: rate limited' } },
         },
       },
-      { seq: 7, event: { type: 'turn/error', data: { message: '模型不可用。', code: 'MODEL_UNAVAILABLE' } } },
+      {
+        seq: 7,
+        event: {
+          type: 'turn/end',
+          data: { turn: 4, reason: { kind: 'error', error: { code: 'MODEL_UNAVAILABLE', message: '模型不可用。' } } },
+        },
+      },
     ])
 
     expect(rows).toEqual([

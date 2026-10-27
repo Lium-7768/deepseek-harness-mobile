@@ -51,6 +51,8 @@ export const nativeIconNames = [
   'stop',
   'think',
   'terminal',
+  'thumb-down',
+  'thumb-up',
   'tune',
   'warning',
   'warning-amber',
@@ -432,6 +434,24 @@ function IconShape({ name, color }: IconProps & { name: NativeIconName }): React
           <Circle {...stroke} cx="17" cy="12" r="3" />
           <Line {...stroke} x1="10" x2="14" y1="12" y2="12" />
         </>
+      )
+    case 'thumb-up':
+      return (
+        <G scale={0.9}>
+          <Path
+            {...stroke}
+            d="M7.5 10.5v8.5a1.5 1.5 0 0 1-1.5 1.5H4.5a1.5 1.5 0 0 1-1.5-1.5v-7a1.5 1.5 0 0 1 1.5-1.5zM7.5 10.5l4-6.5a1.6 1.6 0 0 1 3 .8v4.2h4.4a1.5 1.5 0 0 1 1.5 1.8l-1 5.5a2 2 0 0 1-2 1.7H7.5"
+          />
+        </G>
+      )
+    case 'thumb-down':
+      return (
+        <G scale={0.9}>
+          <Path
+            {...stroke}
+            d="M7.5 13.5V5a1.5 1.5 0 0 1 1.5-1.5h1.5a1.5 1.5 0 0 1 1.5 1.5v7a1.5 1.5 0 0 1-1.5 1.5zM7.5 13.5l4 6.5a1.6 1.6 0 0 0 3-.8v-4.2h4.4a1.5 1.5 0 0 0 1.5-1.8l-1-5.5a2 2 0 0 0-2-1.7H7.5"
+          />
+        </G>
       )
     default:
       return <Circle {...stroke} cx="12" cy="12" r="8" />
