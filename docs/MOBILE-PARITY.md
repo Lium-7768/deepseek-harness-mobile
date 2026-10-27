@@ -78,6 +78,23 @@ control. Adding one would create a second way to open the same drawer. The
 | Bottom row wrap | `flex-wrap: wrap; gap: 6px` (line ~430) | `flexWrap: 'wrap'`, `gap: 6` |
 | Leading control group | `gap: 8px; min-width: 0` | `gap: 8`, `minWidth: 0` |
 
+## Session rows and grouping — unchanged
+
+Pocket does not restyle the sidebar's session rows. Its own note says the
+drawer "list keeps its size" while only conversation text shrinks, and the
+stylesheet carries no rule for a session row, a workspace group, or a group
+header. The native drawer therefore keeps `NativeListRow` (44pt minimum,
+10pt radius, 1pt border) and the existing workspace grouping logic.
+
+Two consequences are worth recording:
+
+- Row height stays at the platform touch floor rather than a Web row height.
+  Pocket's rows inherit the desktop sidebar's own sizing, which is not a phone
+  measurement to copy.
+- The user message bubble is correct as it stands: DSH's design system defines
+  `--dsw-specific-bubble`, which resolves to `rgb(237,243,254)` in light and
+  `rgb(44,44,46)` in dark — the values the native palette already uses.
+
 ## Drawer footer
 
 Pocket moves the session actions out of the header into a footer pinned to the
