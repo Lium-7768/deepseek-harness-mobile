@@ -86,6 +86,25 @@ so the two surfaces agree except for one addition:
 Consequence: the Desktop plugin needs to add `/v1/auth` and nothing else on the
 routing side.
 
+## Theme tokens
+
+`src/theme/index.ts` exports one shape set and two colour sets.
+
+| Group | Members | Shared by both appearances |
+| --- | --- | --- |
+| `colors` | 40 roles: surfaces, labels, borders, brand, business, states, bubbles, code | no — each appearance has its own values |
+| `radius` | `xs`, `card`, `control`, `bubble`, `composer`, `sheet`, `pill` | yes |
+| `spacing` | `xxs`, `xs`, `sm`, `md`, `lg`, `xl`, `xxl` | yes |
+| `typography` | `eyebrow`, `caption`, `body`, `bodyLarge`, `message`, `title`, `lineBody`, `lineMessage` | yes |
+| `chrome` | header, meta row, tabs, composer radius, control height | yes |
+| `touch` | icon button, compact icon button, control height, minimum target | yes |
+| `elevation` | card and sheet shadows | no — a dark surface needs a different shadow |
+
+Values come from the desktop design system; `docs/MOBILE-PARITY.md` records each
+role's source token and the resolved value for both appearances. Screens read
+them through `useAppTheme()` and `useThemedStyles()`; importing `mobileTheme`
+directly freezes the light palette and is only correct for shape tokens.
+
 ## State
 
 | Store | Persistence | Holds |
