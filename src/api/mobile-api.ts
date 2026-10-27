@@ -139,6 +139,71 @@ export async function redeemMobilePairing(payload: MobilePairingQrPayload): Prom
   return { gatewayUrl, deviceId: decoded.data.deviceId, accessToken: decoded.data.accessToken }
 }
 
+/**
+ * One desktop-published address plus the password that address accepts.
+ *
+ * Typed entry is the primary way in: the desktop shows a public address and a
+ * password, and the user types both. It needs no camera and survives a desktop
+ * restart that rotates the address.
+ */
+export interface MobilePasswordLogin {
+  /** Public base URL the desktop published, without a trailing slash. */
+  gatewayUrl: string
+  /** Password the desktop is currently accepting. */
+  password: string
+}
+
+/**
+ * Exchanges a typed address and password for one durable mobile device credential.
+ *
+ * The gateway answers with the same `{ deviceId, accessToken }` envelope a
+ * redeemed pairing returns, so the stored connection is identical either way.
+ *
+ * @param login - Desktop address and password as typed by the user.
+ * @returns The stored connection shape, including the normalized gateway URL.
+ */
+export async function authenticateMobilePassword(login: MobilePasswordLogin): Promise<MobileConnection> {
+  let gatewayUrl: string
+  try {
+    const parsed = new URL(login.gatewayUrl)
+    if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') throw new Error('unsupported protocol')
+    gatewayUrl = parsed.toString().replace(/\/$/, '')
+  } catch (error) {
+    throw createError('protocol', '请输入有效的桌面端地址，例如 https://example.trycloudflare.com。', { rawMessage: rawMessage(error) }, false)
+  }
+  const password = login.password.trim()
+  if (password === '') throw createError('credentials', '请输入桌面端显示的访问密码。', {}, false)
+  let response: Response
+  try {
+    response = await fetch(`${gatewayUrl}/v1/auth`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ password }),
+    })
+  } catch (error) {
+    throw createError('network', '无法连接桌面端，请确认地址可访问且桌面端已开启公网访问。', { rawMessage: rawMessage(error) })
+  }
+  let decoded: unknown
+  try {
+    decoded = await response.json()
+  } catch (error) {
+    throw createError('protocol', '桌面端返回了无效的登录响应。', { status: response.status, rawMessage: rawMessage(error) })
+  }
+  if (!response.ok) {
+    const fault = readGatewayFault(decoded)
+    const code = fault?.code
+    const kind = errorKind(code, response.status)
+    throw createError(kind, userMessage(kind, code, response.status, fault?.message), {
+      code,
+      status: response.status,
+      rawMessage: fault?.message,
+    })
+  }
+  if (!isGatewayEnvelope<MobilePairingCredential>(decoded) || !isPairingCredential(decoded.data))
+    throw createError('protocol', '桌面端返回了无效的登录响应。', { status: response.status })
+  return { gatewayUrl, deviceId: decoded.data.deviceId, accessToken: decoded.data.accessToken }
+}
+
 /** Calls only the versioned Mobile Gateway API with a paired-device credential. */
 export class MobileApi {
   readonly #connection: MobileConnection
