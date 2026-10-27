@@ -1,5 +1,5 @@
-import type { PropsWithChildren } from 'react'
-import { Pressable, StyleSheet, Text, View } from 'react-native'
+import { useEffect, useRef, type PropsWithChildren } from 'react'
+import { AccessibilityInfo, Animated, Easing, Pressable, StyleSheet, Text, View } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useNavigation } from 'expo-router'
 import type { AppTheme } from '@/theme'
@@ -56,6 +56,7 @@ export function WorkspaceShell({
   const insets = useSafeAreaInsets()
   const theme = useAppTheme()
   const s = useThemedStyles(makeStyles)
+  const entrance = useEntranceFade()
   const hasHeaderMeta = headerMeta !== undefined
   const menu = showMenu ? (
     <Pressable
@@ -105,7 +106,7 @@ export function WorkspaceShell({
           </View>
           {hasHeaderMeta ? <View style={s.metaRow}>{headerMeta}</View> : null}
         </View>
-        <View style={[s.content, { paddingBottom: insets.bottom }]}>{children}</View>
+        <Animated.View style={[s.content, { opacity: entrance, paddingBottom: insets.bottom }]}>{children}</Animated.View>
       </View>
     </View>
   )
@@ -140,3 +141,34 @@ const makeStyles = (theme: AppTheme) =>
     content: { flex: 1 },
     pressed: { opacity: 0.58 },
   })
+
+/**
+ * Fade a screen in on mount so a route change reads as a transition rather than
+ * a hard cut. The platform's reduced-motion setting skips the fade and shows
+ * the screen at full opacity immediately.
+ *
+ * @returns An animated opacity value for the screen container.
+ */
+function useEntranceFade(): Animated.Value {
+  const opacity = useRef(new Animated.Value(0)).current
+  useEffect(() => {
+    let active = true
+    void AccessibilityInfo.isReduceMotionEnabled().then(reduced => {
+      if (!active) return
+      if (reduced) {
+        opacity.setValue(1)
+        return
+      }
+      Animated.timing(opacity, {
+        toValue: 1,
+        duration: 180,
+        easing: Easing.out(Easing.quad),
+        useNativeDriver: true,
+      }).start()
+    })
+    return () => {
+      active = false
+    }
+  }, [opacity])
+  return opacity
+}
