@@ -1,6 +1,7 @@
 import type { MobileModelCatalogModel, MobileModelProviderGroup, MobileModelSelection } from '@/types/mobile'
 import { NativeSection } from '@/components/native-list'
 import { NativeSelectionRow } from '@/components/native-selection'
+import { t as message } from '@/locale'
 
 export type NativeModelSelection = Pick<MobileModelSelection, 'provider' | 'model'>
 
@@ -32,7 +33,7 @@ export function NativeModelSelectionGroup({
         return (
           <NativeSelectionRow
             key={model.id}
-            accessibilityLabel={`${model.name}${selected ? '，当前模型' : ''}${disabled ? '，不可用' : ''}`}
+            accessibilityLabel={`${model.name}${selected ? message('common.currentModelSuffix') : ''}${disabled ? message('common.disabledSuffix') : ''}`}
             description={nativeModelDescription(model)}
             disabled={disabled}
             loading={submittingKey === key}

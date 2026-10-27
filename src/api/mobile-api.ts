@@ -29,6 +29,7 @@ import type {
   SessionHistoryPayload,
   SessionListPayload,
 } from '@/types/mobile'
+import { t as message } from '@/locale'
 
 interface GatewayEnvelope<T> {
   contractVersion: 1
@@ -84,7 +85,7 @@ export class MobileApiError extends Error {
  * @param fallback - Chinese text used when the failure is not recognized.
  * @returns Chinese text suitable for a user-facing error surface.
  */
-export function mobileErrorMessage(error: unknown, fallback = '移动端请求失败，请稍后重试。'): string {
+export function mobileErrorMessage(error: unknown, fallback = message('errors.requestFailed')): string {
   if (error instanceof MobileApiError) return error.userMessage
   if (error instanceof Error && containsChinese(error.message)) return error.message
   return fallback
@@ -103,11 +104,11 @@ export async function redeemMobilePairing(payload: MobilePairingQrPayload): Prom
     if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') throw new Error('unsupported protocol')
     gatewayUrl = parsed.toString().replace(/\/$/, '')
   } catch (error) {
-    throw createError('protocol', '二维码中的桌面网关地址无效。', { rawMessage: rawMessage(error) }, false)
+    throw createError('protocol', message('errors.qrGatewayInvalid'), { rawMessage: rawMessage(error) }, false)
   }
   const expiresAt = Date.parse(payload.expiresAt)
   if (!Number.isFinite(expiresAt) || expiresAt <= Date.now())
-    throw createError('pairing-invalid', '该配对二维码已过期，请在桌面端重新生成。', {}, false)
+    throw createError('pairing-invalid', message('errors.pairingExpired'), {}, false)
   let response: Response
   try {
     response = await fetch(`${gatewayUrl}/v1/pairing/redeem`, {
@@ -116,13 +117,13 @@ export async function redeemMobilePairing(payload: MobilePairingQrPayload): Prom
       body: JSON.stringify({ pairingId: payload.pairingId, pairingSecret: payload.pairingSecret }),
     })
   } catch (error) {
-    throw createError('network', '无法连接桌面端，请确认二维码对应的网络地址可访问。', { rawMessage: rawMessage(error) })
+    throw createError('network', message('errors.pairingUnreachable'), { rawMessage: rawMessage(error) })
   }
   let decoded: unknown
   try {
     decoded = await response.json()
   } catch (error) {
-    throw createError('protocol', '桌面端返回了无效的配对响应。', { status: response.status, rawMessage: rawMessage(error) })
+    throw createError('protocol', message('errors.pairingResponseInvalid'), { status: response.status, rawMessage: rawMessage(error) })
   }
   if (!response.ok) {
     const fault = readGatewayFault(decoded)
@@ -135,7 +136,7 @@ export async function redeemMobilePairing(payload: MobilePairingQrPayload): Prom
     })
   }
   if (!isGatewayEnvelope<MobilePairingCredential>(decoded) || !isPairingCredential(decoded.data))
-    throw createError('protocol', '桌面端返回了无效的配对响应。', { status: response.status })
+    throw createError('protocol', message('errors.pairingResponseInvalid'), { status: response.status })
   return { gatewayUrl, deviceId: decoded.data.deviceId, accessToken: decoded.data.accessToken }
 }
 
@@ -169,10 +170,10 @@ export async function authenticateMobilePassword(login: MobilePasswordLogin): Pr
     if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') throw new Error('unsupported protocol')
     gatewayUrl = parsed.toString().replace(/\/$/, '')
   } catch (error) {
-    throw createError('protocol', '请输入有效的桌面端地址，例如 https://example.trycloudflare.com。', { rawMessage: rawMessage(error) }, false)
+    throw createError('protocol', message('errors.addressInvalid'), { rawMessage: rawMessage(error) }, false)
   }
   const password = login.password.trim()
-  if (password === '') throw createError('credentials', '请输入桌面端显示的访问密码。', {}, false)
+  if (password === '') throw createError('credentials', message('errors.passwordRequired'), {}, false)
   let response: Response
   try {
     response = await fetch(`${gatewayUrl}/v1/auth`, {
@@ -181,13 +182,13 @@ export async function authenticateMobilePassword(login: MobilePasswordLogin): Pr
       body: JSON.stringify({ password }),
     })
   } catch (error) {
-    throw createError('network', '无法连接桌面端，请确认地址可访问且桌面端已开启公网访问。', { rawMessage: rawMessage(error) })
+    throw createError('network', message('errors.addressUnreachable'), { rawMessage: rawMessage(error) })
   }
   let decoded: unknown
   try {
     decoded = await response.json()
   } catch (error) {
-    throw createError('protocol', '桌面端返回了无效的登录响应。', { status: response.status, rawMessage: rawMessage(error) })
+    throw createError('protocol', message('errors.loginResponseInvalid'), { status: response.status, rawMessage: rawMessage(error) })
   }
   if (!response.ok) {
     const fault = readGatewayFault(decoded)
@@ -203,7 +204,7 @@ export async function authenticateMobilePassword(login: MobilePasswordLogin): Pr
     )
   }
   if (!isGatewayEnvelope<MobilePairingCredential>(decoded) || !isPairingCredential(decoded.data))
-    throw createError('protocol', '桌面端返回了无效的登录响应。', { status: response.status }, false)
+    throw createError('protocol', message('errors.loginResponseInvalid'), { status: response.status }, false)
   return { gatewayUrl, deviceId: decoded.data.deviceId, accessToken: decoded.data.accessToken }
 }
 
@@ -217,12 +218,12 @@ export class MobileApi {
     try {
       parsed = new URL(connection.gatewayUrl)
     } catch (error) {
-      throw createError('unknown', '移动网关地址无效，请检查连接设置。', { rawMessage: rawMessage(error) }, false)
+      throw createError('unknown', message('errors.gatewayInvalid'), { rawMessage: rawMessage(error) }, false)
     }
     if (parsed.protocol !== 'https:' && parsed.protocol !== 'http:')
       throw createError(
         'protocol',
-        '移动网关地址必须使用 HTTP 或 HTTPS。',
+        message('errors.gatewayProtocol'),
         { rawMessage: `协议 ${parsed.protocol}` },
         false,
       )
@@ -500,7 +501,7 @@ export class MobileApi {
         body: JSON.stringify(body),
       })
     } catch (error) {
-      throw createError('network', '无法连接桌面端，请检查网络或网关地址。', { rawMessage: rawMessage(error) })
+      throw createError('network', message('errors.network'), { rawMessage: rawMessage(error) })
     }
 
     let decoded: unknown
@@ -508,14 +509,14 @@ export class MobileApi {
       decoded = await response.json()
     } catch (error) {
       if (response.ok)
-        throw createError('protocol', '桌面端返回了无效响应，请稍后重试。', {
+        throw createError('protocol', message('errors.responseInvalid'), {
           status: response.status,
           rawMessage: rawMessage(error),
         })
     }
     if (!response.ok) throw this.#httpError(response.status, decoded)
     if (!isGatewayEnvelope<T>(decoded))
-      throw createError('protocol', '桌面端返回了无效响应，请稍后重试。', { status: response.status })
+      throw createError('protocol', message('errors.responseInvalid'), { status: response.status })
     return decoded.data
   }
 
@@ -582,17 +583,17 @@ function userMessage(
   raw: string | undefined,
 ): string {
   if (raw !== undefined && containsChinese(raw)) return raw
-  if (kind === 'credentials') return '移动端凭据无效，请重新连接桌面端。'
-  if (kind === 'pairing-invalid') return '该配对二维码无效、已使用或已过期，请在桌面端重新生成。'
-  if (kind === 'session-not-found') return '未找到请求的会话或操作。'
-  if (kind === 'model-unavailable') return '所选模型当前不可用，请重新选择。'
-  if (kind === 'agent-preset-locked') return '会话已经开始，无法切换 Agent 模式。'
-  if (kind === 'agent-preset-not-found') return '未找到所选 Agent 预设。'
-  if (kind === 'agent-preset-invalid') return '所选 Agent 预设当前不可用。'
-  if (kind === 'settings-rejected') return '设置未被桌面端接受，请检查输入。'
-  if (kind === 'settings-conflict') return '设置已被其他窗口修改，请重新加载后再试。'
-  if (kind === 'desktop-unavailable') return '桌面端当前不可用，请确认桌面端正在运行。'
-  if (code === 'bad-request') return '移动端请求无效，请重试。'
+  if (kind === 'credentials') return message('errors.credentials')
+  if (kind === 'pairing-invalid') return message('errors.pairingInvalid')
+  if (kind === 'session-not-found') return message('errors.notFound')
+  if (kind === 'model-unavailable') return message('errors.modelUnavailable')
+  if (kind === 'agent-preset-locked') return message('errors.agentModeLocked')
+  if (kind === 'agent-preset-not-found') return message('errors.agentPresetNotFound')
+  if (kind === 'agent-preset-invalid') return message('errors.agentPresetLocked')
+  if (kind === 'settings-rejected') return message('errors.settingsRejected')
+  if (kind === 'settings-conflict') return message('errors.settingsConflict')
+  if (kind === 'desktop-unavailable') return message('errors.desktopUnavailable')
+  if (code === 'bad-request') return message('errors.requestInvalid')
   return `移动端连接请求失败（HTTP ${status}），请稍后重试。`
 }
 

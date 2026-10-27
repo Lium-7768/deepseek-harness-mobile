@@ -4,6 +4,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useNavigation } from 'expo-router'
 import type { AppTheme } from '@/theme'
 import { useAppTheme, useThemedStyles } from '@/theme/hooks'
+import { t as message } from '@/locale'
 import { NativeIcon } from '@/components/native-icon'
 import { NativeBrandMark } from '@/components/native-brand-mark'
 import { workspaceHeaderMinHeight } from '@/components/workspace-shell-logic'
@@ -61,7 +62,7 @@ export function WorkspaceShell({
   const menu = showMenu ? (
     <Pressable
       accessibilityRole="button"
-      accessibilityLabel="打开会话列表"
+      accessibilityLabel={message('common.openDrawer')}
       onPress={() => navigation.openDrawer()}
       hitSlop={8}
       style={({ pressed }) => [s.icon, pressed && s.pressed]}
