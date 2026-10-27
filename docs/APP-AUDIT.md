@@ -177,7 +177,7 @@ that renders them.
 
 | ID | Severity | Finding | Evidence | Status |
 | --- | --- | --- | --- | --- |
-| F1 | High | 928 user-visible Chinese strings across 32 files: 575 string literals plus 353 JSX text nodes. Adding a second language would mean touching every screen. | counted by scanning literals and JSX text outside comments | **Partial** — the locale layer exists and `connect` is migrated; 30 files remain |
+| F1 | High | 928 user-visible Chinese strings across 32 files: 575 string literals plus 353 JSX text nodes. Adding a second language would mean touching every screen. | counted by scanning literals and JSX text outside comments | **In progress** — 274 migrated across 8 files; 654 remain in 25 files |
 | F2 | High | The App signs in through `/v1/auth`, which no desktop gateway serves. | endpoint set above | **Open** — Desktop plugin work |
 | F3 | Medium | The Think disclosure and retry rows were 24pt with no hit slop, so the touch target was 24pt. | `native-conversation-status.tsx` | **Fixed** — `hitSlop={10}` restores 44pt |
 | F4 | Medium | The attachment remove button was 20pt with 6pt slop: a 32pt target. | `workspace-composer.tsx` | **Fixed** — slop raised to 12pt |
@@ -203,10 +203,15 @@ that renders them.
 
 1. **Desktop plugin** (F2, F10): the only thing between the App and a working
    public connection.
-2. **Locale migration** (F1): the layer and its test exist; move the remaining
-   30 files onto `t()` one screen group at a time. Order by copy volume:
-   `settings.tsx` (155), `session-drawer.tsx` (96), `session/[sessionId].tsx`
-   (83), `session-trajectory-logic.ts` (46), `workspace-composer.tsx` (45).
+2. **Locale migration** (F1): done — the API client's 24 failure messages, the
+   drawer's session rows and date formatting, the statistics line, the
+   conversation fallback labels, the trajectory titles and action names, the
+   sign-in screen, and the shared a11y suffixes.
+   Remaining, by copy volume: `settings.tsx` (105), `session/[sessionId].tsx`
+   (74), `session-drawer.tsx` (73), `workspace-composer.tsx` (41),
+   `session/…/interactions.tsx` (34), `session/…/permission.tsx` (30),
+   `session-composer-logic.ts` (28), `workspace.tsx` (27), then 17 smaller
+   files. Fall back to `format()` when a message carries values.
 3. **Dynamic Type** (F8): replace fixed control heights with minimums and add
    `maxFontSizeMultiplier` where a label must not wrap.
 
