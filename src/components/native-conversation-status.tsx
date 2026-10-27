@@ -28,6 +28,9 @@ export function NativeReasoningRow({ row }: { row: ReasoningRow }): React.JSX.El
         accessibilityRole="button"
         accessibilityLabel="查看 Think 内容"
         accessibilityState={{ expanded }}
+        // The row is 24pt to match Pocket's tightened spacing; hitSlop restores
+        // the 44pt touch target the platform requires.
+        hitSlop={10}
         onPress={() => setExpanded(value => !value)}
         style={({ pressed }) => [s.disclosureHeader, pressed && s.pressed]}
       >
@@ -61,6 +64,7 @@ export function NativeRetryRow({ row }: { row: RetryRow }): React.JSX.Element {
         accessibilityRole="button"
         accessibilityLabel={`已重试模型请求，第 ${row.retry} 次`}
         accessibilityState={{ expanded }}
+        hitSlop={10}
         onPress={() => setExpanded(value => !value)}
         style={({ pressed }) => [s.retryHeader, pressed && s.pressed]}
       >

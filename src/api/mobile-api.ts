@@ -193,14 +193,17 @@ export async function authenticateMobilePassword(login: MobilePasswordLogin): Pr
     const fault = readGatewayFault(decoded)
     const code = fault?.code
     const kind = errorKind(code, response.status)
-    throw createError(kind, userMessage(kind, code, response.status, fault?.message), {
-      code,
-      status: response.status,
-      rawMessage: fault?.message,
-    })
+    // Never report this failure: a gateway that echoes the rejected password in
+    // its fault message would otherwise write that password to the device log.
+    throw createError(
+      kind,
+      userMessage(kind, code, response.status, fault?.message),
+      { code, status: response.status, rawMessage: fault?.code === undefined ? undefined : fault.message },
+      false,
+    )
   }
   if (!isGatewayEnvelope<MobilePairingCredential>(decoded) || !isPairingCredential(decoded.data))
-    throw createError('protocol', '桌面端返回了无效的登录响应。', { status: response.status })
+    throw createError('protocol', '桌面端返回了无效的登录响应。', { status: response.status }, false)
   return { gatewayUrl, deviceId: decoded.data.deviceId, accessToken: decoded.data.accessToken }
 }
 

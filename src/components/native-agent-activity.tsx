@@ -85,10 +85,22 @@ export function NativeGoalBar({
             value={draft}
           />
           <View style={styles.editorActions}>
-            <Pressable accessibilityRole="button" disabled={pending} onPress={() => setEditing(false)} style={styles.textAction}>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityState={{ disabled: pending }}
+              disabled={pending}
+              onPress={() => setEditing(false)}
+              style={styles.textAction}
+            >
               <Text style={styles.textActionLabel}>取消</Text>
             </Pressable>
-            <Pressable accessibilityRole="button" disabled={pending || draft.trim() === ''} onPress={save} style={styles.textAction}>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityState={{ disabled: pending || draft.trim() === '' }}
+              disabled={pending || draft.trim() === ''}
+              onPress={save}
+              style={styles.textAction}
+            >
               <Text style={[styles.textActionLabel, styles.textActionPrimary]}>保存</Text>
             </Pressable>
           </View>

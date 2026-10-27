@@ -160,7 +160,7 @@ export function WorkspaceComposer({
               <Pressable
                 accessibilityRole="button"
                 accessibilityLabel={`移除附件图片 ${index + 1}`}
-                hitSlop={6}
+                hitSlop={12}
                 onPress={() => setDraftImages(current => current.filter((_, itemIndex) => itemIndex !== index))}
                 style={({ pressed }) => [s.removePreview, pressed && s.pressed]}
               >

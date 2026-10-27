@@ -350,6 +350,12 @@ export default function SessionScreen(): React.JSX.Element {
                 ref={listRef}
                 data={messages}
                 keyExtractor={(item, index) => item.rowKey ?? `message-${item.kind}-${item.sourceSeq ?? 'transient'}-${index}`}
+                // A long session can hold hundreds of rows; bound the first paint and
+                // the batch size so opening one does not mount every row at once.
+                initialNumToRender={14}
+                maxToRenderPerBatch={10}
+                updateCellsBatchingPeriod={40}
+                windowSize={11}
                 renderItem={({ item }) => (
                   <MessageRow
                     item={item}
