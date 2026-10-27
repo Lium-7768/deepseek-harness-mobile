@@ -76,6 +76,35 @@ control. Adding one would create a second way to open the same drawer. The
 | Bottom row wrap | `flex-wrap: wrap; gap: 6px` (line ~430) | `flexWrap: 'wrap'`, `gap: 6` |
 | Leading control group | `gap: 8px; min-width: 0` | `gap: 8`, `minWidth: 0` |
 
+## Drawer footer
+
+Pocket moves the session actions out of the header into a footer pinned to the
+bottom of the drawer, beside Settings, and draws each as a bordered pill.
+
+| Concern | DSH Pocket | Native |
+| --- | --- | --- |
+| Bar placement | pinned to the drawer bottom | `position: 'absolute'`, `bottom: 0`, drawer fill |
+| Bar padding | `padding: 10px` | `padding: 10` |
+| Action control | `height: 34px; padding: 0 12px; border: 1px solid border-l1; border-radius: 12px` (line ~60) | `minHeight 44` (platform touch floor), `paddingHorizontal 12`, 1px `border`, `radius 12` |
+| Action glyph | 14px | `NativeIcon size 14` |
+| Action label | `font-size: 13px; line-height: 20px` | `fontSize 13` |
+| Action gap | `gap: 8px` | `gap: 8` |
+| Content clearance | — | `paddingBottom: 64` = 10 + 44 + 10 |
+
+### Actions the native contract cannot serve
+
+Pocket's footer holds two actions that the native client has no counterpart for;
+both are contract gaps rather than missing UI:
+
+- **Files** opens the `dsh-web-ui` explorer, a Web plugin. The mobile gateway
+  exposes no file routes, and this client's contract keeps desktop files on the
+  desktop.
+- **Session log** calls the Web client's `sessionLogDownload` controller. The
+  gateway's `/v1/...` surface has no export route.
+
+Both stay out until the gateway grows the corresponding routes; a button that
+cannot do its job is worse than an absent one.
+
 ## Transient surfaces
 
 | Concern | DSH Pocket | Native |

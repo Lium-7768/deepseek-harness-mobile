@@ -472,15 +472,17 @@ export function SessionDrawer(props: DrawerContentComponentProps): React.JSX.Ele
             </View>
           </View>
         </DrawerContentScrollView>
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel="打开设置"
-          onPress={openSettings}
-          style={({ pressed }) => [styles.settings, pressed && styles.pressed]}
-        >
-          <NativeIcon name="settings" size={21} color={theme.colors.ink} />
-          <Text style={styles.settingsText}>设置</Text>
-        </Pressable>
+        <View style={styles.footer}>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="打开设置"
+            onPress={openSettings}
+            style={({ pressed }) => [styles.footerAction, pressed && styles.pressed]}
+          >
+            <NativeIcon name="settings" size={14} color={theme.colors.ink} />
+            <Text style={styles.footerActionText}>设置</Text>
+          </Pressable>
+        </View>
       </View>
     </SafeAreaView>
   )
@@ -780,20 +782,33 @@ const makeStyles = (theme: AppTheme) =>
       paddingTop: 10,
     },
     disabledWorkspaceText: { color: theme.colors.inkFaint, fontSize: 13, fontWeight: '600' },
-    settings: {
-      alignItems: 'center',
-      backgroundColor: theme.colors.surfaceRaised,
+    // DSH Pocket keeps a drawer action bar pinned to the bottom and draws each
+    // action as a bordered pill (34pt tall, 12pt radius, 14pt glyph, 13pt label).
+    // The bar keeps the drawer fill so it reads as part of the drawer.
+    footer: {
+      backgroundColor: theme.colors.drawerBackground,
       borderTopColor: theme.colors.border,
       borderTopWidth: StyleSheet.hairlineWidth,
       bottom: 0,
       flexDirection: 'row',
-      gap: theme.spacing.sm,
+      gap: 8,
       left: 0,
-      minHeight: theme.touch.minTarget,
-      paddingHorizontal: theme.spacing.md,
+      padding: 10,
       position: 'absolute',
       right: 0,
     },
-    settingsText: { color: theme.colors.ink, fontSize: 15 },
+    footerAction: {
+      alignItems: 'center',
+      borderColor: theme.colors.border,
+      borderRadius: 12,
+      borderWidth: 1,
+      flexDirection: 'row',
+      // 44pt rather than Pocket's 34pt: a native control must stay at the
+      // platform's minimum touch target.
+      gap: 8,
+      minHeight: theme.touch.minTarget,
+      paddingHorizontal: 12,
+    },
+    footerActionText: { color: theme.colors.ink, fontSize: 13 },
     pressed: { opacity: 0.62 },
   })
