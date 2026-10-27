@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { router, useLocalSearchParams } from 'expo-router'
-import { useMemo, useState } from 'react'
+import { useState } from 'react'
 import {
   ActivityIndicator,
   Alert,
@@ -250,14 +250,13 @@ function QuestionCard({ interaction, submitting, onRespond }: QuestionCardProps)
   const review = planReviewOf(questions)
   if (review !== undefined)
     return <PlanReviewCard interaction={interaction} review={review} submitting={submitting} onRespond={onRespond} />
-  const complete = useMemo(
-    () =>
-      questions.every((question) => {
-        const answer = draft[question.id]
-        return answer !== undefined && (answer.selected.length > 0 || answer.custom.trim() !== '')
-      }),
-    [draft, questions],
-  )
+  // Recomputed per render rather than memoized: this runs after an early return
+  // for the plan-review variant, and a hook there would change the hook count
+  // between renders. The work is a scan of the question list.
+  const complete = questions.every((question) => {
+    const answer = draft[question.id]
+    return answer !== undefined && (answer.selected.length > 0 || answer.custom.trim() !== '')
+  })
   const update = (questionId: string, value: Partial<AnswerDraft[string]>) => {
     setDraft(current => ({
       ...current,
