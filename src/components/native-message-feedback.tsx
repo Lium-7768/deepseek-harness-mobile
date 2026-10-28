@@ -115,7 +115,7 @@ export function NativeMessageFeedback({ api, sessionId, event }: Props): React.J
         accessibilityLabel={likeActive ? message('feedback.rated') : message('feedback.rate')}
         color={likeActive ? theme.colors.success : theme.colors.inkMuted}
         disabled={pending}
-        icon="thumb-up"
+        icon="like-outline"
         onPress={() => void toggle('positive')}
       />
       <FeedbackButton
@@ -123,7 +123,7 @@ export function NativeMessageFeedback({ api, sessionId, event }: Props): React.J
         accessibilityLabel={dislikeActive ? message('feedback.unrated') : message('feedback.unrate')}
         color={dislikeActive ? theme.colors.danger : theme.colors.inkMuted}
         disabled={pending}
-        icon="thumb-down"
+        icon="dislike-outline"
         onPress={() => void toggle('negative')}
       />
       <FeedbackError text={loadError} />
@@ -145,7 +145,7 @@ function FeedbackButton({
   accessibilityLabel: string
   color: string
   disabled: boolean
-  icon: 'thumb-up' | 'thumb-down'
+  icon: 'like-outline' | 'dislike-outline'
   onPress: () => void
 }): React.JSX.Element {
   const styles = useThemedStyles(makeStyles)

@@ -62,17 +62,17 @@ export function NativeGoalBar({
     <View style={[styles.goal, goal.phase === 'blocked' && styles.goalBlocked]}>
       <View style={styles.goalHeader}>
         <View style={styles.goalTitle}>
-          <NativeIcon name="goal" size={16} color={theme.colors.accentText} />
+          <NativeIcon name="goal-outline" size={16} color={theme.colors.accentText} />
           <Text style={styles.goalStatus}>{status}</Text>
         </View>
         <View style={styles.goalActions}>
           {goal.phase === 'active' ? (
-            <GoalIconButton label={message('activity.pauseGoal')} icon="stop" disabled={pending} onPress={() => onMutate('pause', ref)} />
+            <GoalIconButton label={message('activity.pauseGoal')} icon="stop-fill" disabled={pending} onPress={() => onMutate('pause', ref)} />
           ) : goal.phase === 'paused' ? (
-            <GoalIconButton label={message('activity.resumeGoal')} icon="arrow-forward" disabled={pending} onPress={() => onMutate('resume', ref)} />
+            <GoalIconButton label={message('activity.resumeGoal')} icon="chevron-right-outline" disabled={pending} onPress={() => onMutate('resume', ref)} />
           ) : null}
-          <GoalIconButton label={message('activity.editGoal')} icon="edit" disabled={pending} onPress={() => setEditing(current => !current)} />
-          <GoalIconButton label={message('activity.clearGoal')} icon="close" disabled={pending} onPress={() => onMutate('clear', ref)} />
+          <GoalIconButton label={message('activity.editGoal')} icon="edit-outline" disabled={pending} onPress={() => setEditing(current => !current)} />
+          <GoalIconButton label={message('activity.clearGoal')} icon="close-outline" disabled={pending} onPress={() => onMutate('clear', ref)} />
         </View>
       </View>
       {editing ? (
@@ -152,12 +152,12 @@ export function NativeAgentActivity({
                 onPress={() => onOpenSubagent(entry)}
                 style={({ pressed }) => [styles.subagentMain, pressed && styles.pressed]}
               >
-                <NativeIcon name="smart-toy" size={16} color={theme.colors.accentText} />
+                <NativeIcon name="agent-preset-outline" size={16} color={theme.colors.accentText} />
                 <View style={styles.subagentCopy}>
                   <Text numberOfLines={1} style={styles.subagentLabel}>{entry.label ?? entry.id}</Text>
                   <Text style={styles.subagentMeta}>{entry.activity === 'running' ? message('activity.subagentRunning') : message('activity.subagentIdle')} · {entry.mode === 'continuable' ? message('activity.subagentContinuable') : message('activity.subagentOneShot')}</Text>
                 </View>
-                <NativeIcon name="chevron-right" size={16} color={theme.colors.inkMuted} />
+                <NativeIcon name="chevron-right-outline" size={16} color={theme.colors.inkMuted} />
               </Pressable>
               {entry.mode === 'continuable' && entry.activity === 'running' ? (
                 <Pressable
@@ -168,7 +168,7 @@ export function NativeAgentActivity({
                   onPress={() => onInterruptSubagent({ ...entry, mode: 'continuable' })}
                   style={({ pressed }) => [styles.stopButton, pressed && styles.pressed]}
                 >
-                  <NativeIcon name="stop" size={14} color={theme.colors.danger} />
+                  <NativeIcon name="stop-fill" size={14} color={theme.colors.danger} />
                 </Pressable>
               ) : null}
             </View>
@@ -187,7 +187,7 @@ function GoalIconButton({
   onPress,
 }: {
   label: string
-  icon: 'stop' | 'arrow-forward' | 'edit' | 'close'
+  icon: 'stop-fill' | 'chevron-right-outline' | 'edit-outline' | 'close-outline'
   disabled: boolean
   onPress: () => void
 }): React.JSX.Element {

@@ -165,7 +165,7 @@ export function WorkspaceComposer({
                 onPress={() => setDraftImages(current => current.filter((_, itemIndex) => itemIndex !== index))}
                 style={({ pressed }) => [s.removePreview, pressed && s.pressed]}
               >
-                <NativeIcon name="close" size={13} color={theme.colors.onScrim} />
+                <NativeIcon name="close-outline" size={13} color={theme.colors.onScrim} />
               </Pressable>
             </View>
           ))}
@@ -199,7 +199,7 @@ export function WorkspaceComposer({
           ]}
         >
           <NativeIcon
-            name="attach-file"
+            name="paperclip-outline"
             size={21}
             color={controlsDisabled || draftImages.length >= 4 ? theme.colors.inkFaint : theme.colors.inkMuted}
           />
@@ -214,7 +214,7 @@ export function WorkspaceComposer({
             onPress={onCancel}
             style={[s.send, action.disabled && s.sendDisabled]}
           >
-            {action.busy ? <ActivityIndicator color={theme.colors.onBrand} /> : <NativeIcon name="stop" size={16} color={theme.colors.onBrand} />}
+            {action.busy ? <ActivityIndicator color={theme.colors.onBrand} /> : <NativeIcon name="stop-fill" size={16} color={theme.colors.onBrand} />}
           </Pressable>
         ) : (
           <Pressable
@@ -226,7 +226,7 @@ export function WorkspaceComposer({
             onPress={() => void send()}
             style={[s.send, action.disabled && s.sendDisabled]}
           >
-            {action.busy ? <ActivityIndicator color={theme.colors.onBrand} /> : <NativeIcon name="send" size={18} color={theme.colors.onBrand} />}
+            {action.busy ? <ActivityIndicator color={theme.colors.onBrand} /> : <NativeIcon name="paper-plane-outline" size={18} color={theme.colors.onBrand} />}
           </Pressable>
         )}
       </View>
@@ -239,7 +239,7 @@ export function WorkspaceComposer({
             accessibilityState={{ disabled: true }}
             style={s.disabledTool}
           >
-            <NativeIcon name="admin-panel-settings" size={14} color={theme.colors.inkMuted} />
+            <NativeIcon name="shield-outline" size={14} color={theme.colors.inkMuted} />
             <Text style={s.toolText}>{message('session.permissionWorkspaceBadge')}</Text>
           </View>
         ) : (
@@ -255,11 +255,11 @@ export function WorkspaceComposer({
             }}
             style={({ pressed }) => [s.tool, controlsDisabled && s.disabledTool, pressed && s.pressed]}
           >
-            <NativeIcon name="admin-panel-settings" size={14} color={theme.colors.inkMuted} />
+            <NativeIcon name="shield-outline" size={14} color={theme.colors.inkMuted} />
             <Text numberOfLines={1} style={s.toolText}>
               {selectedPermissionLabel}
             </Text>
-            <NativeIcon name="chevron-down" size={13} color={theme.colors.inkMuted} />
+            <NativeIcon name="chevron-down-outline" size={13} color={theme.colors.inkMuted} />
           </Pressable>
         )}
         {hasSession ? (
@@ -274,11 +274,11 @@ export function WorkspaceComposer({
             }}
             style={({ pressed }) => [s.tool, controlsDisabled && s.disabledTool, pressed && s.pressed]}
           >
-            <NativeIcon name="tune" size={14} color={theme.colors.inkMuted} />
+            <NativeIcon name="sliders-two-outline" size={14} color={theme.colors.inkMuted} />
             <Text numberOfLines={1} style={s.toolText}>
               {modeLabel}
             </Text>
-            <NativeIcon name="chevron-down" size={13} color={theme.colors.inkMuted} />
+            <NativeIcon name="chevron-down-outline" size={13} color={theme.colors.inkMuted} />
           </Pressable>
         ) : (
           <View
@@ -288,7 +288,7 @@ export function WorkspaceComposer({
             accessibilityState={{ disabled: true }}
             style={s.disabledTool}
           >
-            <NativeIcon name="tune" size={14} color={theme.colors.inkMuted} />
+            <NativeIcon name="sliders-two-outline" size={14} color={theme.colors.inkMuted} />
             <Text style={s.toolText}>{message('session.modeStandard')}</Text>
           </View>
         )}
@@ -305,11 +305,11 @@ export function WorkspaceComposer({
             }}
             style={({ pressed }) => [s.tool, controlsDisabled && s.disabledTool, pressed && s.pressed]}
           >
-            <NativeIcon name="smart-toy" size={14} color={theme.colors.inkMuted} />
+            <NativeIcon name="agent-preset-outline" size={14} color={theme.colors.inkMuted} />
             <Text numberOfLines={1} style={s.toolText}>
               {selectedModelLabel}
             </Text>
-            <NativeIcon name="chevron-down" size={13} color={theme.colors.inkMuted} />
+            <NativeIcon name="chevron-down-outline" size={13} color={theme.colors.inkMuted} />
           </Pressable>
         ) : (
           <View
@@ -319,7 +319,7 @@ export function WorkspaceComposer({
             accessibilityState={{ disabled: true }}
             style={s.disabledTool}
           >
-            <NativeIcon name="smart-toy" size={14} color={theme.colors.inkMuted} />
+            <NativeIcon name="agent-preset-outline" size={14} color={theme.colors.inkMuted} />
             <Text style={s.toolText}>{message('composer.modelLocked')}</Text>
           </View>
         )}

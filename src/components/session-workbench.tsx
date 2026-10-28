@@ -22,8 +22,8 @@ export function WorkbenchTabs({
   const s = useThemedStyles(makeStyles)
   return (
     <View style={s.tabs}>
-      <Tab active={tab === 'chat'} icon="chat-bubble-outline" label={message('workbench.chat')} onPress={() => onChange('chat')} />
-      <Tab active={tab === 'trajectory'} icon="route" label={message('workbench.trajectory')} onPress={() => onChange('trajectory')} />
+      <Tab active={tab === 'chat'} icon="new-chat-outline" label={message('workbench.chat')} onPress={() => onChange('chat')} />
+      <Tab active={tab === 'trajectory'} icon="branch-outline" label={message('workbench.trajectory')} onPress={() => onChange('trajectory')} />
     </View>
   )
 }
@@ -108,15 +108,15 @@ function TrajectoryActivityRow({ activity }: { activity: NativeTrajectoryActivit
 
 function activityIcon(activity: NativeTrajectoryActivity): NativeIconName {
   switch (activity.kind) {
-    case 'assistant': return 'smart-toy'
-    case 'compaction': return 'data'
-    case 'context': return 'description'
-    case 'error': return 'warning-amber'
-    case 'question': return 'warning-amber'
-    case 'reasoning': return 'think'
-    case 'retry': return 'refresh'
-    case 'tool': return 'build'
-    case 'user': return 'chat-bubble-outline'
+    case 'assistant': return 'agent-preset-outline'
+    case 'compaction': return 'data-outline'
+    case 'context': return 'deliver-doc'
+    case 'error': return 'warning-triangle-outline'
+    case 'question': return 'warning-triangle-outline'
+    case 'reasoning': return 'think-outline'
+    case 'retry': return 'refresh-outline'
+    case 'tool': return 'skill-outline'
+    case 'user': return 'new-chat-outline'
   }
 }
 
@@ -142,7 +142,7 @@ export function ContextRows({ items }: { items: SharedEventItem[] }): React.JSX.
     <View style={s.contextCompact}>
       {names.map(name => (
         <View key={name} style={s.contextCompactRow}>
-          <NativeIcon name="description" size={15} color={theme.colors.inkMuted} />
+          <NativeIcon name="deliver-doc" size={15} color={theme.colors.inkMuted} />
           <Text numberOfLines={1} style={s.contextCompactText}>
             {format('workbench.contextInjection', { name })}
           </Text>

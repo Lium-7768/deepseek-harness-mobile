@@ -49,7 +49,7 @@ export default function SessionModeScreen(): React.JSX.Element {
           onPress={() => router.back()}
           style={styles.back}
         >
-          <NativeIcon name="arrow-back" color={theme.colors.ink} size={20} />
+          <NativeIcon name="chevron-left-outline" color={theme.colors.ink} size={20} />
         </Pressable>
       }
       showMenu={false}
@@ -84,7 +84,7 @@ export default function SessionModeScreen(): React.JSX.Element {
                 <Text style={styles.error}>{mobileErrorMessage(sessions.error, message('conversation.sessionStateFailed'))}</Text>
                 <NativeActionButton
                   label={message('conversation.reloadSessionState')}
-                  icon="refresh"
+                  icon="refresh-outline"
                   variant="secondary"
                   onPress={() => void sessions.refetch()}
                 />
@@ -154,7 +154,7 @@ function StateView({
     return (
       <View style={styles.stateBlock}>
         <Text style={styles.error}>{mobileErrorMessage(error, message('mode.loadFailed'))}</Text>
-        <NativeActionButton label={message('common.reload')} icon="refresh" variant="secondary" onPress={onRetry} />
+        <NativeActionButton label={message('common.reload')} icon="refresh-outline" variant="secondary" onPress={onRetry} />
       </View>
     )
   return <Text style={styles.state}>{text}</Text>

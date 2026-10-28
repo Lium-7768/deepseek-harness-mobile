@@ -209,7 +209,7 @@ export function SessionDrawer(props: DrawerContentComponentProps): React.JSX.Ele
               onPress={closeDrawer}
               style={({ pressed }) => [styles.topIcon, pressed && styles.pressed]}
             >
-              <NativeIcon name="close" size={22} color={theme.colors.inkMuted} />
+              <NativeIcon name="close-outline" size={22} color={theme.colors.inkMuted} />
             </Pressable>
           </View>
 
@@ -220,7 +220,7 @@ export function SessionDrawer(props: DrawerContentComponentProps): React.JSX.Ele
             onPress={() => void createSession()}
             style={({ pressed }) => [styles.newSession, !connection && styles.disabledAction, pressed && styles.pressed]}
           >
-            <NativeIcon name="note-add" size={21} color={connection ? theme.colors.accent : theme.colors.inkFaint} />
+            <NativeIcon name="new-chat-outline" size={21} color={connection ? theme.colors.accent : theme.colors.inkFaint} />
             <View style={styles.newSessionTextWrap}>
               <Text style={connection ? styles.newSessionText : styles.newSessionTextDisabled}>{message('drawer.newSession')}</Text>
               <Text style={styles.newSessionHint}>{connection ? message('drawer.createOnDesktop') : message('drawer.connectFirst')}</Text>
@@ -237,7 +237,7 @@ export function SessionDrawer(props: DrawerContentComponentProps): React.JSX.Ele
                 onPress={() => setSearchOpen(value => !value)}
                 style={({ pressed }) => [styles.actionIcon, pressed && styles.pressed]}
               >
-                <NativeIcon name="search" size={21} color={theme.colors.inkMuted} />
+                <NativeIcon name="search-outline" size={21} color={theme.colors.inkMuted} />
               </Pressable>
               <Pressable
                 accessibilityRole="button"
@@ -249,7 +249,7 @@ export function SessionDrawer(props: DrawerContentComponentProps): React.JSX.Ele
                 }}
                 style={({ pressed }) => [styles.actionIcon, pressed && styles.pressed]}
               >
-                <NativeIcon name={optionsOpen ? 'expand-less' : 'tune'} size={21} color={theme.colors.inkMuted} />
+                <NativeIcon name={optionsOpen ? 'chevron-up-outline' : 'sliders-two-outline'} size={21} color={theme.colors.inkMuted} />
               </Pressable>
               <View
                 accessible
@@ -257,7 +257,7 @@ export function SessionDrawer(props: DrawerContentComponentProps): React.JSX.Ele
                 accessibilityState={{ disabled: true }}
                 style={[styles.actionIcon, styles.disabledAction]}
               >
-                <NativeIcon name="create-new-folder" size={21} color={theme.colors.inkFaint} />
+                <NativeIcon name="project-add-outline" size={21} color={theme.colors.inkFaint} />
               </View>
             </View>
           </View>
@@ -271,7 +271,7 @@ export function SessionDrawer(props: DrawerContentComponentProps): React.JSX.Ele
                 onPress={() => setExpandedViewSection(value => (value === 'group' ? undefined : 'group'))}
                 right={
                   <NativeIcon
-                    name={expandedViewSection === 'group' ? 'expand-less' : 'chevron-right'}
+                    name={expandedViewSection === 'group' ? 'chevron-up-outline' : 'chevron-right-outline'}
                     size={18}
                     color={theme.colors.inkMuted}
                   />
@@ -305,7 +305,7 @@ export function SessionDrawer(props: DrawerContentComponentProps): React.JSX.Ele
                 onPress={() => setExpandedViewSection(value => (value === 'sort' ? undefined : 'sort'))}
                 right={
                   <NativeIcon
-                    name={expandedViewSection === 'sort' ? 'expand-less' : 'chevron-right'}
+                    name={expandedViewSection === 'sort' ? 'chevron-up-outline' : 'chevron-right-outline'}
                     size={18}
                     color={theme.colors.inkMuted}
                   />
@@ -328,7 +328,7 @@ export function SessionDrawer(props: DrawerContentComponentProps): React.JSX.Ele
           ) : null}
           {searchOpen ? (
             <View style={styles.searchBox}>
-              <NativeIcon name="search" size={18} color={theme.colors.inkMuted} />
+              <NativeIcon name="search-outline" size={18} color={theme.colors.inkMuted} />
               <TextInput
                 accessibilityLabel={message('drawer.searchSessions')}
                 autoFocus
@@ -346,7 +346,7 @@ export function SessionDrawer(props: DrawerContentComponentProps): React.JSX.Ele
                 onPress={() => setSearch('')}
                 style={styles.clearSearch}
               >
-                <NativeIcon name="close" size={18} color={theme.colors.inkMuted} />
+                <NativeIcon name="close-outline" size={18} color={theme.colors.inkMuted} />
               </Pressable>
             </View>
           ) : null}
@@ -398,7 +398,7 @@ export function SessionDrawer(props: DrawerContentComponentProps): React.JSX.Ele
                                 params: { workspaceId: item.workspace?.workspaceId ?? '', title: item.workspace?.title ?? item.label },
                               })
                             }
-                            right={<NativeIcon name="edit" size={18} color={theme.colors.inkMuted} />}
+                            right={<NativeIcon name="edit-outline" size={18} color={theme.colors.inkMuted} />}
                           />
                           <NativeListRow
                             title={message('drawer.removeWorkspace')}
@@ -421,7 +421,7 @@ export function SessionDrawer(props: DrawerContentComponentProps): React.JSX.Ele
                     >
                       <Text style={styles.expandText}>{item.expanded ? message('drawer.collapse') : format('drawer.expandMore', { count: item.hiddenCount })}</Text>
                       <NativeIcon
-                        name={item.expanded ? 'expand-less' : 'expand-more'}
+                        name={item.expanded ? 'chevron-up-outline' : 'chevron-down-outline'}
                         size={18}
                         color={theme.colors.inkMuted}
                       />
@@ -449,13 +449,13 @@ export function SessionDrawer(props: DrawerContentComponentProps): React.JSX.Ele
                                 params: { sessionId: item.session.sessionId, title: item.session.title ?? message('session.untitled') },
                               })
                             }
-                            right={<NativeIcon name="edit" size={18} color={theme.colors.inkMuted} />}
+                            right={<NativeIcon name="edit-outline" size={18} color={theme.colors.inkMuted} />}
                           />
                           <NativeListRow
                             title={message('drawer.forkSession')}
                             accessibilityRole="button"
                             onPress={() => void forkSession(item.session.sessionId)}
-                            right={<NativeIcon name="route" size={18} color={theme.colors.inkMuted} />}
+                            right={<NativeIcon name="branch-outline" size={18} color={theme.colors.inkMuted} />}
                           />
                           <NativeListRow
                             title={message('drawer.archiveSession')}
@@ -480,7 +480,7 @@ export function SessionDrawer(props: DrawerContentComponentProps): React.JSX.Ele
             onPress={openSettings}
             style={({ pressed }) => [styles.footerAction, pressed && styles.pressed]}
           >
-            <NativeIcon name="settings" size={14} color={theme.colors.ink} />
+            <NativeIcon name="settings-outline" size={14} color={theme.colors.ink} />
             <Text style={styles.footerActionText}>{message('settings.title')}</Text>
           </Pressable>
         </View>
@@ -515,7 +515,7 @@ function WorkspaceItem({
       delayLongPress={350}
       style={({ pressed }) => [styles.folder, pressed && styles.pressed]}
     >
-      <NativeIcon name={collapsed ? 'chevron-right' : 'expand-more'} size={18} color={theme.colors.inkMuted} />
+      <NativeIcon name={collapsed ? 'chevron-right-outline' : 'chevron-down-outline'} size={18} color={theme.colors.inkMuted} />
       <NativeIcon
         name={collapsed ? 'folder-close' : 'folder-open'}
         size={20}
@@ -587,7 +587,7 @@ function OptionRow({
       style={({ pressed }) => [styles.optionRow, disabled && styles.disabledOptionRow, pressed && styles.pressed]}
     >
       <Text style={disabled ? styles.disabledOptionLabel : styles.optionLabel}>{label}</Text>
-      {selected ? <NativeIcon name="check" size={17} color={theme.colors.accentText} /> : null}
+      {selected ? <NativeIcon name="check-outline" size={17} color={theme.colors.accentText} /> : null}
     </Pressable>
   )
 }

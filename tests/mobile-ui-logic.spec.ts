@@ -9,9 +9,10 @@ describe('mobile UI parity mappings', () => {
   })
 
   it('uses the Web canonical settings glyph semantics', () => {
-    expect(settingsSectionIcon('general')).toBe('settings')
-    expect(settingsSectionIcon('models')).toBe('data')
-    expect(settingsSectionIcon('plugins')).toBe('personalization')
-    expect(settingsSectionIcon('presets')).toBe('agent-preset')
+    // Names are the desktop client's glyphs, so both clients draw the same icon.
+    expect(settingsSectionIcon('general')).toBe('settings-outline')
+    expect(settingsSectionIcon('models')).toBe('data-outline')
+    expect(settingsSectionIcon('plugins')).toBe('personalization-outline')
+    expect(settingsSectionIcon('presets')).toBe('agent-preset-outline')
   })
 })

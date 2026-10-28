@@ -54,7 +54,7 @@ export default function ScanPairingScreen(): React.JSX.Element {
           onPress={() => router.back()}
           style={({ pressed }) => [styles.back, pressed && styles.pressed]}
         >
-          <NativeIcon name="chevron-left" color={theme.colors.ink} size={22} />
+          <NativeIcon name="chevron-left-outline" color={theme.colors.ink} size={22} />
         </Pressable>
       }
     >
@@ -64,10 +64,10 @@ export default function ScanPairingScreen(): React.JSX.Element {
           <View style={styles.center}><ActivityIndicator color={theme.colors.accent} /></View>
         ) : !permission.granted ? (
           <View style={styles.permissionCard}>
-            <NativeIcon name="warning-amber" color={theme.colors.warning} size={22} />
+            <NativeIcon name="warning-triangle-outline" color={theme.colors.warning} size={22} />
             <Text style={styles.permissionTitle}>{message('scan.cameraPermissionTitle')}</Text>
             <Text style={styles.permissionCopy}>{message('scan.cameraPermissionBody')}</Text>
-            <NativeActionButton label={message('scan.allowCamera')} icon="link" onPress={() => void requestPermission()} style={styles.fullWidth} />
+            <NativeActionButton label={message('scan.allowCamera')} icon="link-outline" onPress={() => void requestPermission()} style={styles.fullWidth} />
           </View>
         ) : (
           <View style={styles.cameraCard}>
@@ -92,11 +92,11 @@ export default function ScanPairingScreen(): React.JSX.Element {
         )}
         {error !== '' ? (
           <View accessibilityRole="alert" style={styles.error}>
-            <NativeIcon name="error-outline" color={theme.colors.danger} size={18} />
+            <NativeIcon name="warning-outline" color={theme.colors.danger} size={18} />
             <Text style={styles.errorText}>{error}</Text>
           </View>
         ) : null}
-        <NativeActionButton label={message('scan.manualInstead')} icon="link" variant="secondary" onPress={() => router.back()} style={styles.fullWidth} />
+        <NativeActionButton label={message('scan.manualInstead')} icon="link-outline" variant="secondary" onPress={() => router.back()} style={styles.fullWidth} />
       </View>
     </WorkspaceShell>
   )

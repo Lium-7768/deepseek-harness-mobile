@@ -320,9 +320,9 @@ export default function SessionScreen(): React.JSX.Element {
                 onPress={() => router.push({ pathname: '/session/[sessionId]/interactions', params: { sessionId } })}
                 style={({ pressed }) => [s.action, pressed && s.pressed]}
               >
-                <NativeIcon name="warning-amber" size={18} color={theme.colors.warning} />
+                <NativeIcon name="warning-triangle-outline" size={18} color={theme.colors.warning} />
                 <Text style={s.actionText}>{format('conversation.pendingCount', { count: actions })}</Text>
-                <NativeIcon name="chevron-right" size={18} color={theme.colors.inkMuted} />
+                <NativeIcon name="chevron-right-outline" size={18} color={theme.colors.inkMuted} />
               </Pressable>
             ) : null}
             {history.isError ? (
@@ -379,7 +379,7 @@ export default function SessionScreen(): React.JSX.Element {
                       onPress={() => void loadOlder.mutateAsync()}
                       style={({ pressed }) => [s.loadOlder, pressed && s.pressed]}
                     >
-                      <NativeIcon name="expand-less" size={16} color={theme.colors.accentText} />
+                      <NativeIcon name="chevron-up-outline" size={16} color={theme.colors.accentText} />
                       <Text style={s.loadOlderText}>{loadOlder.isPending ? message('conversation.loading') : message('conversation.loadOlder')}</Text>
                     </Pressable>
                   ) : null
@@ -420,7 +420,7 @@ export default function SessionScreen(): React.JSX.Element {
                   }}
                   style={({ pressed }) => [s.returnToLatest, pressed && s.pressed]}
                 >
-                  <NativeIcon name="chevron-down" size={20} color={theme.colors.ink} />
+                  <NativeIcon name="chevron-down-outline" size={20} color={theme.colors.ink} />
                 </Pressable>
               ) : null}
             </View>
@@ -561,7 +561,7 @@ function MessageActions({ alignment, text, time }: { alignment: MessageActionAli
         style={({ pressed }) => [messageActionLayout(alignment), pressed && s.pressed]}
       >
         <NativeIcon
-          name={copied ? 'check' : 'content-copy'}
+          name={copied ? 'check-outline' : 'copy-outline'}
           size={16}
           color={
             copied ? theme.colors.success : copyFailed ? theme.colors.danger : theme.colors.inkMuted
@@ -577,7 +577,7 @@ function ErrorNotice({ text, onRetry }: { text: string; onRetry: () => void }): 
   return (
     <View style={s.errorNotice}>
       <Text style={s.error}>{text}</Text>
-      <NativeActionButton label={message('common.reload')} icon="refresh" variant="secondary" onPress={onRetry} />
+      <NativeActionButton label={message('common.reload')} icon="refresh-outline" variant="secondary" onPress={onRetry} />
     </View>
   )
 }
@@ -597,7 +597,7 @@ function UnavailableState({
     <View style={s.unavailable}>
       <NativeIcon name="link-off" size={28} color={theme.colors.inkFaint} />
       <Text style={s.unavailableText}>{message}</Text>
-      <NativeActionButton label={action} icon="arrow-forward" onPress={onPress} style={s.unavailableAction} />
+      <NativeActionButton label={action} icon="chevron-right-outline" onPress={onPress} style={s.unavailableAction} />
     </View>
   )
 }

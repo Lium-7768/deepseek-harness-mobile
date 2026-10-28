@@ -67,13 +67,13 @@ export default function ConnectScreen(): React.JSX.Element {
             />
             {error !== '' ? (
               <View accessibilityRole="alert" style={styles.error}>
-                <NativeIcon name="error-outline" color={theme.colors.danger} size={18} />
+                <NativeIcon name="warning-outline" color={theme.colors.danger} size={18} />
                 <Text style={styles.errorText}>{error}</Text>
               </View>
             ) : null}
             <NativeActionButton
               label={message('connect.submit')}
-              icon="link"
+              icon="link-outline"
               loading={saving}
               onPress={() => void connect()}
               style={styles.connectButton}
@@ -81,7 +81,7 @@ export default function ConnectScreen(): React.JSX.Element {
             <Text style={styles.manualLabel}>{message('connect.scanHint')}</Text>
             <NativeActionButton
               label={message('connect.scanAction')}
-              icon="link"
+              icon="link-outline"
               onPress={() => router.push('/connect/scan')}
               variant="secondary"
               style={styles.connectButton}

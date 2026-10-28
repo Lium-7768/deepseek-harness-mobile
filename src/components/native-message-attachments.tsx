@@ -98,7 +98,7 @@ function NativeMessageAttachment({
           <ActivityIndicator color={theme.colors.accent} />
         ) : (
           <View style={styles.loadFailure}>
-            <NativeIcon name="attach-file" size={20} color={theme.colors.inkMuted} />
+            <NativeIcon name="paperclip-outline" size={20} color={theme.colors.inkMuted} />
             <Text style={styles.loadFailureText}>{message('attachment.tapToRetry')}</Text>
           </View>
         )}
@@ -108,7 +108,7 @@ function NativeMessageAttachment({
         <Modal animationType="fade" transparent visible={open} onRequestClose={() => setOpen(false)}>
           <View style={styles.modalBackdrop}>
             <Pressable accessibilityRole="button" accessibilityLabel={message('attachment.closePreview')} onPress={() => setOpen(false)} style={styles.closeButton}>
-              <NativeIcon name="close" size={22} color={theme.colors.textOnAccent} />
+              <NativeIcon name="close-outline" size={22} color={theme.colors.textOnAccent} />
             </Pressable>
             <Image accessibilityLabel={label} resizeMode="contain" source={{ uri }} style={styles.fullImage} />
             <View style={styles.previewFooter}>
@@ -121,7 +121,7 @@ function NativeMessageAttachment({
                 onPress={() => void share()}
                 style={({ pressed }) => [styles.shareButton, pressed && styles.pressed]}
               >
-                <NativeIcon name="link" size={16} color={theme.colors.textOnAccent} />
+                <NativeIcon name="link-outline" size={16} color={theme.colors.textOnAccent} />
                 <Text style={styles.shareText}>{sharing ? message('attachment.preparing') : message('attachment.share')}</Text>
               </Pressable>
             </View>

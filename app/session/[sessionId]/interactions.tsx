@@ -104,7 +104,7 @@ export default function InteractionsScreen(): React.JSX.Element {
           onPress={() => router.back()}
           style={({ pressed }) => [styles.headerAction, pressed && styles.pressed]}
         >
-          <NativeIcon name="arrow-back" color={theme.colors.ink} size={20} />
+          <NativeIcon name="chevron-left-outline" color={theme.colors.ink} size={20} />
         </Pressable>
       }
     >
@@ -162,7 +162,7 @@ function InteractionListStateView({
       <View style={styles.empty}>
         <Text style={styles.emptyTitle}>{message('interactions.notConnected')}</Text>
         <Text style={styles.emptyText}>{message('interactions.notConnectedBody')}</Text>
-        <NativeActionButton label={message('interactions.goConnect')} icon="link" onPress={() => router.replace('/connect')} />
+        <NativeActionButton label={message('interactions.goConnect')} icon="link-outline" onPress={() => router.replace('/connect')} />
       </View>
     )
   if (state === 'invalid-session')
@@ -170,7 +170,7 @@ function InteractionListStateView({
       <View style={styles.empty}>
         <Text style={styles.emptyTitle}>{message('interactions.invalidSession')}</Text>
         <Text style={styles.emptyText}>{message('interactions.invalidSessionBody')}</Text>
-        <NativeActionButton label={message('interactions.backToSession')} icon="arrow-back" variant="secondary" onPress={() => router.back()} />
+        <NativeActionButton label={message('interactions.backToSession')} icon="chevron-left-outline" variant="secondary" onPress={() => router.back()} />
       </View>
     )
   if (state === 'loading')
@@ -185,7 +185,7 @@ function InteractionListStateView({
       <View style={styles.empty}>
         <Text style={styles.emptyTitle}>{message('interactions.loadFailedTitle')}</Text>
         <Text style={styles.error}>{withErrorContext(message('interactions.loadFailedBody'), query.error)}</Text>
-        <NativeActionButton label={message('common.reload')} icon="refresh" variant="secondary" onPress={() => void query.refetch()} />
+        <NativeActionButton label={message('common.reload')} icon="refresh-outline" variant="secondary" onPress={() => void query.refetch()} />
       </View>
     )
   return (
@@ -226,7 +226,7 @@ function ApprovalCard({ interaction, submitting, onRespond }: ApprovalCardProps)
       <View style={styles.buttonRow}>
         <NativeActionButton
           label={message('interactions.deny')}
-          icon="close"
+          icon="close-outline"
           variant="danger"
           disabled={submitting}
           onPress={() => answer('rejected')}
@@ -234,7 +234,7 @@ function ApprovalCard({ interaction, submitting, onRespond }: ApprovalCardProps)
         />
         <NativeActionButton
           label={message('interactions.allowOnce')}
-          icon="check"
+          icon="check-outline"
           disabled={submitting}
           onPress={() => answer('allowed-once')}
           style={styles.approvalButton}
@@ -339,7 +339,7 @@ function QuestionCard({ interaction, submitting, onRespond }: QuestionCardProps)
       ))}
       <NativeActionButton
         label={submitting ? message('interactions.responding') : message('interactions.respond')}
-        icon="send"
+        icon="paper-plane-outline"
         loading={submitting}
         disabled={!complete}
         onPress={submit}
@@ -399,7 +399,7 @@ function PlanReviewCard({
       <View style={styles.buttonRow}>
         <NativeActionButton
           label={message('interactions.discuss')}
-          icon="chat"
+          icon="new-chat-outline"
           variant="secondary"
           disabled={submitting}
           onPress={discuss}
@@ -408,7 +408,7 @@ function PlanReviewCard({
         {review.decline !== undefined ? (
           <NativeActionButton
             label={review.decline}
-            icon="close"
+            icon="close-outline"
             variant="danger"
             disabled={submitting}
             onPress={() => answer(review.decline as string)}
@@ -417,7 +417,7 @@ function PlanReviewCard({
         ) : null}
         <NativeActionButton
           label={review.approve}
-          icon="check"
+          icon="check-outline"
           disabled={submitting}
           onPress={() => answer(review.approve)}
           style={styles.approvalButton}

@@ -77,9 +77,9 @@ export function NativeQueueDock({ items, onUpdate, running }: Props): React.JSX.
           onPress={() => setCollapsed(value => !value)}
           style={({ pressed }) => [s.header, pressed && s.pressed]}
         >
-          <NativeIcon name="chat" size={15} color={theme.colors.inkMuted} />
+          <NativeIcon name="new-chat-outline" size={15} color={theme.colors.inkMuted} />
           <Text style={s.headerText}>{format('queue.header', { count: queue.length })}</Text>
-          <NativeIcon name={expanded ? 'expand-less' : 'expand-more'} size={17} color={theme.colors.inkMuted} />
+          <NativeIcon name={expanded ? 'chevron-up-outline' : 'chevron-down-outline'} size={17} color={theme.colors.inkMuted} />
         </Pressable>
       ) : null}
       {listVisible ? (
@@ -90,7 +90,7 @@ export function NativeQueueDock({ items, onUpdate, running }: Props): React.JSX.
             const busy = busyId !== undefined
             return (
               <View key={item.id} style={s.row}>
-                {queue.length === 1 ? <NativeIcon name="chat" size={15} color={theme.colors.inkMuted} /> : null}
+                {queue.length === 1 ? <NativeIcon name="new-chat-outline" size={15} color={theme.colors.inkMuted} /> : null}
                 {isEditing ? (
                   <TextInput
                     accessibilityLabel={message('queue.edit')}
@@ -111,17 +111,17 @@ export function NativeQueueDock({ items, onUpdate, running }: Props): React.JSX.
                       <QueueAction
                         disabled={busy || editing.text.trim() === ''}
                         label={message('queue.save')}
-                        icon="check"
+                        icon="check-outline"
                         onPress={() => void save()}
                       />
-                      <QueueAction disabled={busy} label={message('queue.cancelEdit')} icon="close" onPress={() => setEditing(undefined)} />
+                      <QueueAction disabled={busy} label={message('queue.cancelEdit')} icon="close-outline" onPress={() => setEditing(undefined)} />
                     </>
                   ) : (
                     <>
                       <QueueAction
                         disabled={busy || text === undefined}
                         label={text === undefined ? message('queue.cannotEditWithAttachment') : message('queue.edit')}
-                        icon="edit"
+                        icon="edit-outline"
                         onPress={() => {
                           if (text !== undefined) setEditing({ id: item.id, text })
                         }}
@@ -129,13 +129,13 @@ export function NativeQueueDock({ items, onUpdate, running }: Props): React.JSX.
                       <QueueAction
                         disabled={busy}
                         label={message('queue.remove')}
-                        icon="close"
+                        icon="close-outline"
                         onPress={() => void apply(item.id, { kind: 'remove' }, message('queue.cannotRemove'))}
                       />
                       <QueueAction
                         disabled={busy || !running}
                         label={running ? message('queue.steer') : message('queue.steerUnavailable')}
-                        icon="send"
+                        icon="paper-plane-outline"
                         onPress={() => void apply(item.id, { kind: 'steer' }, message('queue.cannotSteer'))}
                       />
                     </>
@@ -157,7 +157,7 @@ function QueueAction({
   onPress,
 }: {
   disabled: boolean
-  icon: 'check' | 'close' | 'edit' | 'send'
+  icon: 'check-outline' | 'close-outline' | 'edit-outline' | 'paper-plane-outline'
   label: string
   onPress: () => void
 }): React.JSX.Element {

@@ -30,13 +30,13 @@ function variantFor(name?: string): Variant {
 }
 
 const META: Record<Variant, [NativeIconName, string]> = {
-  search: ['search', message('tool.verbSearch')],
-  read: ['description', message('tool.verbRead')],
-  bash: ['terminal', message('tool.verbCommand')],
-  write: ['note-add', message('tool.verbWrite')],
-  edit: ['edit', message('tool.verbEdit')],
-  code: ['code', message('tool.verbCode')],
-  web: ['language', message('tool.verbWeb')],
+  search: ['search-outline', message('tool.verbSearch')],
+  read: ['deliver-doc', message('tool.verbRead')],
+  bash: ['code-outline', message('tool.verbCommand')],
+  write: ['new-chat-outline', message('tool.verbWrite')],
+  edit: ['edit-outline', message('tool.verbEdit')],
+  code: ['code-outline', message('tool.verbCode')],
+  web: ['globe-outline', message('tool.verbWeb')],
   other: ['sparkle', message('tool.verbGeneric')],
 }
 
@@ -106,7 +106,7 @@ export function NativeToolCard({ presentation, row }: { presentation?: SharedMes
               model.state === 'completed' ? styles.completedDot : model.state === 'failed' ? styles.failedDot : styles.runningDot,
             ]}
           />
-          {hasDetails ? <NativeIcon name={expanded ? 'expand-less' : 'expand-more'} size={15} color={theme.colors.inkFaint} /> : null}
+          {hasDetails ? <NativeIcon name={expanded ? 'chevron-up-outline' : 'chevron-down-outline'} size={15} color={theme.colors.inkFaint} /> : null}
         </View>
       </Pressable>
       {expanded ? (

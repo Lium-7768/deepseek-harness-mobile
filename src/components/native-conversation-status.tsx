@@ -35,13 +35,13 @@ export function NativeReasoningRow({ row }: { row: ReasoningRow }): React.JSX.El
         onPress={() => setExpanded(value => !value)}
         style={({ pressed }) => [s.disclosureHeader, pressed && s.pressed]}
       >
-        <NativeIcon name="think" size={15} color={theme.colors.inkMuted} />
+        <NativeIcon name="think-outline" size={15} color={theme.colors.inkMuted} />
         <Text style={s.disclosureTitle}>Think</Text>
         <Text style={s.separator}>·</Text>
         <Text numberOfLines={1} style={s.disclosureSummary}>
           {summary}
         </Text>
-        <NativeIcon name={expanded ? 'expand-less' : 'expand-more'} size={15} color={theme.colors.inkFaint} />
+        <NativeIcon name={expanded ? 'chevron-up-outline' : 'chevron-down-outline'} size={15} color={theme.colors.inkFaint} />
       </Pressable>
       {expanded ? <Text selectable style={s.disclosureBody}>{row.text}</Text> : null}
     </View>
@@ -69,9 +69,9 @@ export function NativeRetryRow({ row }: { row: RetryRow }): React.JSX.Element {
         onPress={() => setExpanded(value => !value)}
         style={({ pressed }) => [s.retryHeader, pressed && s.pressed]}
       >
-        <NativeIcon name="refresh" size={14} color={theme.colors.inkMuted} />
+        <NativeIcon name="refresh-outline" size={14} color={theme.colors.inkMuted} />
         <Text style={s.retryText}>{format('status.retryDetail', { attempt: row.retry, max: row.maxRetries, seconds })}</Text>
-        <NativeIcon name={expanded ? 'expand-less' : 'expand-more'} size={15} color={theme.colors.inkFaint} />
+        <NativeIcon name={expanded ? 'chevron-up-outline' : 'chevron-down-outline'} size={15} color={theme.colors.inkFaint} />
       </Pressable>
       {expanded ? (
         <View style={s.retryDetails}>
@@ -124,11 +124,11 @@ export function NativeCommandRow({ row }: { row: CommandRow }): React.JSX.Elemen
         onPress={() => setExpanded(value => !value)}
         style={({ pressed }) => [s.commandHeader, pressed && s.pressed]}
       >
-        <NativeIcon name="terminal" size={14} color={theme.colors.inkMuted} />
+        <NativeIcon name="code-outline" size={14} color={theme.colors.inkMuted} />
         <Text numberOfLines={1} style={s.commandName}>{row.name}</Text>
         {row.state === 'running' ? <Text style={s.commandRunning}>{message('status.running')}</Text> : null}
         {row.state === 'error' ? <Text style={s.commandError}>{message('status.failed')}</Text> : null}
-        <NativeIcon name={expanded ? 'expand-less' : 'expand-more'} size={15} color={theme.colors.inkFaint} />
+        <NativeIcon name={expanded ? 'chevron-up-outline' : 'chevron-down-outline'} size={15} color={theme.colors.inkFaint} />
       </Pressable>
       {expanded && row.text ? <Text selectable style={s.commandBody}>{row.text}</Text> : null}
     </View>
@@ -146,7 +146,7 @@ export function NativeTurnMaxTokensRow(): React.JSX.Element {
   const s = useThemedStyles(makeStyles)
   return (
     <View style={s.maxTokens}>
-      <NativeIcon name="warning-amber" size={14} color={theme.colors.warningText} />
+      <NativeIcon name="warning-triangle-outline" size={14} color={theme.colors.warningText} />
       <Text style={s.maxTokensText}>{message('status.maxTokensNote')}</Text>
     </View>
   )
@@ -171,12 +171,12 @@ export function NativeCompactionRow({ row }: { row: CompactionRow }): React.JSX.
         onPress={() => setExpanded(value => !value)}
         style={({ pressed }) => [s.compactionHeader, pressed && s.pressed]}
       >
-        <NativeIcon name="data" size={14} color={theme.colors.inkMuted} />
+        <NativeIcon name="data-outline" size={14} color={theme.colors.inkMuted} />
         <Text style={s.compactionTitle}>{message('status.compacted')}</Text>
         <Text numberOfLines={1} style={s.compactionSummary}>
           {row.summary || message('status.compactedBody')}
         </Text>
-        <NativeIcon name={expanded ? 'expand-less' : 'expand-more'} size={15} color={theme.colors.inkFaint} />
+        <NativeIcon name={expanded ? 'chevron-up-outline' : 'chevron-down-outline'} size={15} color={theme.colors.inkFaint} />
       </Pressable>
       {expanded ? (
         <View style={s.compactionDetails}>

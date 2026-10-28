@@ -231,7 +231,7 @@ function NativeCodeBlock({
           style={styles.copyButton}
         >
           <NativeIcon
-            name={copied ? 'check' : 'content-copy'}
+            name={copied ? 'check-outline' : 'copy-outline'}
             size={16}
             color={copied ? theme.colors.codeSuccess : failed ? theme.colors.danger : theme.colors.codeInteractive}
           />
@@ -248,7 +248,7 @@ function NativeCodeBlock({
           style={styles.codeToggle}
         >
           <Text style={styles.codeToggleText}>{expanded ? message('markdown.collapse') : format('markdown.expandAll', { count: lineCount })}</Text>
-          <NativeIcon name={expanded ? 'expand-less' : 'expand-more'} size={15} color={theme.colors.codeInteractive} />
+          <NativeIcon name={expanded ? 'chevron-up-outline' : 'chevron-down-outline'} size={15} color={theme.colors.codeInteractive} />
         </Pressable>
       ) : null}
     </View>

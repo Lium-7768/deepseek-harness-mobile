@@ -51,7 +51,7 @@ export default function RenameWorkspaceScreen(): React.JSX.Element {
           onPress={() => router.back()}
           style={styles.back}
         >
-          <NativeIcon name="arrow-back" color={theme.colors.ink} size={20} />
+          <NativeIcon name="chevron-left-outline" color={theme.colors.ink} size={20} />
         </Pressable>
       }
       title={message('rename.workspaceTitle')}
@@ -80,7 +80,7 @@ export default function RenameWorkspaceScreen(): React.JSX.Element {
         <Text style={styles.hint}>{message('rename.workspaceNote')}</Text>
         <NativeActionButton
           label={message('rename.save')}
-          icon="check"
+          icon="check-outline"
           loading={rename.isPending}
           onPress={() => void rename.mutateAsync()}
           disabled={!connection || !workspaceId || title.trim() === ''}

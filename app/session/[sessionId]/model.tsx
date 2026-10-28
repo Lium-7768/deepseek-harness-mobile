@@ -43,7 +43,7 @@ export default function SessionModelScreen(): React.JSX.Element {
           onPress={() => router.replace(sessionDetailReturnTarget(sessionId))}
           style={styles.back}
         >
-          <NativeIcon name="arrow-back" color={theme.colors.ink} size={20} />
+          <NativeIcon name="chevron-left-outline" color={theme.colors.ink} size={20} />
         </Pressable>
       }
       showMenu={false}
@@ -122,7 +122,7 @@ function StateView({
     return (
       <View style={styles.stateBlock}>
         <Text style={styles.error}>{mobileErrorMessage(error, message('model.loadFailed'))}</Text>
-        <NativeActionButton label={message('common.reload')} icon="refresh" variant="secondary" onPress={onRetry} />
+        <NativeActionButton label={message('common.reload')} icon="refresh-outline" variant="secondary" onPress={onRetry} />
       </View>
     )
   return <Text style={styles.state}>{text}</Text>

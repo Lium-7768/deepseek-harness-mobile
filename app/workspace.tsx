@@ -86,7 +86,7 @@ export default function WorkspaceScreen(): React.JSX.Element {
     <WorkspaceShell
       showBrand={false}
       title={workspaceTitle}
-      titleLeading={<NativeIcon name="folder" size={21} color={theme.colors.ink} />}
+      titleLeading={<NativeIcon name="folder-open" size={21} color={theme.colors.ink} />}
     >
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
@@ -104,11 +104,11 @@ export default function WorkspaceScreen(): React.JSX.Element {
               onPress={() => navigation.openDrawer()}
               style={({ pressed }) => [s.control, pressed && s.pressed]}
             >
-              <NativeIcon name="chat-bubble-outline" size={16} color={theme.colors.inkMuted} />
+              <NativeIcon name="new-chat-outline" size={16} color={theme.colors.inkMuted} />
               <Text numberOfLines={1} style={s.controlText}>
                 {selectedSession === undefined ? message('workspace.pickSession') : sessionDisplayTitle(selectedSession)}
               </Text>
-              <NativeIcon name="expand-more" size={18} color={theme.colors.inkMuted} />
+              <NativeIcon name="chevron-down-outline" size={18} color={theme.colors.inkMuted} />
             </Pressable>
             <ModeTrigger agentPreset={selectedSession?.agentPreset} disabled={!connection} sessionId={selectedSession?.sessionId} />
           </View>
@@ -163,11 +163,11 @@ function ModeTrigger({
       onPress={openMode}
       style={({ pressed }) => [s.modeControl, disabled && s.disabledControl, pressed && s.pressed]}
     >
-      <NativeIcon name="agent-preset" size={16} color={theme.colors.inkMuted} />
+      <NativeIcon name="agent-preset-outline" size={16} color={theme.colors.inkMuted} />
       <Text numberOfLines={1} style={s.controlText}>
         {label}
       </Text>
-      <NativeIcon name="chevron-down" size={17} color={theme.colors.inkMuted} />
+      <NativeIcon name="chevron-down-outline" size={17} color={theme.colors.inkMuted} />
     </Pressable>
   )
 }

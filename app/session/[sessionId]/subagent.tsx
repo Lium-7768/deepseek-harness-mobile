@@ -72,7 +72,7 @@ export default function SubagentSessionScreen(): React.JSX.Element {
           onPress={() => router.back()}
           style={({ pressed }) => [styles.headerAction, pressed && styles.pressed]}
         >
-          <NativeIcon name="arrow-back" color={theme.colors.ink} size={20} />
+          <NativeIcon name="chevron-left-outline" color={theme.colors.ink} size={20} />
         </Pressable>
       }
     >
@@ -81,7 +81,7 @@ export default function SubagentSessionScreen(): React.JSX.Element {
       ) : (
         <View style={styles.canvas}>
           <View style={styles.notice}>
-            <NativeIcon name="smart-toy" size={16} color={theme.colors.accentText} />
+            <NativeIcon name="agent-preset-outline" size={16} color={theme.colors.accentText} />
             <Text style={styles.noticeText}>
               {childMode === 'continuable' ? message('subagent.inheritedPermission') : message('subagent.oneShotNotice')}
             </Text>
@@ -94,7 +94,7 @@ export default function SubagentSessionScreen(): React.JSX.Element {
                 onPress={() => interrupt.mutate()}
                 style={({ pressed }) => [styles.stopAction, pressed && styles.pressed]}
               >
-                <NativeIcon name="stop" size={15} color={theme.colors.danger} />
+                <NativeIcon name="stop-fill" size={15} color={theme.colors.danger} />
               </Pressable>
             ) : null}
           </View>
@@ -137,7 +137,7 @@ function ErrorNotice({ text, onRetry }: { text: string; onRetry: () => void }): 
   return (
     <View style={styles.errorNotice}>
       <Text style={styles.error}>{text}</Text>
-      <NativeActionButton label={message('common.reload')} icon="refresh" variant="secondary" onPress={onRetry} />
+      <NativeActionButton label={message('common.reload')} icon="refresh-outline" variant="secondary" onPress={onRetry} />
     </View>
   )
 }
@@ -149,7 +149,7 @@ function Unavailable({ text }: { text: string }): React.JSX.Element {
     <View style={styles.unavailable}>
       <NativeIcon name="link-off" size={28} color={theme.colors.inkFaint} />
       <Text style={styles.unavailableText}>{text}</Text>
-      <NativeActionButton label={message('interactions.backToSession')} icon="arrow-back" variant="secondary" onPress={() => router.back()} />
+      <NativeActionButton label={message('interactions.backToSession')} icon="chevron-left-outline" variant="secondary" onPress={() => router.back()} />
     </View>
   )
 }

@@ -38,7 +38,7 @@ export default function SettingsScreen(): React.JSX.Element {
         onPress={() => router.back()}
         style={styles.back}
       >
-        <NativeIcon name="arrow-back" color={theme.colors.ink} size={20} />
+        <NativeIcon name="chevron-left-outline" color={theme.colors.ink} size={20} />
       </Pressable>
     )
   return (
@@ -103,7 +103,7 @@ function SettingRow({
         <Text style={styles.rowTitle}>{title}</Text>
         <Text style={styles.rowDescription}>{description}</Text>
       </View>
-      <NativeIcon name="chevron-right" color={theme.colors.inkMuted} size={20} />
+      <NativeIcon name="chevron-right-outline" color={theme.colors.inkMuted} size={20} />
     </Pressable>
   )
 }
@@ -416,7 +416,7 @@ function PresetSettings({
           style={({ pressed }) => [styles.settingRow, pressed && styles.pressed]}
         >
           <NativeIcon
-            name={item.trust === 'system' ? 'check' : 'description'}
+            name={item.trust === 'system' ? 'check-outline' : 'deliver-doc'}
             color={theme.colors.accentText}
             size={20}
           />
@@ -429,7 +429,7 @@ function PresetSettings({
               {item.broken ?? item.description ?? (item.trust === 'system' ? message('settings.builtinMode') : message('settings.customMode'))}
             </Text>
           </View>
-          <NativeIcon name="chevron-right" color={theme.colors.inkMuted} size={20} />
+          <NativeIcon name="chevron-right-outline" color={theme.colors.inkMuted} size={20} />
         </Pressable>
       ))}
       {presets.data?.presets.length === 0 ? <Text style={styles.muted}>{message('settings.noPresets')}</Text> : null}
@@ -494,7 +494,7 @@ function ConnectionCard({
       ) : (
         <NativeActionButton
           label={message('connect.title')}
-          icon="link"
+          icon="link-outline"
           onPress={() => router.replace('/connect')}
           style={styles.actionButton}
         />
@@ -599,7 +599,7 @@ function ErrorState({
   return (
     <View style={styles.center}>
       <Text style={styles.error}>{mobileErrorMessage(error, fallback)}</Text>
-      {onRetry ? <NativeActionButton label={message('common.reload')} icon="refresh" variant="secondary" onPress={onRetry} /> : null}
+      {onRetry ? <NativeActionButton label={message('common.reload')} icon="refresh-outline" variant="secondary" onPress={onRetry} /> : null}
     </View>
   )
 }
@@ -609,10 +609,10 @@ function QueryErrorNotice({ text, onRetry }: { text: string; onRetry: () => void
   const styles = useThemedStyles(makeStyles)
   return (
     <View accessibilityRole="alert" style={styles.queryError}>
-      <NativeIcon name="error-outline" color={theme.colors.danger} size={17} />
+      <NativeIcon name="warning-outline" color={theme.colors.danger} size={17} />
       <View style={styles.queryErrorBody}>
         <Text style={styles.error}>{text}</Text>
-        <NativeActionButton label={message('common.reload')} icon="refresh" variant="secondary" onPress={onRetry} />
+        <NativeActionButton label={message('common.reload')} icon="refresh-outline" variant="secondary" onPress={onRetry} />
       </View>
     </View>
   )

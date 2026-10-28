@@ -150,6 +150,32 @@ counterpart, so the native client keeps its own arrangement:
   absolutely to escape the header's flex lanes. The native header lays them out
   in the row itself, which cannot overflow.
 
+## Icons
+
+The client renders the desktop client's own glyphs rather than a parallel
+lookalike set. `src/components/icon-artwork.ts` copies the artwork from
+`packages/client/ui-primitives/src/icons/artwork.ts`, and `NativeIcon` renders
+that SVG unchanged, substituting the colour for `currentColor`. Geometry and
+stroke therefore cannot drift between the two clients.
+
+| | Desktop | This client |
+| --- | --- | --- |
+| Artwork | `artwork.ts`, 16px box, stroke-based | copied from the same file |
+| Names | `<glyph>-outline`, plus `-fill` and plain forms | the same names |
+| Weights | `regular` 1px, `medium` 1.3px | both, via `weight` |
+| Rendering | `<symbol>` in a document sprite | `SvgXml` per icon |
+
+Glyphs that exist only here:
+
+- `link-off` — the desktop set has no broken-link glyph, and this client shows
+  one for a disconnected gateway. It is drawn to the same 16px box and 1px
+  stroke as the copied artwork.
+
+A desktop glyph whose meaning differed was mapped onto the nearest one that
+matched: `admin-panel-settings` → `shield-outline`, `smart-toy` →
+`agent-preset-outline`, `terminal` → `code-outline`, and the hamburger `menu` →
+`panel-left-outline`, which is what the desktop itself uses to open the drawer.
+
 ## Surfaces outside the comparison
 
 `MOBILE_CSS` holds 57 top-level rule blocks. Twenty-three are the chrome this

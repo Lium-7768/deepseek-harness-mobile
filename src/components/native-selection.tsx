@@ -44,7 +44,7 @@ export function NativeSelectionRow({
         loading ? (
           <ActivityIndicator color={theme.colors.inkFaint} />
         ) : selected ? (
-          <NativeIcon name="check" color={theme.colors.accent} size={20} />
+          <NativeIcon name="check-outline" color={theme.colors.accent} size={20} />
         ) : null
       }
       selected={selected}

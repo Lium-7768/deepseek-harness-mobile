@@ -5,8 +5,8 @@ export type MobileSettingsSection = 'general' | 'models' | 'plugins' | 'presets'
 
 /** Maps native route ids to Web canonical settings icon semantics. */
 export function settingsSectionIcon(section: MobileSettingsSection): NativeIconName {
-  if (section === 'models') return 'data'
-  if (section === 'plugins') return 'personalization'
-  if (section === 'presets') return 'agent-preset'
-  return 'settings'
+  if (section === 'models') return 'data-outline'
+  if (section === 'plugins') return 'personalization-outline'
+  if (section === 'presets') return 'agent-preset-outline'
+  return 'settings-outline'
 }

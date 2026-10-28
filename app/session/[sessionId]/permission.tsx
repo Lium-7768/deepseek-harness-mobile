@@ -83,7 +83,7 @@ export default function SessionPermissionScreen(): React.JSX.Element {
           onPress={() => router.back()}
           style={styles.back}
         >
-          <NativeIcon name="arrow-back" color={theme.colors.ink} size={20} />
+          <NativeIcon name="chevron-left-outline" color={theme.colors.ink} size={20} />
         </Pressable>
       }
       showMenu={false}
@@ -110,7 +110,7 @@ export default function SessionPermissionScreen(): React.JSX.Element {
                 <Text style={styles.error}>{mobileErrorMessage(events.error, message('conversation.sessionStateFailed'))}</Text>
                 <NativeActionButton
                   label={message('conversation.reloadSessionState')}
-                  icon="refresh"
+                  icon="refresh-outline"
                   variant="secondary"
                   onPress={() => void events.refetch()}
                 />
@@ -126,7 +126,7 @@ export default function SessionPermissionScreen(): React.JSX.Element {
               <Text style={styles.error}>{mobileErrorMessage(history.error, message('permission.loadFailed'))}</Text>
               <NativeActionButton
                 label={message('permission.reload')}
-                icon="refresh"
+                icon="refresh-outline"
                 variant="secondary"
                 onPress={() => void history.refetch()}
               />
@@ -156,13 +156,13 @@ export default function SessionPermissionScreen(): React.JSX.Element {
                   multiline
                   left={
                     <NativeIcon
-                      name="admin-panel-settings"
+                      name="shield-outline"
                       size={20}
                       color={selected ? theme.colors.accentText : theme.colors.inkMuted}
                     />
                   }
                   onPress={() => choose(item.value)}
-                  right={selected ? <NativeIcon name="check" color={theme.colors.accentText} size={20} /> : null}
+                  right={selected ? <NativeIcon name="check-outline" color={theme.colors.accentText} size={20} /> : null}
                   selected={selected}
                   title={permissionLabel(item.value, item.name)}
                 />

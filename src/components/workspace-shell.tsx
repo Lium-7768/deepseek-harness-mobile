@@ -67,7 +67,7 @@ export function WorkspaceShell({
       hitSlop={8}
       style={({ pressed }) => [s.icon, pressed && s.pressed]}
     >
-      <NativeIcon name="menu" size={20} color={theme.colors.ink} />
+      <NativeIcon name="panel-left-outline" size={20} color={theme.colors.ink} />
     </Pressable>
   ) : null
   const titleContent = (
