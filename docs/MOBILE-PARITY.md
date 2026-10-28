@@ -252,6 +252,15 @@ matched: `admin-panel-settings` → `shield-outline`, `smart-toy` →
 `agent-preset-outline`, `terminal` → `code-outline`, and the hamburger `menu` →
 `panel-left-outline`, which is what the desktop itself uses to open the drawer.
 
+### Button tokens without a control
+
+The desktop defines 15 `--dsw-alias-button-*` aliases. Eleven resolve into this
+client's theme; four do not, because the control they dress has no counterpart
+here: `button-tool-bar-fill`, `button-tool-bar-fill-invisible`, and
+`button-tool-bar-hover` paint a floating toolbar, and `button-ghost-active-hover`
+is a hover state on a selected ghost control. A touch surface shows no hover and
+this client has no toolbar, so adding them would declare values nothing can use.
+
 ## Platform differences
 
 Three desktop properties have no React Native equivalent. Each uses the
