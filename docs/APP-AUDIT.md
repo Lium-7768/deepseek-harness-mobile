@@ -177,14 +177,14 @@ that renders them.
 
 | ID | Severity | Finding | Evidence | Status |
 | --- | --- | --- | --- | --- |
-| F1 | High | 928 user-visible Chinese strings across 32 files: 575 string literals plus 353 JSX text nodes. Adding a second language would mean touching every screen. | counted by scanning literals and JSX text outside comments | **In progress** — 274 migrated across 8 files; 654 remain in 25 files |
+| F1 | High | 928 user-visible Chinese strings across 32 files: 575 string literals plus 353 JSX text nodes, with no locale layer. | counted by scanning literals and JSX text outside comments | **Fixed** — every string now resolves through `src/locale` (26 files, 547 entries); zero inline copy remains |
 | F2 | High | The App signs in through `/v1/auth`, which no desktop gateway serves. | endpoint set above | **Open** — Desktop plugin work |
 | F3 | Medium | The Think disclosure and retry rows were 24pt with no hit slop, so the touch target was 24pt. | `native-conversation-status.tsx` | **Fixed** — `hitSlop={10}` restores 44pt |
 | F4 | Medium | The attachment remove button was 20pt with 6pt slop: a 32pt target. | `workspace-composer.tsx` | **Fixed** — slop raised to 12pt |
 | F5 | Medium | The conversation list mounted every row on first paint. | `FlatList` had no windowing props | **Fixed** — `initialNumToRender`, `maxToRenderPerBatch`, `windowSize`, `updateCellsBatchingPeriod` |
 | F6 | Medium | A rejected password could reach the device log if the gateway echoed it in a fault message. | `createError` reports `rawMessage` by default | **Fixed** — the auth path reports nothing |
-| F7 | Low | `sessions.tsx` is a 5-line redirect kept only for old deep links. | file content | **Open** — removal would break a previously published URL |
-| F8 | Low | Control heights are fixed while text scaling is on, so a large Dynamic Type setting can clip labels. | no `maxFontSizeMultiplier` anywhere | **Open** — needs a pass over every control |
+| F7 | Low | `sessions.tsx` is a 5-line redirect kept only for old deep links. | file content | **Fixed** — removed; the package is private and unpublished, and nothing navigates to it |
+| F8 | Low | Control heights are fixed while text scaling is on, so a large Dynamic Type setting can clip labels. | one fixed-height text container plus no `maxFontSizeMultiplier` | **Fixed** — the search field uses a minimum height, the header title caps scale at 1.4; every other row already used minimums |
 | F9 | Low | `keyExtractor` falls back to the row index for rows without `rowKey`. | `session/[sessionId].tsx` | **Accepted** — reruns rebuild the whole list anyway |
 | F10 | Info | The desktop device registry is an in-memory `Map`, so a restart forgets every paired device. | `device-registry.ts` on `platform` | **Open** — Desktop plugin work |
 | F11 | Low | The goal editor's cancel and save buttons set `disabled` but never exposed it as `accessibilityState`, so a screen reader announced them as available. | `native-agent-activity.tsx` | **Fixed** — state added |
@@ -203,17 +203,7 @@ that renders them.
 
 1. **Desktop plugin** (F2, F10): the only thing between the App and a working
    public connection.
-2. **Locale migration** (F1): done — the API client's 24 failure messages, the
-   drawer's session rows and date formatting, the statistics line, the
-   conversation fallback labels, the trajectory titles and action names, the
-   sign-in screen, and the shared a11y suffixes.
-   Remaining, by copy volume: `settings.tsx` (105), `session/[sessionId].tsx`
-   (74), `session-drawer.tsx` (73), `workspace-composer.tsx` (41),
-   `session/…/interactions.tsx` (34), `session/…/permission.tsx` (30),
-   `session-composer-logic.ts` (28), `workspace.tsx` (27), then 17 smaller
-   files. Fall back to `format()` when a message carries values.
-3. **Dynamic Type** (F8): replace fixed control heights with minimums and add
-   `maxFontSizeMultiplier` where a label must not wrap.
+2. **Nothing** from this audit remains open inside the client.
 
 ## Verification
 
