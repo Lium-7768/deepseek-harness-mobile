@@ -67,7 +67,7 @@ export function WorkspaceShell({
       hitSlop={8}
       style={({ pressed }) => [s.icon, pressed && s.pressed]}
     >
-      <NativeIcon name="panel-left-outline" size={20} color={theme.colors.ink} />
+      <NativeIcon name="panel-left-outline" size={16} color={theme.colors.inkMuted} />
     </Pressable>
   ) : null
   const titleContent = (
@@ -124,7 +124,16 @@ const makeStyles = (theme: AppTheme) =>
         paddingHorizontal: 12,
         paddingTop: 8,
       },
-      icon: { alignItems: 'center', height: 36, justifyContent: 'center', width: 36 },
+      // The desktop's header icon button is 28pt square with the small radius
+      // and secondary label colour. The 8pt hit slop around it keeps the iOS
+      // 44pt touch target without making the drawn control larger.
+      icon: {
+        alignItems: 'center',
+        borderRadius: theme.radius.sm,
+        height: 28,
+        justifyContent: 'center',
+        width: 28,
+      },
       brandAnchor: { alignItems: 'center', height: 28, justifyContent: 'center', marginHorizontal: 4, width: 28 },
       titleButton: { flex: 1, minWidth: 0 },
       titleGroup: { alignItems: 'center', flex: 1, flexDirection: 'row', minWidth: 0 },
