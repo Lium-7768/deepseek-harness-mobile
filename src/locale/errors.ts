@@ -10,6 +10,8 @@
 export const errors = {
   requestFailed: '移动端请求失败，请稍后重试。',
   requestInvalid: '移动端请求无效，请重试。',
+  /** `{status}` is the HTTP status the gateway answered with. */
+  httpFailed: '移动端连接请求失败（HTTP {status}），请稍后重试。',
   gatewayInvalid: '移动网关地址无效，请检查连接设置。',
   gatewayProtocol: '移动网关地址必须使用 HTTP 或 HTTPS。',
   network: '无法连接桌面端，请检查网络或网关地址。',

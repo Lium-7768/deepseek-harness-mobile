@@ -29,7 +29,7 @@ import type {
   SessionHistoryPayload,
   SessionListPayload,
 } from '@/types/mobile'
-import { t as message } from '@/locale'
+import { format, t as message } from '@/locale'
 
 interface GatewayEnvelope<T> {
   contractVersion: 1
@@ -224,7 +224,7 @@ export class MobileApi {
       throw createError(
         'protocol',
         message('errors.gatewayProtocol'),
-        { rawMessage: `协议 ${parsed.protocol}` },
+        { rawMessage: `unsupported protocol ${parsed.protocol}` },
         false,
       )
     this.#connection = { ...connection, gatewayUrl: parsed.toString().replace(/\/$/, '') }
@@ -594,7 +594,7 @@ function userMessage(
   if (kind === 'settings-conflict') return message('errors.settingsConflict')
   if (kind === 'desktop-unavailable') return message('errors.desktopUnavailable')
   if (code === 'bad-request') return message('errors.requestInvalid')
-  return `移动端连接请求失败（HTTP ${status}），请稍后重试。`
+  return format('errors.httpFailed', { status })
 }
 
 function createError(

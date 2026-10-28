@@ -60,7 +60,7 @@ export function sessionStatisticsLine(
     if (stats.toolMs > 0) durations.push(format('session.statsToolTime', { duration: formatStatisticsDuration(stats.toolMs) }))
     if (durations.length > 0) groups.push(durations.join(' · '))
     const speeds: string[] = []
-    if (stats.ttftSteps > 0) speeds.push(`首 token 平均 ${formatStatisticsDuration(stats.ttftMs / stats.ttftSteps)}`)
+    if (stats.ttftSteps > 0) speeds.push(format('session.statsFirstToken', { duration: formatStatisticsDuration(stats.ttftMs / stats.ttftSteps) }))
     if (stats.decodeMs > 0)
       speeds.push(`${formatStatisticsTokensPerSecond(stats.decodeTokens / (stats.decodeMs / 1_000))} tok/s`)
     if (speeds.length > 0) groups.push(speeds.join(' · '))
