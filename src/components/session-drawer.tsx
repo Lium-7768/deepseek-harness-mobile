@@ -553,7 +553,7 @@ function SessionItem({
       onLongPress={onLongPress}
       delayLongPress={350}
       hitSlop={{ top: 6, bottom: 6 }}
-      style={({ pressed }) => [styles.session, selected && styles.selected, pressed && styles.pressed]}
+      style={({ pressed }) => [styles.session, selected && styles.selected, pressed && styles.rowPressed]}
     >
       <Text numberOfLines={1} style={styles.sessionTitle}>
         {title}
@@ -721,7 +721,11 @@ const makeStyles = (theme: AppTheme) =>
       minHeight: 32,
       paddingHorizontal: 8,
     },
-    selected: { backgroundColor: theme.colors.surfaceActive },
+    // Desktop rows take `interactive-bg-hover` when selected (Rows.module.css:21)
+    // and `interactive-bg-active` while held; a solid fill would not composite
+    // over the drawer surface the same way.
+    selected: { backgroundColor: theme.colors.interactiveHover },
+    rowPressed: { backgroundColor: theme.colors.interactiveActive },
     sessionTitle: { color: theme.colors.ink, flex: 1, fontSize: 14, lineHeight: 20, marginLeft: 4, marginRight: 6 },
     sessionTime: { color: theme.colors.inkMuted, flexShrink: 0, fontSize: 10, lineHeight: 16 },
     emptyState: { color: theme.colors.inkMuted, paddingHorizontal: 8, paddingVertical: 24, textAlign: 'center' },
@@ -776,7 +780,7 @@ const makeStyles = (theme: AppTheme) =>
     optionLabel: { color: theme.colors.ink, fontSize: 13 },
     disabledOptionRow: {
       alignItems: 'center',
-      borderRadius: 7,
+      borderRadius: theme.radius.md,
       flexDirection: 'row',
       minHeight: 36,
       paddingHorizontal: 9,

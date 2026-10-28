@@ -63,6 +63,10 @@ export const aliases = {
   elevatedFill: { light: 'rgb(255, 255, 255)', dark: 'rgb(67, 69, 74)' },
   /** `button-ghost-active-border` — outline of a selected ghost control. */
   ghostActiveBorder: { light: 'rgb(151, 157, 166)', dark: 'rgb(129, 133, 140)' },
+  /** `interactive-bg-hover` — the tint a hovered or selected list row carries. */
+  interactiveHover: { light: 'rgba(38, 49, 72, 0.06)', dark: 'rgba(255, 255, 255, 0.08)' },
+  /** `interactive-bg-active` — the tint while a row is held down. */
+  interactiveActive: { light: 'rgba(38, 49, 72, 0.1)', dark: 'rgba(255, 255, 255, 0.14)' },
   /** `button-primary-hover` — primary action under the pointer. */
   brandHover: { light: 'rgb(67, 69, 74)', dark: 'rgb(235, 238, 242)' },
   /** Text and glyphs drawn on top of `brand`. */

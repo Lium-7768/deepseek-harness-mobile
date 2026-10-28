@@ -65,6 +65,7 @@ export function WorkspaceComposer({
   const theme = useAppTheme()
   const s = useThemedStyles(makeStyles)
   const [text, setText] = useState('')
+  const [focused, setFocused] = useState(false)
   const [draftImages, setDraftImages] = useState<DraftImage[]>([])
   const hasContent = text.trim() !== '' || draftImages.length > 0
   const action = composerPrimaryAction({ cancelling, disabled, hasText: hasContent, running, sending })
@@ -171,7 +172,7 @@ export function WorkspaceComposer({
           ))}
         </View>
       ) : null}
-      <View style={s.row}>
+      <View style={[s.row, focused && s.rowFocused]}>
         <TextInput
           accessibilityLabel={message('composer.inputLabel')}
           multiline
@@ -179,6 +180,8 @@ export function WorkspaceComposer({
           onChangeText={setText}
           placeholder={placeholder}
           placeholderTextColor={theme.colors.inkFaint}
+          onBlur={() => setFocused(false)}
+          onFocus={() => setFocused(true)}
           style={s.input}
           textAlignVertical="top"
           editable={!controlsDisabled}
@@ -365,6 +368,10 @@ const makeStyles = (theme: AppTheme) =>
       minHeight: 58,
       paddingLeft: theme.spacing.md,
     },
+    // The desktop paints a 2px ring in state-business-primary for keyboard focus
+    // (ui-theme/styles/focus.css:3,9). RN's outline* props draw the same ring
+    // outside the border box, so nothing shifts when it appears.
+    rowFocused: { outlineColor: theme.colors.accent, outlineWidth: 2 },
     input: {
     color: theme.colors.ink,
     flex: 1,

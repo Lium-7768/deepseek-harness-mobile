@@ -74,6 +74,8 @@ export interface ThemeColors {
   brand: string
   /** Primary action under the pointer. */
   brandHover: string
+  interactiveHover: string
+  interactiveActive: string
   /** A primary action that cannot run. */
   primaryDimmed: string
   /** The neutral raised button, as in the desktop's new-session control. */
@@ -177,6 +179,8 @@ const lightColors: ThemeColors = {
   accentSoft: 'rgb(228, 237, 253)',
   brand: 'rgb(15, 17, 21)',
   brandHover: 'rgb(67, 69, 74)',
+  interactiveHover: 'rgba(38, 49, 72, 0.06)',
+  interactiveActive: 'rgba(38, 49, 72, 0.1)',
   primaryDimmed: 'rgb(235, 238, 242)',
   elevatedFill: 'rgb(255, 255, 255)',
   ghostActiveBorder: 'rgb(151, 157, 166)',
@@ -225,6 +229,8 @@ const darkColors: ThemeColors = {
   accentSoft: 'rgba(122, 170, 255, 0.16)',
   brand: 'rgb(249, 250, 251)',
   brandHover: 'rgb(235, 238, 242)',
+  interactiveHover: 'rgba(255, 255, 255, 0.08)',
+  interactiveActive: 'rgba(255, 255, 255, 0.14)',
   primaryDimmed: 'rgb(67, 69, 74)',
   elevatedFill: 'rgb(67, 69, 74)',
   ghostActiveBorder: 'rgb(129, 133, 140)',
