@@ -135,7 +135,7 @@ const makeStyles = (theme: AppTheme) =>
       fontWeight: '800',
       letterSpacing: 1.3,
     },
-    copy: { color: theme.colors.inkMuted, fontSize: theme.typography.bodyLarge, lineHeight: 23 },
+    copy: { color: theme.colors.inkMuted, fontSize: theme.typography.bodyLarge, lineHeight: 22 },
     form: { gap: theme.spacing.md },
     manualLabel: { color: theme.colors.inkMuted, fontSize: theme.typography.caption, lineHeight: 18 },
     field: { gap: theme.spacing.xs },
@@ -162,5 +162,5 @@ const makeStyles = (theme: AppTheme) =>
       gap: theme.spacing.sm,
       padding: theme.spacing.md,
     },
-    errorText: { color: theme.colors.danger, flex: 1, lineHeight: 19 },
+    errorText: { color: theme.colors.danger, flex: 1, lineHeight: 20 },
   })

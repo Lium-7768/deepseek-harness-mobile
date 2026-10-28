@@ -231,7 +231,7 @@ const makeStyles = (theme: AppTheme) =>
     disclosureTitle: { color: theme.colors.inkMuted, fontSize: 12 },
     separator: { color: theme.colors.inkFaint, fontSize: 12 },
     disclosureSummary: { color: theme.colors.inkMuted, flex: 1, fontSize: 12 },
-    disclosureBody: { color: theme.colors.ink, fontSize: 13, lineHeight: 21, paddingHorizontal: 20, paddingVertical: 6 },
+    disclosureBody: { color: theme.colors.ink, fontSize: 13, lineHeight: 20, paddingHorizontal: 20, paddingVertical: 6 },
     retry: { gap: 4 },
     retryHeader: { alignItems: 'center', flexDirection: 'row', gap: 6, minHeight: 24, paddingHorizontal: 1 },
     retryText: { color: theme.colors.inkMuted, flex: 1, fontSize: 12 },

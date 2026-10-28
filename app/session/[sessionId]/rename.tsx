@@ -113,7 +113,7 @@ const makeStyles = (theme: AppTheme) =>
     back: { alignItems: 'center', height: 36, justifyContent: 'center', width: 36 },
     flex: { flex: 1 },
     canvas: { flex: 1, gap: theme.spacing.sm, padding: theme.spacing.lg },
-    hint: { color: theme.colors.inkMuted, fontSize: 13, lineHeight: 19 },
+    hint: { color: theme.colors.inkMuted, fontSize: 13, lineHeight: 20 },
     input: {
       backgroundColor: theme.colors.surface,
       borderColor: theme.colors.border,

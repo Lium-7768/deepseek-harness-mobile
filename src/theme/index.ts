@@ -21,7 +21,12 @@ const shape = {
   // so a surface cannot drift onto a radius the desktop never uses.
   radius: { xs: 4, sm: 8, md: 12, lg: 16, xl: 20, panel: 28, card: 12, control: 8, bubble: 12, composer: 20, sheet: 16, pill: 999 },
   spacing: { xxs: 2, xs: 4, sm: 8, md: 12, lg: 16, xl: 24, xxl: 32 },
-  typography: { eyebrow: 11, caption: 12, body: 14, bodyLarge: 15, message: 15, title: 22, lineBody: 21, lineMessage: 22 },
+  // Sizes and line heights come from the desktop's type scale
+  // (ui-theme/styles/gradient-shadow-text.css): 11/14, 12/18, 13/20, 14/22,
+  // 16/24, 20/28, 24/32. The conversation body is the one deliberate departure:
+  // the desktop leaves it at a configurable 13px for a desk monitor, while a
+  // phone read at arm's length needs the platform's body size.
+  typography: { eyebrow: 11, caption: 12, body: 14, bodyLarge: 15, message: 15, title: 20, lineBody: 22, lineTitle: 28, lineMessage: 22 },
   rail: { width: 56, button: 36, gap: 12 },
   chrome: {
     headerHeight: 36,

@@ -171,6 +171,6 @@ const makeStyles = (theme: AppTheme) =>
     permissionCopy: { color: theme.colors.inkMuted, fontSize: theme.typography.body, lineHeight: 20, textAlign: 'center' },
     fullWidth: { width: '100%' },
     error: { alignItems: 'flex-start', backgroundColor: theme.colors.dangerSoft, borderColor: theme.colors.danger, borderRadius: theme.radius.card, borderWidth: 1, flexDirection: 'row', gap: theme.spacing.sm, padding: theme.spacing.md },
-    errorText: { color: theme.colors.danger, flex: 1, lineHeight: 19 },
+    errorText: { color: theme.colors.danger, flex: 1, lineHeight: 20 },
     pressed: { opacity: 0.68 },
   })

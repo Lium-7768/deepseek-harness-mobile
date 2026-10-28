@@ -763,7 +763,7 @@ const makeStyles = (theme: AppTheme) =>
       borderRadius: 9,
       borderWidth: StyleSheet.hairlineWidth,
       color: theme.colors.warningText,
-      lineHeight: 19,
+      lineHeight: 20,
       padding: 11,
     },
     code: {

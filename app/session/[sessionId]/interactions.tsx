@@ -454,7 +454,7 @@ const makeStyles = (theme: AppTheme) =>
       width: theme.touch.iconButton,
     },
     title: { color: theme.colors.ink, fontSize: 28, fontWeight: '700' },
-    description: { color: theme.colors.inkMuted, lineHeight: 21 },
+    description: { color: theme.colors.inkMuted, lineHeight: 22 },
     error: { color: theme.colors.danger },
     card: {
       ...theme.elevation.card,
@@ -466,8 +466,8 @@ const makeStyles = (theme: AppTheme) =>
       padding: 16,
     },
     kicker: { color: theme.colors.warningText, fontSize: 12, fontWeight: '700', textTransform: 'uppercase' },
-    cardTitle: { color: theme.colors.ink, fontSize: 17, fontWeight: '700', lineHeight: 23 },
-    body: { color: theme.colors.inkMuted, lineHeight: 21 },
+    cardTitle: { color: theme.colors.ink, fontSize: 17, fontWeight: '700', lineHeight: 22 },
+    body: { color: theme.colors.inkMuted, lineHeight: 22 },
     metadata: { color: theme.colors.inkMuted, fontSize: 12 },
     buttonRow: { flexDirection: 'row', gap: 8, marginTop: 4 },
     approvalButton: { flex: 1, paddingHorizontal: 8 },
@@ -507,6 +507,6 @@ const makeStyles = (theme: AppTheme) =>
       padding: 18,
     },
     emptyTitle: { color: theme.colors.ink, fontSize: 18, fontWeight: '700' },
-    emptyText: { color: theme.colors.inkMuted, lineHeight: 21 },
+    emptyText: { color: theme.colors.inkMuted, lineHeight: 22 },
     pressed: { opacity: 0.62 },
   })

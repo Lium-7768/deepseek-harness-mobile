@@ -163,6 +163,29 @@ counterpart, so the native client keeps its own arrangement:
   absolutely to escape the header's flex lanes. The native header lays them out
   in the row itself, which cannot overflow.
 
+## Type scale
+
+Sizes and line heights follow the desktop's scale in
+`ui-theme/src/styles/gradient-shadow-text.css`:
+
+| Step | Size | Line height |
+| --- | --- | --- |
+| `xxxs` | 11 | 14 |
+| `xxs` | 12 | 18 |
+| `xs` | 13 | 20 |
+| `s` | 14 | 22 |
+| `base` | 16 | 24 |
+| `l` | 20 | 28 |
+| `xl` | 24 | 32 |
+
+Off-scale values that had crept in (line heights 19, 21, 23; a 22px title) now
+resolve to 20, 22, and the `l` step.
+
+One deliberate departure: the conversation body stays at 15 with a 22 line
+height. The desktop leaves that text at a configurable 13px
+(`--dsh-content-font-size-secondary`), sized for a desk monitor; a phone held at
+arm's length needs the platform's body size, and 13 would read as fine print.
+
 ## Colour roles
 
 Every colour resolves through a theme role; no screen holds a literal value. A
