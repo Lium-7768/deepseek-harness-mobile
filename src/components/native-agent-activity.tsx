@@ -4,6 +4,7 @@ import { NativeIcon } from '@/components/native-icon'
 import type { AppTheme } from '@/theme'
 import { useAppTheme, useThemedStyles } from '@/theme/hooks'
 import type { MobileGoalRef, MobileGoalView, MobileJobView, MobileSubagentEntry } from '@/types/mobile'
+import { format, t as message } from '@/locale'
 
 type MobileChildSubagentEntry = Extract<MobileSubagentEntry, { kind: 'child' }>
 type MobileContinuableSubagentEntry = MobileChildSubagentEntry & { mode: 'continuable' }
@@ -50,7 +51,7 @@ export function NativeGoalBar({
   }, [goal?.id, goal?.objective])
   if (goal === undefined || goal.phase === 'complete') return null
   const ref = { id: goal.id, revision: goal.revision }
-  const status = goal.phase === 'active' ? '执行中' : goal.phase === 'paused' ? '已暂停' : '已阻塞'
+  const status = goal.phase === 'active' ? message('activity.goalRunning') : goal.phase === 'paused' ? message('activity.goalPaused') : message('activity.goalBlocked')
   const save = () => {
     const objective = draft.trim()
     if (objective === '') return
@@ -66,18 +67,18 @@ export function NativeGoalBar({
         </View>
         <View style={styles.goalActions}>
           {goal.phase === 'active' ? (
-            <GoalIconButton label="暂停目标" icon="stop" disabled={pending} onPress={() => onMutate('pause', ref)} />
+            <GoalIconButton label={message('activity.pauseGoal')} icon="stop" disabled={pending} onPress={() => onMutate('pause', ref)} />
           ) : goal.phase === 'paused' ? (
-            <GoalIconButton label="继续目标" icon="arrow-forward" disabled={pending} onPress={() => onMutate('resume', ref)} />
+            <GoalIconButton label={message('activity.resumeGoal')} icon="arrow-forward" disabled={pending} onPress={() => onMutate('resume', ref)} />
           ) : null}
-          <GoalIconButton label="编辑目标" icon="edit" disabled={pending} onPress={() => setEditing(current => !current)} />
-          <GoalIconButton label="清除目标" icon="close" disabled={pending} onPress={() => onMutate('clear', ref)} />
+          <GoalIconButton label={message('activity.editGoal')} icon="edit" disabled={pending} onPress={() => setEditing(current => !current)} />
+          <GoalIconButton label={message('activity.clearGoal')} icon="close" disabled={pending} onPress={() => onMutate('clear', ref)} />
         </View>
       </View>
       {editing ? (
         <View style={styles.editor}>
           <TextInput
-            accessibilityLabel="目标内容"
+            accessibilityLabel={message('activity.goalLabel')}
             editable={!pending}
             multiline
             onChangeText={setDraft}
@@ -92,7 +93,7 @@ export function NativeGoalBar({
               onPress={() => setEditing(false)}
               style={styles.textAction}
             >
-              <Text style={styles.textActionLabel}>取消</Text>
+              <Text style={styles.textActionLabel}>{message('common.cancel')}</Text>
             </Pressable>
             <Pressable
               accessibilityRole="button"
@@ -101,7 +102,7 @@ export function NativeGoalBar({
               onPress={save}
               style={styles.textAction}
             >
-              <Text style={[styles.textActionLabel, styles.textActionPrimary]}>保存</Text>
+              <Text style={[styles.textActionLabel, styles.textActionPrimary]}>{message('common.save')}</Text>
             </Pressable>
           </View>
         </View>
@@ -136,32 +137,32 @@ export function NativeAgentActivity({
     <View style={styles.activity}>
       {jobs.length > 0 ? (
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>后台任务</Text>
+          <Text style={styles.sectionTitle}>{message('activity.backgroundJobs')}</Text>
           {jobs.map(job => <JobRow key={job.id} job={job} />)}
         </View>
       ) : null}
       {children.length > 0 || diagnostics.length > 0 ? (
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>子 Agent</Text>
+          <Text style={styles.sectionTitle}>{message('activity.subagents')}</Text>
           {children.map(entry => (
             <View key={entry.id} style={styles.subagentRow}>
               <Pressable
                 accessibilityRole="button"
-                accessibilityLabel={`打开子 Agent：${entry.label ?? entry.id}`}
+                accessibilityLabel={format('activity.openSubagent', { name: entry.label ?? entry.id })}
                 onPress={() => onOpenSubagent(entry)}
                 style={({ pressed }) => [styles.subagentMain, pressed && styles.pressed]}
               >
                 <NativeIcon name="smart-toy" size={16} color={theme.colors.accentText} />
                 <View style={styles.subagentCopy}>
                   <Text numberOfLines={1} style={styles.subagentLabel}>{entry.label ?? entry.id}</Text>
-                  <Text style={styles.subagentMeta}>{entry.activity === 'running' ? '运行中' : '空闲'} · {entry.mode === 'continuable' ? '可继续' : '一次性'}</Text>
+                  <Text style={styles.subagentMeta}>{entry.activity === 'running' ? message('activity.subagentRunning') : message('activity.subagentIdle')} · {entry.mode === 'continuable' ? message('activity.subagentContinuable') : message('activity.subagentOneShot')}</Text>
                 </View>
                 <NativeIcon name="chevron-right" size={16} color={theme.colors.inkMuted} />
               </Pressable>
               {entry.mode === 'continuable' && entry.activity === 'running' ? (
                 <Pressable
                   accessibilityRole="button"
-                  accessibilityLabel={`停止子 Agent：${entry.label ?? entry.id}`}
+                  accessibilityLabel={format('activity.stopSubagent', { name: entry.label ?? entry.id })}
                   accessibilityState={{ busy: interruptingId === entry.id }}
                   disabled={interruptingId !== undefined}
                   onPress={() => onInterruptSubagent({ ...entry, mode: 'continuable' })}
@@ -172,7 +173,7 @@ export function NativeAgentActivity({
               ) : null}
             </View>
           ))}
-          {diagnostics.map(entry => <Text key={entry.id} style={styles.diagnostic}>子 Agent {entry.id} 当前不可用（{entry.reason}）。</Text>)}
+          {diagnostics.map(entry => <Text key={entry.id} style={styles.diagnostic}>{format('activity.subagentDiagnostic', { name: entry.id, reason: entry.reason })}</Text>)}
         </View>
       ) : null}
     </View>

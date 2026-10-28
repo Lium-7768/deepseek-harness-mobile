@@ -9,24 +9,31 @@
  * Keys are `<area>.<role>`, where `<role>` names the thing rather than its
  * wording: `connect.addressLabel`, not `connect.desktopAddressLabel`.
  */
+import { activity } from './activity'
+import { attachment } from './attachment'
 import { composer } from './composer'
 import { connect } from './connect'
 import { conversation } from './conversation'
 import { drawer } from './drawer'
 import { errors } from './errors'
+import { feedback } from './feedback'
 import { interactions } from './interactions'
+import { markdown } from './markdown'
 import { mode } from './mode'
-import { permission } from './permission'
 import { model } from './model'
+import { permission } from './permission'
 import { queue } from './queue'
 import { rename } from './rename'
 import { scan } from './scan'
 import { session } from './session'
 import { settings as settingsCopy } from './settings'
+import { speaker } from './speaker'
+import { status } from './status'
 import { subagent } from './subagent'
-import { workspace } from './workspace'
 import { tool } from './tool'
 import { trajectory } from './trajectory'
+import { workbench } from './workbench'
+import { workspace } from './workspace'
 
 /** Copy shared by more than one screen. */
 const common = {
@@ -45,7 +52,34 @@ const common = {
   currentModelSuffix: '，当前模型',
 } as const
 
-const areas = { common, composer, connect, conversation, drawer, errors, interactions, mode, model, permission, queue, rename, scan, subagent, tool, workspace, session, settings: settingsCopy, trajectory }
+const areas = {
+  activity,
+  attachment,
+  common,
+  composer,
+  connect,
+  conversation,
+  drawer,
+  errors,
+  feedback,
+  interactions,
+  markdown,
+  mode,
+  model,
+  permission,
+  queue,
+  rename,
+  scan,
+  session,
+  settings: settingsCopy,
+  speaker,
+  status,
+  subagent,
+  tool,
+  trajectory,
+  workbench,
+  workspace,
+}
 
 /** Every user-visible string the client renders, keyed as `<area>.<role>`. */
 export const messages = Object.fromEntries(

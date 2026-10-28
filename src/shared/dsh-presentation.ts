@@ -1,3 +1,4 @@
+import { t as message } from '@/locale'
 /** User-facing category assigned to a projected session event. */
 export type SharedMessageKind = 'user' | 'assistant' | 'tool' | 'system' | 'agent'
 /** Compact execution state displayed for a projected tool event. */
@@ -176,14 +177,14 @@ export function classifyEvent(event: Record<string, unknown>, _index = 0): Share
     kind,
     label:
       kind === 'user'
-        ? '你'
+        ? message('speaker.you')
         : kind === 'tool'
-          ? (toolName ?? '工具执行')
+          ? (toolName ?? message('speaker.tool'))
           : kind === 'agent'
-            ? '智能体进度'
+            ? message('speaker.agent')
             : kind === 'system'
-              ? '系统'
-              : '助手',
+              ? message('speaker.system')
+              : message('speaker.assistant'),
     text,
     segments: splitMessageSegments(text),
     ...(tool

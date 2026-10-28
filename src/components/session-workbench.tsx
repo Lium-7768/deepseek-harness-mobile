@@ -8,6 +8,7 @@ import {
 import type { AppTheme } from '@/theme'
 import { useAppTheme, useThemedStyles } from '@/theme/hooks'
 import type { SharedEventItem } from '@/shared/dsh-presentation'
+import { format, t as message } from '@/locale'
 
 export type WorkbenchTab = 'chat' | 'trajectory'
 
@@ -21,8 +22,8 @@ export function WorkbenchTabs({
   const s = useThemedStyles(makeStyles)
   return (
     <View style={s.tabs}>
-      <Tab active={tab === 'chat'} icon="chat-bubble-outline" label="对话" onPress={() => onChange('chat')} />
-      <Tab active={tab === 'trajectory'} icon="route" label="轨迹" onPress={() => onChange('trajectory')} />
+      <Tab active={tab === 'chat'} icon="chat-bubble-outline" label={message('workbench.chat')} onPress={() => onChange('chat')} />
+      <Tab active={tab === 'trajectory'} icon="route" label={message('workbench.trajectory')} onPress={() => onChange('trajectory')} />
     </View>
   )
 }
@@ -68,7 +69,7 @@ export function TrajectoryPanel({ items }: { items: SharedEventItem[] }): React.
       keyExtractor={activity => activity.id}
       contentContainerStyle={s.panelList}
       renderItem={({ item }) => <TrajectoryActivityRow activity={item} />}
-      ListEmptyComponent={<Text style={s.empty}>该会话尚无可展示的操作轨迹。</Text>}
+      ListEmptyComponent={<Text style={s.empty}>{message('workbench.emptyTrajectory')}</Text>}
     />
   )
 }
@@ -78,11 +79,11 @@ function TrajectoryActivityRow({ activity }: { activity: NativeTrajectoryActivit
   const s = useThemedStyles(makeStyles)
   const stateLabel = activityStateLabel(activity)
   const detailLabel = activity.detail === undefined ? '' : `：${activity.detail}`
-  const durationLabel = activity.durationMs === undefined ? '' : `，耗时 ${formatTrajectoryDuration(activity.durationMs)}`
+  const durationLabel = activity.durationMs === undefined ? '' : format('workbench.elapsed', { duration: formatTrajectoryDuration(activity.durationMs) })
   return (
     <View accessibilityLabel={`${activity.title}${stateLabel}${detailLabel}${durationLabel}`} style={s.activityWrap}>
       {activity.showTurn === true && activity.turn !== undefined ? (
-        <Text style={s.turnLabel}>第 {activity.turn} 轮</Text>
+        <Text style={s.turnLabel}>{format('workbench.turn', { turn: activity.turn })}</Text>
       ) : null}
       <View style={s.activityRow}>
         <View style={[s.traceIndex, activity.state === 'failed' && s.traceIndexFailed]}>
@@ -126,9 +127,9 @@ function activityColor(activity: NativeTrajectoryActivity, theme: AppTheme): str
 }
 
 function activityStateLabel(activity: NativeTrajectoryActivity): string | undefined {
-  if (activity.state === 'running') return '进行中'
-  if (activity.state === 'failed') return '失败'
-  if (activity.kind === 'tool' && activity.state === 'completed') return '已完成'
+  if (activity.state === 'running') return message('workbench.activityRunning')
+  if (activity.state === 'failed') return message('workbench.activityFailed')
+  if (activity.kind === 'tool' && activity.state === 'completed') return message('workbench.activityCompleted')
   return undefined
 }
 
@@ -143,7 +144,7 @@ export function ContextRows({ items }: { items: SharedEventItem[] }): React.JSX.
         <View key={name} style={s.contextCompactRow}>
           <NativeIcon name="description" size={15} color={theme.colors.inkMuted} />
           <Text numberOfLines={1} style={s.contextCompactText}>
-            上下文注入 · {name}
+            {format('workbench.contextInjection', { name })}
           </Text>
         </View>
       ))}

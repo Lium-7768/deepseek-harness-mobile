@@ -4,6 +4,7 @@ import { NativeIcon } from '@/components/native-icon'
 import type { NativeConversationRow } from '@/components/session-conversation-logic'
 import type { AppTheme } from '@/theme'
 import { useAppTheme, useThemedStyles } from '@/theme/hooks'
+import { format, t as message } from '@/locale'
 
 type ReasoningRow = Extract<NativeConversationRow, { kind: 'reasoning' }>
 type RetryRow = Extract<NativeConversationRow, { kind: 'retry' }>
@@ -26,7 +27,7 @@ export function NativeReasoningRow({ row }: { row: ReasoningRow }): React.JSX.El
     <View style={s.disclosure}>
       <Pressable
         accessibilityRole="button"
-        accessibilityLabel="查看 Think 内容"
+        accessibilityLabel={message('status.viewThink')}
         accessibilityState={{ expanded }}
         // The row is 24pt to match Pocket's tightened spacing; hitSlop restores
         // the 44pt touch target the platform requires.
@@ -62,21 +63,21 @@ export function NativeRetryRow({ row }: { row: RetryRow }): React.JSX.Element {
     <View style={s.retry}>
       <Pressable
         accessibilityRole="button"
-        accessibilityLabel={`已重试模型请求，第 ${row.retry} 次`}
+        accessibilityLabel={format('status.retryLabel', { attempt: row.retry })}
         accessibilityState={{ expanded }}
         hitSlop={10}
         onPress={() => setExpanded(value => !value)}
         style={({ pressed }) => [s.retryHeader, pressed && s.pressed]}
       >
         <NativeIcon name="refresh" size={14} color={theme.colors.inkMuted} />
-        <Text style={s.retryText}>{`已重试模型请求（${row.retry}/${row.maxRetries}）· ${seconds}s`}</Text>
+        <Text style={s.retryText}>{format('status.retryDetail', { attempt: row.retry, max: row.maxRetries, seconds })}</Text>
         <NativeIcon name={expanded ? 'expand-less' : 'expand-more'} size={15} color={theme.colors.inkFaint} />
       </Pressable>
       {expanded ? (
         <View style={s.retryDetails}>
-          <Text style={s.retryDetailLabel}>重试延迟</Text>
+          <Text style={s.retryDetailLabel}>{message('status.retryDelay')}</Text>
           <Text style={s.retryDetail}>{`${Math.round(row.delayMs)}ms`}</Text>
-          <Text style={s.retryDetailLabel}>失败原因</Text>
+          <Text style={s.retryDetailLabel}>{message('status.failureReason')}</Text>
           <Text selectable style={s.retryDetail}>{row.failureMessage}</Text>
         </View>
       ) : null}
@@ -96,7 +97,7 @@ export function NativeTurnErrorRow({ row }: { row: TurnErrorRow }): React.JSX.El
     <View accessibilityRole="alert" style={s.error}>
       <View style={s.errorDot} />
       <View style={s.errorCopy}>
-        <Text style={s.errorTitle}>本回合执行失败</Text>
+        <Text style={s.errorTitle}>{message('status.turnFailed')}</Text>
         <Text style={s.errorMessage}>{row.message}</Text>
       </View>
       {row.code ? <Text selectable style={s.errorCode}>{row.code}</Text> : null}
@@ -118,15 +119,15 @@ export function NativeCommandRow({ row }: { row: CommandRow }): React.JSX.Elemen
     <View style={s.command}>
       <Pressable
         accessibilityRole="button"
-        accessibilityLabel={row.state === 'running' ? `执行命令：${row.name}` : `命令：${row.name}`}
+        accessibilityLabel={row.state === 'running' ? format('status.commandRun', { name: row.name }) : format('status.commandName', { name: row.name })}
         accessibilityState={{ expanded }}
         onPress={() => setExpanded(value => !value)}
         style={({ pressed }) => [s.commandHeader, pressed && s.pressed]}
       >
         <NativeIcon name="terminal" size={14} color={theme.colors.inkMuted} />
         <Text numberOfLines={1} style={s.commandName}>{row.name}</Text>
-        {row.state === 'running' ? <Text style={s.commandRunning}>执行中</Text> : null}
-        {row.state === 'error' ? <Text style={s.commandError}>失败</Text> : null}
+        {row.state === 'running' ? <Text style={s.commandRunning}>{message('status.running')}</Text> : null}
+        {row.state === 'error' ? <Text style={s.commandError}>{message('status.failed')}</Text> : null}
         <NativeIcon name={expanded ? 'expand-less' : 'expand-more'} size={15} color={theme.colors.inkFaint} />
       </Pressable>
       {expanded && row.text ? <Text selectable style={s.commandBody}>{row.text}</Text> : null}
@@ -146,7 +147,7 @@ export function NativeTurnMaxTokensRow(): React.JSX.Element {
   return (
     <View style={s.maxTokens}>
       <NativeIcon name="warning-amber" size={14} color={theme.colors.warningText} />
-      <Text style={s.maxTokensText}>已达到最大输出 token，内容可能不完整。</Text>
+      <Text style={s.maxTokensText}>{message('status.maxTokensNote')}</Text>
     </View>
   )
 }
@@ -165,25 +166,25 @@ export function NativeCompactionRow({ row }: { row: CompactionRow }): React.JSX.
     <View style={s.compaction}>
       <Pressable
         accessibilityRole="button"
-        accessibilityLabel="查看压缩摘要"
+        accessibilityLabel={message('status.viewCompaction')}
         accessibilityState={{ expanded }}
         onPress={() => setExpanded(value => !value)}
         style={({ pressed }) => [s.compactionHeader, pressed && s.pressed]}
       >
         <NativeIcon name="data" size={14} color={theme.colors.inkMuted} />
-        <Text style={s.compactionTitle}>对话已压缩</Text>
+        <Text style={s.compactionTitle}>{message('status.compacted')}</Text>
         <Text numberOfLines={1} style={s.compactionSummary}>
-          {row.summary || '历史消息已汇总。'}
+          {row.summary || message('status.compactedBody')}
         </Text>
         <NativeIcon name={expanded ? 'expand-less' : 'expand-more'} size={15} color={theme.colors.inkFaint} />
       </Pressable>
       {expanded ? (
         <View style={s.compactionDetails}>
           {row.shadowedItemCount !== undefined ? (
-            <Text style={s.compactionDetail}>{`已折叠 ${row.shadowedItemCount} 条消息`}</Text>
+            <Text style={s.compactionDetail}>{format('status.collapsedItems', { count: row.shadowedItemCount })}</Text>
           ) : null}
           {row.shadowedTokenCount !== undefined ? (
-            <Text style={s.compactionDetail}>{`约 ${row.shadowedTokenCount} tokens`}</Text>
+            <Text style={s.compactionDetail}>{format('status.collapsedTokens', { count: row.shadowedTokenCount })}</Text>
           ) : null}
           {row.summary ? <Text selectable style={s.compactionBody}>{row.summary}</Text> : null}
         </View>
@@ -219,7 +220,7 @@ export function NativeTurnStatus({ startedAt }: { startedAt?: number }): React.J
 function formatDuration(milliseconds: number): string {
   const seconds = Math.floor(milliseconds / 1_000)
   const minutes = Math.floor(seconds / 60)
-  return minutes > 0 ? `${minutes}分${seconds % 60}秒` : `${seconds}秒`
+  return minutes > 0 ? format('status.durationMinutes', { minutes, seconds: seconds % 60 }) : format('status.durationSeconds', { seconds })
 }
 
 const makeStyles = (theme: AppTheme) =>

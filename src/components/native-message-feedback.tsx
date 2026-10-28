@@ -7,6 +7,7 @@ import { messageActionLayout } from '@/components/session-message-logic'
 import type { AppTheme } from '@/theme'
 import { useAppTheme, useThemedStyles } from '@/theme/hooks'
 import type { MobileFeedbackItem, MobileFeedbackRating } from '@/types/mobile'
+import { format, t as message } from '@/locale'
 
 type Props = {
   api: MobileApi
@@ -95,11 +96,11 @@ export function NativeMessageFeedback({ api, sessionId, event }: Props): React.J
     }
   }
 
-  const loadError = feedback.isError ? mobileErrorMessage(feedback.error, '评价记录加载失败。') : null
+  const loadError = feedback.isError ? mobileErrorMessage(feedback.error, message('feedback.loadFailed')) : null
   const networkError = put.isError
-    ? mobileErrorMessage(put.error, '评价失败，请稍后重试。')
+    ? mobileErrorMessage(put.error, message('feedback.saveFailed'))
     : remove.isError
-      ? mobileErrorMessage(remove.error, '评价失败，请稍后重试。')
+      ? mobileErrorMessage(remove.error, message('feedback.saveFailed'))
       : null
 
   const likeActive = rating === 'positive'
@@ -111,7 +112,7 @@ export function NativeMessageFeedback({ api, sessionId, event }: Props): React.J
     <View style={styles.row}>
       <FeedbackButton
         active={likeActive}
-        accessibilityLabel={likeActive ? '已赞成，再按一次取消' : '赞成'}
+        accessibilityLabel={likeActive ? message('feedback.rated') : message('feedback.rate')}
         color={likeActive ? theme.colors.success : theme.colors.inkMuted}
         disabled={pending}
         icon="thumb-up"
@@ -119,7 +120,7 @@ export function NativeMessageFeedback({ api, sessionId, event }: Props): React.J
       />
       <FeedbackButton
         active={dislikeActive}
-        accessibilityLabel={dislikeActive ? '已反对，再按一次取消' : '反对'}
+        accessibilityLabel={dislikeActive ? message('feedback.unrated') : message('feedback.unrate')}
         color={dislikeActive ? theme.colors.danger : theme.colors.inkMuted}
         disabled={pending}
         icon="thumb-down"
@@ -189,14 +190,14 @@ function commitFeedback(
 function feedbackErrorCode(code: string): string {
   switch (code) {
     case 'session-not-found':
-      return '会话不存在，无法保存评价。'
+      return message('feedback.noSession')
     case 'target-not-found':
-      return '该消息已不存在，无法保存评价。'
+      return message('feedback.noMessage')
     case 'note-blank':
     case 'note-too-large':
-      return '备注不合法，请检查后重试。'
+      return message('feedback.noteRejected')
     default:
-      return '评价失败，请稍后重试。'
+      return message('feedback.saveFailed')
   }
 }
 

@@ -4,6 +4,7 @@ import * as Clipboard from 'expo-clipboard'
 import { NativeIcon } from '@/components/native-icon'
 import type { AppTheme } from '@/theme'
 import { useAppTheme, useThemedStyles } from '@/theme/hooks'
+import { format, t as message } from '@/locale'
 type Block = {
   kind: 'paragraph' | 'heading' | 'quote' | 'bullet' | 'ordered' | 'code'
   text: string
@@ -147,7 +148,7 @@ export function NativeMarkdown({
       }, 1200)
     } catch {
       setCopyFailedIndex(index)
-      void AccessibilityInfo.announceForAccessibility('复制失败，请重试。')
+      void AccessibilityInfo.announceForAccessibility(message('markdown.copyFailed'))
     }
   }
   return (
@@ -221,10 +222,10 @@ function NativeCodeBlock({
   return (
     <View style={styles.codeCard}>
       <View style={styles.codeHeader}>
-        <Text style={styles.codeLanguage}>{language || '代码'}</Text>
+        <Text style={styles.codeLanguage}>{language || message('markdown.code')}</Text>
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel={copied ? '代码已复制' : failed ? '复制失败，请重试' : '复制代码'}
+          accessibilityLabel={copied ? message('markdown.copied') : failed ? message('markdown.copyFailedTitle') : message('markdown.copyCode')}
           hitSlop={8}
           onPress={onCopy}
           style={styles.copyButton}
@@ -242,11 +243,11 @@ function NativeCodeBlock({
       {collapsible ? (
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel={expanded ? '折叠代码块' : '展开完整代码块'}
+          accessibilityLabel={expanded ? message('markdown.collapseBlock') : message('markdown.expandBlock')}
           onPress={() => setExpanded(value => !value)}
           style={styles.codeToggle}
         >
-          <Text style={styles.codeToggleText}>{expanded ? '收起' : `展开全部 ${lineCount} 行`}</Text>
+          <Text style={styles.codeToggleText}>{expanded ? message('markdown.collapse') : format('markdown.expandAll', { count: lineCount })}</Text>
           <NativeIcon name={expanded ? 'expand-less' : 'expand-more'} size={15} color={theme.colors.codeInteractive} />
         </Pressable>
       ) : null}

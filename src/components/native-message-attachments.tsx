@@ -8,6 +8,7 @@ import { NativeIcon } from '@/components/native-icon'
 import type { AppTheme } from '@/theme'
 import { useAppTheme, useThemedStyles } from '@/theme/hooks'
 import type { MobileImageAttachmentRef } from '@/types/mobile'
+import { format, t as message } from '@/locale'
 
 type Props = {
   api: MobileApi
@@ -59,22 +60,22 @@ function NativeMessageAttachment({
     staleTime: Infinity,
   })
   const uri = image.data === undefined ? undefined : `data:${image.data.attachment.mediaType};base64,${image.data.data}`
-  const label = attachment.name ?? '历史图片'
+  const label = attachment.name ?? message('attachment.historyImages')
   const share = async (): Promise<void> => {
     if (image.data === undefined || sharing) return
     setSharing(true)
     try {
       if (!await Sharing.isAvailableAsync()) {
-        Alert.alert('暂不支持系统分享', '当前设备无法打开系统分享面板。')
+        Alert.alert(message('attachment.shareUnsupportedTitle'), message('attachment.shareUnsupportedBody'))
         return
       }
       const extension = extensionFor(image.data.attachment.mediaType)
       const fileName = `dsh-${safeFileStem(image.data.attachment.name ?? image.data.attachment.attachmentId)}.${extension}`
       const uri = `${FileSystem.cacheDirectory}${fileName}`
       await FileSystem.writeAsStringAsync(uri, image.data.data, { encoding: FileSystem.EncodingType.Base64 })
-      await Sharing.shareAsync(uri, { dialogTitle: '分享或保存图片', mimeType: image.data.attachment.mediaType })
+      await Sharing.shareAsync(uri, { dialogTitle: message('attachment.shareAction'), mimeType: image.data.attachment.mediaType })
     } catch (error) {
-      Alert.alert('无法分享图片', mobileErrorMessage(error, '图片未能写入本地分享缓存，请稍后重试。'))
+      Alert.alert(message('attachment.shareFailedTitle'), mobileErrorMessage(error, message('attachment.shareFailedBody')))
     } finally {
       setSharing(false)
     }
@@ -83,7 +84,7 @@ function NativeMessageAttachment({
     <>
       <Pressable
         accessibilityRole="button"
-        accessibilityLabel={`打开${label}`}
+        accessibilityLabel={format('attachment.open', { label })}
         accessibilityState={{ busy: image.isPending }}
         onPress={() => {
           if (uri !== undefined) setOpen(true)
@@ -98,15 +99,15 @@ function NativeMessageAttachment({
         ) : (
           <View style={styles.loadFailure}>
             <NativeIcon name="attach-file" size={20} color={theme.colors.inkMuted} />
-            <Text style={styles.loadFailureText}>轻触重试</Text>
+            <Text style={styles.loadFailureText}>{message('attachment.tapToRetry')}</Text>
           </View>
         )}
       </Pressable>
-      {image.isError ? <Text style={styles.error}>{mobileErrorMessage(image.error, '图片加载失败，请轻触重试。')}</Text> : null}
+      {image.isError ? <Text style={styles.error}>{mobileErrorMessage(image.error, message('attachment.loadFailed'))}</Text> : null}
       {uri !== undefined ? (
         <Modal animationType="fade" transparent visible={open} onRequestClose={() => setOpen(false)}>
           <View style={styles.modalBackdrop}>
-            <Pressable accessibilityRole="button" accessibilityLabel="关闭图片预览" onPress={() => setOpen(false)} style={styles.closeButton}>
+            <Pressable accessibilityRole="button" accessibilityLabel={message('attachment.closePreview')} onPress={() => setOpen(false)} style={styles.closeButton}>
               <NativeIcon name="close" size={22} color={theme.colors.textOnAccent} />
             </Pressable>
             <Image accessibilityLabel={label} resizeMode="contain" source={{ uri }} style={styles.fullImage} />
@@ -114,14 +115,14 @@ function NativeMessageAttachment({
               <Text numberOfLines={1} style={styles.caption}>{label}</Text>
               <Pressable
                 accessibilityRole="button"
-                accessibilityLabel="分享或保存图片"
+                accessibilityLabel={message('attachment.shareAction')}
                 accessibilityState={{ busy: sharing }}
                 disabled={sharing}
                 onPress={() => void share()}
                 style={({ pressed }) => [styles.shareButton, pressed && styles.pressed]}
               >
                 <NativeIcon name="link" size={16} color={theme.colors.textOnAccent} />
-                <Text style={styles.shareText}>{sharing ? '正在准备…' : '分享或保存'}</Text>
+                <Text style={styles.shareText}>{sharing ? message('attachment.preparing') : message('attachment.share')}</Text>
               </Pressable>
             </View>
           </View>
