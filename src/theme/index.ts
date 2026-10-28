@@ -16,7 +16,10 @@ import type { Appearance } from './tokens'
 
 /** Shape and metric tokens shared by both appearances. */
 const shape = {
-  radius: { xs: 4, card: 10, control: 8, bubble: 12, composer: 22, sheet: 14, pill: 999 },
+  // The desktop's own radius scale (`--dsw-radius-*` in ui-theme base.css is
+  // 4 / 8 / 12 / 16 / 20 / 28). Every role below resolves to one of those steps,
+  // so a surface cannot drift onto a radius the desktop never uses.
+  radius: { xs: 4, sm: 8, md: 12, lg: 16, xl: 20, panel: 28, card: 12, control: 8, bubble: 12, composer: 20, sheet: 16, pill: 999 },
   spacing: { xxs: 2, xs: 4, sm: 8, md: 12, lg: 16, xl: 24, xxl: 32 },
   typography: { eyebrow: 11, caption: 12, body: 14, bodyLarge: 15, message: 15, title: 22, lineBody: 21, lineMessage: 22 },
   rail: { width: 56, button: 36, gap: 12 },
@@ -25,7 +28,7 @@ const shape = {
     headerMetaHeight: 35,
     headerWithMetaHeight: 71,
     tabHeight: 35,
-    composerRadius: 22,
+    composerRadius: 20,
     controlHeight: 36,
   },
   touch: { iconButton: 44, compactIconButton: 36, controlHeight: 40, minTarget: 44 },
