@@ -466,7 +466,7 @@ const makeStyles = (theme: AppTheme) =>
       padding: 16,
     },
     kicker: { color: theme.colors.warningText, fontSize: 12, fontWeight: '700', textTransform: 'uppercase' },
-    cardTitle: { color: theme.colors.ink, fontSize: 17, fontWeight: '700', lineHeight: 22 },
+    cardTitle: { color: theme.colors.ink, fontSize: 16, fontWeight: '700', lineHeight: 24 },
     body: { color: theme.colors.inkMuted, lineHeight: 22 },
     metadata: { color: theme.colors.inkMuted, fontSize: 12 },
     buttonRow: { flexDirection: 'row', gap: 8, marginTop: 4 },
@@ -506,7 +506,7 @@ const makeStyles = (theme: AppTheme) =>
       gap: 10,
       padding: 18,
     },
-    emptyTitle: { color: theme.colors.ink, fontSize: 18, fontWeight: '700' },
+    emptyTitle: { color: theme.colors.ink, fontSize: 16, fontWeight: '700', lineHeight: 24 },
     emptyText: { color: theme.colors.inkMuted, lineHeight: 22 },
     pressed: { opacity: 0.62 },
   })

@@ -32,3 +32,26 @@ describe('colour tokens', () => {
     expect(offenders).toEqual([])
   })
 })
+
+/**
+ * Sizes the desktop itself sets: the scale in `gradient-shadow-text.css` plus the
+ * two it uses outside the scale — 10 for meta text (Rows `.time`, menu hints) and
+ * 28 for an onboarding heading.
+ */
+const SCALE = new Set([10, 11, 12, 13, 14, 16, 20, 24, 28])
+
+describe('type scale', () => {
+  it('uses only sizes from the desktop scale in literal font sizes', () => {
+    const offenders: string[] = []
+    for (const file of [...sources('app'), ...sources('src')]) {
+      const text = readFileSync(file, 'utf8')
+      for (const match of text.matchAll(/fontSize: (\d+(?:\.\d+)?)\b/g)) {
+        const size = Number(match[1])
+        // 15 is the conversation body, sized for a phone rather than a monitor.
+        if (SCALE.has(size) || size === 15) continue
+        offenders.push(`${file}: fontSize ${String(size)}`)
+      }
+    }
+    expect(offenders).toEqual([])
+  })
+})
