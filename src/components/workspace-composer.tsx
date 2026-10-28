@@ -359,12 +359,16 @@ const makeStyles = (theme: AppTheme) =>
       borderRadius: theme.chrome.composerRadius,
       borderWidth: 1,
       flexDirection: 'row',
+      // 8pt between the field and each control, and the field may shrink rather
+      // than push a control out of the card.
+      gap: 8,
       minHeight: 58,
       paddingLeft: theme.spacing.md,
     },
     input: {
     color: theme.colors.ink,
     flex: 1,
+    minWidth: 0,
     fontSize: theme.typography.message,
     lineHeight: theme.typography.lineMessage,
     maxHeight: 120,

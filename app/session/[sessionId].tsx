@@ -37,7 +37,7 @@ import { WorkspaceShell } from '@/components/workspace-shell'
 import { workspaceKeyboardVerticalOffset } from '@/components/workspace-shell-logic'
 import { ContextRows, TrajectoryPanel, WorkbenchTabs, type WorkbenchTab } from '@/components/session-workbench'
 import { readPermissionSelect } from '@/components/session-composer-logic'
-import { messageActionLayout, type MessageActionAlignment } from '@/components/session-message-logic'
+import { formatMessageTime, messageActionLayout, type MessageActionAlignment } from '@/components/session-message-logic'
 import { sessionStatisticsLine } from '@/components/session-stats-logic'
 import { sessionDisplayTitle } from '@/components/session-drawer-logic'
 import {
@@ -484,7 +484,7 @@ function MessageRow({
           </Text>
         </View>
         {attachments}
-        <MessageActions alignment="user" text={item.text} />
+        <MessageActions alignment="user" text={item.text} time={item.time} />
       </View>
     )
   if (item.kind === 'reasoning') return <NativeReasoningRow row={item} />
@@ -509,12 +509,12 @@ function MessageRow({
       />
       {attachments}
       {feedback}
-      <MessageActions alignment="assistant" text={item.text} />
+      <MessageActions alignment="assistant" text={item.text} time={item.time} />
     </View>
   )
 }
 
-function MessageActions({ alignment, text }: { alignment: MessageActionAlignment; text: string }): React.JSX.Element {
+function MessageActions({ alignment, text, time }: { alignment: MessageActionAlignment; text: string; time?: number }): React.JSX.Element {
   const theme = useAppTheme()
   const s = useThemedStyles(makeStyles)
   const [copied, setCopied] = useState(false)
@@ -546,22 +546,29 @@ function MessageActions({ alignment, text }: { alignment: MessageActionAlignment
   }
 
   return (
-    <Pressable
-      accessibilityRole="button"
-      accessibilityLabel={copied ? message('conversation.copied') : copyFailed ? message('conversation.copyFailedTitle') : message('conversation.copyMessage')}
-      accessibilityState={{ selected: copied }}
-      onPress={() => void copy()}
-      hitSlop={8}
-      style={({ pressed }) => [messageActionLayout(alignment), pressed && s.pressed]}
-    >
-      <NativeIcon
-        name={copied ? 'check' : 'content-copy'}
-        size={16}
-        color={
-          copied ? theme.colors.success : copyFailed ? theme.colors.danger : theme.colors.inkMuted
-        }
-      />
-    </Pressable>
+    <View style={[s.actionRow, alignment === 'user' ? s.actionRowUser : s.actionRowAssistant]}>
+      {time === undefined ? null : (
+        <Text ellipsizeMode="tail" numberOfLines={1} style={s.actionTime}>
+          {formatMessageTime(time)}
+        </Text>
+      )}
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel={copied ? message('conversation.copied') : copyFailed ? message('conversation.copyFailedTitle') : message('conversation.copyMessage')}
+        accessibilityState={{ selected: copied }}
+        onPress={() => void copy()}
+        hitSlop={8}
+        style={({ pressed }) => [messageActionLayout(alignment), pressed && s.pressed]}
+      >
+        <NativeIcon
+          name={copied ? 'check' : 'content-copy'}
+          size={16}
+          color={
+            copied ? theme.colors.success : copyFailed ? theme.colors.danger : theme.colors.inkMuted
+          }
+        />
+      </Pressable>
+    </View>
   )
 }
 
@@ -670,6 +677,12 @@ const makeStyles = (theme: AppTheme) =>
       paddingVertical: 9,
     },
     actionText: { color: theme.colors.warning, flex: 1, fontSize: 13, fontWeight: '600' },
+    // The action strip never wraps: the clock shrinks and truncates instead of
+    // pushing the control out of the row.
+    actionRow: { alignItems: 'center', flexDirection: 'row', gap: 6, maxWidth: '100%', overflow: 'hidden' },
+    actionRowAssistant: { alignSelf: 'flex-start' },
+    actionRowUser: { alignSelf: 'flex-end' },
+    actionTime: { color: theme.colors.inkFaint, flexShrink: 1, fontSize: 12, minWidth: 0 },
     error: { color: theme.colors.danger, padding: 12 },
     errorNotice: { gap: 6, paddingHorizontal: 12 },
     unavailable: { alignItems: 'center', flex: 1, gap: 12, justifyContent: 'center', padding: 28 },

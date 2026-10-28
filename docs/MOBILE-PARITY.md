@@ -66,8 +66,10 @@ control. Adding one would create a second way to open the same drawer. The
 | Column gutters | `padding-left/right: 20px` (line ~370) | `paddingHorizontal: 20` |
 | Body type | `font-size: 15px` for paragraphs, list items, and user text (line ~380) | `fontSize: 15`, `lineHeight: 22` |
 | User bubble type | covered by the same 15px rule | `fontSize: 15`, `lineHeight: 22` |
-| Consecutive process rows | `[data-turn-process] height 28px`, `margin-bottom 4px` (line ~395) | `minHeight 28`, `marginBottom 4` |
+| Consecutive process rows | `[data-turn-process] height 28px`, `padding-bottom 4px`, `margin-bottom 4px` (line ~395) | `minHeight 28`, `lineHeight 24`, `paddingBottom 4`, `marginBottom 4`; a minimum, so Dynamic Type grows the row instead of clipping |
 | Disclosure rows | `min-height: 24px` (line ~400) | `minHeight: 24` |
+| Context injection block | `margin-top: 2px` (line ~405) | `marginTop: 2` |
+| Message action strip | `_actions { overflow: hidden }`, `_timeEnd` truncates with an ellipsis (line ~410) | row with `overflow: 'hidden'`; the clock is `numberOfLines={1}` with `ellipsizeMode="tail"` and `flexShrink: 1` |
 
 ## Composer
 
@@ -76,7 +78,7 @@ control. Adding one would create a second way to open the same drawer. The
 | Empty state | hero textarea collapses to one 28px line via `textarea:placeholder-shown { height: 28px }` (line ~700) | multiline input with a `minHeight: 28` single-line floor; it grows with content |
 | Row floor | cleared by the send control | `minHeight: theme.touch.minTarget` (44) |
 | Bottom row wrap | `flex-wrap: wrap; gap: 6px` (line ~430) | `flexWrap: 'wrap'`, `gap: 6` |
-| Leading control group | `gap: 8px; min-width: 0` | `gap: 8`, `minWidth: 0` |
+| Leading control group | `gap: 8px; min-width: 0` | row `gap: 8`, field `minWidth: 0` so it shrinks instead of pushing a control out of the card |
 
 ## Session rows and grouping — unchanged
 

@@ -188,7 +188,19 @@ const makeStyles = (theme: AppTheme) =>
     tabTextActive: { color: theme.colors.accentText },
     panelList: { gap: 8, padding: 14 },
     activityWrap: { gap: 5 },
-    turnLabel: { color: theme.colors.inkMuted, fontSize: 12, fontWeight: '600', paddingLeft: 30 },
+    // The disclosed turn heading is a 24pt line box inside 28pt, leaving 4pt under
+    // it. A minimum rather than a fixed height, so large Dynamic Type grows the row
+    // instead of clipping the label.
+    turnLabel: {
+      color: theme.colors.inkMuted,
+      fontSize: 12,
+      fontWeight: '600',
+      lineHeight: 24,
+      marginBottom: 4,
+      minHeight: 28,
+      paddingBottom: 4,
+      paddingLeft: 30,
+    },
     activityRow: { alignItems: 'flex-start', flexDirection: 'row', gap: 10 },
     traceIndex: {
       alignItems: 'center',
@@ -216,7 +228,7 @@ const makeStyles = (theme: AppTheme) =>
     state: { color: theme.colors.inkMuted, fontSize: 11, fontWeight: '500' },
     stateFailed: { color: theme.colors.danger },
     duration: { color: theme.colors.inkMuted, fontSize: 11, lineHeight: 20 },
-    contextCompact: { gap: 8, paddingHorizontal: 16, paddingTop: 12 },
+    contextCompact: { gap: 8, marginTop: 2, paddingHorizontal: 16, paddingTop: 12 },
     contextCompactRow: { alignItems: 'center', flexDirection: 'row', gap: 7 },
     contextCompactText: { color: theme.colors.inkMuted, flex: 1, fontSize: 12 },
     empty: { color: theme.colors.inkMuted, paddingVertical: 22, textAlign: 'center' },
