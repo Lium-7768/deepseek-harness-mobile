@@ -148,6 +148,33 @@ counterpart, so the native client keeps its own arrangement:
   absolutely to escape the header's flex lanes. The native header lays them out
   in the row itself, which cannot overflow.
 
+## Surfaces outside the comparison
+
+`MOBILE_CSS` holds 57 top-level rule blocks. Twenty-three are the chrome this
+client renders and are covered above. The rest target dsh-pocket's own Web
+plugins, which this client does not implement, so there is nothing to compare
+against. They are listed here so a later reader does not mistake them for
+missed work:
+
+| Block group | Selectors | Why there is no counterpart |
+| --- | --- | --- |
+| File explorer | `[data-mobile-nav="explorer"]`, `[data-aionui-explorer-col]` and its 8 child rules | Pocket opens the `dsh-web-ui` explorer panel; the mobile gateway exposes no file routes |
+| Overlay panels | `[data-aionui-preview-col]`, `.aionui-preview-handle`, `.aionui-floating-expand`, `[data-mobile-nav="frame"][data-aionui-*-open]` | Preview and explorer columns are Web plugin chrome |
+| Task board | `[data-dsh-taskboard-board]` columns and header search | No task-board feature in this client |
+| SSH entry | `button[data-dsh-ssh-entry]` | No SSH surface in this client |
+| Usage stats | `[class*="usg_"]` stats row and stat tiles, `[data-mobile-nav="stats"]` | Token usage renders inline in the conversation, not as a stats panel |
+| Copy file | `[data-mobile-nav="copy-file"]` and its disabled state | No file surface to copy from |
+| Modal internals | `[aria-modal="true"]` tabs, search, nav cells, sections, cube rows | This client has no modal with those internals; its sheets are native views |
+| Workspace add | `button[aria-label="Add workspace…"]` | Workspaces are created on the desktop |
+| Right-bar toggle | `body[data-dsh-pocket-mobile-rightbar="off"] [data-conversation-header-corner]` | No right bar in this client |
+| Rich text editing | `[contenteditable="true"]` | The composer is a plain `TextInput` |
+| Keyframes | `from`, `to` | Part of the drawer transition, covered above |
+| Drag handle | `[data-side="details"]` | Desk-side panel sizing, absent natively |
+
+A reader who adds one of those features should compare its rules against
+`dsh-pocket/client/mobile/mobile.css.ts` at that time; the table records scope,
+not a promise that the feature stays out.
+
 ## Verification
 
 - `pnpm typecheck` — the whole client compiles.
