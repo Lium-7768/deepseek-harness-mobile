@@ -9,6 +9,7 @@
 /** Conversation and session-row copy. */
 export const session = {
   newSession: '新会话',
+  untitled: '未命名会话',
   running: '处理中',
   timeUnknown: '时间未知',
   ungrouped: '未分组',

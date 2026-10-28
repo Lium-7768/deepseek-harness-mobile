@@ -23,6 +23,7 @@ import { useConnectionStore } from '@/state/connection'
 import { useSessionSelectionStore } from '@/state/session-selection'
 import type { AppTheme } from '@/theme'
 import { useAppTheme, useThemedStyles } from '@/theme/hooks'
+import { format, t as message } from '@/locale'
 
 /**
  * Renders the root Expo Router drawer content for session navigation.
@@ -130,7 +131,7 @@ export function SessionDrawer(props: DrawerContentComponentProps): React.JSX.Ele
       await refreshSessions()
       openSession(created.sessionId)
     } catch (error) {
-      Alert.alert('新建会话失败', error instanceof Error ? error.message : '请稍后重试。')
+      Alert.alert(message('drawer.newSessionFailedTitle'), error instanceof Error ? error.message : message('common.retry'))
     }
   }
   const forkSession = async (sessionId: string): Promise<void> => {
@@ -140,7 +141,7 @@ export function SessionDrawer(props: DrawerContentComponentProps): React.JSX.Ele
       setExpandedSessionId(undefined)
       openSession(created.sessionId)
     } catch (error) {
-      Alert.alert('分叉会话失败', error instanceof Error ? error.message : '请稍后重试。')
+      Alert.alert(message('drawer.forkFailedTitle'), error instanceof Error ? error.message : message('common.retry'))
     }
   }
   const archiveSession = async (sessionId: string): Promise<void> => {
@@ -150,7 +151,7 @@ export function SessionDrawer(props: DrawerContentComponentProps): React.JSX.Ele
       setExpandedSessionId(undefined)
       if (sessionId === currentSessionId) router.replace('/workspace')
     } catch (error) {
-      Alert.alert('归档会话失败', error instanceof Error ? error.message : '请稍后重试。')
+      Alert.alert(message('drawer.archiveFailedTitle'), error instanceof Error ? error.message : message('common.retry'))
     }
   }
   const deleteWorkspace = async (workspaceId: string): Promise<void> => {
@@ -159,20 +160,20 @@ export function SessionDrawer(props: DrawerContentComponentProps): React.JSX.Ele
       await refreshSessions()
       setExpandedWorkspaceId(undefined)
     } catch (error) {
-      Alert.alert('移除工作区失败', error instanceof Error ? error.message : '请稍后重试。')
+      Alert.alert(message('drawer.removeWorkspaceFailedTitle'), error instanceof Error ? error.message : message('common.retry'))
     }
   }
   const confirmDeleteWorkspace = (workspaceId: string, title: string): void => {
-    Alert.alert('移除工作区', `“${title}”将不再显示为分组；桌面文件夹和所有会话记录不会被删除。`, [
-      { text: '取消', style: 'cancel' },
-      { text: '移除', style: 'destructive', onPress: () => void deleteWorkspace(workspaceId) },
+    Alert.alert(message('drawer.removeWorkspace'), format('drawer.removeWorkspaceBody', { title }), [
+      { text: message('common.cancel'), style: 'cancel' },
+      { text: message('drawer.remove'), style: 'destructive', onPress: () => void deleteWorkspace(workspaceId) },
     ])
   }
   const confirmArchive = (session: SessionSummary): void => {
-    const title = typeof session.title === 'string' && session.title.trim() ? session.title : '新会话'
-    Alert.alert('归档会话', `“${title}”将从桌面和手机的活动会话列表中移除。`, [
-      { text: '取消', style: 'cancel' },
-      { text: '归档', style: 'destructive', onPress: () => void archiveSession(session.sessionId) },
+    const title = typeof session.title === 'string' && session.title.trim() ? session.title : message('drawer.newSession')
+    Alert.alert(message('drawer.archiveSession'), format('drawer.archiveSessionBody', { title }), [
+      { text: message('common.cancel'), style: 'cancel' },
+      { text: message('drawer.archive'), style: 'destructive', onPress: () => void archiveSession(session.sessionId) },
     ])
   }
 
@@ -203,7 +204,7 @@ export function SessionDrawer(props: DrawerContentComponentProps): React.JSX.Ele
             </View>
             <Pressable
               accessibilityRole="button"
-              accessibilityLabel="关闭会话列表"
+              accessibilityLabel={message('drawer.close')}
               hitSlop={8}
               onPress={closeDrawer}
               style={({ pressed }) => [styles.topIcon, pressed && styles.pressed]}
@@ -214,24 +215,24 @@ export function SessionDrawer(props: DrawerContentComponentProps): React.JSX.Ele
 
           <Pressable
             accessibilityRole="button"
-            accessibilityLabel="新会话"
+            accessibilityLabel={message('drawer.newSession')}
             disabled={!connection}
             onPress={() => void createSession()}
             style={({ pressed }) => [styles.newSession, !connection && styles.disabledAction, pressed && styles.pressed]}
           >
             <NativeIcon name="note-add" size={21} color={connection ? theme.colors.accent : theme.colors.inkFaint} />
             <View style={styles.newSessionTextWrap}>
-              <Text style={connection ? styles.newSessionText : styles.newSessionTextDisabled}>新会话</Text>
-              <Text style={styles.newSessionHint}>{connection ? '在当前桌面端创建' : '请先连接桌面端'}</Text>
+              <Text style={connection ? styles.newSessionText : styles.newSessionTextDisabled}>{message('drawer.newSession')}</Text>
+              <Text style={styles.newSessionHint}>{connection ? message('drawer.createOnDesktop') : message('drawer.connectFirst')}</Text>
             </View>
           </Pressable>
 
           <View style={styles.workspaceHeader}>
-            <Text style={styles.workspaceTitle}>{groupBy === 'workspace' ? '工作区' : '会话'}</Text>
+            <Text style={styles.workspaceTitle}>{groupBy === 'workspace' ? message('drawer.workspaces') : message('drawer.sessions')}</Text>
             <View style={styles.workspaceActions}>
               <Pressable
                 accessibilityRole="button"
-                accessibilityLabel="搜索会话"
+                accessibilityLabel={message('drawer.searchSessions')}
                 hitSlop={4}
                 onPress={() => setSearchOpen(value => !value)}
                 style={({ pressed }) => [styles.actionIcon, pressed && styles.pressed]}
@@ -240,7 +241,7 @@ export function SessionDrawer(props: DrawerContentComponentProps): React.JSX.Ele
               </Pressable>
               <Pressable
                 accessibilityRole="button"
-                accessibilityLabel={optionsOpen ? '收起分组和排序选项' : '展开分组和排序选项'}
+                accessibilityLabel={optionsOpen ? message('drawer.collapseOptions') : message('drawer.expandOptions')}
                 hitSlop={4}
                 onPress={() => {
                   setOptionsOpen(value => !value)
@@ -252,7 +253,7 @@ export function SessionDrawer(props: DrawerContentComponentProps): React.JSX.Ele
               </Pressable>
               <View
                 accessible
-                accessibilityLabel="添加工作区（桌面端专属）"
+                accessibilityLabel={message('drawer.addWorkspaceDesktopOnly')}
                 accessibilityState={{ disabled: true }}
                 style={[styles.actionIcon, styles.disabledAction]}
               >
@@ -262,10 +263,10 @@ export function SessionDrawer(props: DrawerContentComponentProps): React.JSX.Ele
           </View>
 
           {optionsOpen ? (
-            <View accessible accessibilityLabel="会话视图设置" style={styles.compactOptions}>
+            <View accessible accessibilityLabel={message('drawer.viewSettings')} style={styles.compactOptions}>
               <NativeListRow
-                title="分组方式"
-                description={groupBy === 'workspace' ? '按工作区' : '单列表'}
+                title={message('drawer.groupBy')}
+                description={groupBy === 'workspace' ? message('drawer.groupByWorkspace') : message('drawer.singleList')}
                 accessibilityRole="button"
                 onPress={() => setExpandedViewSection(value => (value === 'group' ? undefined : 'group'))}
                 right={
@@ -279,7 +280,7 @@ export function SessionDrawer(props: DrawerContentComponentProps): React.JSX.Ele
               {expandedViewSection === 'group' ? (
                 <View style={styles.compactChoices}>
                   <OptionRow
-                    label={workspaceDataAvailable ? '按工作区' : '按工作区（仅未分组）'}
+                    label={workspaceDataAvailable ? message('drawer.groupByWorkspace') : message('drawer.groupByWorkspaceUngrouped')}
                     selected={groupBy === 'workspace'}
                     onPress={() => {
                       setGroupBy('workspace')
@@ -287,7 +288,7 @@ export function SessionDrawer(props: DrawerContentComponentProps): React.JSX.Ele
                     }}
                   />
                   <OptionRow
-                    label="单列表"
+                    label={message('drawer.singleList')}
                     selected={groupBy === 'flat'}
                     onPress={() => {
                       setGroupBy('flat')
@@ -298,8 +299,8 @@ export function SessionDrawer(props: DrawerContentComponentProps): React.JSX.Ele
               ) : null}
               <View style={styles.optionDivider} />
               <NativeListRow
-                title="排序方式"
-                description="最近更新"
+                title={message('drawer.sortBy')}
+                description={message('drawer.recentlyUpdated')}
                 accessibilityRole="button"
                 onPress={() => setExpandedViewSection(value => (value === 'sort' ? undefined : 'sort'))}
                 right={
@@ -312,14 +313,14 @@ export function SessionDrawer(props: DrawerContentComponentProps): React.JSX.Ele
               />
               {expandedViewSection === 'sort' ? (
                 <View style={styles.compactChoices}>
-                  <OptionRow label="最近更新" selected onPress={() => setExpandedViewSection(undefined)} />
+                  <OptionRow label={message('drawer.recentlyUpdated')} selected onPress={() => setExpandedViewSection(undefined)} />
                   <View
                     accessible
-                    accessibilityLabel="手动排序（暂不支持）"
+                    accessibilityLabel={message('drawer.manualOrderUnsupported')}
                     accessibilityState={{ disabled: true }}
                     style={styles.disabledOptionRow}
                   >
-                    <Text style={styles.disabledOptionLabel}>手动排序（暂不支持）</Text>
+                    <Text style={styles.disabledOptionLabel}>{message('drawer.manualOrderUnsupported')}</Text>
                   </View>
                 </View>
               ) : null}
@@ -329,10 +330,10 @@ export function SessionDrawer(props: DrawerContentComponentProps): React.JSX.Ele
             <View style={styles.searchBox}>
               <NativeIcon name="search" size={18} color={theme.colors.inkMuted} />
               <TextInput
-                accessibilityLabel="搜索会话"
+                accessibilityLabel={message('drawer.searchSessions')}
                 autoFocus
                 onChangeText={setSearch}
-                placeholder="搜索所有会话内容"
+                placeholder={message('drawer.searchPlaceholder')}
                 placeholderTextColor={theme.colors.inkFaint}
                 maxLength={500}
                 style={styles.searchInput}
@@ -340,7 +341,7 @@ export function SessionDrawer(props: DrawerContentComponentProps): React.JSX.Ele
               />
               <Pressable
                 accessibilityRole="button"
-                accessibilityLabel="清除搜索"
+                accessibilityLabel={message('drawer.clearSearch')}
                 hitSlop={4}
                 onPress={() => setSearch('')}
                 style={styles.clearSearch}
@@ -358,14 +359,14 @@ export function SessionDrawer(props: DrawerContentComponentProps): React.JSX.Ele
                 ) : (
                   <Text style={styles.emptyState}>
                     {query.isError
-                      ? '会话加载失败，请稍后重试。'
+                      ? message('drawer.sessionsLoadFailed')
                       : searchActive && contentSearch.isPending
-                        ? '正在搜索会话内容…'
+                        ? message('drawer.searching')
                         : searchActive && contentSearch.isError
-                          ? '搜索会话内容失败，请稍后重试。'
+                          ? message('drawer.searchFailed')
                           : searchActive
-                            ? '未找到匹配内容。'
-                            : '暂无会话。'}
+                            ? message('drawer.noSearchResults')
+                            : message('drawer.noSessions')}
                   </Text>
                 )
               ) : (
@@ -387,9 +388,9 @@ export function SessionDrawer(props: DrawerContentComponentProps): React.JSX.Ele
                         }
                       />
                       {item.workspace !== undefined && expandedWorkspaceId === item.workspace.workspaceId ? (
-                        <View accessible accessibilityLabel="工作区操作" style={styles.sessionActions}>
+                        <View accessible accessibilityLabel={message('drawer.workspaceActions')} style={styles.sessionActions}>
                           <NativeListRow
-                            title="重命名工作区"
+                            title={message('drawer.renameWorkspace')}
                             accessibilityRole="button"
                             onPress={() =>
                               router.push({
@@ -400,8 +401,8 @@ export function SessionDrawer(props: DrawerContentComponentProps): React.JSX.Ele
                             right={<NativeIcon name="edit" size={18} color={theme.colors.inkMuted} />}
                           />
                           <NativeListRow
-                            title="移除工作区"
-                            description="保留桌面文件夹和会话记录"
+                            title={message('drawer.removeWorkspace')}
+                            description={message('drawer.removeWorkspaceDetail')}
                             accessibilityRole="button"
                             onPress={() => confirmDeleteWorkspace(item.workspace?.workspaceId ?? '', item.workspace?.title ?? item.label)}
                             right={<NativeIcon name="folder-close" size={18} color={theme.colors.danger} />}
@@ -413,12 +414,12 @@ export function SessionDrawer(props: DrawerContentComponentProps): React.JSX.Ele
                     <Pressable
                       key={item.key}
                       accessibilityRole="button"
-                      accessibilityLabel={item.expanded ? '收起会话' : `展开其余 ${item.hiddenCount} 个会话`}
+                      accessibilityLabel={item.expanded ? message('drawer.collapseSession') : format('drawer.expandMore', { count: item.hiddenCount })}
                       accessibilityState={{ expanded: item.expanded }}
                       onPress={() => toggleWorkspaceSessions(item.workspaceKey)}
                       style={({ pressed }) => [styles.expandButton, pressed && styles.pressed]}
                     >
-                      <Text style={styles.expandText}>{item.expanded ? '收起' : `展开其余 ${item.hiddenCount} 个会话`}</Text>
+                      <Text style={styles.expandText}>{item.expanded ? message('drawer.collapse') : format('drawer.expandMore', { count: item.hiddenCount })}</Text>
                       <NativeIcon
                         name={item.expanded ? 'expand-less' : 'expand-more'}
                         size={18}
@@ -438,26 +439,26 @@ export function SessionDrawer(props: DrawerContentComponentProps): React.JSX.Ele
                         }
                       />
                       {expandedSessionId === item.session.sessionId ? (
-                        <View accessible accessibilityLabel="会话操作" style={styles.sessionActions}>
+                        <View accessible accessibilityLabel={message('drawer.sessionActions')} style={styles.sessionActions}>
                           <NativeListRow
-                            title="重命名"
+                            title={message('drawer.rename')}
                             accessibilityRole="button"
                             onPress={() =>
                               router.push({
                                 pathname: '/session/[sessionId]/rename',
-                                params: { sessionId: item.session.sessionId, title: item.session.title ?? '未命名会话' },
+                                params: { sessionId: item.session.sessionId, title: item.session.title ?? message('session.untitled') },
                               })
                             }
                             right={<NativeIcon name="edit" size={18} color={theme.colors.inkMuted} />}
                           />
                           <NativeListRow
-                            title="分叉会话"
+                            title={message('drawer.forkSession')}
                             accessibilityRole="button"
                             onPress={() => void forkSession(item.session.sessionId)}
                             right={<NativeIcon name="route" size={18} color={theme.colors.inkMuted} />}
                           />
                           <NativeListRow
-                            title="归档会话"
+                            title={message('drawer.archiveSession')}
                             accessibilityRole="button"
                             onPress={() => confirmArchive(item.session)}
                             right={<NativeIcon name="folder-close" size={18} color={theme.colors.danger} />}
@@ -468,19 +469,19 @@ export function SessionDrawer(props: DrawerContentComponentProps): React.JSX.Ele
                   ),
                 )
               )}
-              {searchActive && contentSearch.data?.hasMore ? <Text style={styles.searchHint}>结果较多，请使用更具体的关键词。</Text> : null}
+              {searchActive && contentSearch.data?.hasMore ? <Text style={styles.searchHint}>{message('drawer.searchTooManyResults')}</Text> : null}
             </View>
           </View>
         </DrawerContentScrollView>
         <View style={styles.footer}>
           <Pressable
             accessibilityRole="button"
-            accessibilityLabel="打开设置"
+            accessibilityLabel={message('drawer.openSettings')}
             onPress={openSettings}
             style={({ pressed }) => [styles.footerAction, pressed && styles.pressed]}
           >
             <NativeIcon name="settings" size={14} color={theme.colors.ink} />
-            <Text style={styles.footerActionText}>设置</Text>
+            <Text style={styles.footerActionText}>{message('settings.title')}</Text>
           </Pressable>
         </View>
       </View>
@@ -507,7 +508,7 @@ function WorkspaceItem({
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityLabel={`${collapsed ? '展开' : '收起'}${label}`}
+      accessibilityLabel={`${collapsed ? message('drawer.expand') : message('drawer.collapse')}${label}`}
       accessibilityState={{ expanded: !collapsed }}
       onPress={onPress}
       onLongPress={onLongPress}
@@ -545,7 +546,7 @@ function SessionItem({
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityLabel={`打开会话 ${title}`}
+      accessibilityLabel={format('drawer.openSession', { title })}
       accessibilityState={{ selected }}
       onPress={onPress}
       onLongPress={onLongPress}
@@ -605,7 +606,7 @@ function currentSessionFromState(state: DrawerContentComponentProps['state']): s
 }
 
 function requireConnection(connection: ReturnType<typeof useConnectionStore.getState>['connection']) {
-  if (!connection) throw new Error('请先连接桌面端。')
+  if (!connection) throw new Error(message('drawer.connectFirstBody'))
   return connection
 }
 

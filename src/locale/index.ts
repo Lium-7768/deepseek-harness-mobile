@@ -10,6 +10,7 @@
  * wording: `connect.addressLabel`, not `connect.desktopAddressLabel`.
  */
 import { connect } from './connect'
+import { drawer } from './drawer'
 import { errors } from './errors'
 import { session } from './session'
 import { settings as settingsCopy } from './settings'
@@ -30,7 +31,7 @@ const common = {
   currentModelSuffix: '，当前模型',
 } as const
 
-const areas = { common, connect, errors, session, settings: settingsCopy, trajectory }
+const areas = { common, connect, drawer, errors, session, settings: settingsCopy, trajectory }
 
 /** Every user-visible string the client renders, keyed as `<area>.<role>`. */
 export const messages = Object.fromEntries(
