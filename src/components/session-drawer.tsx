@@ -684,7 +684,9 @@ const makeStyles = (theme: AppTheme) =>
       marginBottom: 4,
       paddingHorizontal: 8,
     },
-    searchInput: { color: theme.colors.ink, flex: 1, fontSize: 14, height: 36 },
+    // A minimum, not a fixed height: a large Dynamic Type setting must grow the
+    // field instead of clipping the query.
+    searchInput: { color: theme.colors.ink, flex: 1, fontSize: 14, minHeight: 36 },
     listArea: { flexGrow: 1 },
     list: { flexGrow: 1, paddingBottom: 52 },
     folder: {

@@ -58,7 +58,6 @@ export default function RootLayout(): React.JSX.Element {
         <Drawer.Screen name="workspace" />
         <Drawer.Screen name="connect" options={{ swipeEnabled: false }} />
         <Drawer.Screen name="connect/scan" options={{ swipeEnabled: false }} />
-        <Drawer.Screen name="sessions" options={{ swipeEnabled: false }} />
         <Drawer.Screen name="session/[sessionId]" />
         <Drawer.Screen name="session/[sessionId]/interactions" />
         <Drawer.Screen name="session/[sessionId]/mode" options={{ swipeEnabled: false }} />

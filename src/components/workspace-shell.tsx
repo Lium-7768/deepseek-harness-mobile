@@ -73,7 +73,7 @@ export function WorkspaceShell({
   const titleContent = (
     <View style={s.titleGroup}>
       {titleLeading ? <View style={s.titleLeading}>{titleLeading}</View> : null}
-      <Text numberOfLines={1} style={s.title}>
+      <Text maxFontSizeMultiplier={1.4} numberOfLines={1} style={s.title}>
         {title ?? 'DeepSeek Harness'}
       </Text>
       {titleAccessory}
