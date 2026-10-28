@@ -163,6 +163,24 @@ counterpart, so the native client keeps its own arrangement:
   absolutely to escape the header's flex lanes. The native header lays them out
   in the row itself, which cannot overflow.
 
+## Motion
+
+Durations and easing come from the desktop's tokens in
+`ui-theme/src/styles/base.css:15-18`:
+
+| Token | Desktop | Native |
+| --- | --- | --- |
+| fast | `0.1s` | `theme.motion.fast` = 100 |
+| default | `0.2s` | `theme.motion.base` = 200 |
+| slow | `0.3s` | `theme.motion.slow` = 300 |
+| easing | `--ds-ease-in-out: cubic-bezier(0.4, 0, 0.2, 1)` | `useMotionEasing()` |
+
+The easing stays as control points in the token module and becomes an RN easing
+function in `hooks`, because `theme/index.ts` must not import react-native: the
+logic tests read it in a Node process. A screen entrance used 180ms with
+`Easing.out(Easing.quad)`; it now uses the default duration and the desktop curve,
+so a route change accelerates the way the Web and desktop clients do.
+
 ## Type scale
 
 Sizes and line heights follow the desktop's scale in

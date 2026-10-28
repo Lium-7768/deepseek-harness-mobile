@@ -1,9 +1,9 @@
 import { useEffect, useRef, type PropsWithChildren } from 'react'
-import { AccessibilityInfo, Animated, Easing, Pressable, StyleSheet, Text, View } from 'react-native'
+import { AccessibilityInfo, Animated, Pressable, StyleSheet, Text, View } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useNavigation } from 'expo-router'
 import type { AppTheme } from '@/theme'
-import { useAppTheme, useThemedStyles } from '@/theme/hooks'
+import { useAppTheme, useMotionEasing, useThemedStyles } from '@/theme/hooks'
 import { t as message } from '@/locale'
 import { NativeIcon } from '@/components/native-icon'
 import { NativeBrandMark } from '@/components/native-brand-mark'
@@ -160,6 +160,8 @@ const makeStyles = (theme: AppTheme) =>
  * @returns An animated opacity value for the screen container.
  */
 function useEntranceFade(): Animated.Value {
+  const theme = useAppTheme()
+  const easing = useMotionEasing()
   const opacity = useRef(new Animated.Value(0)).current
   useEffect(() => {
     let active = true
@@ -171,8 +173,8 @@ function useEntranceFade(): Animated.Value {
       }
       Animated.timing(opacity, {
         toValue: 1,
-        duration: 180,
-        easing: Easing.out(Easing.quad),
+        duration: theme.motion.base,
+        easing,
         useNativeDriver: true,
       }).start()
     })

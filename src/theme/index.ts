@@ -37,6 +37,16 @@ const shape = {
     controlHeight: 36,
   },
   touch: { iconButton: 44, compactIconButton: 36, controlHeight: 40, minTarget: 44 },
+  // The desktop's motion tokens (ui-theme/src/styles/base.css:15-17). The easing
+  // stays control points here because this module must not import react-native;
+  // `useMotionEasing` in ./hooks turns them into an RN easing function.
+  motion: {
+    fast: 100,
+    base: 200,
+    slow: 300,
+    /** Control points of `cubic-bezier(0.4, 0, 0.2, 1)`, the desktop's easing. */
+    bezier: [0.4, 0, 0.2, 1] as const,
+  },
 } as const
 
 /** Colour roles for one appearance. */
@@ -153,6 +163,7 @@ export interface AppTheme {
   rail: typeof shape.rail
   chrome: typeof shape.chrome
   touch: typeof shape.touch
+  motion: typeof shape.motion
   elevation: {
     card: {
       shadowColor: string
