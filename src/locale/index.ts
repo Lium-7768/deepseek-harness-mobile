@@ -10,6 +10,7 @@
  * wording: `connect.addressLabel`, not `connect.desktopAddressLabel`.
  */
 import { connect } from './connect'
+import { conversation } from './conversation'
 import { drawer } from './drawer'
 import { errors } from './errors'
 import { session } from './session'
@@ -22,7 +23,9 @@ const common = {
   save: '保存',
   retry: '请稍后重试。',
   back: '返回',
+  close: '关闭',
   continue: '继续',
+  retryAction: '重试',
   reload: '重新加载',
   openDrawer: '打开会话列表',
   // Screen-reader suffixes appended to a control's own label.
@@ -31,7 +34,7 @@ const common = {
   currentModelSuffix: '，当前模型',
 } as const
 
-const areas = { common, connect, drawer, errors, session, settings: settingsCopy, trajectory }
+const areas = { common, connect, conversation, drawer, errors, session, settings: settingsCopy, trajectory }
 
 /** Every user-visible string the client renders, keyed as `<area>.<role>`. */
 export const messages = Object.fromEntries(

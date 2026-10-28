@@ -52,6 +52,7 @@ import type { AppTheme } from '@/theme'
 import { useAppTheme, useThemedStyles } from '@/theme/hooks'
 import type { MobilePromptContent, SessionEventsPayload } from '@/types/mobile'
 import { type SharedEventItem } from '@/shared/dsh-presentation'
+import { format, t as message } from '@/locale'
 
 export default function SessionScreen(): React.JSX.Element {
   const theme = useAppTheme()
@@ -80,7 +81,7 @@ export default function SessionScreen(): React.JSX.Element {
     queryKey: ['session-history', sessionId],
     enabled: ready,
     queryFn: () => {
-      if (!client || !sessionId) throw new Error('请先连接桌面端并从会话列表打开会话。')
+      if (!client || !sessionId) throw new Error(message('conversation.openFromList'))
       return client.sessionHistory(sessionId)
     },
   })
@@ -88,7 +89,7 @@ export default function SessionScreen(): React.JSX.Element {
     queryKey: ['session-events', sessionId],
     enabled: ready,
     queryFn: () => {
-      if (!client || !sessionId) throw new Error('请先连接桌面端并从会话列表打开会话。')
+      if (!client || !sessionId) throw new Error(message('conversation.openFromList'))
       return client.sessionEvents(sessionId, 0)
     },
   })
@@ -96,7 +97,7 @@ export default function SessionScreen(): React.JSX.Element {
     queryKey: ['session-queue', sessionId],
     enabled: ready,
     queryFn: () => {
-      if (!client || !sessionId) throw new Error('请先连接桌面端并从会话列表打开会话。')
+      if (!client || !sessionId) throw new Error(message('conversation.openFromList'))
       return client.sessionQueue(sessionId)
     },
   })
@@ -104,7 +105,7 @@ export default function SessionScreen(): React.JSX.Element {
     queryKey: ['session-jobs', sessionId],
     enabled: ready,
     queryFn: () => {
-      if (!client || !sessionId) throw new Error('请先连接桌面端并从会话列表打开会话。')
+      if (!client || !sessionId) throw new Error(message('conversation.openFromList'))
       return client.sessionJobs(sessionId)
     },
   })
@@ -112,7 +113,7 @@ export default function SessionScreen(): React.JSX.Element {
     queryKey: ['session-subagents', sessionId],
     enabled: ready,
     queryFn: () => {
-      if (!client || !sessionId) throw new Error('请先连接桌面端并从会话列表打开会话。')
+      if (!client || !sessionId) throw new Error(message('conversation.openFromList'))
       return client.subagents(sessionId)
     },
   })
@@ -120,7 +121,7 @@ export default function SessionScreen(): React.JSX.Element {
     queryKey: ['session-interactions', sessionId],
     enabled: ready,
     queryFn: () => {
-      if (!client || !sessionId) throw new Error('请先连接桌面端并从会话列表打开会话。')
+      if (!client || !sessionId) throw new Error(message('conversation.openFromList'))
       return client.pendingInteractions(sessionId)
     },
   })
@@ -128,7 +129,7 @@ export default function SessionScreen(): React.JSX.Element {
     queryKey: ['session-list', connection?.gatewayUrl, connection?.deviceId],
     enabled: Boolean(connection),
     queryFn: () => {
-      if (!client) throw new Error('请先连接桌面端。')
+      if (!client) throw new Error(message('drawer.connectFirstBody'))
       return client.listSessions()
     },
   })
@@ -141,27 +142,27 @@ export default function SessionScreen(): React.JSX.Element {
     queryKey: ['session-models', connection?.gatewayUrl, connection?.deviceId, sessionId],
     enabled: ready,
     queryFn: () => {
-      if (!client || !sessionId) throw new Error('请先连接桌面端并从会话列表打开会话。')
+      if (!client || !sessionId) throw new Error(message('conversation.openFromList'))
       return client.sessionModels(sessionId)
     },
   })
   const loadOlder = useMutation({
     mutationFn: async () => {
-      if (!client || !sessionId) throw new Error('请先连接桌面端并从会话列表打开会话。')
+      if (!client || !sessionId) throw new Error(message('conversation.openFromList'))
       const source = mergeEventItems(history.data?.items ?? [], olderItems)
       const beforeSeq = Math.min(...source.flatMap(item => (typeof item.seq === 'number' ? [item.seq] : [])))
-      if (!Number.isFinite(beforeSeq)) throw new Error('当前没有可分页的历史记录。')
+      if (!Number.isFinite(beforeSeq)) throw new Error(message('conversation.noMoreHistory'))
       return client.sessionHistory(sessionId, { beforeSeq, maxMessages: 200 })
     },
     onSuccess: (page) => {
       setOlderItems(current => mergeEventItems(page.items, current))
       setOlderHasMore(page.hasMore ?? false)
     },
-    onError: error => Alert.alert('加载更早消息失败', withErrorContext('历史记录未加载', error)),
+    onError: error => Alert.alert(message('conversation.loadOlderFailedTitle'), withErrorContext(message('conversation.historyNotLoaded'), error)),
   })
   const send = useMutation({
     mutationFn: (content: MobilePromptContent) => {
-      if (!client || !sessionId) throw new Error('请先连接桌面端并从会话列表打开会话。')
+      if (!client || !sessionId) throw new Error(message('conversation.openFromList'))
       return client.sendMessage(sessionId, content)
     },
     onSuccess: () => {
@@ -178,45 +179,45 @@ export default function SessionScreen(): React.JSX.Element {
       ])
     },
     onError: (error, content) =>
-      Alert.alert('消息发送失败', withErrorContext('消息未发送，请稍后重试', error), [
-        { text: '关闭', style: 'cancel' },
-        { text: '重试', onPress: () => retrySend.current(content) },
+      Alert.alert(message('conversation.sendFailedTitle'), withErrorContext(message('conversation.sendFailedBody'), error), [
+        { text: message('common.close'), style: 'cancel' },
+        { text: message('common.retryAction'), onPress: () => retrySend.current(content) },
       ]),
   })
   retrySend.current = send.mutate
   const updateQueue = useMutation({
     mutationFn: ({ itemId, action }: { itemId: string; action: Record<string, unknown> }) => {
-      if (!client || !sessionId) throw new Error('请先连接桌面端并从会话列表打开会话。')
+      if (!client || !sessionId) throw new Error(message('conversation.openFromList'))
       return client.updateQueue(sessionId, itemId, action)
     },
     onSuccess: () => void queryClient.invalidateQueries({ queryKey: ['session-queue', sessionId] }),
   })
   const cancel = useMutation({
     mutationFn: () => {
-      if (!client || !sessionId) throw new Error('请先连接桌面端并从会话列表打开会话。')
+      if (!client || !sessionId) throw new Error(message('conversation.openFromList'))
       return client.cancelSession(sessionId)
     },
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ['session-events', sessionId] })
       void queryClient.invalidateQueries({ queryKey: ['session-history', sessionId] })
     },
-    onError: error => Alert.alert('停止任务失败', withErrorContext('任务未停止，请稍后重试', error)),
+    onError: error => Alert.alert(message('conversation.stopFailedTitle'), withErrorContext(message('conversation.stopFailedBody'), error)),
   })
   const goalMutation = useMutation({
     mutationFn: ({ action, ref, objective }: { action: 'edit' | 'pause' | 'resume' | 'clear'; ref: { id: string; revision: number }; objective?: string }) => {
-      if (!client || !sessionId) throw new Error('请先连接桌面端并从会话列表打开会话。')
+      if (!client || !sessionId) throw new Error(message('conversation.openFromList'))
       return client.mutateGoal(sessionId, action, ref, objective === undefined ? {} : { objective })
     },
     onSuccess: () => void queryClient.invalidateQueries({ queryKey: ['session-history', sessionId] }),
-    onError: error => Alert.alert('更新目标失败', withErrorContext('目标未更新，请稍后重试', error)),
+    onError: error => Alert.alert(message('conversation.goalFailedTitle'), withErrorContext(message('conversation.goalFailedBody'), error)),
   })
   const interruptSubagent = useMutation({
     mutationFn: (childSessionId: string) => {
-      if (!client || !sessionId) throw new Error('请先连接桌面端并从会话列表打开会话。')
+      if (!client || !sessionId) throw new Error(message('conversation.openFromList'))
       return client.interruptSubagent(sessionId, childSessionId)
     },
     onSuccess: () => void queryClient.invalidateQueries({ queryKey: ['session-subagents', sessionId] }),
-    onError: error => Alert.alert('停止子 Agent 失败', withErrorContext('停止请求未发送，请稍后重试', error)),
+    onError: error => Alert.alert(message('conversation.subagentStopFailedTitle'), withErrorContext(message('conversation.subagentStopFailedBody'), error)),
   })
   const sendMessage = useRef(send.mutate)
   sendMessage.current = send.mutate
@@ -272,7 +273,7 @@ export default function SessionScreen(): React.JSX.Element {
   const hasMoreHistory = olderHasMore ?? history.data?.hasMore ?? false
   const actions = interactions.data?.items.length ?? 0
   const goal = goalFromProjection(history.data?.projections?.values)
-  const reportedStatus = events.data?.status ?? '正在连接'
+  const reportedStatus = events.data?.status ?? message('conversation.connecting')
   const running = reportedStatus === 'running' || activeSession?.running === true || runningTurnStartedAt !== undefined
   const status = running ? 'running' : reportedStatus
   const displayStatus = connection ? status : 'disconnected'
@@ -285,11 +286,11 @@ export default function SessionScreen(): React.JSX.Element {
         style={s.canvas}
       >
         {!connection ? (
-          <UnavailableState message="请先连接桌面端。" action="去连接" onPress={() => router.replace('/connect')} />
+          <UnavailableState message={message('drawer.connectFirstBody')} action={message('conversation.goConnect')} onPress={() => router.replace('/connect')} />
         ) : !sessionId ? (
           <UnavailableState
-            message="缺少会话标识，请从会话列表打开。"
-            action="返回工作区"
+            message={message('conversation.missingSessionId')}
+            action={message('conversation.backToWorkspace')}
             onPress={() => router.replace('/workspace')}
           />
         ) : (
@@ -315,30 +316,30 @@ export default function SessionScreen(): React.JSX.Element {
             {actions > 0 ? (
               <Pressable
                 accessibilityRole="button"
-                accessibilityLabel="查看待处理操作"
+                accessibilityLabel={message('conversation.viewPending')}
                 onPress={() => router.push({ pathname: '/session/[sessionId]/interactions', params: { sessionId } })}
                 style={({ pressed }) => [s.action, pressed && s.pressed]}
               >
                 <NativeIcon name="warning-amber" size={18} color={theme.colors.warning} />
-                <Text style={s.actionText}>{actions} 项操作需要处理</Text>
+                <Text style={s.actionText}>{format('conversation.pendingCount', { count: actions })}</Text>
                 <NativeIcon name="chevron-right" size={18} color={theme.colors.inkMuted} />
               </Pressable>
             ) : null}
             {history.isError ? (
               <ErrorNotice
-                text={withErrorContext('会话历史加载失败', history.error)}
+                text={withErrorContext(message('conversation.historyFailed'), history.error)}
                 onRetry={() => void history.refetch()}
               />
             ) : null}
             {events.isError ? (
               <ErrorNotice
-                text={withErrorContext('实时事件加载失败，正在重试', events.error)}
+                text={withErrorContext(message('conversation.eventsFailed'), events.error)}
                 onRetry={() => void events.refetch()}
               />
             ) : null}
             {interactions.isError ? (
               <ErrorNotice
-                text={withErrorContext('待处理操作加载失败，正在重试', interactions.error)}
+                text={withErrorContext(message('conversation.interactionsFailed'), interactions.error)}
                 onRetry={() => void interactions.refetch()}
               />
             ) : null}
@@ -372,19 +373,19 @@ export default function SessionScreen(): React.JSX.Element {
                   hasMoreHistory ? (
                     <Pressable
                       accessibilityRole="button"
-                      accessibilityLabel="加载更早消息"
+                      accessibilityLabel={message('conversation.loadOlder')}
                       accessibilityState={{ busy: loadOlder.isPending }}
                       disabled={loadOlder.isPending}
                       onPress={() => void loadOlder.mutateAsync()}
                       style={({ pressed }) => [s.loadOlder, pressed && s.pressed]}
                     >
                       <NativeIcon name="expand-less" size={16} color={theme.colors.accentText} />
-                      <Text style={s.loadOlderText}>{loadOlder.isPending ? '正在加载…' : '加载更早消息'}</Text>
+                      <Text style={s.loadOlderText}>{loadOlder.isPending ? message('conversation.loading') : message('conversation.loadOlder')}</Text>
                     </Pressable>
                   ) : null
                 }
                 ListEmptyComponent={
-                  history.isPending ? <SkeletonConversation /> : <Text style={s.empty}>此会话暂无可见消息。</Text>
+                  history.isPending ? <SkeletonConversation /> : <Text style={s.empty}>{message('conversation.noMessages')}</Text>
                 }
                 onContentSizeChange={() => {
                   const initialPositionPending = initialLatestPositionPending.current
@@ -411,7 +412,7 @@ export default function SessionScreen(): React.JSX.Element {
               {showReturnToLatest ? (
                 <Pressable
                   accessibilityRole="button"
-                  accessibilityLabel="返回最新消息"
+                  accessibilityLabel={message('conversation.backToLatest')}
                   onPress={() => {
                     nearLatestMessage.current = true
                     setShowReturnToLatest(false)
@@ -439,7 +440,7 @@ export default function SessionScreen(): React.JSX.Element {
             <WorkspaceComposer
               agentPreset={activeSession?.agentPreset}
               model={models.data?.current}
-              placeholder="在这里输入消息…"
+              placeholder={message('conversation.composerPlaceholder')}
               onSend={content => send.mutateAsync(content).then(() => undefined)}
               onCancel={() => cancel.mutate()}
               permissions={readPermissionSelect(history.data?.projections?.values.permissions)}
@@ -540,14 +541,14 @@ function MessageActions({ alignment, text }: { alignment: MessageActionAlignment
       }, 1200)
     } catch {
       setCopyFailed(true)
-      void AccessibilityInfo.announceForAccessibility('复制失败，请重试。')
+      void AccessibilityInfo.announceForAccessibility(message('conversation.copyFailed'))
     }
   }
 
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityLabel={copied ? '消息已复制' : copyFailed ? '复制失败，请重试' : '复制消息'}
+      accessibilityLabel={copied ? message('conversation.copied') : copyFailed ? message('conversation.copyFailedTitle') : message('conversation.copyMessage')}
       accessibilityState={{ selected: copied }}
       onPress={() => void copy()}
       hitSlop={8}
@@ -569,7 +570,7 @@ function ErrorNotice({ text, onRetry }: { text: string; onRetry: () => void }): 
   return (
     <View style={s.errorNotice}>
       <Text style={s.error}>{text}</Text>
-      <NativeActionButton label="重新加载" icon="refresh" variant="secondary" onPress={onRetry} />
+      <NativeActionButton label={message('common.reload')} icon="refresh" variant="secondary" onPress={onRetry} />
     </View>
   )
 }
@@ -598,14 +599,14 @@ function ConnectionStatus({ status }: { status: string }): React.JSX.Element {
   const s = useThemedStyles(makeStyles)
   const disconnected = status === 'disconnected'
   const label = disconnected
-    ? '未连接'
+    ? message('settings.disconnected')
     : status === 'idle'
-      ? '空闲'
+      ? message('conversation.idle')
       : status === 'running'
-        ? '处理中'
+        ? message('session.running')
         : status === 'waiting'
-          ? '等待确认'
-          : '正在连接'
+          ? message('conversation.waitingForConfirmation')
+          : message('conversation.connecting')
   return (
     <View style={s.status}>
       <View style={[s.statusDot, disconnected && s.statusOffline]} />
@@ -644,7 +645,7 @@ function mergeEventItems(...sources: ReadonlyArray<ReadonlyArray<SharedEventItem
 }
 
 function withErrorContext(prefix: string, error: unknown): string {
-  const detail = mobileErrorMessage(error, '请稍后重试。')
+  const detail = mobileErrorMessage(error, message('common.retry'))
   return `${prefix}：${detail}`
 }
 
