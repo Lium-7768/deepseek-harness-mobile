@@ -15,6 +15,7 @@ import { useSessionSelectionStore } from '@/state/session-selection'
 import type { AppTheme } from '@/theme'
 import { useAppTheme, useThemedStyles } from '@/theme/hooks'
 import type { MobilePromptContent } from '@/types/mobile'
+import { format, t as message } from '@/locale'
 
 export default function WorkspaceScreen(): React.JSX.Element {
   const theme = useAppTheme()
@@ -45,7 +46,7 @@ export default function WorkspaceScreen(): React.JSX.Element {
     queryFn: () => requireClient(client).sessionHistory(requireSelectedSessionId(selectedSession), { maxMessages: 1 }),
   })
   const selectedWorkspace = workspaceForSession(sessions.data?.workspaces ?? [], selectedSession?.sessionId)
-  const workspaceTitle = selectedWorkspace === undefined ? '工作区' : workspaceLabel(selectedWorkspace)
+  const workspaceTitle = selectedWorkspace === undefined ? message('workspace.sectionTitle') : workspaceLabel(selectedWorkspace)
   useEffect(() => {
     if (connection === undefined) {
       restoredConnectionKey.current = undefined
@@ -74,7 +75,7 @@ export default function WorkspaceScreen(): React.JSX.Element {
   }
   const send = async (content: MobilePromptContent): Promise<void> => {
     if (selectedSession === undefined || !connection) {
-      Alert.alert('选择会话', '请先选择一个会话后再发送。')
+      Alert.alert(message('workspace.pickSession'), message('workspace.pickSessionFirst'))
       return
     }
     await new MobileApi(connection).sendMessage(selectedSession.sessionId, content)
@@ -93,19 +94,19 @@ export default function WorkspaceScreen(): React.JSX.Element {
         style={s.canvas}
       >
         <View style={s.summary}>
-          <Text style={s.summaryLabel}>{selectedSession === undefined ? '选择桌面会话' : '当前会话'}</Text>
+          <Text style={s.summaryLabel}>{selectedSession === undefined ? message('workspace.selectedSessionLabel') : message('workspace.currentSession')}</Text>
           <View style={s.controls}>
             <Pressable
               accessibilityRole="button"
               accessibilityLabel={
-                selectedSession === undefined ? '选择会话' : `当前会话：${sessionDisplayTitle(selectedSession)}`
+                selectedSession === undefined ? message('workspace.pickSession') : format('workspace.currentSessionNamed', { title: sessionDisplayTitle(selectedSession) })
               }
               onPress={() => navigation.openDrawer()}
               style={({ pressed }) => [s.control, pressed && s.pressed]}
             >
               <NativeIcon name="chat-bubble-outline" size={16} color={theme.colors.inkMuted} />
               <Text numberOfLines={1} style={s.controlText}>
-                {selectedSession === undefined ? '选择会话' : sessionDisplayTitle(selectedSession)}
+                {selectedSession === undefined ? message('workspace.pickSession') : sessionDisplayTitle(selectedSession)}
               </Text>
               <NativeIcon name="expand-more" size={18} color={theme.colors.inkMuted} />
             </Pressable>
@@ -155,7 +156,7 @@ function ModeTrigger({
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityLabel={sessionId === undefined ? `设置新会话默认模式：${label}` : `选择智能体模式：${label}`}
+      accessibilityLabel={sessionId === undefined ? format('workspace.presetModeTrigger', { label }) : format('workspace.selectMode', { label })}
       accessibilityState={{ disabled }}
       disabled={disabled}
       hitSlop={{ top: 8, bottom: 8 }}
@@ -172,12 +173,12 @@ function ModeTrigger({
 }
 
 function requireClient(client: MobileApi | undefined): MobileApi {
-  if (client === undefined) throw new Error('请先连接桌面端。')
+  if (client === undefined) throw new Error(message('workspace.connectFirst'))
   return client
 }
 
 function requireSelectedSessionId(session: ReturnType<typeof selectedSessionTarget>): string {
-  if (session === undefined) throw new Error('请先选择一个桌面会话。')
+  if (session === undefined) throw new Error(message('workspace.pickDesktopSession'))
   return session.sessionId
 }
 
@@ -186,16 +187,16 @@ function workspaceDetail(
   sessions: ReturnType<typeof useQuery<Awaited<ReturnType<MobileApi['listSessions']>>>>,
   selectedTime: string | undefined,
 ): string {
-  if (!connection) return '请先连接桌面端。'
-  if (sessions.isPending) return '正在加载桌面工作区…'
-  if (sessions.isError) return `桌面工作区加载失败：${errorMessage(sessions.error)}`
+  if (!connection) return message('workspace.connectFirst')
+  if (sessions.isPending) return message('workspace.loading')
+  if (sessions.isError) return format('workspace.loadFailed', { reason: errorMessage(sessions.error) })
   const count = sessions.data?.items.length ?? 0
-  if (count === 0) return '桌面端暂无会话，请在桌面端创建会话。'
-  return selectedTime === undefined ? `已连接桌面端 · ${count} 个会话` : `最近更新 · ${selectedTime}`
+  if (count === 0) return message('workspace.empty')
+  return selectedTime === undefined ? format('workspace.connected', { count }) : format('workspace.recentlyUpdated', { time: selectedTime })
 }
 
 function errorMessage(error: unknown): string {
-  return mobileErrorMessage(error, '请稍后重试。')
+  return mobileErrorMessage(error, message('common.retry'))
 }
 
 const makeStyles = (theme: AppTheme) =>

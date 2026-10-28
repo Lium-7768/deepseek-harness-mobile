@@ -19,6 +19,8 @@ import { mode } from './mode'
 import { permission } from './permission'
 import { session } from './session'
 import { settings as settingsCopy } from './settings'
+import { subagent } from './subagent'
+import { workspace } from './workspace'
 import { trajectory } from './trajectory'
 
 /** Copy shared by more than one screen. */
@@ -38,7 +40,7 @@ const common = {
   currentModelSuffix: '，当前模型',
 } as const
 
-const areas = { common, composer, connect, conversation, drawer, errors, interactions, mode, permission, session, settings: settingsCopy, trajectory }
+const areas = { common, composer, connect, conversation, drawer, errors, interactions, mode, permission, subagent, workspace, session, settings: settingsCopy, trajectory }
 
 /** Every user-visible string the client renders, keyed as `<area>.<role>`. */
 export const messages = Object.fromEntries(
