@@ -80,7 +80,20 @@ control. Adding one would create a second way to open the same drawer. The
 | Bottom row wrap | `flex-wrap: wrap; gap: 6px` (line ~430) | `flexWrap: 'wrap'`, `gap: 6` |
 | Leading control group | `gap: 8px; min-width: 0` | row `gap: 8`, field `minWidth: 0` so it shrinks instead of pushing a control out of the card |
 
-## Session rows and grouping — unchanged
+## Session rows and grouping
+
+| Concern | DSH Pocket / desktop | Native |
+| --- | --- | --- |
+| Row height | 32 (`Rows.module.css:118`) | `minHeight: 32`, with 6pt vertical hit slop reaching the 44pt iOS target |
+| Row radius | `--dsw-radius-md` = 12 (`:6`) | `radius.md` |
+| Row padding | `0 8px` (`:7`) | `paddingHorizontal: 8` |
+| Row gap | `0` (`:120`) | none |
+| Title | `font-size 14`, `line-height 20`, margins `0 6 0 4` (`:123,176`) | `fontSize 14`, `lineHeight 20`, `marginLeft 4`, `marginRight 6` |
+| Time / meta | `font-size 10`, `line-height 16`, `flex: none` (`:233`) | `fontSize 10`, `lineHeight 16`, `flexShrink: 0` |
+| Menu row | radius-md, `min-height 36`, `padding 7px 8px`, gap 8, `margin 0 2px` (`SidebarRoot.module.css:532`) | the same values, with 4pt hit slop |
+| Separator | `--dsw-alias-border-l3` = 0.12 | `theme.colors.border` = the same value |
+
+## Session rows and grouping — earlier notes
 
 Pocket does not restyle the sidebar's session rows. Its own note says the
 drawer "list keeps its size" while only conversation text shrinks, and the

@@ -513,6 +513,7 @@ function WorkspaceItem({
       onPress={onPress}
       onLongPress={onLongPress}
       delayLongPress={350}
+      hitSlop={{ top: 4, bottom: 4 }}
       style={({ pressed }) => [styles.folder, pressed && styles.pressed]}
     >
       <NativeIcon name={collapsed ? 'chevron-right-outline' : 'chevron-down-outline'} size={18} color={theme.colors.inkMuted} />
@@ -551,7 +552,7 @@ function SessionItem({
       onPress={onPress}
       onLongPress={onLongPress}
       delayLongPress={350}
-      hitSlop={{ top: 1, bottom: 1 }}
+      hitSlop={{ top: 6, bottom: 6 }}
       style={({ pressed }) => [styles.session, selected && styles.selected, pressed && styles.pressed]}
     >
       <Text numberOfLines={1} style={styles.sessionTitle}>
@@ -691,12 +692,14 @@ const makeStyles = (theme: AppTheme) =>
     list: { flexGrow: 1, paddingBottom: 52 },
     folder: {
       alignItems: 'center',
-      borderRadius: theme.radius.card,
+      borderRadius: theme.radius.md,
       flexDirection: 'row',
-      gap: theme.spacing.xs,
-      marginBottom: theme.spacing.xxs,
-      minHeight: theme.touch.minTarget,
-      paddingHorizontal: theme.spacing.xs,
+      gap: 8,
+      marginBottom: 2,
+      marginHorizontal: 2,
+      minHeight: 36,
+      paddingHorizontal: 8,
+      paddingVertical: 7,
     },
     folderText: { color: theme.colors.ink, fontSize: theme.typography.bodyLarge, fontWeight: '500' },
     sessionActions: {
@@ -708,18 +711,19 @@ const makeStyles = (theme: AppTheme) =>
       marginHorizontal: theme.spacing.sm,
       overflow: 'hidden',
     },
+    // The desktop's row is 32pt tall with `radius-md`, 8pt inline padding, no gap,
+    // and title margins of 4/6 (Rows.module.css:2,118). Drawn at 32 to match, with
+    // the vertical hit slop below raising the touch target to 44.
     session: {
       alignItems: 'center',
-      borderRadius: theme.radius.card,
+      borderRadius: theme.radius.md,
       flexDirection: 'row',
-      gap: theme.spacing.sm,
-      marginLeft: theme.spacing.md,
-      minHeight: theme.touch.minTarget,
-      paddingHorizontal: theme.spacing.md,
+      minHeight: 32,
+      paddingHorizontal: 8,
     },
     selected: { backgroundColor: theme.colors.surfaceActive },
-    sessionTitle: { color: theme.colors.ink, flex: 1, fontSize: 14 },
-    sessionTime: { color: theme.colors.inkMuted, fontSize: 11 },
+    sessionTitle: { color: theme.colors.ink, flex: 1, fontSize: 14, lineHeight: 20, marginLeft: 4, marginRight: 6 },
+    sessionTime: { color: theme.colors.inkMuted, flexShrink: 0, fontSize: 10, lineHeight: 16 },
     emptyState: { color: theme.colors.inkMuted, paddingHorizontal: 8, paddingVertical: 24, textAlign: 'center' },
     expandButton: { alignItems: 'center', flexDirection: 'row', gap: 2, paddingHorizontal: 12, paddingVertical: 12 },
     expandText: { color: theme.colors.inkMuted, fontSize: 13 },
@@ -756,13 +760,18 @@ const makeStyles = (theme: AppTheme) =>
       paddingVertical: theme.spacing.xs,
     },
     inlineOptionSection: { gap: theme.spacing.xxs, paddingVertical: theme.spacing.xxs },
+    // Desktop panel row (SidebarRoot.module.css:532): radius-md, min-height 36,
+    // 7/8 padding, 8 gap, 2pt side margin.
     optionRow: {
       alignItems: 'center',
-      borderRadius: 7,
+      borderRadius: theme.radius.md,
       flexDirection: 'row',
+      gap: 8,
       justifyContent: 'space-between',
+      marginHorizontal: 2,
       minHeight: 36,
-      paddingHorizontal: 9,
+      paddingHorizontal: 8,
+      paddingVertical: 7,
     },
     optionLabel: { color: theme.colors.ink, fontSize: 13 },
     disabledOptionRow: {
