@@ -9,6 +9,7 @@
  * Keys are `<area>.<role>`, where `<role>` names the thing rather than its
  * wording: `connect.addressLabel`, not `connect.desktopAddressLabel`.
  */
+import { composer } from './composer'
 import { connect } from './connect'
 import { conversation } from './conversation'
 import { drawer } from './drawer'
@@ -34,7 +35,7 @@ const common = {
   currentModelSuffix: '，当前模型',
 } as const
 
-const areas = { common, connect, conversation, drawer, errors, session, settings: settingsCopy, trajectory }
+const areas = { common, composer, connect, conversation, drawer, errors, session, settings: settingsCopy, trajectory }
 
 /** Every user-visible string the client renders, keyed as `<area>.<role>`. */
 export const messages = Object.fromEntries(

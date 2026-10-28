@@ -13,6 +13,7 @@ import {
 import type { MobileImageMediaType, MobileModelSelection, MobilePermissionSelect, MobilePromptContent } from '@/types/mobile'
 import type { AppTheme } from '@/theme'
 import { useAppTheme, useThemedStyles } from '@/theme/hooks'
+import { format, t as message } from '@/locale'
 
 type DraftImage = {
   data: string
@@ -56,7 +57,7 @@ export function WorkspaceComposer({
   onCancel,
   onSend,
   permissions,
-  placeholder = '给智能体发消息',
+  placeholder = message('composer.placeholder'),
   running = false,
   sending = false,
   sessionId,
@@ -101,7 +102,7 @@ export function WorkspaceComposer({
       ]
     })
     if (selected.length === 0) {
-      Alert.alert('无法添加图片', '所选图片未提供可上传的数据，请重新选择。')
+      Alert.alert(message('composer.imageAddFailedTitle'), message('composer.imageAddFailedBody'))
       return
     }
     setDraftImages(current => [...current, ...selected].slice(0, 4))
@@ -118,7 +119,7 @@ export function WorkspaceComposer({
       })
       if (!result.canceled) appendImages(result.assets)
     } catch {
-      Alert.alert('无法打开照片库', '请检查照片权限后重试。')
+      Alert.alert(message('composer.photoLibraryFailedTitle'), message('composer.photoLibraryFailedBody'))
     }
   }
   const captureImage = async (): Promise<void> => {
@@ -126,40 +127,40 @@ export function WorkspaceComposer({
     try {
       const permission = await ImagePicker.requestCameraPermissionsAsync()
       if (!permission.granted) {
-        Alert.alert('需要相机权限', '请允许 DeepSeek Harness 使用相机后再拍照。')
+        Alert.alert(message('composer.cameraPermissionTitle'), message('composer.cameraPermissionBody'))
         return
       }
       const result = await ImagePicker.launchCameraAsync({ base64: true, mediaTypes: ['images'], quality: 0.85 })
       if (!result.canceled) appendImages(result.assets)
     } catch {
-      Alert.alert('无法打开相机', '请检查相机权限后重试。')
+      Alert.alert(message('composer.cameraFailedTitle'), message('composer.cameraFailedBody'))
     }
   }
   const chooseImageSource = (): void => {
     if (controlsDisabled || draftImages.length >= 4) return
-    Alert.alert('添加图片', '拍照和照片库中的图片都会在上传前压缩。', [
-      { text: '拍照', onPress: () => void captureImage() },
-      { text: '从照片库选择', onPress: () => void pickImage() },
-      { text: '取消', style: 'cancel' },
+    Alert.alert(message('composer.addImage'), message('composer.addImageDetail'), [
+      { text: message('composer.takePhoto'), onPress: () => void captureImage() },
+      { text: message('composer.choosePhoto'), onPress: () => void pickImage() },
+      { text: message('common.cancel'), style: 'cancel' },
     ])
   }
   const hasSession = sessionId !== undefined && sessionId.length > 0
   const modeLabel = agentPresetLabel(agentPreset)
   const selectedModelLabel = modelLabel(model)
   const selectedPermissionLabel =
-    permissions === undefined ? '工作区写入' : permissionLabel(permissions.currentValue, permissions)
+    permissions === undefined ? message('session.permissionWorkspaceBadge') : permissionLabel(permissions.currentValue, permissions)
   const controlsDisabled = disabled || sending || cancelling
 
   return (
     <View style={s.wrap}>
       {draftImages.length > 0 ? (
-        <View accessibilityLabel={`已添加 ${draftImages.length} 张图片`} style={s.previewRow}>
+        <View accessibilityLabel={format('composer.imagesAdded', { count: draftImages.length })} style={s.previewRow}>
           {draftImages.map((image, index) => (
             <View key={`${image.uri}-${index}`} style={s.preview}>
-              <Image accessibilityLabel={image.name ?? `附件图片 ${index + 1}`} source={{ uri: image.uri }} style={s.previewImage} />
+              <Image accessibilityLabel={image.name ?? format('composer.attachmentImage', { index: index + 1 })} source={{ uri: image.uri }} style={s.previewImage} />
               <Pressable
                 accessibilityRole="button"
-                accessibilityLabel={`移除附件图片 ${index + 1}`}
+                accessibilityLabel={format('composer.removeAttachment', { index: index + 1 })}
                 hitSlop={12}
                 onPress={() => setDraftImages(current => current.filter((_, itemIndex) => itemIndex !== index))}
                 style={({ pressed }) => [s.removePreview, pressed && s.pressed]}
@@ -172,7 +173,7 @@ export function WorkspaceComposer({
       ) : null}
       <View style={s.row}>
         <TextInput
-          accessibilityLabel="消息输入"
+          accessibilityLabel={message('composer.inputLabel')}
           multiline
           value={text}
           onChangeText={setText}
@@ -186,7 +187,7 @@ export function WorkspaceComposer({
         />
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel={draftImages.length >= 4 ? '最多可添加 4 张图片' : '添加图片附件'}
+          accessibilityLabel={draftImages.length >= 4 ? message('composer.imageLimitTitle') : message('composer.imageLimitBody')}
           accessibilityState={{ disabled: controlsDisabled || draftImages.length >= 4 }}
           disabled={controlsDisabled || draftImages.length >= 4}
           hitSlop={4}
@@ -206,7 +207,7 @@ export function WorkspaceComposer({
         {onCancel !== undefined && action.kind === 'stop' ? (
           <Pressable
             accessibilityRole="button"
-            accessibilityLabel={action.busy ? '正在停止当前任务' : '停止当前任务'}
+            accessibilityLabel={action.busy ? message('composer.stopping') : message('composer.stop')}
             accessibilityState={{ busy: action.busy, disabled: action.disabled }}
             disabled={action.disabled}
             hitSlop={5}
@@ -218,7 +219,7 @@ export function WorkspaceComposer({
         ) : (
           <Pressable
             accessibilityRole="button"
-            accessibilityLabel={action.busy ? '正在发送消息' : '发送消息'}
+            accessibilityLabel={action.busy ? message('composer.sending') : message('composer.send')}
             accessibilityState={{ busy: action.busy, disabled: action.disabled }}
             disabled={action.disabled}
             hitSlop={5}
@@ -234,17 +235,17 @@ export function WorkspaceComposer({
           <View
             accessible
             accessibilityRole="button"
-            accessibilityLabel="工作区写入权限由桌面端控制"
+            accessibilityLabel={message('composer.permissionLocked')}
             accessibilityState={{ disabled: true }}
             style={s.disabledTool}
           >
             <NativeIcon name="admin-panel-settings" size={14} color={theme.colors.inkMuted} />
-            <Text style={s.toolText}>工作区写入</Text>
+            <Text style={s.toolText}>{message('session.permissionWorkspaceBadge')}</Text>
           </View>
         ) : (
           <Pressable
             accessibilityRole="button"
-            accessibilityLabel={`选择权限：${selectedPermissionLabel}`}
+            accessibilityLabel={format('composer.selectPermission', { label: selectedPermissionLabel })}
             accessibilityState={{ disabled: !hasSession || controlsDisabled }}
             disabled={!hasSession || controlsDisabled}
             hitSlop={{ top: 8, bottom: 8 }}
@@ -264,7 +265,7 @@ export function WorkspaceComposer({
         {hasSession ? (
           <Pressable
             accessibilityRole="button"
-            accessibilityLabel={`选择智能体模式：${modeLabel}`}
+            accessibilityLabel={format('composer.selectMode', { label: modeLabel })}
             accessibilityState={{ disabled: controlsDisabled }}
             disabled={controlsDisabled}
             hitSlop={{ top: 8, bottom: 8 }}
@@ -283,18 +284,18 @@ export function WorkspaceComposer({
           <View
             accessible
             accessibilityRole="button"
-            accessibilityLabel="智能体模式需先选择会话"
+            accessibilityLabel={message('composer.modeNeedsSession')}
             accessibilityState={{ disabled: true }}
             style={s.disabledTool}
           >
             <NativeIcon name="tune" size={14} color={theme.colors.inkMuted} />
-            <Text style={s.toolText}>标准模式</Text>
+            <Text style={s.toolText}>{message('session.modeStandard')}</Text>
           </View>
         )}
         {hasSession ? (
           <Pressable
             accessibilityRole="button"
-            accessibilityLabel={`选择模型：${selectedModelLabel}`}
+            accessibilityLabel={format('composer.selectModel', { label: selectedModelLabel })}
             accessibilityState={{ disabled: controlsDisabled }}
             disabled={controlsDisabled}
             hitSlop={{ top: 8, bottom: 8 }}
@@ -314,12 +315,12 @@ export function WorkspaceComposer({
           <View
             accessible
             accessibilityRole="button"
-            accessibilityLabel="模型需先选择会话"
+            accessibilityLabel={message('composer.modelNeedsSession')}
             accessibilityState={{ disabled: true }}
             style={s.disabledTool}
           >
             <NativeIcon name="smart-toy" size={14} color={theme.colors.inkMuted} />
-            <Text style={s.toolText}>模型由桌面端控制</Text>
+            <Text style={s.toolText}>{message('composer.modelLocked')}</Text>
           </View>
         )}
       </ScrollView>
