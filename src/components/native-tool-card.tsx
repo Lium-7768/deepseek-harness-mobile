@@ -5,6 +5,7 @@ import type { NativeConversationRow } from '@/components/session-conversation-lo
 import type { AppTheme } from '@/theme'
 import { useAppTheme, useThemedStyles } from '@/theme/hooks'
 import type { SharedMessagePresentation } from '@/shared/dsh-presentation'
+import { format, t as message } from '@/locale'
 
 type Variant = 'search' | 'read' | 'bash' | 'write' | 'edit' | 'code' | 'web' | 'other'
 type ToolRow = Extract<NativeConversationRow, { kind: 'tool' }>
@@ -29,14 +30,14 @@ function variantFor(name?: string): Variant {
 }
 
 const META: Record<Variant, [NativeIconName, string]> = {
-  search: ['search', '搜索'],
-  read: ['description', '读取'],
-  bash: ['terminal', '命令'],
-  write: ['note-add', '写入'],
-  edit: ['edit', '编辑'],
-  code: ['code', '代码'],
-  web: ['language', '网页'],
-  other: ['sparkle', '工具'],
+  search: ['search', message('tool.verbSearch')],
+  read: ['description', message('tool.verbRead')],
+  bash: ['terminal', message('tool.verbCommand')],
+  write: ['note-add', message('tool.verbWrite')],
+  edit: ['edit', message('tool.verbEdit')],
+  code: ['code', message('tool.verbCode')],
+  web: ['language', message('tool.verbWeb')],
+  other: ['sparkle', message('tool.verbGeneric')],
 }
 
 /**
@@ -62,7 +63,7 @@ export function NativeToolCard({ presentation, row }: { presentation?: SharedMes
     }
     return {
       state: presentation?.toolState ?? 'running',
-      toolName: presentation?.toolName ?? '工具调用',
+      toolName: presentation?.toolName ?? message('tool.title'),
       ...(presentation?.toolInput === undefined ? {} : { toolInput: presentation.toolInput }),
       ...(presentation?.toolOutput === undefined ? {} : { output: presentation.toolOutput }),
       ...(presentation?.text ? { summary: presentation.text } : {}),
@@ -70,13 +71,13 @@ export function NativeToolCard({ presentation, row }: { presentation?: SharedMes
   }, [presentation, row])
   const [icon, fallbackTitle] = useMemo(() => META[variantFor(model.toolName)], [model.toolName])
   const title = model.toolName || fallbackTitle
-  const stateLabel = model.state === 'completed' ? '已完成' : model.state === 'failed' ? '失败' : '运行中'
+  const stateLabel = model.state === 'completed' ? message('tool.stateCompleted') : model.state === 'failed' ? message('tool.stateFailed') : message('tool.stateRunning')
   const hasDetails = Boolean(model.toolInput || model.output)
   return (
     <View style={[styles.root, model.state === 'failed' && styles.failedRoot]}>
       <Pressable
         accessibilityRole={hasDetails ? 'button' : undefined}
-        accessibilityLabel={`${title}工具${stateLabel}`}
+        accessibilityLabel={format('tool.accessibilityLabel', { tool: title, state: stateLabel })}
         accessibilityState={{ busy: model.state === 'running', expanded: hasDetails ? expanded : undefined }}
         disabled={!hasDetails}
         onPress={() => setExpanded(value => !value)}

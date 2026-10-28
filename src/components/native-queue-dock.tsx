@@ -4,6 +4,7 @@ import { NativeIcon } from '@/components/native-icon'
 import type { MobilePromptContent, MobileQueueItem } from '@/types/mobile'
 import type { AppTheme } from '@/theme'
 import { useAppTheme, useThemedStyles } from '@/theme/hooks'
+import { format, t as message } from '@/locale'
 
 type Props = {
   items: readonly MobileQueueItem[]
@@ -46,7 +47,7 @@ export function NativeQueueDock({ items, onUpdate, running }: Props): React.JSX.
       await onUpdate(itemId, action)
       return true
     } catch {
-      Alert.alert('队列操作失败', failure)
+      Alert.alert(message('queue.failedTitle'), failure)
       return false
     } finally {
       setBusyId(current => (current === itemId ? undefined : current))
@@ -59,7 +60,7 @@ export function NativeQueueDock({ items, onUpdate, running }: Props): React.JSX.
       await apply(
         editing.id,
         { kind: 'edit', content: [{ type: 'text', text: editing.text.trim() }] satisfies MobilePromptContent },
-        '无法编辑待发送消息，请稍后重试。',
+        message('queue.cannotEdit'),
       )
     )
       setEditing(undefined)
@@ -70,14 +71,14 @@ export function NativeQueueDock({ items, onUpdate, running }: Props): React.JSX.
       {queue.length > 1 ? (
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel={`${queue.length} 条待发送消息${expanded ? '，收起列表' : '，展开列表'}`}
+          accessibilityLabel={format('queue.summary', { count: queue.length, action: expanded ? message('queue.collapse') : message('queue.expand') })}
           accessibilityState={{ expanded, disabled: interactionActive }}
           disabled={interactionActive}
           onPress={() => setCollapsed(value => !value)}
           style={({ pressed }) => [s.header, pressed && s.pressed]}
         >
           <NativeIcon name="chat" size={15} color={theme.colors.inkMuted} />
-          <Text style={s.headerText}>{queue.length} 条待发送消息</Text>
+          <Text style={s.headerText}>{format('queue.header', { count: queue.length })}</Text>
           <NativeIcon name={expanded ? 'expand-less' : 'expand-more'} size={17} color={theme.colors.inkMuted} />
         </Pressable>
       ) : null}
@@ -92,7 +93,7 @@ export function NativeQueueDock({ items, onUpdate, running }: Props): React.JSX.
                 {queue.length === 1 ? <NativeIcon name="chat" size={15} color={theme.colors.inkMuted} /> : null}
                 {isEditing ? (
                   <TextInput
-                    accessibilityLabel="编辑待发送消息"
+                    accessibilityLabel={message('queue.edit')}
                     autoFocus
                     multiline
                     onChangeText={value => setEditing({ id: item.id, text: value })}
@@ -109,17 +110,17 @@ export function NativeQueueDock({ items, onUpdate, running }: Props): React.JSX.
                     <>
                       <QueueAction
                         disabled={busy || editing.text.trim() === ''}
-                        label="保存待发送消息"
+                        label={message('queue.save')}
                         icon="check"
                         onPress={() => void save()}
                       />
-                      <QueueAction disabled={busy} label="取消编辑待发送消息" icon="close" onPress={() => setEditing(undefined)} />
+                      <QueueAction disabled={busy} label={message('queue.cancelEdit')} icon="close" onPress={() => setEditing(undefined)} />
                     </>
                   ) : (
                     <>
                       <QueueAction
                         disabled={busy || text === undefined}
-                        label={text === undefined ? '含附件的待发送消息不可编辑' : '编辑待发送消息'}
+                        label={text === undefined ? message('queue.cannotEditWithAttachment') : message('queue.edit')}
                         icon="edit"
                         onPress={() => {
                           if (text !== undefined) setEditing({ id: item.id, text })
@@ -127,15 +128,15 @@ export function NativeQueueDock({ items, onUpdate, running }: Props): React.JSX.
                       />
                       <QueueAction
                         disabled={busy}
-                        label="移除待发送消息"
+                        label={message('queue.remove')}
                         icon="close"
-                        onPress={() => void apply(item.id, { kind: 'remove' }, '无法移除待发送消息，请稍后重试。')}
+                        onPress={() => void apply(item.id, { kind: 'remove' }, message('queue.cannotRemove'))}
                       />
                       <QueueAction
                         disabled={busy || !running}
-                        label={running ? '立即引导处理此消息' : '会话未运行，暂不能引导消息'}
+                        label={running ? message('queue.steer') : message('queue.steerUnavailable')}
                         icon="send"
-                        onPress={() => void apply(item.id, { kind: 'steer' }, '无法引导待发送消息，请稍后重试。')}
+                        onPress={() => void apply(item.id, { kind: 'steer' }, message('queue.cannotSteer'))}
                       />
                     </>
                   )}
@@ -186,7 +187,7 @@ function editableText(item: MobileQueueItem): string | undefined {
 function queuePreview(item: MobileQueueItem): string {
   const text = editableText(item)
   if (text !== undefined) return text
-  return item.message.content.map(part => (part.type === 'text' ? part.text : '[图片]')).join(' ').trim() || '[待发送附件]'
+  return item.message.content.map(part => (part.type === 'text' ? part.text : message('queue.imagePlaceholder'))).join(' ').trim() || message('queue.attachmentPlaceholder')
 }
 
 const makeStyles = (theme: AppTheme) =>

@@ -11,6 +11,7 @@ import { useConnectionStore } from '@/state/connection'
 import type { AppTheme } from '@/theme'
 import { useAppTheme, useThemedStyles } from '@/theme/hooks'
 import type { MobilePairingQrPayload } from '@/types/mobile'
+import { format, t as message } from '@/locale'
 
 /** Scans a desktop-created one-time pairing QR code and persists only the redeemed device credential. */
 export default function ScanPairingScreen(): React.JSX.Element {
@@ -34,7 +35,7 @@ export default function ScanPairingScreen(): React.JSX.Element {
       await setConnection(connection)
       router.replace('/workspace')
     } catch (value) {
-      setError(mobileErrorMessage(value, '二维码不是有效的 DeepSeek Harness 配对码。'))
+      setError(mobileErrorMessage(value, message('scan.invalidCode')))
       scanLocked.current = false
     } finally {
       setRedeeming(false)
@@ -43,12 +44,12 @@ export default function ScanPairingScreen(): React.JSX.Element {
 
   return (
     <WorkspaceShell
-      title="扫描配对二维码"
+      title={message('connect.scanAction')}
       showMenu={false}
       leftAction={
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel="返回连接页"
+          accessibilityLabel={message('scan.back')}
           hitSlop={8}
           onPress={() => router.back()}
           style={({ pressed }) => [styles.back, pressed && styles.pressed]}
@@ -58,20 +59,20 @@ export default function ScanPairingScreen(): React.JSX.Element {
       }
     >
       <View style={[styles.screen, { paddingBottom: Math.max(insets.bottom, theme.spacing.lg) }]}>
-        <Text style={styles.copy}>在桌面端打开“Mobile devices”，生成二维码后将它置于取景框内。</Text>
+        <Text style={styles.copy}>{message('scan.hint')}</Text>
         {permission === null ? (
           <View style={styles.center}><ActivityIndicator color={theme.colors.accent} /></View>
         ) : !permission.granted ? (
           <View style={styles.permissionCard}>
             <NativeIcon name="warning-amber" color={theme.colors.warning} size={22} />
-            <Text style={styles.permissionTitle}>需要相机权限</Text>
-            <Text style={styles.permissionCopy}>扫描桌面端配对二维码需要使用本机相机。</Text>
-            <NativeActionButton label="允许使用相机" icon="link" onPress={() => void requestPermission()} style={styles.fullWidth} />
+            <Text style={styles.permissionTitle}>{message('scan.cameraPermissionTitle')}</Text>
+            <Text style={styles.permissionCopy}>{message('scan.cameraPermissionBody')}</Text>
+            <NativeActionButton label={message('scan.allowCamera')} icon="link" onPress={() => void requestPermission()} style={styles.fullWidth} />
           </View>
         ) : (
           <View style={styles.cameraCard}>
             <CameraView
-              accessibilityLabel="配对二维码扫描取景框"
+              accessibilityLabel={message('scan.frame')}
               barcodeScannerSettings={{ barcodeTypes: ['qr'] }}
               facing="back"
               onBarcodeScanned={({ data }) => void scan(data)}
@@ -79,12 +80,12 @@ export default function ScanPairingScreen(): React.JSX.Element {
             />
             <View pointerEvents="none" style={styles.frame} />
             <View pointerEvents="none" style={styles.scanHint}>
-              <Text style={styles.scanHintText}>将配对二维码放入框内</Text>
+              <Text style={styles.scanHintText}>{message('scan.frameHint')}</Text>
             </View>
             {redeeming ? (
               <View style={styles.busy}>
                 <ActivityIndicator color={theme.colors.onBrand} />
-                <Text style={styles.busyText}>正在完成安全配对…</Text>
+                <Text style={styles.busyText}>{message('scan.redeeming')}</Text>
               </View>
             ) : null}
           </View>
@@ -95,7 +96,7 @@ export default function ScanPairingScreen(): React.JSX.Element {
             <Text style={styles.errorText}>{error}</Text>
           </View>
         ) : null}
-        <NativeActionButton label="改为手动输入" icon="link" variant="secondary" onPress={() => router.back()} style={styles.fullWidth} />
+        <NativeActionButton label={message('scan.manualInstead')} icon="link" variant="secondary" onPress={() => router.back()} style={styles.fullWidth} />
       </View>
     </WorkspaceShell>
   )
@@ -106,10 +107,10 @@ function parsePairingPayload(data: string): MobilePairingQrPayload {
   try {
     value = JSON.parse(data)
   } catch {
-    throw new Error('二维码不是有效的 DeepSeek Harness 配对码。')
+    throw new Error(message('scan.invalidCode'))
   }
   if (value === null || typeof value !== 'object' || Array.isArray(value))
-    throw new Error('二维码不是有效的 DeepSeek Harness 配对码。')
+    throw new Error(message('scan.invalidCode'))
   const payload = value as Record<string, unknown>
   if (
     payload.version !== 1 ||
@@ -121,9 +122,9 @@ function parsePairingPayload(data: string): MobilePairingQrPayload {
     payload.pairingId === '' ||
     payload.pairingSecret === ''
   )
-    throw new Error('二维码不是有效的 DeepSeek Harness 配对码。')
+    throw new Error(message('scan.invalidCode'))
   const url = new URL(payload.gatewayUrl)
-  if (url.protocol !== 'http:' && url.protocol !== 'https:') throw new Error('二维码中的网关地址无效。')
+  if (url.protocol !== 'http:' && url.protocol !== 'https:') throw new Error(message('scan.invalidGateway'))
   return {
     version: 1,
     gatewayUrl: url.toString().replace(/\/$/, ''),
