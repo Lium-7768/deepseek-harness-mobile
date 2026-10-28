@@ -17,7 +17,9 @@ import { errors } from './errors'
 import { interactions } from './interactions'
 import { mode } from './mode'
 import { permission } from './permission'
+import { model } from './model'
 import { queue } from './queue'
+import { rename } from './rename'
 import { scan } from './scan'
 import { session } from './session'
 import { settings as settingsCopy } from './settings'
@@ -43,7 +45,7 @@ const common = {
   currentModelSuffix: '，当前模型',
 } as const
 
-const areas = { common, composer, connect, conversation, drawer, errors, interactions, mode, permission, queue, scan, subagent, tool, workspace, session, settings: settingsCopy, trajectory }
+const areas = { common, composer, connect, conversation, drawer, errors, interactions, mode, model, permission, queue, rename, scan, subagent, tool, workspace, session, settings: settingsCopy, trajectory }
 
 /** Every user-visible string the client renders, keyed as `<area>.<role>`. */
 export const messages = Object.fromEntries(

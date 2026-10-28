@@ -12,6 +12,7 @@ import { useConnectionStore } from '@/state/connection'
 import { useRouteSessionSelection } from '@/state/session-selection'
 import type { AppTheme } from '@/theme'
 import { useAppTheme, useThemedStyles } from '@/theme/hooks'
+import { format, t as message } from '@/locale'
 
 /** Lists the session's real provider catalog and records a model selection. */
 export default function SessionModelScreen(): React.JSX.Element {
@@ -37,7 +38,7 @@ export default function SessionModelScreen(): React.JSX.Element {
       leftAction={
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel="返回会话"
+          accessibilityLabel={message('interactions.backToSession')}
           hitSlop={8}
           onPress={() => router.replace(sessionDetailReturnTarget(sessionId))}
           style={styles.back}
@@ -46,7 +47,7 @@ export default function SessionModelScreen(): React.JSX.Element {
         </Pressable>
       }
       showMenu={false}
-      title="选择模型"
+      title={message('model.selectTitle')}
     >
       <FlatList
         contentContainerStyle={styles.list}
@@ -57,17 +58,17 @@ export default function SessionModelScreen(): React.JSX.Element {
             loading={models.isPending}
             error={models.error}
             onRetry={() => void models.refetch()}
-            text="桌面端没有可用模型。"
+            text={message('model.noneAvailable')}
           />
         }
         ListHeaderComponent={
           <View style={styles.header}>
-            <Text style={styles.title}>选择模型</Text>
-            <Text style={styles.description}>模型选择会记录到当前会话日志，并由桌面端验证是否可用。</Text>
-            {models.data?.routable === false ? <Text style={styles.error}>当前会话的模型路由不可用。</Text> : null}
+            <Text style={styles.title}>{message('model.selectTitle')}</Text>
+            <Text style={styles.description}>{message('model.note')}</Text>
+            {models.data?.routable === false ? <Text style={styles.error}>{message('model.routingUnavailable')}</Text> : null}
             {models.data?.failures.map(failure => (
               <Text key={failure.id} style={styles.failure}>
-                {failure.name}：模型目录加载失败。
+                {format('model.providerUnavailable', { name: failure.name })}
               </Text>
             ))}
           </View>
@@ -87,7 +88,7 @@ export default function SessionModelScreen(): React.JSX.Element {
                 .then(() => router.replace(sessionDetailReturnTarget(sessionId)))
                 .catch((error) => {
                   setSelectedModel(previous)
-                  Alert.alert('模型切换失败', mobileErrorMessage(error, '无法切换模型，请稍后重试。'))
+                  Alert.alert(message('model.switchFailedTitle'), mobileErrorMessage(error, message('model.switchFailedBody')))
                 })
                 .finally(() => setSubmitting(undefined))
             }}
@@ -116,19 +117,19 @@ function StateView({
   text: string
 }): React.JSX.Element {
   const styles = useThemedStyles(makeStyles)
-  if (loading) return <Text style={styles.state}>正在加载模型目录…</Text>
+  if (loading) return <Text style={styles.state}>{message('model.loading')}</Text>
   if (error !== null && error !== undefined)
     return (
       <View style={styles.stateBlock}>
-        <Text style={styles.error}>{mobileErrorMessage(error, '模型目录加载失败，请稍后重试。')}</Text>
-        <NativeActionButton label="重新加载" icon="refresh" variant="secondary" onPress={onRetry} />
+        <Text style={styles.error}>{mobileErrorMessage(error, message('model.loadFailed'))}</Text>
+        <NativeActionButton label={message('common.reload')} icon="refresh" variant="secondary" onPress={onRetry} />
       </View>
     )
   return <Text style={styles.state}>{text}</Text>
 }
 
 function requireClient(client: MobileApi | undefined): MobileApi {
-  if (client === undefined) throw new Error('请先连接桌面端。')
+  if (client === undefined) throw new Error(message('drawer.connectFirstBody'))
   return client
 }
 

@@ -12,6 +12,7 @@ import { useConnectionStore } from '@/state/connection'
 import type { AppTheme } from '@/theme'
 import { useAppTheme, useThemedStyles } from '@/theme/hooks'
 import type { SessionListPayload } from '@/types/mobile'
+import { format, t as message } from '@/locale'
 
 /** Renders the native title editor for one desktop-owned session. */
 export default function RenameSessionScreen(): React.JSX.Element {
@@ -32,7 +33,7 @@ export default function RenameSessionScreen(): React.JSX.Element {
     queryKey: ['session-list', connection?.gatewayUrl, connection?.deviceId],
     enabled: client !== undefined,
     queryFn: () => {
-      if (client === undefined) throw new Error('请先连接桌面端。')
+      if (client === undefined) throw new Error(message('drawer.connectFirstBody'))
       return client.listSessions()
     },
     initialData: () =>
@@ -45,15 +46,15 @@ export default function RenameSessionScreen(): React.JSX.Element {
   const rename = useMutation({
     mutationFn: async () => {
       const normalized = title.trim()
-      if (!client || !sessionId) throw new Error('请先连接桌面端并从会话列表打开会话。')
-      if (normalized === '') throw new Error('会话标题不能为空。')
+      if (!client || !sessionId) throw new Error(message('rename.sessionMissing'))
+      if (normalized === '') throw new Error(message('rename.sessionEmpty'))
       return client.renameSession(sessionId, normalized)
     },
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ['session-list', connection?.gatewayUrl, connection?.deviceId] })
       router.back()
     },
-    onError: error => Alert.alert('重命名失败', mobileErrorMessage(error, '请稍后重试。')),
+    onError: error => Alert.alert(message('rename.failedTitle'), mobileErrorMessage(error, message('common.retry'))),
   })
 
   return (
@@ -61,7 +62,7 @@ export default function RenameSessionScreen(): React.JSX.Element {
       leftAction={
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel="返回会话"
+          accessibilityLabel={message('interactions.backToSession')}
           hitSlop={8}
           onPress={() => router.back()}
           style={styles.back}
@@ -69,7 +70,7 @@ export default function RenameSessionScreen(): React.JSX.Element {
           <NativeIcon name="arrow-back" color={theme.colors.ink} size={20} />
         </Pressable>
       }
-      title="重命名会话"
+      title={message('rename.sessionTitle')}
       showMenu={false}
     >
       <KeyboardAvoidingView
@@ -78,23 +79,23 @@ export default function RenameSessionScreen(): React.JSX.Element {
         style={styles.flex}
       >
       <View style={styles.canvas}>
-        <Text style={styles.label}>会话标题</Text>
+        <Text style={styles.label}>{message('rename.sessionLabel')}</Text>
         <TextInput
-          accessibilityLabel="会话标题"
+          accessibilityLabel={message('rename.sessionLabel')}
           autoFocus
           editable={!rename.isPending}
           maxLength={200}
           onChangeText={setTitle}
           onSubmitEditing={() => void rename.mutateAsync()}
-          placeholder="输入会话标题"
+          placeholder={message('rename.sessionPlaceholder')}
           placeholderTextColor={theme.colors.inkFaint}
           returnKeyType="done"
           style={styles.input}
           value={title}
         />
-        <Text style={styles.hint}>标题会同步到桌面 Web 的同一会话。</Text>
+        <Text style={styles.hint}>{message('rename.sessionNote')}</Text>
         <NativeActionButton
-          label="保存"
+          label={message('rename.save')}
           icon="check"
           loading={rename.isPending}
           onPress={() => void rename.mutateAsync()}

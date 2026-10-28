@@ -11,6 +11,7 @@ import { workspaceKeyboardVerticalOffset } from '@/components/workspace-shell-lo
 import { useConnectionStore } from '@/state/connection'
 import type { AppTheme } from '@/theme'
 import { useAppTheme, useThemedStyles } from '@/theme/hooks'
+import { format, t as message } from '@/locale'
 
 /** Renders the native title editor for one desktop-owned workspace. */
 export default function RenameWorkspaceScreen(): React.JSX.Element {
@@ -29,15 +30,15 @@ export default function RenameWorkspaceScreen(): React.JSX.Element {
   const rename = useMutation({
     mutationFn: async () => {
       const normalized = title.trim()
-      if (!client || !workspaceId) throw new Error('请先连接桌面端并从工作区列表打开。')
-      if (normalized === '') throw new Error('工作区名称不能为空。')
+      if (!client || !workspaceId) throw new Error(message('rename.workspaceMissing'))
+      if (normalized === '') throw new Error(message('rename.workspaceEmpty'))
       return client.renameWorkspace(workspaceId, normalized)
     },
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ['session-list', connection?.gatewayUrl, connection?.deviceId] })
       router.back()
     },
-    onError: error => Alert.alert('重命名失败', mobileErrorMessage(error, '请稍后重试。')),
+    onError: error => Alert.alert(message('rename.failedTitle'), mobileErrorMessage(error, message('common.retry'))),
   })
 
   return (
@@ -45,7 +46,7 @@ export default function RenameWorkspaceScreen(): React.JSX.Element {
       leftAction={
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel="返回工作区"
+          accessibilityLabel={message('rename.backToWorkspace')}
           hitSlop={8}
           onPress={() => router.back()}
           style={styles.back}
@@ -53,7 +54,7 @@ export default function RenameWorkspaceScreen(): React.JSX.Element {
           <NativeIcon name="arrow-back" color={theme.colors.ink} size={20} />
         </Pressable>
       }
-      title="重命名工作区"
+      title={message('rename.workspaceTitle')}
       showMenu={false}
     >
       <KeyboardAvoidingView
@@ -62,23 +63,23 @@ export default function RenameWorkspaceScreen(): React.JSX.Element {
         style={styles.flex}
       >
       <View style={styles.canvas}>
-        <Text style={styles.label}>工作区名称</Text>
+        <Text style={styles.label}>{message('rename.workspaceLabel')}</Text>
         <TextInput
-          accessibilityLabel="工作区名称"
+          accessibilityLabel={message('rename.workspaceLabel')}
           autoFocus
           editable={!rename.isPending}
           maxLength={200}
           onChangeText={setTitle}
           onSubmitEditing={() => void rename.mutateAsync()}
-          placeholder="输入工作区名称"
+          placeholder={message('rename.workspacePlaceholder')}
           placeholderTextColor={theme.colors.inkFaint}
           returnKeyType="done"
           style={styles.input}
           value={title}
         />
-        <Text style={styles.hint}>工作区名称会同步到桌面 Web 的同一分组，不会移动或修改桌面文件夹。</Text>
+        <Text style={styles.hint}>{message('rename.workspaceNote')}</Text>
         <NativeActionButton
-          label="保存"
+          label={message('rename.save')}
           icon="check"
           loading={rename.isPending}
           onPress={() => void rename.mutateAsync()}
