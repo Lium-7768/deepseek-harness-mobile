@@ -163,6 +163,21 @@ counterpart, so the native client keeps its own arrangement:
   absolutely to escape the header's flex lanes. The native header lays them out
   in the row itself, which cannot overflow.
 
+## Colour roles
+
+Every colour resolves through a theme role; no screen holds a literal value. A
+literal cannot follow the appearance, so a dark surface would keep the light one.
+`tests/theme-token-discipline.spec.ts` fails the suite if one reappears.
+
+Interaction tints come from the desktop's own translucent tokens rather than a
+solid fill or an opacity change, which do not composite the same way:
+
+| State | Desktop | Native |
+| --- | --- | --- |
+| Selected row | `interactive-bg-hover` (`Rows.module.css:21`) | `theme.colors.interactiveHover` |
+| Held row | `interactive-bg-active` | `theme.colors.interactiveActive` |
+| Keyboard focus | 2px `state-business-primary` ring (`focus.css:3,9`) | `outlineWidth: 2` with `theme.colors.accent`, drawn outside the border box |
+
 ## Icons
 
 The client renders the desktop client's own glyphs rather than a parallel

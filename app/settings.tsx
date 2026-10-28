@@ -715,7 +715,7 @@ const makeStyles = (theme: AppTheme) =>
       justifyContent: 'space-between',
       padding: 11,
     },
-    optionSelected: { backgroundColor: theme.colors.surfaceActive, borderColor: '#b9d1ff' },
+    optionSelected: { backgroundColor: theme.colors.surfaceActive, borderColor: theme.colors.accent },
     optionDisabled: { opacity: 0.5 },
     readOnly: {
       alignItems: 'center',
@@ -759,7 +759,7 @@ const makeStyles = (theme: AppTheme) =>
     warning: { color: theme.colors.warningText, fontSize: 12 },
     notice: {
       backgroundColor: theme.colors.warningSoft,
-      borderColor: '#efd9a5',
+      borderColor: theme.colors.warning,
       borderRadius: 9,
       borderWidth: StyleSheet.hairlineWidth,
       color: theme.colors.warningText,
@@ -780,7 +780,7 @@ const makeStyles = (theme: AppTheme) =>
     queryError: {
       alignItems: 'flex-start',
       backgroundColor: theme.colors.dangerSoft,
-      borderColor: '#efb5b0',
+      borderColor: theme.colors.dangerBorder,
       borderRadius: 9,
       borderWidth: 1,
       flexDirection: 'row',

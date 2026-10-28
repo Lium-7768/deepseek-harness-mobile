@@ -669,7 +669,7 @@ const makeStyles = (theme: AppTheme) =>
     action: {
       alignItems: 'center',
       backgroundColor: theme.colors.warningSoft,
-      borderBottomColor: '#efd9a5',
+      borderBottomColor: theme.colors.warning,
       borderBottomWidth: StyleSheet.hairlineWidth,
       flexDirection: 'row',
       gap: 7,

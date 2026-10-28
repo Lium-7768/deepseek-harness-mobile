@@ -231,5 +231,5 @@ const makeStyles = (theme: AppTheme) =>
     contextCompact: { gap: 8, marginTop: 2, paddingHorizontal: 16, paddingTop: 12 },
     contextCompactRow: { alignItems: 'center', flexDirection: 'row', gap: 7 },
     contextCompactText: { color: theme.colors.inkMuted, flex: 1, fontSize: 12 },
-    empty: { color: theme.colors.inkMuted, paddingVertical: 22, textAlign: 'center' },
+    empty: { color: theme.colors.inkMuted, paddingVertical: 24, textAlign: 'center' },
   })
