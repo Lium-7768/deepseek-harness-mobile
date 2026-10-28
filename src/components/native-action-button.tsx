@@ -37,7 +37,7 @@ export function NativeActionButton({
       accessibilityState={{ disabled: disabled || loading, busy: loading }}
       disabled={disabled || loading}
       onPress={onPress}
-      style={({ pressed }) => [styles.button, surface, style, pressed && styles.pressed]}
+      style={({ pressed }) => [styles.button, surface, style, stateStyle(variant, pressed, disabled, styles)]}
     >
       {loading ? <ActivityIndicator color={glyph} /> : <NativeIcon name={icon} color={glyph} size={17} />}
       <Text style={[styles.label, labelTintFor(variant, theme)]}>{label}</Text>
@@ -58,6 +58,33 @@ function surfaceFor(
 ): StyleProp<ViewStyle> {
   if (variant === 'danger') return styles.danger
   return variant === 'secondary' ? styles.secondary : styles.primary
+}
+
+/**
+ * Pick the pressed or disabled treatment for a variant.
+ *
+ * The desktop states are separate fills rather than an opacity change, so the
+ * label keeps its contrast while the surface moves.
+ *
+ * @param variant - Button variant.
+ * @param pressed - Whether the pointer is down.
+ * @param disabled - Whether the button cannot run.
+ * @param styles - The active appearance's style sheet.
+ * @returns The state style, if any.
+ */
+function stateStyle(
+  variant: NativeActionButtonProps['variant'],
+  pressed: boolean,
+  disabled: boolean,
+  styles: ReturnType<typeof makeStyles>,
+): StyleProp<ViewStyle> {
+  if (disabled) {
+    if (variant === 'danger') return styles.dangerDisabled
+    return variant === 'secondary' ? styles.secondaryDisabled : styles.primaryDisabled
+  }
+  if (!pressed) return undefined
+  if (variant === 'danger') return styles.dangerPressed
+  return variant === 'secondary' ? styles.secondaryPressed : styles.primaryPressed
 }
 
 /**
@@ -96,9 +123,23 @@ const makeStyles = (theme: AppTheme) =>
         minHeight: 44,
         paddingHorizontal: 16,
       },
+      // The desktop's primary action fills with `button-primary-fill` and swaps to
+      // `button-primary-hover` while pressed; nothing fades.
       primary: { backgroundColor: theme.colors.brand, borderColor: theme.colors.brand },
-      secondary: { backgroundColor: theme.colors.surface, borderColor: theme.colors.borderStrong },
+      primaryPressed: { backgroundColor: theme.colors.brandHover, borderColor: theme.colors.brandHover },
+      primaryDisabled: { backgroundColor: theme.colors.primaryDimmed, borderColor: theme.colors.primaryDimmed },
+      // Its neutral raised control is `button-elevated-fill` behind a `border-l3`
+      // hairline, `radius-md`, 14/500 label (SidebarRoot.module.css:415).
+      secondary: {
+        backgroundColor: theme.colors.elevatedFill,
+        borderColor: theme.colors.borderL3,
+        borderRadius: theme.radius.md,
+      },
+      secondaryPressed: { backgroundColor: theme.colors.surfaceMuted },
+      secondaryDisabled: { backgroundColor: theme.colors.surfaceMuted, borderColor: theme.colors.border },
       danger: { backgroundColor: theme.colors.dangerSoft, borderColor: theme.colors.dangerBorder },
-      label: { fontSize: 14, fontWeight: '700' },
-      pressed: { opacity: 0.68 },
+      dangerPressed: { opacity: 0.68 },
+      dangerDisabled: { opacity: 0.5 },
+      label: { fontSize: 14, fontWeight: '500' },
+      pressed: { opacity: 1 },
   })

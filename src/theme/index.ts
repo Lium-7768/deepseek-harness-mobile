@@ -74,6 +74,14 @@ export interface ThemeColors {
   brand: string
   /** Primary action under the pointer. */
   brandHover: string
+  /** A primary action that cannot run. */
+  primaryDimmed: string
+  /** The neutral raised button, as in the desktop's new-session control. */
+  elevatedFill: string
+  /** Outline of a selected ghost control. */
+  ghostActiveBorder: string
+  /** Hairline around a raised control. */
+  borderL3: string
   /** Text and glyphs drawn on `brand`. */
   onBrand: string
   /** Success state. */
@@ -169,6 +177,10 @@ const lightColors: ThemeColors = {
   accentSoft: 'rgb(228, 237, 253)',
   brand: 'rgb(15, 17, 21)',
   brandHover: 'rgb(67, 69, 74)',
+  primaryDimmed: 'rgb(235, 238, 242)',
+  elevatedFill: 'rgb(255, 255, 255)',
+  ghostActiveBorder: 'rgb(151, 157, 166)',
+  borderL3: 'rgba(0, 0, 0, 0.12)',
   onBrand: 'rgb(255, 255, 255)',
   success: 'rgb(34, 197, 94)',
   successText: 'rgb(21, 128, 61)',
@@ -213,6 +225,10 @@ const darkColors: ThemeColors = {
   accentSoft: 'rgba(122, 170, 255, 0.16)',
   brand: 'rgb(249, 250, 251)',
   brandHover: 'rgb(235, 238, 242)',
+  primaryDimmed: 'rgb(67, 69, 74)',
+  elevatedFill: 'rgb(67, 69, 74)',
+  ghostActiveBorder: 'rgb(129, 133, 140)',
+  borderL3: 'rgba(255, 255, 255, 0.16)',
   onBrand: 'rgb(21, 21, 23)',
   success: 'rgb(34, 197, 94)',
   successText: 'rgb(78, 209, 126)',

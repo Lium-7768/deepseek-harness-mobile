@@ -57,6 +57,12 @@ export const aliases = {
   borderL4: { light: 'rgba(0, 0, 0, 0.16)', dark: 'rgba(255, 255, 255, 0.2)' },
   /** `brand-primary` — the product's primary action colour: near-black, not blue. */
   brand: { light: 'rgb(15, 17, 21)', dark: 'rgb(249, 250, 251)' },
+  /** `button-primary-dimmed` — a primary action that cannot run. */
+  primaryDimmed: { light: 'rgb(235, 238, 242)', dark: 'rgb(67, 69, 74)' },
+  /** `button-elevated-fill` — the neutral raised button, as in the desktop's new-session control. */
+  elevatedFill: { light: 'rgb(255, 255, 255)', dark: 'rgb(67, 69, 74)' },
+  /** `button-ghost-active-border` — outline of a selected ghost control. */
+  ghostActiveBorder: { light: 'rgb(151, 157, 166)', dark: 'rgb(129, 133, 140)' },
   /** `button-primary-hover` — primary action under the pointer. */
   brandHover: { light: 'rgb(67, 69, 74)', dark: 'rgb(235, 238, 242)' },
   /** Text and glyphs drawn on top of `brand`. */
