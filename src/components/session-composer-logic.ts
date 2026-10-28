@@ -1,3 +1,4 @@
+import { t as message } from '@/locale'
 import type { MobileModelSelection, MobilePermissionSelect } from '@/types/mobile'
 
 /** The multiline composer keeps Return available for newlines; sending is explicit. */
@@ -44,13 +45,13 @@ export function readPermissionSelect(value: unknown): MobilePermissionSelect | u
 
 /** Maps built-in Agent preset ids to the Chinese labels used by the native composer. */
 export function agentPresetLabel(value: string | undefined): string {
-  if (value === undefined || value.trim() === '') return '标准模式'
+  if (value === undefined || value.trim() === '') return message('session.modeStandard')
   const labels: Record<string, string> = {
-    standard: '标准模式',
-    default: '标准模式',
-    ptc: 'PTC 模式',
-    minimal: '极简模式',
-    creative: '创造模式',
+    standard: message('session.modeStandard'),
+    default: message('session.modeStandard'),
+    ptc: message('session.modePtc'),
+    minimal: message('session.modeMinimal'),
+    creative: message('session.modeCreative'),
   }
   return labels[value] ?? value
 }
@@ -58,22 +59,22 @@ export function agentPresetLabel(value: string | undefined): string {
 /** Resolves a permission label from the host option, retaining unknown host names. */
 export function permissionLabel(value: string, source: MobilePermissionSelect | string): string {
   const option = typeof source === 'string' ? undefined : source.options.find(item => item.value === value)
-  if (value === 'danger-full-access') return '完全访问'
-  if (value === 'read-only') return '只读'
-  if (value === 'workspace-write') return '工作区写入'
+  if (value === 'danger-full-access') return message('session.permissionFullBadge')
+  if (value === 'read-only') return message('session.permissionReadOnlyBadge')
+  if (value === 'workspace-write') return message('session.permissionWorkspaceBadge')
   return option?.name ?? (typeof source === 'string' ? source : value)
 }
 
 /** Supplies a localized fallback description for built-in permission presets. */
 export function permissionDescription(value: string): string {
-  if (value === 'read-only') return '禁止写入工作区。'
-  if (value === 'workspace-write') return '允许在工作区内写入文件。'
-  if (value === 'danger-full-access') return '不限制工作区访问范围。'
-  return '由桌面端提供的权限预设。'
+  if (value === 'read-only') return message('session.permissionReadOnlySentence')
+  if (value === 'workspace-write') return message('session.permissionWorkspaceSentence')
+  if (value === 'danger-full-access') return message('session.permissionFullSentence')
+  return message('session.permissionDesktopPreset')
 }
 
 /** Formats the host-selected model and optional provider reasoning effort. */
 export function modelLabel(model: MobileModelSelection | undefined): string {
-  if (model === undefined) return '选择模型'
+  if (model === undefined) return message('session.selectModel')
   return model.reasoningEffort === undefined ? model.model : `${model.model} · ${model.reasoningEffort}`
 }

@@ -32,4 +32,19 @@ export const session = {
   command: '命令',
   commandResult: '命令结果',
   modelRequestFailed: '模型请求失败。',
+
+  /** Composer mode names and the sentence each one explains itself with. */
+  modeStandard: '标准模式',
+  modePtc: 'PTC 模式',
+  modeMinimal: '极简模式',
+  modeCreative: '创造模式',
+
+  permissionReadOnlyBadge: '只读',
+  permissionWorkspaceBadge: '工作区写入',
+  permissionFullBadge: '完全访问',
+  permissionReadOnlySentence: '禁止写入工作区。',
+  permissionWorkspaceSentence: '允许在工作区内写入文件。',
+  permissionFullSentence: '不限制工作区访问范围。',
+  permissionDesktopPreset: '由桌面端提供的权限预设。',
+  selectModel: '选择模型',
 } as const
