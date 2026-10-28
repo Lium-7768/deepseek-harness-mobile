@@ -344,7 +344,7 @@ const makeStyles = (theme: AppTheme) =>
     previewImage: { borderRadius: theme.radius.control, height: 58, width: 58 },
     removePreview: {
       alignItems: 'center',
-      backgroundColor: 'rgba(20, 25, 34, 0.8)',
+      backgroundColor: theme.colors.controlOnMedia,
       borderColor: theme.colors.canvas,
       borderRadius: 10,
       borderWidth: 1,

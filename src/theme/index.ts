@@ -46,6 +46,8 @@ export interface ThemeColors {
   surface: string
   /** Surface raised above `surface`: menus and popovers. */
   surfaceRaised: string
+  floating: string
+  floatingHover: string
   /** Grouped-row and rail fill. */
   surfaceMuted: string
   /** Pressed or selected row fill. */
@@ -75,6 +77,11 @@ export interface ThemeColors {
   /** Primary action under the pointer. */
   brandHover: string
   interactiveHover: string
+  overlayMedia: string
+  overlayBusy: string
+  scrimCamera: string
+  controlOnMedia: string
+  borderOnMedia: string
   interactiveActive: string
   /** A primary action that cannot run. */
   primaryDimmed: string
@@ -165,6 +172,8 @@ const lightColors: ThemeColors = {
   drawerBackground: 'rgb(245, 246, 247)',
   surface: 'rgb(255, 255, 255)',
   surfaceRaised: 'rgb(255, 255, 255)',
+  floating: 'rgb(255, 255, 255)',
+  floatingHover: 'rgb(241, 243, 245)',
   surfaceMuted: 'rgb(245, 246, 247)',
   surfaceActive: 'rgb(235, 238, 242)',
   ink: 'rgb(15, 17, 21)',
@@ -180,6 +189,11 @@ const lightColors: ThemeColors = {
   brand: 'rgb(15, 17, 21)',
   brandHover: 'rgb(67, 69, 74)',
   interactiveHover: 'rgba(38, 49, 72, 0.06)',
+  overlayMedia: 'rgba(0, 0, 0, 0.94)',
+  overlayBusy: 'rgba(0, 0, 0, 0.64)',
+  scrimCamera: 'rgba(15, 23, 42, 0.72)',
+  controlOnMedia: 'rgba(20, 25, 34, 0.8)',
+  borderOnMedia: 'rgba(255, 255, 255, 0.5)',
   interactiveActive: 'rgba(38, 49, 72, 0.1)',
   primaryDimmed: 'rgb(235, 238, 242)',
   elevatedFill: 'rgb(255, 255, 255)',
@@ -215,6 +229,8 @@ const darkColors: ThemeColors = {
   drawerBackground: 'rgb(35, 35, 36)',
   surface: 'rgb(21, 21, 23)',
   surfaceRaised: 'rgb(44, 44, 46)',
+  floating: 'rgb(44, 44, 46)',
+  floatingHover: 'rgb(53, 54, 56)',
   surfaceMuted: 'rgb(53, 54, 56)',
   surfaceActive: 'rgb(67, 69, 74)',
   ink: 'rgb(249, 250, 251)',
@@ -230,6 +246,11 @@ const darkColors: ThemeColors = {
   brand: 'rgb(249, 250, 251)',
   brandHover: 'rgb(235, 238, 242)',
   interactiveHover: 'rgba(255, 255, 255, 0.08)',
+  overlayMedia: 'rgba(0, 0, 0, 0.94)',
+  overlayBusy: 'rgba(0, 0, 0, 0.64)',
+  scrimCamera: 'rgba(15, 23, 42, 0.72)',
+  controlOnMedia: 'rgba(20, 25, 34, 0.8)',
+  borderOnMedia: 'rgba(255, 255, 255, 0.5)',
   interactiveActive: 'rgba(255, 255, 255, 0.14)',
   primaryDimmed: 'rgb(67, 69, 74)',
   elevatedFill: 'rgb(67, 69, 74)',

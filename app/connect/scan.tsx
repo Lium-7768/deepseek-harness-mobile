@@ -154,7 +154,7 @@ const makeStyles = (theme: AppTheme) =>
     },
     scanHint: {
       alignItems: 'center',
-      backgroundColor: 'rgba(15, 23, 42, 0.72)',
+      backgroundColor: theme.colors.scrimCamera,
       borderRadius: theme.radius.pill,
       bottom: theme.spacing.lg,
       left: theme.spacing.lg,
@@ -164,7 +164,7 @@ const makeStyles = (theme: AppTheme) =>
       right: theme.spacing.lg,
     },
     scanHintText: { color: theme.colors.onScrim, fontSize: theme.typography.caption, fontWeight: '700' },
-    busy: { alignItems: 'center', backgroundColor: 'rgba(0,0,0,0.64)', bottom: 0, flexDirection: 'row', gap: theme.spacing.sm, justifyContent: 'center', left: 0, position: 'absolute', right: 0, top: 0 },
+    busy: { alignItems: 'center', backgroundColor: theme.colors.overlayBusy, bottom: 0, flexDirection: 'row', gap: theme.spacing.sm, justifyContent: 'center', left: 0, position: 'absolute', right: 0, top: 0 },
     busyText: { color: theme.colors.onScrim, fontSize: theme.typography.body, fontWeight: '700' },
     permissionCard: { alignItems: 'center', backgroundColor: theme.colors.surfaceRaised, borderColor: theme.colors.border, borderRadius: theme.radius.card, borderWidth: 1, gap: theme.spacing.sm, padding: theme.spacing.xl },
     permissionTitle: { color: theme.colors.ink, fontSize: theme.typography.bodyLarge, fontWeight: '800' },

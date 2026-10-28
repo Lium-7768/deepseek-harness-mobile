@@ -63,6 +63,16 @@ export const aliases = {
   elevatedFill: { light: 'rgb(255, 255, 255)', dark: 'rgb(67, 69, 74)' },
   /** `button-ghost-active-border` — outline of a selected ghost control. */
   ghostActiveBorder: { light: 'rgb(151, 157, 166)', dark: 'rgb(129, 133, 140)' },
+  /** Full-screen viewer backdrop over a photo. Same in both appearances: it sits on media. */
+  overlayMedia: { light: 'rgba(0, 0, 0, 0.94)', dark: 'rgba(0, 0, 0, 0.94)' },
+  /** Busy overlay while a scan or capture completes. */
+  overlayBusy: { light: 'rgba(0, 0, 0, 0.64)', dark: 'rgba(0, 0, 0, 0.64)' },
+  /** Camera viewfinder overlay. */
+  scrimCamera: { light: 'rgba(15, 23, 42, 0.72)', dark: 'rgba(15, 23, 42, 0.72)' },
+  /** A control drawn on top of a photo. */
+  controlOnMedia: { light: 'rgba(20, 25, 34, 0.8)', dark: 'rgba(20, 25, 34, 0.8)' },
+  /** Hairline around a control on top of a photo. */
+  borderOnMedia: { light: 'rgba(255, 255, 255, 0.5)', dark: 'rgba(255, 255, 255, 0.5)' },
   /** `interactive-bg-hover` — the tint a hovered or selected list row carries. */
   interactiveHover: { light: 'rgba(38, 49, 72, 0.06)', dark: 'rgba(255, 255, 255, 0.08)' },
   /** `interactive-bg-active` — the tint while a row is held down. */

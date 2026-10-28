@@ -19,11 +19,11 @@ function sources(root: string): string[] {
 }
 
 describe('colour tokens', () => {
-  it('leaves no literal hex colour outside the theme', () => {
+  it('leaves no literal colour outside the theme', () => {
     const offenders: string[] = []
     for (const file of [...sources('app'), ...sources('src')]) {
       const text = readFileSync(file, 'utf8')
-      for (const match of text.matchAll(/'#[0-9a-fA-F]{3,8}'/g)) {
+      for (const match of text.matchAll(/'#[0-9a-fA-F]{3,8}'|'rgba?\([^)]*\)'/g)) {
         offenders.push(`${file}: ${match[0]}`)
       }
     }

@@ -418,7 +418,7 @@ export default function SessionScreen(): React.JSX.Element {
                     setShowReturnToLatest(false)
                     listRef.current?.scrollToEnd({ animated: true })
                   }}
-                  style={({ pressed }) => [s.returnToLatest, pressed && s.pressed]}
+                  style={({ pressed }) => [s.returnToLatest, pressed && s.returnToLatestPressed]}
                 >
                   <NativeIcon name="chevron-down-outline" size={20} color={theme.colors.ink} />
                 </Pressable>
@@ -690,9 +690,11 @@ const makeStyles = (theme: AppTheme) =>
     unavailableAction: { minWidth: 132 },
     listStage: { flex: 1, position: 'relative' },
     listView: { flex: 1 },
+    returnToLatestPressed: { backgroundColor: theme.colors.floatingHover },
     returnToLatest: {
       alignItems: 'center',
-      backgroundColor: theme.colors.surface,
+      // The desktop's floating control fill (ChatView.module.css:422).
+      backgroundColor: theme.colors.floating,
       borderColor: theme.colors.border,
       borderRadius: theme.radius.pill,
       borderWidth: StyleSheet.hairlineWidth,

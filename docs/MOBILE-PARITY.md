@@ -177,6 +177,13 @@ solid fill or an opacity change, which do not composite the same way:
 | Selected row | `interactive-bg-hover` (`Rows.module.css:21`) | `theme.colors.interactiveHover` |
 | Held row | `interactive-bg-active` | `theme.colors.interactiveActive` |
 | Keyboard focus | 2px `state-business-primary` ring (`focus.css:3,9`) | `outlineWidth: 2` with `theme.colors.accent`, drawn outside the border box |
+| Floating control | `button-floating-fill` / `-hover` (`ChatView.module.css:422`) | `theme.colors.floating` / `floatingHover` on the return-to-latest pill |
+
+Media overlays — the full-screen viewer, the busy veil, the camera viewfinder,
+and controls drawn on a photo — are the one group with the same value in both
+appearances, because they sit on an image rather than on a surface. They are
+still roles (`overlayMedia`, `overlayBusy`, `scrimCamera`, `controlOnMedia`,
+`borderOnMedia`) so the value is declared once.
 
 ## Icons
 
