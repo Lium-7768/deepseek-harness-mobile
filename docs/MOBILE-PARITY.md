@@ -29,7 +29,7 @@ the source have no counterpart here and are deliberately not ported:
 | Concern | DSH Pocket | Native |
 | --- | --- | --- |
 | Status-bar clearance | frame `padding-top: env(safe-area-inset-top)` (line ~190) | `useSafeAreaInsets().top` on the shell |
-| Drawer geometry | `position: absolute; inset: 0 auto 0 0; width: max-content; max-width: 92vw` (line ~230) | `drawerWidthForViewport()` — `min(360, 92% of viewport)` |
+| Drawer geometry | `position: absolute; inset: 0 auto 0 0; width: max-content; max-width: 92vw` (line ~230) | `drawerWidthForViewport()` — `min(280, 92% of viewport)`; 280 is the desktop's `SIDEBAR_DEFAULT` (`ui-layout/src/client/columns.ts:17`) |
 | Drawer motion | `transform: translateX(-110%)` → `none`, `transition: transform .28s ease-in-out` (line ~230) | `react-native-drawer-layout` slide, default duration |
 | Drawer elevation | none — "the dimmed backdrop already separates drawer from content" | no shadow |
 | Drawer top inset | `padding-top: env(safe-area-inset-top)` (line ~240) | `paddingTop: insets.top` on drawer content |
@@ -251,6 +251,29 @@ A desktop glyph whose meaning differed was mapped onto the nearest one that
 matched: `admin-panel-settings` → `shield-outline`, `smart-toy` →
 `agent-preset-outline`, `terminal` → `code-outline`, and the hamburger `menu` →
 `panel-left-outline`, which is what the desktop itself uses to open the drawer.
+
+## Platform differences
+
+Three desktop properties have no React Native equivalent. Each uses the
+platform's own mechanism, and the reason lives here rather than in a diff nobody
+reads later.
+
+**Corner curvature.** The desktop applies `corner-shape: superellipse(1.5)` to
+every rounded surface (`ui-theme/src/styles/corner-shape.css`), which bends a
+corner along a superellipse instead of a circular arc. React Native draws
+circular corners only. The radii match the desktop scale exactly; the curvature
+is the platform's own, and approximating a superellipse would need a per-corner
+SVG mask on every surface for a difference no one can see at phone sizes.
+
+**Container-width sizing.** The drawer is `width: max-content; max-width: 92vw` on
+the Web plugin. React Native has no intrinsic sizing pass, so the drawer uses the
+desktop's own sidebar default (280) capped at 92% of the viewport, which is the
+same value the desktop's `SIDEBAR_DEFAULT` resolves to.
+
+**Hover.** The desktop reveals rows and controls through `@media (hover: hover)`.
+A touch surface has no hover state, so the pressed state carries the feedback
+instead: `interactive-bg-active` for rows, and the `button-*-hover` fill for
+buttons.
 
 ## Surfaces outside the comparison
 
