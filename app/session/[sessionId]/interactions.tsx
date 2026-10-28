@@ -30,6 +30,7 @@ import {
 } from '@/components/interaction-state'
 import { useConnectionStore } from '@/state/connection'
 import { useRouteSessionSelection } from '@/state/session-selection'
+import { format, t as message } from '@/locale'
 import type {
   DshQuestion,
   PendingApprovalInteraction,
@@ -81,7 +82,7 @@ export default function InteractionsScreen(): React.JSX.Element {
       void queryClient.invalidateQueries({ queryKey: ['session-events', sessionId] })
       void queryClient.invalidateQueries({ queryKey: ['session-history', sessionId] })
     },
-    onError: error => Alert.alert('响应发送失败', withErrorContext('无法发送响应', error)),
+    onError: error => Alert.alert(message('interactions.respondFailedTitle'), withErrorContext(message('interactions.respondFailedBody'), error)),
   })
   const listState = interactionListState({
     hasConnection: connection !== undefined,
@@ -93,12 +94,12 @@ export default function InteractionsScreen(): React.JSX.Element {
 
   return (
     <WorkspaceShell
-      title="待处理操作"
+      title={message('interactions.title')}
       showMenu={false}
       leftAction={
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel="返回会话"
+          accessibilityLabel={message('interactions.backToSession')}
           hitSlop={8}
           onPress={() => router.back()}
           style={({ pressed }) => [styles.headerAction, pressed && styles.pressed]}
@@ -135,8 +136,8 @@ export default function InteractionsScreen(): React.JSX.Element {
           }
           ListHeaderComponent={
             <View style={styles.intro}>
-              <Text style={styles.title}>处理待办操作</Text>
-              <Text style={styles.description}>以下请求来自已配对的桌面端 DSH 运行时。请查看详情后再响应。</Text>
+              <Text style={styles.title}>{message('interactions.heading')}</Text>
+              <Text style={styles.description}>{message('interactions.intro')}</Text>
             </View>
           }
           ListEmptyComponent={<InteractionListStateView query={interactions} state={listState} />}
@@ -159,38 +160,38 @@ function InteractionListStateView({
   if (state === 'disconnected')
     return (
       <View style={styles.empty}>
-        <Text style={styles.emptyTitle}>尚未连接桌面端</Text>
-        <Text style={styles.emptyText}>请先完成配对，再查看待处理操作。</Text>
-        <NativeActionButton label="去连接" icon="link" onPress={() => router.replace('/connect')} />
+        <Text style={styles.emptyTitle}>{message('interactions.notConnected')}</Text>
+        <Text style={styles.emptyText}>{message('interactions.notConnectedBody')}</Text>
+        <NativeActionButton label={message('interactions.goConnect')} icon="link" onPress={() => router.replace('/connect')} />
       </View>
     )
   if (state === 'invalid-session')
     return (
       <View style={styles.empty}>
-        <Text style={styles.emptyTitle}>会话标识无效</Text>
-        <Text style={styles.emptyText}>返回会话后重试。</Text>
-        <NativeActionButton label="返回会话" icon="arrow-back" variant="secondary" onPress={() => router.back()} />
+        <Text style={styles.emptyTitle}>{message('interactions.invalidSession')}</Text>
+        <Text style={styles.emptyText}>{message('interactions.invalidSessionBody')}</Text>
+        <NativeActionButton label={message('interactions.backToSession')} icon="arrow-back" variant="secondary" onPress={() => router.back()} />
       </View>
     )
   if (state === 'loading')
     return (
       <View style={styles.empty}>
         <ActivityIndicator color={theme.colors.accent} />
-        <Text style={styles.emptyText}>正在加载待处理操作…</Text>
+        <Text style={styles.emptyText}>{message('interactions.loading')}</Text>
       </View>
     )
   if (state === 'error')
     return (
       <View style={styles.empty}>
-        <Text style={styles.emptyTitle}>加载失败</Text>
-        <Text style={styles.error}>{withErrorContext('待处理操作加载失败', query.error)}</Text>
-        <NativeActionButton label="重新加载" icon="refresh" variant="secondary" onPress={() => void query.refetch()} />
+        <Text style={styles.emptyTitle}>{message('interactions.loadFailedTitle')}</Text>
+        <Text style={styles.error}>{withErrorContext(message('interactions.loadFailedBody'), query.error)}</Text>
+        <NativeActionButton label={message('common.reload')} icon="refresh" variant="secondary" onPress={() => void query.refetch()} />
       </View>
     )
   return (
     <View style={styles.empty}>
-      <Text style={styles.emptyTitle}>暂无待处理操作</Text>
-      <Text style={styles.emptyText}>新的权限请求或问题会显示在这里。</Text>
+      <Text style={styles.emptyTitle}>{message('interactions.empty')}</Text>
+      <Text style={styles.emptyText}>{message('interactions.emptyBody')}</Text>
     </View>
   )
 }
@@ -205,7 +206,7 @@ function InteractionCard({ interaction, submitting, onRespond }: InteractionCard
 function ApprovalCard({ interaction, submitting, onRespond }: ApprovalCardProps): React.JSX.Element {
   const styles = useThemedStyles(makeStyles)
   const { payload } = interaction
-  const reason = payload.reason ?? 'DSH 请求使用此工具的权限。'
+  const reason = payload.reason ?? message('interactions.permissionIntro')
   const answer = (outcome: 'allowed-once' | 'rejected') => {
     onRespond(interaction.rpcId, {
       ok: true,
@@ -218,13 +219,13 @@ function ApprovalCard({ interaction, submitting, onRespond }: ApprovalCardProps)
   }
   return (
     <View style={styles.card}>
-      <Text style={styles.kicker}>权限请求</Text>
+      <Text style={styles.kicker}>{message('interactions.permissionRequest')}</Text>
       <Text style={styles.cardTitle}>{payload.toolName}</Text>
       <Text style={styles.body}>{reason}</Text>
-      <Text style={styles.metadata}>请求 {payload.approvalId}</Text>
+      <Text style={styles.metadata}>{format('interactions.requestId', { id: payload.approvalId })}</Text>
       <View style={styles.buttonRow}>
         <NativeActionButton
-          label="拒绝"
+          label={message('interactions.deny')}
           icon="close"
           variant="danger"
           disabled={submitting}
@@ -232,7 +233,7 @@ function ApprovalCard({ interaction, submitting, onRespond }: ApprovalCardProps)
           style={styles.approvalButton}
         />
         <NativeActionButton
-          label="仅允许一次"
+          label={message('interactions.allowOnce')}
           icon="check"
           disabled={submitting}
           onPress={() => answer('allowed-once')}
@@ -295,7 +296,7 @@ function QuestionCard({ interaction, submitting, onRespond }: QuestionCardProps)
     })
   return (
     <View style={styles.card}>
-      <Text style={styles.kicker}>问题</Text>
+      <Text style={styles.kicker}>{message('interactions.question')}</Text>
       {questions.map(question => (
         <View key={question.id} style={styles.question}>
           {question.header !== undefined ? <Text style={styles.questionHeader}>{question.header}</Text> : null}
@@ -312,7 +313,7 @@ function QuestionCard({ interaction, submitting, onRespond }: QuestionCardProps)
               <Pressable
                 key={option.label}
                 accessibilityRole={accessibility.role}
-                accessibilityLabel={`${option.label}${active ? '，已选中' : ''}`}
+                accessibilityLabel={active ? format('interactions.optionSelected', { label: option.label }) : option.label}
                 accessibilityState={accessibility.state}
                 disabled={accessibility.disabled}
                 style={[styles.option, active ? styles.optionActive : undefined]}
@@ -326,10 +327,10 @@ function QuestionCard({ interaction, submitting, onRespond }: QuestionCardProps)
             )
           })}
           <TextInput
-            accessibilityLabel={`自定义回答：${question.question}`}
+            accessibilityLabel={format('interactions.customAnswer', { question: question.question })}
             editable={!submitting}
             multiline
-            placeholder="可选：输入自定义回答"
+            placeholder={message('interactions.customAnswerPlaceholder')}
             style={styles.customAnswer}
             value={draft[question.id]?.custom ?? ''}
             onChangeText={custom => update(question.id, { custom })}
@@ -337,7 +338,7 @@ function QuestionCard({ interaction, submitting, onRespond }: QuestionCardProps)
         </View>
       ))}
       <NativeActionButton
-        label={submitting ? '发送中…' : '发送响应'}
+        label={submitting ? message('interactions.responding') : message('interactions.respond')}
         icon="send"
         loading={submitting}
         disabled={!complete}
@@ -392,12 +393,12 @@ function PlanReviewCard({
     })
   return (
     <View style={styles.card}>
-      <Text style={styles.kicker}>计划审阅</Text>
+      <Text style={styles.kicker}>{message('interactions.planReview')}</Text>
       <Text style={styles.cardTitle}>{review.question}</Text>
       <NativeMarkdown markdown={review.plan} />
       <View style={styles.buttonRow}>
         <NativeActionButton
-          label="讨论"
+          label={message('interactions.discuss')}
           icon="chat"
           variant="secondary"
           disabled={submitting}
@@ -427,17 +428,17 @@ function PlanReviewCard({
 }
 
 function requireClient(client: MobileApi | undefined): MobileApi {
-  if (client === undefined) throw new Error('请先将此移动端连接到桌面端，再查看待处理操作。')
+  if (client === undefined) throw new Error(message('interactions.connectFirst'))
   return client
 }
 
 function requireSessionId(sessionId: string | string[] | undefined): string {
-  if (typeof sessionId !== 'string' || sessionId.length === 0) throw new Error('缺少会话标识，无法加载待处理操作。')
+  if (typeof sessionId !== 'string' || sessionId.length === 0) throw new Error(message('interactions.missingSession'))
   return sessionId
 }
 
 function withErrorContext(prefix: string, error: unknown): string {
-  const detail = mobileErrorMessage(error, '请稍后重试。')
+  const detail = mobileErrorMessage(error, message('common.retry'))
   return `${prefix}：${detail}`
 }
 
