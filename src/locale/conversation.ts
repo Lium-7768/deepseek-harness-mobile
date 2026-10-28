@@ -16,6 +16,8 @@ export const conversation = {
   waitingForConfirmation: '等待确认',
 
   historyFailed: '会话历史加载失败',
+  sessionStateFailed: '会话状态加载失败，请稍后重试。',
+  reloadSessionState: '重新加载会话状态',
   eventsFailed: '实时事件加载失败，正在重试',
   interactionsFailed: '待处理操作加载失败，正在重试',
   historyNotLoaded: '历史记录未加载',

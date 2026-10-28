@@ -13,6 +13,7 @@ import { useConnectionStore } from '@/state/connection'
 import { useRouteSessionSelection } from '@/state/session-selection'
 import type { AppTheme } from '@/theme'
 import { useAppTheme, useThemedStyles } from '@/theme/hooks'
+import { t as message } from '@/locale'
 
 /** Lists the real Agent presets and commits a mode change through the DSH API. */
 export default function SessionModeScreen(): React.JSX.Element {
@@ -43,7 +44,7 @@ export default function SessionModeScreen(): React.JSX.Element {
       leftAction={
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel="返回会话"
+          accessibilityLabel={message('interactions.backToSession')}
           hitSlop={8}
           onPress={() => router.back()}
           style={styles.back}
@@ -52,7 +53,7 @@ export default function SessionModeScreen(): React.JSX.Element {
         </Pressable>
       }
       showMenu={false}
-      title="选择智能体模式"
+      title={message('mode.selectTitle')}
     >
       <FlatList
         contentContainerStyle={styles.list}
@@ -63,26 +64,26 @@ export default function SessionModeScreen(): React.JSX.Element {
             loading={presets.isPending}
             error={presets.error}
             onRetry={() => void presets.refetch()}
-            text="桌面端没有可用的智能体模式。"
+            text={message('mode.noneAvailable')}
           />
         }
         ListHeaderComponent={
           <View style={styles.header}>
-            <Text style={styles.title}>选择智能体模式</Text>
+            <Text style={styles.title}>{message('mode.selectTitle')}</Text>
             <Text style={styles.description}>
               {sessions.isError
-                ? '无法读取当前会话状态，暂时无法切换模式。'
+                ? message('mode.stateUnavailable')
                 : sessions.isPending
-                  ? '正在读取当前会话状态…'
+                  ? message('mode.stateLoading')
                   : blank
-                    ? '空白会话可以切换模式；切换结果会记录到会话日志。'
-                    : '会话已经开始，智能体模式已锁定。请在设置中修改新会话默认模式。'}
+                    ? message('mode.blankNote')
+                    : message('mode.locked')}
             </Text>
             {sessions.isError ? (
               <>
-                <Text style={styles.error}>{mobileErrorMessage(sessions.error, '会话状态加载失败，请稍后重试。')}</Text>
+                <Text style={styles.error}>{mobileErrorMessage(sessions.error, message('conversation.sessionStateFailed'))}</Text>
                 <NativeActionButton
-                  label="重新加载会话状态"
+                  label={message('conversation.reloadSessionState')}
                   icon="refresh"
                   variant="secondary"
                   onPress={() => void sessions.refetch()}
@@ -107,9 +108,9 @@ export default function SessionModeScreen(): React.JSX.Element {
                 <NativeSelectionRow
                   key={item.id}
                   accessibilityLabel={
-                    (item.name ?? item.id) + (selected ? '，当前模式' : '') + (disabled ? '，不可用' : '')
+                    (item.name ?? item.id) + (selected ? message('mode.currentSuffix') : '') + (disabled ? message('common.disabledSuffix') : '')
                   }
-                  description={item.broken ?? item.description ?? (item.trust === 'system' ? '内置模式' : '自定义模式')}
+                  description={item.broken ?? item.description ?? (item.trust === 'system' ? message('settings.builtinMode') : message('settings.customMode'))}
                   disabled={disabled}
                   loading={submitting === item.id}
                   onPress={() => {
@@ -119,7 +120,7 @@ export default function SessionModeScreen(): React.JSX.Element {
                       .selectSessionPreset(sessionId, item.id)
                       .then(() => router.back())
                       .catch(error =>
-                        Alert.alert('模式切换失败', mobileErrorMessage(error, '无法切换智能体模式，请稍后重试。')),
+                        Alert.alert(message('mode.switchFailedTitle'), mobileErrorMessage(error, message('mode.switchFailedBody'))),
                       )
                       .finally(() => setSubmitting(undefined))
                   }}
@@ -148,19 +149,19 @@ function StateView({
   text: string
 }): React.JSX.Element {
   const styles = useThemedStyles(makeStyles)
-  if (loading) return <Text style={styles.state}>正在加载智能体模式…</Text>
+  if (loading) return <Text style={styles.state}>{message('mode.loading')}</Text>
   if (error !== null && error !== undefined)
     return (
       <View style={styles.stateBlock}>
-        <Text style={styles.error}>{mobileErrorMessage(error, '智能体模式加载失败，请稍后重试。')}</Text>
-        <NativeActionButton label="重新加载" icon="refresh" variant="secondary" onPress={onRetry} />
+        <Text style={styles.error}>{mobileErrorMessage(error, message('mode.loadFailed'))}</Text>
+        <NativeActionButton label={message('common.reload')} icon="refresh" variant="secondary" onPress={onRetry} />
       </View>
     )
   return <Text style={styles.state}>{text}</Text>
 }
 
 function requireClient(client: MobileApi | undefined): MobileApi {
-  if (client === undefined) throw new Error('请先连接桌面端。')
+  if (client === undefined) throw new Error(message('drawer.connectFirstBody'))
   return client
 }
 

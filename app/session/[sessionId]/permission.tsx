@@ -13,6 +13,7 @@ import { useConnectionStore } from '@/state/connection'
 import { useRouteSessionSelection } from '@/state/session-selection'
 import type { AppTheme } from '@/theme'
 import { useAppTheme, useThemedStyles } from '@/theme/hooks'
+import { format, t as message } from '@/locale'
 
 /** Lists the host-projected permission presets and submits the existing command path. */
 export default function SessionPermissionScreen(): React.JSX.Element {
@@ -49,9 +50,9 @@ export default function SessionPermissionScreen(): React.JSX.Element {
   const choose = (value: string): void => {
     if (client === undefined || sessionId === undefined || locked || value === permissions?.currentValue) return
     if (value === 'danger-full-access') {
-      Alert.alert('启用完全访问？', '这会允许当前会话不受工作区范围限制地访问文件。', [
-        { text: '取消', style: 'cancel' },
-        { text: '继续', style: 'destructive', onPress: () => submit(value) },
+      Alert.alert(message('settings.fullAccessTitle'), message('permission.fullAccessBody'), [
+        { text: message('common.cancel'), style: 'cancel' },
+        { text: message('common.continue'), style: 'destructive', onPress: () => submit(value) },
       ])
       return
     }
@@ -68,7 +69,7 @@ export default function SessionPermissionScreen(): React.JSX.Element {
         void queryClient.invalidateQueries({ queryKey: ['session-events', sessionId] })
         router.back()
       })
-      .catch(error => Alert.alert('权限切换失败', mobileErrorMessage(error, '无法切换权限，请稍后重试。')))
+      .catch(error => Alert.alert(message('permission.switchFailedTitle'), mobileErrorMessage(error, message('permission.switchFailedBody'))))
       .finally(() => setSubmitting(undefined))
   }
 
@@ -77,7 +78,7 @@ export default function SessionPermissionScreen(): React.JSX.Element {
       leftAction={
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel="返回会话"
+          accessibilityLabel={message('interactions.backToSession')}
           hitSlop={8}
           onPress={() => router.back()}
           style={styles.back}
@@ -86,7 +87,7 @@ export default function SessionPermissionScreen(): React.JSX.Element {
         </Pressable>
       }
       showMenu={false}
-      title="选择权限"
+      title={message('permission.selectTitle')}
     >
       <FlatList
         contentContainerStyle={styles.list}
@@ -94,21 +95,21 @@ export default function SessionPermissionScreen(): React.JSX.Element {
         keyExtractor={() => 'permission-options'}
         ListHeaderComponent={
           <View style={styles.header}>
-            <Text style={styles.title}>选择权限</Text>
+            <Text style={styles.title}>{message('permission.selectTitle')}</Text>
             <Text style={styles.description}>
               {events.isError
-                ? '无法读取当前会话状态，暂时无法切换权限。'
+                ? message('permission.stateUnavailable')
                 : permissions === undefined
-                  ? '桌面端没有提供当前会话的权限投影，移动端不会猜测或修改权限。'
+                  ? message('permission.noProjection')
                   : locked
-                    ? '会话状态正在确认或会话正在处理，权限暂时锁定。'
-                    : '选择后会通过当前会话的 /permission 命令写入会话日志。'}
+                    ? message('permission.lockedWhileRunning')
+                    : message('permission.writeNote')}
             </Text>
             {events.isError ? (
               <>
-                <Text style={styles.error}>{mobileErrorMessage(events.error, '会话状态加载失败，请稍后重试。')}</Text>
+                <Text style={styles.error}>{mobileErrorMessage(events.error, message('conversation.sessionStateFailed'))}</Text>
                 <NativeActionButton
-                  label="重新加载会话状态"
+                  label={message('conversation.reloadSessionState')}
                   icon="refresh"
                   variant="secondary"
                   onPress={() => void events.refetch()}
@@ -119,21 +120,21 @@ export default function SessionPermissionScreen(): React.JSX.Element {
         }
         ListEmptyComponent={
           history.isPending ? (
-            <Text style={styles.state}>正在加载权限…</Text>
+            <Text style={styles.state}>{message('permission.loading')}</Text>
           ) : history.isError ? (
             <View>
-              <Text style={styles.error}>{mobileErrorMessage(history.error, '权限加载失败，请稍后重试。')}</Text>
+              <Text style={styles.error}>{mobileErrorMessage(history.error, message('permission.loadFailed'))}</Text>
               <NativeActionButton
-                label="重新加载权限"
+                label={message('permission.reload')}
                 icon="refresh"
                 variant="secondary"
                 onPress={() => void history.refetch()}
               />
             </View>
           ) : events.isError ? (
-            <Text style={styles.error}>会话状态加载失败，权限选项已锁定。</Text>
+            <Text style={styles.error}>{message('permission.stateFailedLocked')}</Text>
           ) : (
-            <Text style={styles.state}>当前会话没有可切换的权限预设。</Text>
+            <Text style={styles.state}>{message('permission.noPresets')}</Text>
           )
         }
         renderItem={({ item: optionItems }) => (
@@ -146,8 +147,8 @@ export default function SessionPermissionScreen(): React.JSX.Element {
                   key={item.value}
                   accessibilityLabel={
                     permissionLabel(item.value, item.name) +
-                    (selected ? '，当前权限' : '') +
-                    (disabled ? '，不可用' : '')
+                    (selected ? message('permission.currentSuffix') : '') +
+                    (disabled ? message('common.disabledSuffix') : '')
                   }
                   accessibilityRole="radio"
                   description={item.description ?? permissionDescription(item.value)}
@@ -175,7 +176,7 @@ export default function SessionPermissionScreen(): React.JSX.Element {
 }
 
 function requireClient(client: MobileApi | undefined): MobileApi {
-  if (client === undefined) throw new Error('请先连接桌面端。')
+  if (client === undefined) throw new Error(message('drawer.connectFirstBody'))
   return client
 }
 
