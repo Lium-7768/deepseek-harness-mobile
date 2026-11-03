@@ -29,7 +29,7 @@ describe('locale', () => {
 describe('format', () => {
   it('substitutes every named placeholder', () => {
     expect(format('session.dateSameYear', { month: 10, day: 28 })).toBe('10月28日')
-    expect(format('session.statsTurns', { turns: 3, steps: 11 })).toBe('3 轮 · 11 步')
+    expect(format('session.statsCounts', { turns: 3, steps: 11 })).toBe('3 轮 11 步')
   })
 
   it('leaves a placeholder the caller did not supply, so the gap is visible', () => {

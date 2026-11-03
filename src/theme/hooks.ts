@@ -1,3 +1,4 @@
+import { resolveAppearance } from '@/state/appearance-logic'
 /**
  * React bindings for the mobile theme.
  *
@@ -5,7 +6,8 @@
  * helpers and their tests — can import tokens without pulling React Native's
  * runtime into a Node test process.
  */
-import { useMemo } from 'react'
+import { useAppearanceStore } from '@/state/appearance'
+import { useEffect, useMemo } from 'react'
 import { Easing, useColorScheme } from 'react-native'
 import { mobileTheme, themes, type AppTheme, type Appearance } from './index'
 
@@ -20,7 +22,14 @@ import { mobileTheme, themes, type AppTheme, type Appearance } from './index'
  */
 export function useAppearance(): Appearance {
   const scheme = useColorScheme()
-  return scheme === 'dark' ? 'dark' : 'light'
+  const preference = useAppearanceStore((state) => state.preference)
+  const initialize = useAppearanceStore((state) => state.initialize)
+  // The stored preference is read once, off the render path; until it lands the
+  // screen keeps following the OS so the first frame is never blank.
+  useEffect(() => {
+    void initialize()
+  }, [initialize])
+  return resolveAppearance(preference, scheme)
 }
 
 /**
@@ -48,8 +57,24 @@ export function useAppTheme(): AppTheme {
  */
 export function useThemedStyles<T>(factory: (theme: AppTheme) => T): T {
   const theme = useAppTheme()
-  return useMemo(() => factory(theme), [factory, theme])
+  // Shared per factory, not per component instance: a conversation mounts one
+  // component per message row, and each instance rebuilding the whole sheet
+  // repeats identical work. The factory is module scope, so the cache holds at
+  // most one entry per appearance per sheet.
+  let byAppearance = sheetCache.get(factory as (theme: AppTheme) => unknown)
+  if (byAppearance === undefined) {
+    byAppearance = new Map()
+    sheetCache.set(factory as (theme: AppTheme) => unknown, byAppearance)
+  }
+  const cached = byAppearance.get(theme.appearance)
+  if (cached !== undefined) return cached as T
+  const built = factory(theme)
+  byAppearance.set(theme.appearance, built)
+  return built
 }
+
+/** Style sheets already built, keyed by factory then appearance. */
+const sheetCache = new WeakMap<(theme: AppTheme) => unknown, Map<Appearance, unknown>>()
 
 /**
  * The desktop's easing curve as an RN easing function.

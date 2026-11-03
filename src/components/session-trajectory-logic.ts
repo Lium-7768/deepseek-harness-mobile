@@ -2,15 +2,7 @@ import { format, t as message } from '@/locale'
 import type { SharedEventItem } from '@/shared/dsh-presentation'
 
 export type NativeTrajectoryActivityKind =
-  | 'assistant'
-  | 'compaction'
-  | 'context'
-  | 'error'
-  | 'question'
-  | 'reasoning'
-  | 'retry'
-  | 'tool'
-  | 'user'
+  'assistant' | 'compaction' | 'context' | 'error' | 'question' | 'reasoning' | 'retry' | 'tool' | 'user'
 
 export type NativeTrajectoryActivityState = 'completed' | 'failed' | 'running'
 
@@ -38,9 +30,7 @@ type MessageBlock = { type?: unknown; text?: unknown }
  * @param items - Gateway history and live events in durable-sequence order.
  * @returns Ordered, correlated activities suitable for a native list.
  */
-export function projectNativeTrajectoryActivities(
-  items: readonly SharedEventItem[],
-): NativeTrajectoryActivity[] {
+export function projectNativeTrajectoryActivities(items: readonly SharedEventItem[]): NativeTrajectoryActivity[] {
   const activities: NativeTrajectoryActivity[] = []
   const toolByCallId = new Map<string, { index: number; startedAt?: number }>()
   let openTurn: number | undefined
@@ -77,10 +67,10 @@ export function projectNativeTrajectoryActivities(
     if (type === 'assistant/message') {
       const blocks = messageBlocks(data)
       const text = blocks
-        .flatMap(block => block.type === 'text' && typeof block.text === 'string' ? [block.text] : [])
+        .flatMap((block) => (block.type === 'text' && typeof block.text === 'string' ? [block.text] : []))
         .join('\n')
       const reasoning = blocks
-        .flatMap(block => block.type === 'reasoning' && typeof block.text === 'string' ? [block.text] : [])
+        .flatMap((block) => (block.type === 'reasoning' && typeof block.text === 'string' ? [block.text] : []))
         .join('\n')
       if (reasoning.trim()) {
         pushActivity(activities, {
@@ -178,8 +168,9 @@ export function projectNativeTrajectoryActivities(
     }
 
     if (type.includes('context')) {
-      const source = [data.sourceName, data.source, data.filename, data.fileName]
-        .find((value): value is string => typeof value === 'string' && value.trim().length > 0)
+      const source = [data.sourceName, data.source, data.filename, data.fileName].find(
+        (value): value is string => typeof value === 'string' && value.trim().length > 0,
+      )
       pushActivity(activities, {
         id: activityId(item, 'context'),
         kind: 'context',
@@ -220,12 +211,21 @@ export function projectNativeTrajectoryActivities(
   })
 }
 
-/** Formats a concise native duration without exposing raw timestamps. */
+/**
+ * Formats one tool call's duration the way the Web trajectory prints it.
+ *
+ * `formatDurationMs` in `TrajectoryTable` renders `unit.milliseconds` below one
+ * second and `unit.seconds` with two decimals below ten, one above. Minute-scale
+ * spans keep the Web's seconds unit rather than splitting into minutes, so a
+ * 79-second call reads `79.0 秒` on both clients.
+ *
+ * @param milliseconds - Elapsed time for the call, clamped at zero.
+ * @returns The Web-compatible duration label.
+ */
 export function formatTrajectoryDuration(milliseconds: number): string {
-  const seconds = Math.max(0, milliseconds) / 1_000
-  if (seconds < 60) return format('trajectory.durationSeconds', { seconds: Math.round(seconds * 10) / 10 })
-  const rounded = Math.round(seconds)
-  return format('trajectory.durationMinutesSeconds', { minutes: Math.floor(rounded / 60), seconds: rounded % 60 })
+  const elapsed = Math.max(0, milliseconds)
+  if (elapsed < 1_000) return format('trajectory.durationMilliseconds', { value: Math.round(elapsed) })
+  return format('trajectory.durationSeconds', { value: (elapsed / 1_000).toFixed(elapsed < 10_000 ? 2 : 1) })
 }
 
 function toolActivityTitle(toolName: string): string {
@@ -270,9 +270,11 @@ function toolTarget(value: unknown): string | undefined {
 
 function isTechnicalText(value: string): boolean {
   const trimmed = value.trim()
-  return trimmed.startsWith('{')
-    || trimmed.startsWith('[')
-    || /(^|\s)(Error|TypeError|ReferenceError|SyntaxError|Traceback|stack trace)\b/i.test(trimmed)
+  return (
+    trimmed.startsWith('{') ||
+    trimmed.startsWith('[') ||
+    /(^|\s)(Error|TypeError|ReferenceError|SyntaxError|Traceback|stack trace)\b/i.test(trimmed)
+  )
 }
 
 function activityId(item: SharedEventItem, suffix: string): string {
@@ -280,7 +282,9 @@ function activityId(item: SharedEventItem, suffix: string): string {
 }
 
 function orderedItems(items: readonly SharedEventItem[]): SharedEventItem[] {
-  return [...items].sort((left, right) => (left.seq ?? Number.MAX_SAFE_INTEGER) - (right.seq ?? Number.MAX_SAFE_INTEGER))
+  return [...items].sort(
+    (left, right) => (left.seq ?? Number.MAX_SAFE_INTEGER) - (right.seq ?? Number.MAX_SAFE_INTEGER),
+  )
 }
 
 function pushActivity(activities: NativeTrajectoryActivity[], activity: NativeTrajectoryActivity): void {
@@ -296,24 +300,46 @@ function textDetail(value: string | undefined): Pick<NativeTrajectoryActivity, '
   return detail === undefined ? {} : { detail }
 }
 
+/**
+ * Trims one detail string to a ledger-sized preview.
+ *
+ * Line breaks survive: a heading, table, or list is structure the reader has to
+ * see, and collapsing them into spaces turned `## 标题` plus a table into one
+ * paragraph of Markdown source.
+ * @param value - raw detail text from the event.
+ * @returns the preview, or undefined when the text is blank.
+ */
 function previewText(value: string | undefined): string | undefined {
-  const normalized = value?.replace(/\s+/g, ' ').trim()
+  const normalized = value
+    ?.replace(/\r\n?/g, '\n')
+    .split('\n')
+    .map((line) => line.replace(/[ \t]+/g, ' ').trimEnd())
+    .join('\n')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim()
   if (!normalized) return undefined
   const limit = 160
-  return normalized.length > limit ? `${normalized.slice(0, limit).trimEnd()}…` : normalized
+  if (normalized.length <= limit) return normalized
+  // Cut on a line boundary so the preview never ends mid-token or mid-fence.
+  const clipped = normalized.slice(0, limit)
+  const lastBreak = clipped.lastIndexOf('\n')
+  const body = lastBreak > limit * 0.6 ? clipped.slice(0, lastBreak) : clipped
+  return `${body.trimEnd()}…`
 }
 
 function messageBlocks(data: EventRecord): MessageBlock[] {
   const message = recordField(data.message)
   const content = message?.content
   return Array.isArray(content)
-    ? content.filter((block): block is MessageBlock => block !== null && typeof block === 'object' && !Array.isArray(block))
+    ? content.filter(
+        (block): block is MessageBlock => block !== null && typeof block === 'object' && !Array.isArray(block),
+      )
     : []
 }
 
 function messageText(data: EventRecord): string | undefined {
   const text = messageBlocks(data)
-    .flatMap(block => block.type === 'text' && typeof block.text === 'string' ? [block.text] : [])
+    .flatMap((block) => (block.type === 'text' && typeof block.text === 'string' ? [block.text] : []))
     .join('\n')
   return previewText(text)
 }
@@ -322,7 +348,7 @@ function toolResult(data: EventRecord): { callId?: string; failed: boolean; outp
   const message = recordField(data.message)
   const source = recordField(message?.source)
   const block = Array.isArray(message?.content)
-    ? message.content.find(value => recordField(value)?.type === 'tool-result')
+    ? message.content.find((value) => recordField(value)?.type === 'tool-result')
     : undefined
   const result = recordField(block)
   const content = Array.isArray(result?.content) ? result.content : []
@@ -345,7 +371,7 @@ function fileName(value: string): string {
 }
 
 function recordField(value: unknown): EventRecord | undefined {
-  return value !== null && typeof value === 'object' && !Array.isArray(value) ? value as EventRecord : undefined
+  return value !== null && typeof value === 'object' && !Array.isArray(value) ? (value as EventRecord) : undefined
 }
 
 function stringField(value: unknown): string | undefined {
@@ -354,4 +380,26 @@ function stringField(value: unknown): string | undefined {
 
 function numberField(value: unknown): number | undefined {
   return typeof value === 'number' && Number.isFinite(value) ? value : undefined
+}
+
+/**
+ * Collapses a ledger row's body to the single line the desktop prints.
+ *
+ * The desktop's trajectory cells hold one truncated line per row; the phone was
+ * rendering the whole Markdown body and clipping it at a fixed height, which cut
+ * rows mid-line. Headings, list bullets, and code fences are stripped here so the
+ * preview reads as prose rather than as markup.
+ *
+ * @param detail - Markdown body carried by the activity, if it has one.
+ * @returns One whitespace-collapsed line, or an empty string.
+ */
+export function trajectoryDetailPreview(detail: string | undefined): string {
+  if (detail === undefined) return ''
+  return detail
+    .replace(/```[\s\S]*?```/g, ' ')
+    .replace(/^\s{0,3}#{1,6}\s*/gm, '')
+    .replace(/^\s{0,3}[-*+]\s+/gm, '')
+    .replace(/^\s{0,3}>\s?/gm, '')
+    .replace(/\s+/g, ' ')
+    .trim()
 }

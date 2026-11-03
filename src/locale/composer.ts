@@ -6,9 +6,28 @@
 
 /** Composer copy. */
 export const composer = {
-  placeholder: '给智能体发消息',
+  // `ui-conversation` `placeholder.default`, printed by the in-session composer.
+  placeholder: '发消息或创建任务…',
+  // `placeholder.hero`, printed by the workspace hero whose empty state still
+  // describes what to build.
+  heroPlaceholder: '描述你想要构建的内容…',
   inputLabel: '消息输入',
 
+  // The Web's add control carries `input.commands` and opens one menu of files
+  // and slash commands (`ui-commands`).
+  addContent: '添加图片或选择操作',
+  menuAddSection: '添加',
+  menuFile: '文件',
+  menuFileDetail: '图片附件，发送前压缩',
+  menuCommandSection: '指令',
+  menuGoal: '目标',
+  menuGoalDetail: '设置或查看长期任务目标',
+  menuPermission: '权限',
+  menuPermissionDetail: '切换权限预设（沙箱模式与审批策略）',
+  menuMode: '模式',
+  menuModeDetail: '切换智能体模式',
+  menuModel: '模型',
+  menuModelDetail: '选择本会话使用的模型',
   addImage: '添加图片',
   addImageDetail: '拍照和照片库中的图片都会在上传前压缩。',
   takePhoto: '拍照',
@@ -26,8 +45,6 @@ export const composer = {
   cameraPermissionBody: '请允许 DeepSeek Harness 使用相机后再拍照。',
   cameraFailedTitle: '无法打开相机',
   cameraFailedBody: '请检查相机权限后重试。',
-  imageLimitTitle: '最多可添加 4 张图片',
-  imageLimitBody: '添加图片附件',
 
   send: '发送消息',
   sending: '正在发送消息',

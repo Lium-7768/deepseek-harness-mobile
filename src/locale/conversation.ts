@@ -16,8 +16,6 @@ export const conversation = {
   waitingForConfirmation: '等待确认',
 
   historyFailed: '会话历史加载失败',
-  sessionStateFailed: '会话状态加载失败，请稍后重试。',
-  reloadSessionState: '重新加载会话状态',
   eventsFailed: '实时事件加载失败，正在重试',
   interactionsFailed: '待处理操作加载失败，正在重试',
   historyNotLoaded: '历史记录未加载',
@@ -29,9 +27,18 @@ export const conversation = {
   backToLatest: '返回最新消息',
   viewPending: '查看待处理操作',
 
-  composerPlaceholder: '在这里输入消息…',
+  // `clock.md` / `clock.ymd` from ui-chat's locale dictionary: the date prefix
+  // the message clock grows outside today, then outside this year.
+  clockMd: '{m}月{d}日',
+  clockYmd: '{y}年{m}月{d}日',
+
+  // `placeholder.default` from ui-conversation's locale dictionary.
+  composerPlaceholder: '发消息或创建任务…',
 
   copyMessage: '复制消息',
+  /** `MessageIconActions`: forks the session at this message. */
+  branchFromMessage: '在新对话中分支',
+  branchFailedTitle: '分叉会话失败',
   copied: '消息已复制',
   copyFailedTitle: '复制失败，请重试',
   copyFailed: '复制失败，请重试。',

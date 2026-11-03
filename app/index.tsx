@@ -1,13 +1,13 @@
-import { ActivityIndicator, View } from 'react-native'
-import { Redirect } from 'expo-router'
-import { useEffect } from 'react'
 import { useConnectionStore } from '@/state/connection'
 import { useAppTheme } from '@/theme/hooks'
+import { Redirect } from 'expo-router'
+import { useEffect } from 'react'
+import { ActivityIndicator, View } from 'react-native'
 export default function IndexScreen(): React.JSX.Element {
   const theme = useAppTheme()
-  const connection = useConnectionStore(state => state.connection)
-  const initialized = useConnectionStore(state => state.initialized)
-  const initialize = useConnectionStore(state => state.initialize)
+  const connection = useConnectionStore((state) => state.connection)
+  const initialized = useConnectionStore((state) => state.initialized)
+  const initialize = useConnectionStore((state) => state.initialize)
   useEffect(() => {
     void initialize()
   }, [initialize])

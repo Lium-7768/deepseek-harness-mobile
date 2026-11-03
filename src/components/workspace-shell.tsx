@@ -1,13 +1,13 @@
+import { NativeBrandMark } from '@/components/native-brand-mark'
+import { NativeIcon } from '@/components/native-icon'
+import { workspaceHeaderMinHeight } from '@/components/workspace-shell-logic'
+import { t as message } from '@/locale'
+import type { AppTheme } from '@/theme'
+import { useAppTheme, useMotionEasing, useThemedStyles } from '@/theme/hooks'
+import { useNavigation } from 'expo-router'
 import { useEffect, useRef, type PropsWithChildren } from 'react'
 import { AccessibilityInfo, Animated, Pressable, StyleSheet, Text, View } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
-import { useNavigation } from 'expo-router'
-import type { AppTheme } from '@/theme'
-import { useAppTheme, useMotionEasing, useThemedStyles } from '@/theme/hooks'
-import { t as message } from '@/locale'
-import { NativeIcon } from '@/components/native-icon'
-import { NativeBrandMark } from '@/components/native-brand-mark'
-import { workspaceHeaderMinHeight } from '@/components/workspace-shell-logic'
 
 type DrawerNavigation = { openDrawer: () => void }
 
@@ -47,7 +47,7 @@ export function WorkspaceShell({
   titleAccessory,
   titleAccessibilityLabel,
   onTitlePress,
-  showBrand = true,
+  showBrand = false,
   leftAction,
   rightAction,
   headerMeta,
@@ -107,49 +107,56 @@ export function WorkspaceShell({
           </View>
           {hasHeaderMeta ? <View style={s.metaRow}>{headerMeta}</View> : null}
         </View>
-        <Animated.View style={[s.content, { opacity: entrance, paddingBottom: insets.bottom }]}>{children}</Animated.View>
+        <Animated.View style={[s.content, { opacity: entrance, paddingBottom: insets.bottom }]}>
+          {children}
+        </Animated.View>
       </View>
     </View>
   )
 }
 const makeStyles = (theme: AppTheme) =>
   StyleSheet.create({
-      safe: { flex: 1, backgroundColor: theme.colors.background },
-      root: { flex: 1 },
-      header: { borderBottomColor: theme.colors.border, borderBottomWidth: StyleSheet.hairlineWidth },
-      headerTop: {
-        alignItems: 'center',
-        flexDirection: 'row',
-        minHeight: theme.chrome.headerHeight,
-        paddingHorizontal: 12,
-        paddingTop: 8,
-      },
-      // The desktop's header icon button is 28pt square with the small radius
-      // and secondary label colour. The 8pt hit slop around it keeps the iOS
-      // 44pt touch target without making the drawn control larger.
-      icon: {
-        alignItems: 'center',
-        borderRadius: theme.radius.sm,
-        height: 28,
-        justifyContent: 'center',
-        width: 28,
-      },
-      brandAnchor: { alignItems: 'center', height: 28, justifyContent: 'center', marginHorizontal: 4, width: 28 },
-      titleButton: { flex: 1, minWidth: 0 },
-      titleGroup: { alignItems: 'center', flex: 1, flexDirection: 'row', minWidth: 0 },
-      titleLeading: { alignItems: 'center', marginRight: 7 },
-      title: { color: theme.colors.ink, flexShrink: 1, fontSize: 16, fontWeight: '500' },
-      right: { alignItems: 'flex-end', minWidth: 36 },
-      metaRow: {
-        alignItems: 'center',
-        flexDirection: 'row',
-        minHeight: theme.chrome.headerMetaHeight,
-        justifyContent: 'space-between',
-        paddingHorizontal: 16,
-        paddingVertical: 6,
-      },
-      content: { flex: 1 },
-      pressed: { opacity: 0.58 },
+    safe: { flex: 1, backgroundColor: theme.colors.background },
+    root: { flex: 1 },
+    header: { borderBottomColor: theme.colors.border, borderBottomWidth: StyleSheet.hairlineWidth },
+    // `ConversationRoot.module.css .header` pads 10px 28px 0 20px; the phone
+    // adds the status-bar inset above it and keeps the desktop's 30px row.
+    headerTop: {
+      alignItems: 'center',
+      flexDirection: 'row',
+      minHeight: theme.chrome.headerHeight,
+      paddingLeft: 20,
+      paddingRight: 16,
+      paddingVertical: 0,
+    },
+    // The desktop's header icon button is 28pt square with the small radius
+    // and secondary label colour. The 8pt hit slop around it keeps the iOS
+    // 44pt touch target without making the drawn control larger.
+    icon: {
+      alignItems: 'center',
+      borderRadius: theme.radius.sm,
+      height: 28,
+      justifyContent: 'center',
+      width: 28,
+    },
+    brandAnchor: { alignItems: 'center', height: 28, justifyContent: 'center', marginHorizontal: 4, width: 28 },
+    titleButton: { flex: 1, minWidth: 0 },
+    titleGroup: { alignItems: 'center', flex: 1, flexDirection: 'row', minWidth: 0 },
+    titleLeading: { alignItems: 'center', marginRight: 7 },
+    // The Web header prints its breadcrumb and title at 14/500 on a 20px line
+    // (ConversationRoot.module.css `.crumbs`).
+    title: { color: theme.colors.ink, flexShrink: 1, fontSize: 14, fontWeight: '500', lineHeight: 20 },
+    right: { alignItems: 'flex-end', minWidth: 28, maxWidth: '36%' },
+    metaRow: {
+      alignItems: 'center',
+      flexDirection: 'row',
+      minHeight: theme.chrome.headerMetaHeight,
+      justifyContent: 'space-between',
+      paddingHorizontal: 16,
+      paddingVertical: 6,
+    },
+    content: { flex: 1 },
+    pressed: { opacity: 0.58 },
   })
 
 /**
@@ -165,22 +172,25 @@ function useEntranceFade(): Animated.Value {
   const opacity = useRef(new Animated.Value(0)).current
   useEffect(() => {
     let active = true
-    void AccessibilityInfo.isReduceMotionEnabled().then(reduced => {
-      if (!active) return
-      if (reduced) {
-        opacity.setValue(1)
-        return
-      }
-      Animated.timing(opacity, {
-        toValue: 1,
-        duration: theme.motion.base,
-        easing,
-        useNativeDriver: true,
-      }).start()
-    })
+    void AccessibilityInfo.isReduceMotionEnabled()
+      .catch(() => true)
+      .then((reduced) => {
+        if (!active) return
+        if (reduced) {
+          opacity.setValue(1)
+          return
+        }
+        Animated.timing(opacity, {
+          toValue: 1,
+          duration: theme.motion.base,
+          easing,
+          useNativeDriver: true,
+        }).start()
+      })
     return () => {
       active = false
+      opacity.stopAnimation()
     }
-  }, [opacity])
+  }, [opacity, easing, theme.motion.base])
   return opacity
 }

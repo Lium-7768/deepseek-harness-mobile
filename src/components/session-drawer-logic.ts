@@ -23,21 +23,26 @@ export function sessionIdFromRoute(route: { name: string; params?: unknown } | u
 }
 
 /**
- * Logical width the drawer should not exceed: the DSH sidebar's own content
- * width, which the Pocket adaptation reproduces with `width: max-content`.
+ * Logical width the drawer aims for.
+ *
+ * The desktop sidebar's own content width is 280, which leaves the row's
+ * trailing actions and a long session title fighting for about 200pt once the
+ * row's own padding and status slot are paid. A phone reads the drawer instead
+ * of the conversation behind it, so the row gets 320 and the scrim keeps a
+ * sliver of the conversation visible as the way back.
  */
 const DRAWER_CONTENT_WIDTH = 280
 
-/** Fraction of the viewport the drawer may cover at most, matching Pocket's `92vw`. */
-const DRAWER_MAX_VIEWPORT_FRACTION = 0.92
+/** Fraction of the viewport the drawer may cover at most before the scrim is dropped. */
+const DRAWER_MAX_VIEWPORT_FRACTION = 0.86
 
 /**
  * Resolves the mobile drawer width.
  *
- * Reproduces DSH Pocket's drawer geometry: the drawer hugs the sidebar's
- * content width, and `92vw` is only a ceiling for very narrow phones. A
- * viewport too narrow for the content width therefore narrows the drawer
- * instead of letting it cover the whole screen.
+ * The drawer hugs the sidebar's content width, and `86vw` is only a ceiling for
+ * very narrow phones: a viewport too narrow for the content width narrows the
+ * drawer instead of letting it cover the whole screen, which would leave no
+ * scrim to tap on the way back.
  *
  * @param viewportWidth - Viewport width in logical pixels.
  * @returns The drawer width, or `0` when the viewport is unusable.
@@ -61,7 +66,7 @@ export function selectedSessionTarget(
   selectedSessionId: string | undefined,
 ): SessionSummary | undefined {
   if (selectedSessionId === undefined) return undefined
-  return items.find(item => item.sessionId === selectedSessionId)
+  return items.find((item) => item.sessionId === selectedSessionId)
 }
 
 /** Returns the numeric gateway timestamp used by recent-first sorting. */
@@ -71,7 +76,8 @@ export function sessionUpdatedAt(session: SessionSummary): number {
 
 /** Formats a session timestamp in the device's local time zone. */
 export function formatSessionTime(updatedAt: unknown, now = Date.now()): string {
-  if (typeof updatedAt !== 'number' || !Number.isFinite(updatedAt) || updatedAt <= 0) return message('session.timeUnknown')
+  if (typeof updatedAt !== 'number' || !Number.isFinite(updatedAt) || updatedAt <= 0)
+    return message('session.timeUnknown')
   const date = new Date(updatedAt)
   if (!Number.isFinite(date.getTime())) return message('session.timeUnknown')
   const current = new Date(now)
@@ -97,9 +103,38 @@ export function sessionDisplayTitle(session: Pick<SessionSummary, 'blank' | 'tit
   return title === undefined || title === '' ? message('session.newSession') : title
 }
 
-/** Returns the drawer's status label, prioritizing an active session over its timestamp. */
-export function sessionTimeLabel(session: Pick<SessionSummary, 'running' | 'updatedAt'>, now = Date.now()): string {
-  return session.running === true ? message('session.running') : formatSessionTime(session.updatedAt, now)
+/**
+ * Formats the compact relative distance the desktop sidebar prints beside a row
+ * (`ui-primitives/src/relative-time.ts`, rendered through the `time.*` keys).
+ *
+ * @param updatedAt - Epoch milliseconds the session last changed.
+ * @param now - Epoch milliseconds to measure against.
+ * @returns A label such as `刚刚`, `5分钟`, or `1天`, or the unknown label.
+ */
+export function formatRelativeSessionTime(updatedAt: unknown, now = Date.now()): string {
+  if (typeof updatedAt !== 'number' || !Number.isFinite(updatedAt) || updatedAt <= 0)
+    return message('session.timeUnknown')
+  const minute = 60_000
+  const hour = 3_600_000
+  const day = 86_400_000
+  const diff = Math.max(0, now - updatedAt)
+  if (diff < minute) return message('session.timeNow')
+  if (diff < hour) return format('session.timeMinutes', { n: Math.floor(diff / minute) })
+  if (diff < day) return format('session.timeHours', { n: Math.floor(diff / hour) })
+  if (diff < 30 * day) return format('session.timeDays', { n: Math.floor(diff / day) })
+  if (diff < 365 * day) return format('session.timeMonths', { n: Math.floor(diff / (30 * day)) })
+  return format('session.timeYears', { n: Math.floor(diff / (365 * day)) })
+}
+
+/**
+ * Returns the drawer's trailing stamp.
+ *
+ * A running session keeps its relative time: the desktop prints that stamp in
+ * every row and reports activity through the leading status dot instead
+ * (`Rows.tsx` `SessionStatusDots`).
+ */
+export function sessionTimeLabel(session: Pick<SessionSummary, 'updatedAt'>, now = Date.now()): string {
+  return formatRelativeSessionTime(session.updatedAt, now)
 }
 
 /** Reports whether the desktop projected at least one named workspace. */
@@ -118,7 +153,7 @@ export function workspaceForSession(
   sessionId: string | undefined,
 ): MobileWorkspace | undefined {
   if (sessionId === undefined) return undefined
-  return workspaces.find(workspace => workspace.sessionIds.includes(sessionId))
+  return workspaces.find((workspace) => workspace.sessionIds.includes(sessionId))
 }
 
 /** Reports whether one desktop session has a top-level row in the selected browser view. */
@@ -132,13 +167,14 @@ export function sessionRows(
   workspaces: readonly MobileWorkspace[],
   groupBy: 'workspace' | 'flat',
   currentSessionId?: string,
+  order: SessionOrder = 'manual',
 ): Exclude<SessionDrawerRow, { kind: 'overflow' }>[] {
   if (groupBy === 'flat')
     return items
-      .filter(session => sessionVisible(session, currentSessionId))
-      .map(session => ({ kind: 'session', key: `session:${session.sessionId}`, session }))
+      .filter((session) => sessionVisible(session, currentSessionId))
+      .map((session) => ({ kind: 'session', key: `session:${session.sessionId}`, session }))
 
-  const byId = new Map(items.map(session => [session.sessionId, session]))
+  const byId = new Map(items.map((session) => [session.sessionId, session]))
   const accounted = new Set<string>()
   const rows: Exclude<SessionDrawerRow, { kind: 'overflow' }>[] = []
   for (const workspace of workspaces) {
@@ -148,16 +184,27 @@ export function sessionRows(
       const session = byId.get(sessionId)
       if (session !== undefined && sessionVisible(session, currentSessionId)) sessions.push(session)
     }
-    rows.push({ kind: 'workspace', key: `workspace:${workspace.workspaceId}`, label: workspaceLabel(workspace), workspace })
-    rows.push(...sessions.map(session => ({ kind: 'session' as const, key: `session:${session.sessionId}`, session })))
+    rows.push({
+      kind: 'workspace',
+      key: `workspace:${workspace.workspaceId}`,
+      label: workspaceLabel(workspace),
+      workspace,
+    })
+    rows.push(
+      ...sessions.map((session) => ({ kind: 'session' as const, key: `session:${session.sessionId}`, session })),
+    )
   }
 
-  const ungrouped = items
-    .filter(session => !accounted.has(session.sessionId) && sessionVisible(session, currentSessionId))
-    .sort((a, b) => sessionUpdatedAt(b) - sessionUpdatedAt(a))
+  const ungrouped = items.filter(
+    (session) => !accounted.has(session.sessionId) && sessionVisible(session, currentSessionId),
+  )
+  if (order === 'updated') ungrouped.sort((a, b) => sessionUpdatedAt(b) - sessionUpdatedAt(a))
+
   if (ungrouped.length > 0) {
     rows.push({ kind: 'workspace', key: 'workspace:ungrouped', label: message('session.ungrouped') })
-    rows.push(...ungrouped.map(session => ({ kind: 'session' as const, key: `session:${session.sessionId}`, session })))
+    rows.push(
+      ...ungrouped.map((session) => ({ kind: 'session' as const, key: `session:${session.sessionId}`, session })),
+    )
   }
   return rows
 }
@@ -198,6 +245,8 @@ export function visibleWorkspaceRows(
     if (row.kind === 'workspace') {
       flushWorkspace()
       workspace = row
+    } else if (workspace === undefined) {
+      visible.push(row)
     } else {
       sessions.push(row)
     }

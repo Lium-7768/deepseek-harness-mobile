@@ -24,8 +24,7 @@ export type MobileImageMediaType = 'image/gif' | 'image/jpeg' | 'image/png' | 'i
 
 /** A native-composer content block forwarded unchanged by the Mobile Gateway. */
 export type MobilePromptContentPart =
-  | { type: 'text'; text: string }
-  | { type: 'image'; mediaType: MobileImageMediaType; data: string; name?: string }
+  { type: 'text'; text: string } | { type: 'image'; mediaType: MobileImageMediaType; data: string; name?: string }
 
 export type MobilePromptContent = MobilePromptContentPart[]
 
@@ -156,13 +155,13 @@ export interface MobileJobsPayload {
 /** Desktop-owned direct child session that belongs to one parent session. */
 export type MobileSubagentEntry =
   | {
-    kind: 'child'
-    id: string
-    mode: 'one-shot' | 'continuable'
-    activity: 'running' | 'inactive'
-    hasChildren: boolean
-    label?: string
-  }
+      kind: 'child'
+      id: string
+      mode: 'one-shot' | 'continuable'
+      activity: 'running' | 'inactive'
+      hasChildren: boolean
+      label?: string
+    }
   | { kind: 'diagnostic'; id: string; reason: 'corrupt' | 'unsupported' | 'unavailable' }
 
 export interface MobileSubagentCatalogPayload {
@@ -196,6 +195,8 @@ export interface SessionEventsPayload {
   since: number
   items: SessionEventItem[]
   status: 'running' | 'waiting' | 'idle'
+  /** Local cache boundary; earlier events remain available through desktop history pagination. */
+  windowStartSeq?: number
 }
 
 /** One Gateway-issued hydration lease that transfers a session from durable snapshot to live events. */
@@ -350,7 +351,6 @@ export interface MobileModelSelection {
 
 export interface MobileAgentPresetEntry {
   id: string
-  trust: 'system' | 'user'
   isDefault: boolean
   name?: string
   description?: string
@@ -365,7 +365,6 @@ export interface MobileAgentPresetListPayload {
 
 export interface MobileAgentPresetDetail {
   agentPreset: string
-  trust: 'system' | 'user'
   content: string
   name?: string
   description?: string
@@ -410,17 +409,17 @@ export type MobileFeedbackListResult =
 export type MobileFeedbackPutResult =
   | { ok: true; value: MobileFeedbackItem }
   | MobileFeedbackRejected<
-    | { code: 'session-not-found'; sessionId: string }
-    | { code: 'target-not-found'; sessionId: string; messageId: string }
-    | { code: 'version-conflict'; current: MobileFeedbackItem | null }
-    | { code: 'note-blank' }
-    | { code: 'note-too-large'; maxBytes: number; actualBytes: number }
-  >
+      | { code: 'session-not-found'; sessionId: string }
+      | { code: 'target-not-found'; sessionId: string; messageId: string }
+      | { code: 'version-conflict'; current: MobileFeedbackItem | null }
+      | { code: 'note-blank' }
+      | { code: 'note-too-large'; maxBytes: number; actualBytes: number }
+    >
 
 /** Result of deleting feedback for one assistant message. */
 export type MobileFeedbackDeleteResult =
   | { ok: true; value: MobileFeedbackDeleteValue }
   | MobileFeedbackRejected<
-    | { code: 'session-not-found'; sessionId: string }
-    | { code: 'version-conflict'; current: MobileFeedbackItem | null }
-  >
+      | { code: 'session-not-found'; sessionId: string }
+      | { code: 'version-conflict'; current: MobileFeedbackItem | null }
+    >

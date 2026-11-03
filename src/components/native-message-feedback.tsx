@@ -1,18 +1,21 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { useMemo, useState } from 'react'
-import { Pressable, StyleSheet, Text, View } from 'react-native'
 import { MobileApi, mobileErrorMessage } from '@/api/mobile-api'
+import { queryKeys } from '@/api/query-keys'
 import { NativeIcon } from '@/components/native-icon'
-import { messageActionLayout } from '@/components/session-message-logic'
+import { MESSAGE_ACTION_HIT_SLOP, messageActionLayout } from '@/components/session-message-logic'
+import { t as message } from '@/locale'
 import type { AppTheme } from '@/theme'
 import { useAppTheme, useThemedStyles } from '@/theme/hooks'
 import type { MobileFeedbackItem, MobileFeedbackRating } from '@/types/mobile'
-import { format, t as message } from '@/locale'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useMemo, useState } from 'react'
+import { Pressable, StyleSheet, Text, View } from 'react-native'
 
 type Props = {
   api: MobileApi
   sessionId: string
   event: Record<string, unknown> | undefined
+  /** Renders the pair as part of a caller's action strip instead of its own row. */
+  inline?: boolean
 }
 
 /** Reads the stable `message.id` the feedback sidecar keys on, if the event has one. */
@@ -32,19 +35,35 @@ function feedbackMessageId(event: Record<string, unknown> | undefined): string |
  * the message has a stable id (a settled `assistant/message`), so a streaming
  * or unpersisted row renders nothing.
  */
-export function NativeMessageFeedback({ api, sessionId, event }: Props): React.JSX.Element | null {
+export function NativeMessageFeedback(props: Props): React.JSX.Element | null {
+  // Gate before the hooks: a conversation mounts one of these per row, and a row
+  // without a stable message id (streaming, tool, or user turns) must not create a
+  // feedback query and two mutation observers it will never use.
+  const messageId = useMemo(() => feedbackMessageId(props.event), [props.event])
+  if (messageId === undefined) return null
+
+  return <FeedbackControls {...props} messageId={messageId} />
+}
+
+/** The toggle pair itself, mounted only for a message that can carry a rating. */
+function FeedbackControls({
+  api,
+  sessionId,
+  inline = false,
+  messageId,
+}: Props & { messageId: string }): React.JSX.Element {
   const theme = useAppTheme()
   const styles = useThemedStyles(makeStyles)
-  const messageId = useMemo(() => feedbackMessageId(event), [event])
+
   const queryClient = useQueryClient()
   const [mutationError, setMutationError] = useState<string | null>(null)
   const feedback = useQuery({
-    queryKey: ['session-feedback', sessionId],
-    queryFn: () => api.listFeedback(sessionId),
+    queryKey: queryKeys.sessionFeedback(sessionId),
+    queryFn: ({ signal }) => api.withSignal(signal).listFeedback(sessionId),
     staleTime: Infinity,
   })
   const items = feedback.data?.ok === true ? feedback.data.value.items : []
-  const item = items.find(candidate => candidate.messageId === messageId)
+  const item = items.find((candidate) => candidate.messageId === messageId)
   const rating = item?.rating
   const put = useMutation({
     mutationFn: (target: { messageId: string; rating: MobileFeedbackRating; ifVersion: string | null }) =>
@@ -88,7 +107,7 @@ export function NativeMessageFeedback({ api, sessionId, event }: Props): React.J
     setMutationError(null)
     // The desktop controller decides retract-vs-replace from the committed item:
     // a press matching the recorded rating retracts it, anything else replaces it.
-    const observed = items.find(candidate => candidate.messageId === messageId)
+    const observed = items.find((candidate) => candidate.messageId === messageId)
     if (observed?.rating === next) {
       remove.mutate({ messageId, ifVersion: observed.version })
     } else {
@@ -106,14 +125,12 @@ export function NativeMessageFeedback({ api, sessionId, event }: Props): React.J
   const likeActive = rating === 'positive'
   const dislikeActive = rating === 'negative'
 
-  if (messageId === undefined) return null
-
   return (
-    <View style={styles.row}>
+    <View style={inline ? styles.inline : styles.row}>
       <FeedbackButton
         active={likeActive}
         accessibilityLabel={likeActive ? message('feedback.rated') : message('feedback.rate')}
-        color={likeActive ? theme.colors.success : theme.colors.inkMuted}
+        color={likeActive ? theme.colors.success : theme.colors.inkTertiary}
         disabled={pending}
         icon="like-outline"
         onPress={() => void toggle('positive')}
@@ -121,7 +138,7 @@ export function NativeMessageFeedback({ api, sessionId, event }: Props): React.J
       <FeedbackButton
         active={dislikeActive}
         accessibilityLabel={dislikeActive ? message('feedback.unrated') : message('feedback.unrate')}
-        color={dislikeActive ? theme.colors.danger : theme.colors.inkMuted}
+        color={dislikeActive ? theme.colors.danger : theme.colors.inkTertiary}
         disabled={pending}
         icon="dislike-outline"
         onPress={() => void toggle('negative')}
@@ -155,11 +172,11 @@ function FeedbackButton({
       accessibilityLabel={accessibilityLabel}
       accessibilityState={{ disabled, selected: active }}
       disabled={disabled}
-      hitSlop={8}
+      hitSlop={MESSAGE_ACTION_HIT_SLOP}
       onPress={onPress}
-      style={({ pressed }) => [messageActionLayout('assistant'), pressed && styles.pressed]}
+      style={({ pressed }) => [messageActionLayout('assistant'), styles.actionButton, pressed && styles.pressed]}
     >
-      <NativeIcon name={icon} size={16} color={color} />
+      <NativeIcon name={icon} size={15} color={color} />
     </Pressable>
   )
 }
@@ -176,10 +193,10 @@ function commitFeedback(
   messageId: string,
   item: MobileFeedbackItem | null,
 ): void {
-  queryClient.setQueryData(['session-feedback', sessionId], (existing: unknown) => {
+  queryClient.setQueryData(queryKeys.sessionFeedback(sessionId), (existing: unknown) => {
     const current = existing as { ok: true; value: { items: MobileFeedbackItem[] } } | undefined
     if (current?.ok !== true) return existing
-    const items = current.value.items.filter(candidate => candidate.messageId !== messageId)
+    const items = current.value.items.filter((candidate) => candidate.messageId !== messageId)
     return {
       ...current,
       value: { ...current.value, items: item === null ? items : items.concat(item) },
@@ -203,13 +220,17 @@ function feedbackErrorCode(code: string): string {
 
 function recordOf(value: unknown): Record<string, unknown> | undefined {
   return value !== null && typeof value === 'object' && !Array.isArray(value)
-    ? value as Record<string, unknown>
+    ? (value as Record<string, unknown>)
     : undefined
 }
 
 const makeStyles = (theme: AppTheme) =>
   StyleSheet.create({
-    row: { alignItems: 'center', flexDirection: 'row', flexWrap: 'wrap', gap: theme.spacing.xs, minHeight: 44 },
-    failure: { color: theme.colors.danger, flexShrink: 1, fontSize: 11 },
+    // The feedback pair is the first two controls of the same action strip, so it
+    // shares the 28pt box, the 6px padding, and the 8pt gap (`.action`, `.actions`).
+    row: { alignItems: 'center', flexDirection: 'row', flexWrap: 'wrap', gap: theme.spacing.sm, minHeight: 28 },
+    inline: { alignItems: 'center', flexDirection: 'row', gap: theme.spacing.sm },
+    actionButton: { alignItems: 'center', justifyContent: 'center', padding: 6 },
+    failure: { color: theme.colors.danger, flexShrink: 1, fontSize: 11, lineHeight: 16 },
     pressed: { opacity: 0.62 },
   })

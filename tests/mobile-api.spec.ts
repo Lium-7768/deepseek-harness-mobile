@@ -1,5 +1,11 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { MobileApi, MobileApiError, mobileAuthorization, mobileErrorMessage, redeemMobilePairing } from '../src/api/mobile-api.ts'
+import {
+  MobileApi,
+  MobileApiError,
+  mobileAuthorization,
+  mobileErrorMessage,
+  redeemMobilePairing,
+} from '../src/api/mobile-api.ts'
 
 const connection = { gatewayUrl: 'http://127.0.0.1:52404', deviceId: 'device-1', accessToken: 'token-1' }
 
@@ -93,7 +99,9 @@ describe('Mobile QR pairing redemption', () => {
   })
 
   it('exchanges a valid desktop QR payload without requiring an existing device credential', async () => {
-    fetchMock.mockResolvedValue(jsonResponse({ contractVersion: 1, data: { deviceId: 'phone-1', accessToken: 'token-1' } }, 200))
+    fetchMock.mockResolvedValue(
+      jsonResponse({ contractVersion: 1, data: { deviceId: 'phone-1', accessToken: 'token-1' } }, 200),
+    )
 
     await expect(
       redeemMobilePairing({
@@ -103,12 +111,17 @@ describe('Mobile QR pairing redemption', () => {
         pairingSecret: 'secret-1',
         expiresAt: new Date(Date.now() + 60_000).toISOString(),
       }),
-    ).resolves.toEqual({ gatewayUrl: 'https://desktop.example.test/mobile', deviceId: 'phone-1', accessToken: 'token-1' })
+    ).resolves.toEqual({
+      gatewayUrl: 'https://desktop.example.test/mobile',
+      deviceId: 'phone-1',
+      accessToken: 'token-1',
+    })
 
     expect(fetchMock).toHaveBeenCalledWith('https://desktop.example.test/mobile/v1/pairing/redeem', {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ pairingId: 'pairing-1', pairingSecret: 'secret-1' }),
+      signal: expect.any(AbortSignal),
     })
   })
 
@@ -256,7 +269,6 @@ function jsonResponse(value: unknown, status: number): Response {
   return new Response(JSON.stringify(value), { status, headers: { 'content-type': 'application/json' } })
 }
 
-
 describe('MobileApi agent observation and control requests', () => {
   let fetchMock: ReturnType<typeof vi.fn>
 
@@ -302,7 +314,6 @@ describe('MobileApi agent observation and control requests', () => {
     ])
   })
 })
-
 
 describe('MobileApi safe search and attachment reads', () => {
   let fetchMock: ReturnType<typeof vi.fn>

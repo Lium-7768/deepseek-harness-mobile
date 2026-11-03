@@ -42,7 +42,7 @@ function eventContent(event: Record<string, unknown>): string | undefined {
     if (typeof value === 'string' && value.trim()) return value.trim()
     if (Array.isArray(value)) {
       const text = value
-        .map(item =>
+        .map((item) =>
           typeof item === 'string' ? item : typeof asRecord(item)?.text === 'string' ? asRecord(item)?.text : '',
         )
         .join('')
@@ -66,7 +66,7 @@ function eventContent(event: Record<string, unknown>): string | undefined {
 }
 function explicitRole(event: Record<string, unknown>): SharedMessageKind | undefined {
   const message = asRecord(event.message)
-  const raw = [event.role, event.kind, message?.role, message?.kind].find(value => typeof value === 'string')
+  const raw = [event.role, event.kind, message?.role, message?.kind].find((value) => typeof value === 'string')
   if (typeof raw !== 'string') return undefined
   const role = raw.toLowerCase()
   if (role === 'user' || role === 'human') return 'user'
@@ -94,7 +94,7 @@ function typeRole(event: Record<string, unknown>): SharedMessageKind | undefined
 }
 const isProtocolEvent = (event: Record<string, unknown>) => {
   const type = normalizedType(event)
-  return !type || PROTOCOL_TYPES.some(prefix => type === prefix || type.startsWith(prefix))
+  return !type || PROTOCOL_TYPES.some((prefix) => type === prefix || type.startsWith(prefix))
 }
 const isInternalPrompt = (text: string) =>
   [
@@ -109,7 +109,7 @@ const isInternalPrompt = (text: string) =>
     'reply exactly teamo_',
     'teamo_mobile_ok',
     'teamo_dsh_ok',
-  ].some(marker => text.toLowerCase().includes(marker))
+  ].some((marker) => text.toLowerCase().includes(marker))
 /**
  * Decides whether an event is safe to expose in a conversation view.
  * @param event Durable event record to classify.
@@ -189,11 +189,11 @@ export function classifyEvent(event: Record<string, unknown>, _index = 0): Share
     segments: splitMessageSegments(text),
     ...(tool
       ? {
-        toolState: getToolState(type),
-        ...(toolName ? { toolName } : {}),
-        ...(input ? { toolInput: input } : {}),
-        ...(output ? { toolOutput: output } : {}),
-      }
+          toolState: getToolState(type),
+          ...(toolName ? { toolName } : {}),
+          ...(input ? { toolInput: input } : {}),
+          ...(output ? { toolOutput: output } : {}),
+        }
       : {}),
     ...(typeof event.callId === 'string' ? { callId: event.callId } : {}),
   }

@@ -66,10 +66,15 @@ describe('native trajectory activity projection', () => {
         turn: 4,
         durationMs: 1_500,
       }),
-      expect.objectContaining({ kind: 'reasoning', title: '分析问题', detail: '先检查配置，再确认默认模型。', turn: 4 }),
+      expect.objectContaining({
+        kind: 'reasoning',
+        title: '分析问题',
+        detail: '先检查配置，再确认默认模型。',
+        turn: 4,
+      }),
       expect.objectContaining({ kind: 'assistant', title: '生成回复', detail: '配置读取完成。', turn: 4 }),
     ])
-    expect(activities.some(activity => activity.title.includes('tool/call'))).toBe(false)
+    expect(activities.some((activity) => activity.title.includes('tool/call'))).toBe(false)
   })
 
   it('keeps an unfinished tool visible as a running user-facing operation', () => {
@@ -104,7 +109,9 @@ describe('native trajectory activity projection', () => {
           data: {
             turn: 3,
             message: {
-              content: [{ type: 'tool-result', content: [{ type: 'text', text: '{"status":"ok","trace":"internal"}' }] }],
+              content: [
+                { type: 'tool-result', content: [{ type: 'text', text: '{"status":"ok","trace":"internal"}' }] },
+              ],
             },
           },
         },
@@ -121,8 +128,13 @@ describe('native trajectory activity projection', () => {
     ])
   })
 
-  it('formats compact operation durations without raw timestamps', () => {
-    expect(formatTrajectoryDuration(1_500)).toBe('1.5秒')
-    expect(formatTrajectoryDuration(79_000)).toBe('1分19秒')
+  it('formats operation durations the way the Web trajectory prints them', () => {
+    // Verified against `formatDurationMs`: milliseconds below a second, seconds
+    // with two decimals below ten and one above.
+    expect(formatTrajectoryDuration(0)).toBe('0 毫秒')
+    expect(formatTrajectoryDuration(96)).toBe('96 毫秒')
+    expect(formatTrajectoryDuration(1_500)).toBe('1.50 秒')
+    expect(formatTrajectoryDuration(9_999)).toBe('10.00 秒')
+    expect(formatTrajectoryDuration(79_000)).toBe('79.0 秒')
   })
 })

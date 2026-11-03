@@ -1,35 +1,36 @@
+import { format, t as message } from '@/locale'
 import type {
   MobileAgentPresetDetail,
   MobileAgentPresetListPayload,
+  MobileConnection,
   MobileFeedbackDeleteResult,
   MobileFeedbackListResult,
   MobileFeedbackPutResult,
   MobileFeedbackRating,
+  MobileGatewayFault,
   MobileGoalRef,
   MobileImageAttachmentPayload,
   MobileJobsPayload,
-  MobileSubagentCatalogPayload,
-  MobileConnection,
-  MobileGatewayFault,
   MobileModelCatalogPayload,
   MobilePairingCredential,
   MobilePairingQrPayload,
   MobilePromptContent,
   MobileQueuePayload,
   MobileRunningSessionsPayload,
+  MobileSessionModelsPayload,
+  MobileSessionSearchPayload,
+  MobileSessionSubscriptionPayload,
   MobileSettingsMutatePayload,
   MobileSettingsNamespaceView,
   MobileSettingsPayload,
   MobileSettingsUpdatePayload,
-  MobileSessionModelsPayload,
-  MobileSessionSearchPayload,
-  MobileSessionSubscriptionPayload,
+  MobileSubagentCatalogPayload,
   PendingInteractionsPayload,
   SessionEventsPayload,
   SessionHistoryPayload,
   SessionListPayload,
 } from '@/types/mobile'
-import { format, t as message } from '@/locale'
+import { RequestCancelledError, RequestTimeoutError, requestJson, type RequestOptions } from './request'
 
 interface GatewayEnvelope<T> {
   contractVersion: 1
@@ -38,6 +39,7 @@ interface GatewayEnvelope<T> {
 
 export type MobileApiErrorKind =
   | 'network'
+  | 'timeout'
   | 'credentials'
   | 'pairing-invalid'
   | 'session-not-found'
@@ -97,7 +99,10 @@ export function mobileAuthorization(connection: Pick<MobileConnection, 'deviceId
 }
 
 /** Exchanges a desktop-issued short-lived QR payload for one durable mobile device credential. */
-export async function redeemMobilePairing(payload: MobilePairingQrPayload): Promise<MobileConnection> {
+export async function redeemMobilePairing(
+  payload: MobilePairingQrPayload,
+  options: RequestOptions = {},
+): Promise<MobileConnection> {
   let gatewayUrl: string
   try {
     const parsed = new URL(payload.gatewayUrl)
@@ -109,22 +114,25 @@ export async function redeemMobilePairing(payload: MobilePairingQrPayload): Prom
   const expiresAt = Date.parse(payload.expiresAt)
   if (!Number.isFinite(expiresAt) || expiresAt <= Date.now())
     throw createError('pairing-invalid', message('errors.pairingExpired'), {}, false)
-  let response: Response
+  let result: Awaited<ReturnType<typeof requestJson>>
   try {
-    response = await fetch(`${gatewayUrl}/v1/pairing/redeem`, {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ pairingId: payload.pairingId, pairingSecret: payload.pairingSecret }),
-    })
+    result = await requestJson(
+      `${gatewayUrl}/v1/pairing/redeem`,
+      {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ pairingId: payload.pairingId, pairingSecret: payload.pairingSecret }),
+      },
+      options,
+    )
   } catch (error) {
-    throw createError('network', message('errors.pairingUnreachable'), { rawMessage: rawMessage(error) })
+    if (error instanceof RequestCancelledError) throw error
+    if (error instanceof RequestTimeoutError) throw createError('timeout', message('errors.requestTimeout'), {}, false)
+    throw createError('network', message('errors.pairingUnreachable'), {}, false)
   }
-  let decoded: unknown
-  try {
-    decoded = await response.json()
-  } catch (error) {
-    throw createError('protocol', message('errors.pairingResponseInvalid'), { status: response.status, rawMessage: rawMessage(error) })
-  }
+  const { response, decoded, decodeError } = result
+  if (decodeError !== undefined && response.ok)
+    throw createError('protocol', message('errors.pairingResponseInvalid'), { status: response.status }, false)
   if (!response.ok) {
     const fault = readGatewayFault(decoded)
     const code = fault?.code
@@ -163,7 +171,10 @@ export interface MobilePasswordLogin {
  * @param login - Desktop address and password as typed by the user.
  * @returns The stored connection shape, including the normalized gateway URL.
  */
-export async function authenticateMobilePassword(login: MobilePasswordLogin): Promise<MobileConnection> {
+export async function authenticateMobilePassword(
+  login: MobilePasswordLogin,
+  options: RequestOptions = {},
+): Promise<MobileConnection> {
   let gatewayUrl: string
   try {
     const parsed = new URL(login.gatewayUrl)
@@ -174,22 +185,30 @@ export async function authenticateMobilePassword(login: MobilePasswordLogin): Pr
   }
   const password = login.password.trim()
   if (password === '') throw createError('credentials', message('errors.passwordRequired'), {}, false)
-  let response: Response
+  let result: Awaited<ReturnType<typeof requestJson>>
   try {
-    response = await fetch(`${gatewayUrl}/v1/auth`, {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ password }),
-    })
+    result = await requestJson(
+      `${gatewayUrl}/v1/auth`,
+      {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ password }),
+      },
+      options,
+    )
   } catch (error) {
-    throw createError('network', message('errors.addressUnreachable'), { rawMessage: rawMessage(error) })
+    if (error instanceof RequestCancelledError) throw error
+    if (error instanceof RequestTimeoutError) throw createError('timeout', message('errors.requestTimeout'), {}, false)
+    throw createError(
+      'network',
+      message(gatewayUrl.startsWith('http:') ? 'errors.addressBlockedCleartext' : 'errors.addressUnreachable'),
+      {},
+      false,
+    )
   }
-  let decoded: unknown
-  try {
-    decoded = await response.json()
-  } catch (error) {
-    throw createError('protocol', message('errors.loginResponseInvalid'), { status: response.status, rawMessage: rawMessage(error) })
-  }
+  const { response, decoded, decodeError } = result
+  if (decodeError !== undefined && response.ok)
+    throw createError('protocol', message('errors.loginResponseInvalid'), { status: response.status }, false)
   if (!response.ok) {
     const fault = readGatewayFault(decoded)
     const code = fault?.code
@@ -211,9 +230,11 @@ export async function authenticateMobilePassword(login: MobilePasswordLogin): Pr
 /** Calls only the versioned Mobile Gateway API with a paired-device credential. */
 export class MobileApi {
   readonly #connection: MobileConnection
+  readonly #options: RequestOptions
 
   /** @param connection - A desktop-issued device credential and Gateway URL. */
-  constructor(connection: MobileConnection) {
+  constructor(connection: MobileConnection, options: RequestOptions = {}) {
+    this.#options = options
     let parsed: URL
     try {
       parsed = new URL(connection.gatewayUrl)
@@ -228,6 +249,11 @@ export class MobileApi {
         false,
       )
     this.#connection = { ...connection, gatewayUrl: parsed.toString().replace(/\/$/, '') }
+  }
+
+  /** Binds read operations to the query or stream generation that owns them. */
+  withSignal(signal: AbortSignal): MobileApi {
+    return new MobileApi(this.#connection, { ...this.#options, signal })
   }
 
   /** Loads the sessions shown by the current DSH Web sidebar. */
@@ -254,7 +280,9 @@ export class MobileApi {
   }
 
   /** Creates a desktop-owned session, optionally in one existing workspace. */
-  createSession(input: { workspaceId?: string; cwd?: string; agentPreset?: string } = {}): Promise<{ sessionId: string }> {
+  createSession(
+    input: { workspaceId?: string; cwd?: string; agentPreset?: string } = {},
+  ): Promise<{ sessionId: string }> {
     return this.#post<{ sessionId: string }>('/v1/sessions/create', input)
   }
 
@@ -321,18 +349,28 @@ export class MobileApi {
   }
 
   /** Queues native text and image content through the desktop's direct-parent subagent authority. */
-  sendSubagentMessage(parentSessionId: string, childSessionId: string, content: MobilePromptContent): Promise<{ messageId: string }> {
-    return this.#post(`/v1/sessions/${encodeURIComponent(parentSessionId)}/subagents/${encodeURIComponent(childSessionId)}/messages`, {
-      mode: 'continuable',
-      content,
-    })
+  sendSubagentMessage(
+    parentSessionId: string,
+    childSessionId: string,
+    content: MobilePromptContent,
+  ): Promise<{ messageId: string }> {
+    return this.#post(
+      `/v1/sessions/${encodeURIComponent(parentSessionId)}/subagents/${encodeURIComponent(childSessionId)}/messages`,
+      {
+        mode: 'continuable',
+        content,
+      },
+    )
   }
 
   /** Requests interruption of a continuable child turn; acceptance does not imply immediate quiescence. */
   interruptSubagent(parentSessionId: string, childSessionId: string): Promise<{ accepted: true }> {
-    return this.#post(`/v1/sessions/${encodeURIComponent(parentSessionId)}/subagents/${encodeURIComponent(childSessionId)}/interrupt`, {
-      mode: 'continuable',
-    })
+    return this.#post(
+      `/v1/sessions/${encodeURIComponent(parentSessionId)}/subagents/${encodeURIComponent(childSessionId)}/interrupt`,
+      {
+        mode: 'continuable',
+      },
+    )
   }
 
   /** Applies one desktop Goal mutation using the projection's current CAS reference. */
@@ -357,10 +395,9 @@ export class MobileApi {
 
   /** Creates one session-scoped snapshot lease before the live stream may deliver newer events. */
   createSessionSubscription(sessionId: string, lastSeenSeq: number): Promise<MobileSessionSubscriptionPayload> {
-    return this.#post<MobileSessionSubscriptionPayload>(
-      `/v1/sessions/${encodeURIComponent(sessionId)}/subscriptions`,
-      { lastSeenSeq },
-    )
+    return this.#post<MobileSessionSubscriptionPayload>(`/v1/sessions/${encodeURIComponent(sessionId)}/subscriptions`, {
+      lastSeenSeq,
+    })
   }
 
   /** Confirms that the native cache committed one subscription snapshot and may now receive its buffered events. */
@@ -490,30 +527,29 @@ export class MobileApi {
   }
 
   async #post<T>(path: string, body: object): Promise<T> {
-    let response: Response
+    let result: Awaited<ReturnType<typeof requestJson>>
     try {
-      response = await fetch(`${this.#connection.gatewayUrl}${path}`, {
-        method: 'POST',
-        headers: {
-          authorization: mobileAuthorization(this.#connection),
-          'content-type': 'application/json',
+      result = await requestJson(
+        `${this.#connection.gatewayUrl}${path}`,
+        {
+          method: 'POST',
+          headers: {
+            authorization: mobileAuthorization(this.#connection),
+            'content-type': 'application/json',
+          },
+          body: JSON.stringify(body),
         },
-        body: JSON.stringify(body),
-      })
+        this.#options,
+      )
     } catch (error) {
+      if (error instanceof RequestCancelledError) throw error
+      if (error instanceof RequestTimeoutError)
+        throw createError('timeout', message('errors.requestTimeout'), {}, false)
       throw createError('network', message('errors.network'), { rawMessage: rawMessage(error) })
     }
-
-    let decoded: unknown
-    try {
-      decoded = await response.json()
-    } catch (error) {
-      if (response.ok)
-        throw createError('protocol', message('errors.responseInvalid'), {
-          status: response.status,
-          rawMessage: rawMessage(error),
-        })
-    }
+    const { response, decoded, decodeError } = result
+    if (decodeError !== undefined && response.ok)
+      throw createError('protocol', message('errors.responseInvalid'), { status: response.status })
     if (!response.ok) throw this.#httpError(response.status, decoded)
     if (!isGatewayEnvelope<T>(decoded))
       throw createError('protocol', message('errors.responseInvalid'), { status: response.status })
@@ -530,7 +566,13 @@ export class MobileApi {
 }
 
 function isPairingCredential(value: unknown): value is MobilePairingCredential {
-  return isRecord(value) && typeof value.deviceId === 'string' && value.deviceId !== '' && typeof value.accessToken === 'string' && value.accessToken !== ''
+  return (
+    isRecord(value) &&
+    typeof value.deviceId === 'string' &&
+    value.deviceId !== '' &&
+    typeof value.accessToken === 'string' &&
+    value.accessToken !== ''
+  )
 }
 
 function isGatewayEnvelope<T>(value: unknown): value is GatewayEnvelope<T> {

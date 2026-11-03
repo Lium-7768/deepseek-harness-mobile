@@ -18,10 +18,12 @@ import { drawer } from './drawer'
 import { errors } from './errors'
 import { feedback } from './feedback'
 import { interactions } from './interactions'
+import { log } from './log'
 import { markdown } from './markdown'
 import { mode } from './mode'
 import { model } from './model'
 import { permission } from './permission'
+import { process as processCopy } from './process'
 import { queue } from './queue'
 import { rename } from './rename'
 import { scan } from './scan'
@@ -32,6 +34,7 @@ import { status } from './status'
 import { subagent } from './subagent'
 import { tool } from './tool'
 import { trajectory } from './trajectory'
+import { turn } from './turn'
 import { workbench } from './workbench'
 import { workspace } from './workspace'
 
@@ -45,6 +48,7 @@ const common = {
   continue: '继续',
   retryAction: '重试',
   reload: '重新加载',
+  loading: '正在加载…',
   openDrawer: '打开会话列表',
   // Screen-reader suffixes appended to a control's own label.
   selectedSuffix: '，已选中',
@@ -63,10 +67,12 @@ const areas = {
   errors,
   feedback,
   interactions,
+  log,
   markdown,
   mode,
   model,
   permission,
+  process: processCopy,
   queue,
   rename,
   scan,
@@ -77,6 +83,7 @@ const areas = {
   subagent,
   tool,
   trajectory,
+  turn,
   workbench,
   workspace,
 }

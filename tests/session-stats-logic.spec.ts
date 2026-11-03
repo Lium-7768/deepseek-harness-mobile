@@ -1,9 +1,12 @@
 import { describe, expect, it } from 'vitest'
 import {
+  formatStatisticsCacheHit,
   formatStatisticsDuration,
   formatStatisticsTokens,
   formatStatisticsTokensPerSecond,
+  sessionContextPercent,
   sessionStatisticsLine,
+  sessionStatisticsPills,
 } from '../src/components/session-stats-logic.ts'
 
 describe('session statistics logic', () => {
@@ -19,8 +22,15 @@ describe('session statistics logic', () => {
     expect(formatStatisticsTokensPerSecond(9.94)).toBe('9.9')
   })
 
-  it('renders durable desktop statistics projections without placeholder values', () => {
-    const line = sessionStatisticsLine(
+  it('keeps a near-full cache hit below 100%', () => {
+    expect(formatStatisticsCacheHit(500, 1_000)).toBe('50')
+    expect(formatStatisticsCacheHit(1_000, 1_000)).toBe('100')
+    expect(formatStatisticsCacheHit(0, 0)).toBeUndefined()
+    expect(formatStatisticsCacheHit(99_960, 100_000)).not.toBe('100')
+  })
+
+  it('prints the two desktop pills: counts with throughput, then tokens with cache hit', () => {
+    const pills = sessionStatisticsPills(
       {
         sessionStats: {
           turns: 41,
@@ -41,9 +51,10 @@ describe('session statistics logic', () => {
       },
       [],
     )
-    expect(line).toBe(
-      '41 轮 · 79 步 | LLM 6m19s · 工具调用 12.2s | 首 token 平均 6.5s · 147 tok/s | 缓存命中 94% | 输入 3.2M tok · 输出 250K tok',
-    )
+    expect(pills).toEqual([
+      { glyph: 'gauge-outline', kind: 'time', label: '41 轮 79 步 · 147 tok/s' },
+      { glyph: 'database-outline', kind: 'usage', label: '3.5M tok · 缓存命中 94%' },
+    ])
   })
 
   it('renders a high-precision projection without exposing a floating-point tail', () => {
@@ -67,7 +78,7 @@ describe('session statistics logic', () => {
   })
 
   it('keeps the zero-throughput statistic when desktop has a decode duration', () => {
-    const line = sessionStatisticsLine(
+    const pills = sessionStatisticsPills(
       {
         sessionStats: {
           turns: 1,
@@ -82,7 +93,7 @@ describe('session statistics logic', () => {
       },
       [],
     )
-    expect(line).toBe('1 轮 · 1 步 | 0 tok/s')
+    expect(pills).toEqual([{ glyph: 'gauge-outline', kind: 'time', label: '1 轮 1 步 · 0 tok/s' }])
   })
 
   it('falls back to durable completion events but omits unavailable timing and usage', () => {
@@ -90,10 +101,17 @@ describe('session statistics logic', () => {
       { event: { type: 'turn/end' } },
       { event: { type: 'step/end' } },
     ] as never)
-    expect(line).toBe('1 轮 · 1 步')
+    expect(line).toBe('1 轮 1 步')
   })
 
   it('does not render invented statistics when neither projections nor events exist', () => {
     expect(sessionStatisticsLine(undefined, [])).toBeUndefined()
+  })
+
+  it('reports the context-occupancy percentage only once capacity is known', () => {
+    expect(sessionContextPercent({ contextPressure: { pressureTokens: 4_500, contextWindow: 100_000 } })).toBe(5)
+    expect(sessionContextPercent({ contextPressure: { projectedTokens: 120_000, contextWindow: 100_000 } })).toBe(100)
+    expect(sessionContextPercent({ contextPressure: { pressureTokens: 4_500 } })).toBeUndefined()
+    expect(sessionContextPercent({})).toBeUndefined()
   })
 })

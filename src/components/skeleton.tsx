@@ -6,9 +6,9 @@
  * Use it for a screen's first paint, and keep `ActivityIndicator` for actions
  * that are already in view (a submit button's pending state).
  */
+import { useAppTheme } from '@/theme/hooks'
 import { useEffect, useRef, useState } from 'react'
 import { AccessibilityInfo, Animated, Easing, View, type ViewStyle } from 'react-native'
-import { useAppTheme } from '@/theme/hooks'
 
 /** One placeholder block. */
 export interface SkeletonBlockProps {
@@ -79,40 +79,6 @@ export function SkeletonBlock({ width = '100%', height = 14, radius, style }: Sk
   )
 }
 
-/** Geometry for a skeleton that mimics a list of short rows. */
-export interface SkeletonListProps {
-  /** Number of placeholder rows. */
-  rows?: number
-  /** Vertical gap between rows in logical pixels. */
-  gap?: number
-  /** Extra layout applied to the container. */
-  style?: ViewStyle
-}
-
-/**
- * Render a list-shaped placeholder.
- *
- * @param props - Row count and spacing.
- * @returns The placeholder container.
- */
-export function SkeletonList({ rows = 6, gap = 12, style }: SkeletonListProps): React.JSX.Element {
-  const theme = useAppTheme()
-  return (
-    <View
-      accessibilityElementsHidden
-      importantForAccessibility="no-hide-descendants"
-      style={[{ gap, paddingHorizontal: theme.spacing.lg }, style]}
-    >
-      {Array.from({ length: rows }, (_, index) => (
-        <View key={index} style={{ gap: theme.spacing.xs }}>
-          <SkeletonBlock height={13} width={index % 3 === 0 ? '58%' : '76%'} />
-          <SkeletonBlock height={11} width={index % 2 === 0 ? '34%' : '46%'} />
-        </View>
-      ))}
-    </View>
-  )
-}
-
 /**
  * Render a conversation-shaped placeholder: alternating short and long blocks.
  *
@@ -122,7 +88,11 @@ export function SkeletonConversation(): React.JSX.Element {
   const theme = useAppTheme()
   const widths: ViewStyle['width'][] = ['72%', '88%', '64%', '92%', '78%']
   return (
-    <View accessibilityElementsHidden importantForAccessibility="no-hide-descendants" style={{ gap: theme.spacing.lg, padding: theme.spacing.lg }}>
+    <View
+      accessibilityElementsHidden
+      importantForAccessibility="no-hide-descendants"
+      style={{ gap: theme.spacing.lg, padding: theme.spacing.lg }}
+    >
       {widths.map((width, index) => (
         <View key={index} style={{ gap: theme.spacing.sm }}>
           <SkeletonBlock height={12} radius={theme.radius.pill} width="22%" />
@@ -146,7 +116,7 @@ function useReducedMotion(): boolean {
   const [reduced, setReduced] = useState(false)
   useEffect(() => {
     let active = true
-    void AccessibilityInfo.isReduceMotionEnabled().then(value => {
+    void AccessibilityInfo.isReduceMotionEnabled().then((value) => {
       if (active) setReduced(value)
     })
     const subscription = AccessibilityInfo.addEventListener('reduceMotionChanged', setReduced)

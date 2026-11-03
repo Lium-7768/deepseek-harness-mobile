@@ -8,12 +8,14 @@
 
 /** Failure copy raised by the API client. */
 export const errors = {
+  credentialStorage: '无法读取已保存的连接。你可以重试，或重新连接桌面端。',
   requestFailed: '移动端请求失败，请稍后重试。',
   requestInvalid: '移动端请求无效，请重试。',
   /** `{status}` is the HTTP status the gateway answered with. */
   httpFailed: '移动端连接请求失败（HTTP {status}），请稍后重试。',
   gatewayInvalid: '移动网关地址无效，请检查连接设置。',
   gatewayProtocol: '移动网关地址必须使用 HTTP 或 HTTPS。',
+  requestTimeout: '请求超时，请检查网络。若刚刚发送了消息，请先确认会话是否已收到，再决定是否重试。',
   network: '无法连接桌面端，请检查网络或网关地址。',
   responseInvalid: '桌面端返回了无效响应，请稍后重试。',
   credentials: '移动端凭据无效，请重新连接桌面端。',
@@ -29,6 +31,9 @@ export const errors = {
   addressInvalid: '请输入有效的桌面端地址，例如 https://example.trycloudflare.com。',
   passwordRequired: '请输入桌面端显示的访问密码。',
   addressUnreachable: '无法连接桌面端，请确认地址可访问且桌面端已开启公网访问。',
+  /** A plain-http address the platform blocked, so the user can switch origins. */
+  addressBlockedCleartext:
+    '该地址使用 http，系统已阻止明文连接。请改用桌面端显示的公网 https 地址，或在同一局域网的 http 地址。',
   loginResponseInvalid: '桌面端返回了无效的登录响应。',
 
   modelUnavailable: '所选模型当前不可用，请重新选择。',

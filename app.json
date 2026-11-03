@@ -16,7 +16,11 @@
       }
     },
     "android": {
-      "package": "ai.deepseek.harness"
+      "package": "ai.deepseek.harness",
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/whale-mark.png",
+        "backgroundColor": "#FFFFFF"
+      }
     },
     "plugins": [
       "expo-router",
@@ -37,6 +41,21 @@
     ],
     "experiments": {
       "typedRoutes": true
-    }
+    },
+    "icon": "./assets/whale-mark.png",
+    "splash": {
+      "image": "./assets/whale-mark.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#FFFFFF"
+    },
+    "androidStatusBar": {
+      "backgroundColor": "#FFFFFF",
+      "barStyle": "dark-content",
+      "translucent": true
+    },
+    "platforms": [
+      "ios",
+      "android"
+    ]
   }
 }

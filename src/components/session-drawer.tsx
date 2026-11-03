@@ -1,29 +1,40 @@
-import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { router } from 'expo-router'
-import { DrawerContentScrollView, type DrawerContentComponentProps } from 'expo-router/drawer'
-import { useEffect, useMemo, useState } from 'react'
-import { ActivityIndicator, Alert, Pressable, RefreshControl, StyleSheet, Text, TextInput, View } from 'react-native'
-import { SafeAreaView } from 'react-native-safe-area-context'
 import { MobileApi } from '@/api/mobile-api'
+import { queryKeys } from '@/api/query-keys'
+import { DrawerViewMenu } from '@/components/drawer-view-menu'
+import { DrawerSearchInput, DrawerSearchRow } from '@/components/drawer-search'
+import {
+  drawerSearchResults,
+  filterArchivedSessions,
+  reconcileDrawerOrder,
+  workspaceHierarchy,
+} from '@/components/drawer-view-logic'
+import { defaultDrawerView, useDrawerViewStore } from '@/state/drawer-view'
 import { NativeBrandMark } from '@/components/native-brand-mark'
 import { NativeIcon } from '@/components/native-icon'
 import { NativeListRow } from '@/components/native-list'
+import { SessionItem, WorkspaceItem } from '@/components/session-drawer-items'
 import {
-  hasWorkspaceData,
   sessionDisplayTitle,
   sessionIdFromRoute,
   sessionRows,
-  sessionTimeLabel,
   sortSessions,
   visibleWorkspaceRows,
-  type SessionDrawerRow,
+  workspaceForSession,
 } from '@/components/session-drawer-logic'
-import type { SessionSummary } from '@/types/mobile'
-import { useConnectionStore } from '@/state/connection'
-import { useSessionSelectionStore } from '@/state/session-selection'
-import type { AppTheme } from '@/theme'
-import { useAppTheme, useThemedStyles } from '@/theme/hooks'
+import { makeSessionDrawerStyles } from '@/components/session-drawer-styles'
+import { shareSessionLog } from '@/export/session-log-share'
 import { format, t as message } from '@/locale'
+import { useConnectionStore } from '@/state/connection'
+import { useMobileSyncStore } from '@/state/mobile-sync'
+import { useSessionSelectionStore } from '@/state/session-selection'
+import { useAppTheme, useThemedStyles } from '@/theme/hooks'
+import type { SessionSummary } from '@/types/mobile'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { router } from 'expo-router'
+import { DrawerContentScrollView, useDrawerStatus, type DrawerContentComponentProps } from 'expo-router/drawer'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { ActivityIndicator, Alert, Keyboard, Pressable, Text, View } from 'react-native'
+import { SafeAreaView } from 'react-native-safe-area-context'
 
 /**
  * Renders the root Expo Router drawer content for session navigation.
@@ -35,76 +46,241 @@ import { format, t as message } from '@/locale'
  * @param props - Navigation state and helpers supplied by the root drawer.
  * @returns The native session drawer content.
  */
+/** Shortest window the manual sync spinner stays on screen. */
+const SYNC_FEEDBACK_MS = 900
+
 export function SessionDrawer(props: DrawerContentComponentProps): React.JSX.Element {
   const theme = useAppTheme()
-  const styles = useThemedStyles(makeStyles)
+  const styles = useThemedStyles(makeSessionDrawerStyles)
   const { navigation, state } = props
+  const drawerStatus = useDrawerStatus()
   const [searchOpen, setSearchOpen] = useState(false)
   const [search, setSearch] = useState('')
   const debouncedSearch = useDebouncedText(search.trim(), 250)
-  const [expandedViewSection, setExpandedViewSection] = useState<'group' | 'sort' | undefined>()
   const [optionsOpen, setOptionsOpen] = useState(false)
-  const [groupBy, setGroupBy] = useState<'workspace' | 'flat'>('workspace')
+
+  const frameRef = useRef<View>(null)
+  const optionsRef = useRef<View>(null)
+  const [frameHeight, setFrameHeight] = useState(0)
+  const [anchorBottom, setAnchorBottom] = useState(0)
   const [collapsedWorkspaceKeys, setCollapsedWorkspaceKeys] = useState<Set<string>>(() => new Set())
   const [expandedWorkspaceSessionKeys, setExpandedWorkspaceSessionKeys] = useState<Set<string>>(() => new Set())
-  const [expandedSessionId, setExpandedSessionId] = useState<string | undefined>()
   const [expandedWorkspaceId, setExpandedWorkspaceId] = useState<string | undefined>()
-  const connection = useConnectionStore(value => value.connection)
-  const selectSession = useSessionSelectionStore(value => value.selectSession)
+  const connection = useConnectionStore((value) => value.connection)
+  const scope = JSON.stringify([connection?.gatewayUrl, connection?.deviceId])
+  const view = useDrawerViewStore((state) => state.views[scope] ?? defaultDrawerView)
+  const updateView = useDrawerViewStore((state) => state.update)
+  const { groupBy, orderBy, archivedFilter } = view
+  useEffect(() => {
+    void useDrawerViewStore.getState().initialize()
+  }, [])
+  const clearSearch = (): void => {
+    setSearch('')
+    setSearchOpen(false)
+    Keyboard.dismiss()
+  }
+  useEffect(() => {
+    if (drawerStatus === 'closed') {
+      setOptionsOpen(false)
+      setSearch('')
+      setSearchOpen(false)
+    }
+  }, [drawerStatus])
+
+  // The manual-sync flag lives in the transport store: restarting the stream can
+  // remount this content, and a component-local flag would lose the spinner.
+  const syncing = useMobileSyncStore((value) => value.syncing)
+  const setSyncing = useMobileSyncStore((value) => value.setSyncing)
+  const selectSession = useSessionSelectionStore((value) => value.selectSession)
   const queryClient = useQueryClient()
+  // The drawer opens onto whatever the list already holds. A refresh on open
+  // would replace the rows the thumb is aiming at, and the session mutations
+  // below invalidate this key themselves, so freshness never depends on a pull.
   const query = useQuery({
-    queryKey: ['session-list', connection?.gatewayUrl, connection?.deviceId],
+    queryKey: queryKeys.sessionList(connection?.gatewayUrl, connection?.deviceId),
     enabled: Boolean(connection),
-    queryFn: () => new MobileApi(requireConnection(connection)).listSessions(),
+    queryFn: ({ signal }) => new MobileApi(requireConnection(connection)).withSignal(signal).listSessions(),
+    refetchOnMount: false,
+    refetchOnWindowFocus: false,
+    staleTime: 30_000,
   })
   const contentSearch = useQuery({
-    queryKey: ['session-search', connection?.gatewayUrl, connection?.deviceId, debouncedSearch],
-    enabled: Boolean(connection) && debouncedSearch.length > 0,
-    queryFn: () => new MobileApi(requireConnection(connection)).searchSessions(debouncedSearch),
+    queryKey: queryKeys.sessionSearch(connection?.gatewayUrl, connection?.deviceId, debouncedSearch),
+    enabled: Boolean(connection) && debouncedSearch.length > 0 && debouncedSearch === search.trim(),
+    queryFn: ({ signal }) =>
+      new MobileApi(requireConnection(connection)).withSignal(signal).searchSessions(debouncedSearch),
   })
   const currentSessionId = currentSessionFromState(state)
   const archivedSessionIds = useMemo(
     () => new Set(query.data?.archivedSessionIds ?? []),
     [query.data?.archivedSessionIds],
   )
+  const allSessions = query.data?.items ?? []
   const sessions = useMemo(
-    () => (query.data?.items ?? []).filter(item => !archivedSessionIds.has(item.sessionId)),
-    [archivedSessionIds, query.data?.items],
+    () => filterArchivedSessions(query.data?.items ?? [], archivedSessionIds, archivedFilter),
+    [query.data?.items, archivedSessionIds, archivedFilter],
   )
   const workspaces = query.data?.workspaces ?? []
   const searchActive = search.trim().length > 0
-  const sessionById = useMemo(() => new Map(sessions.map(item => [item.sessionId, item])), [sessions])
-  const searchedSessions = useMemo(
-    () =>
-      (contentSearch.data?.items ?? []).flatMap((hit) => {
-        const session = sessionById.get(hit.sessionId)
-        return session === undefined ? [] : [{ ...session, searchSnippet: hit.snippet }]
-      }),
-    [contentSearch.data?.items, sessionById],
+  const remoteCurrent = debouncedSearch === search.trim()
+  const searchResults = drawerSearchResults(
+    allSessions,
+    workspaces,
+    search,
+    archivedSessionIds,
+    archivedFilter,
+    remoteCurrent ? (contentSearch.data?.items ?? []) : [],
   )
-  const filteredSessions = useMemo(
-    () => sortSessions(searchActive ? searchedSessions : sessions, 'updated'),
-    [searchActive, searchedSessions, sessions],
+  const searchPending = !remoteCurrent || contentSearch.isPending || contentSearch.isFetching
+  const accountFor = (id: string): string =>
+    groupBy === 'flat' ? 'flat' : (workspaceForSession(workspaces, id)?.workspaceId ?? 'ungrouped')
+  const orderedSessions = sortSessions(sessions, orderBy)
+  if (orderBy === 'manual' && groupBy === 'flat') {
+    const rank = new Map(
+      reconcileDrawerOrder(
+        view.orders.flat ?? [],
+        allSessions.map((item) => item.sessionId),
+      ).map((id, index) => [id, index]),
+    )
+    orderedSessions.sort((a, b) => (rank.get(a.sessionId) ?? Infinity) - (rank.get(b.sessionId) ?? Infinity))
+  }
+  const hierarchy = workspaceHierarchy(workspaces)
+  const orderedWorkspaces = (groupBy === 'workspace-tree' ? hierarchy.map((item) => item.workspace) : workspaces).map(
+    (workspace) => {
+      const members =
+        orderBy === 'updated'
+          ? orderedSessions
+              .filter((item) => workspace.sessionIds.includes(item.sessionId))
+              .map((item) => item.sessionId)
+          : reconcileDrawerOrder(view.orders[workspace.workspaceId] ?? workspace.sessionIds, workspace.sessionIds)
+      return { ...workspace, sessionIds: members }
+    },
   )
-  const workspaceDataAvailable = hasWorkspaceData(workspaces)
-  const rows = useMemo<Exclude<SessionDrawerRow, { kind: 'overflow' }>[]>(
-    () => sessionRows(filteredSessions, workspaces, searchActive ? 'flat' : groupBy, currentSessionId),
-    [currentSessionId, groupBy, searchActive, filteredSessions, workspaces],
+  const ungrouped = orderedSessions.filter((item) => workspaceForSession(workspaces, item.sessionId) === undefined)
+  if (orderBy === 'manual') {
+    const rank = new Map(
+      reconcileDrawerOrder(
+        view.orders.ungrouped ?? [],
+        allSessions
+          .filter((item) => workspaceForSession(workspaces, item.sessionId) === undefined)
+          .map((item) => item.sessionId),
+      ).map((id, index) => [id, index]),
+    )
+    ungrouped.sort((a, b) => (rank.get(a.sessionId) ?? Infinity) - (rank.get(b.sessionId) ?? Infinity))
+  }
+  const rows = sessionRows(
+    groupBy === 'flat'
+      ? orderedSessions
+      : ungrouped.concat(
+          orderedSessions.filter((item) => workspaceForSession(workspaces, item.sessionId) !== undefined),
+        ),
+    orderedWorkspaces,
+    groupBy === 'flat' ? 'flat' : 'workspace',
+    currentSessionId,
+    orderBy,
   )
-  const visibleRows = useMemo(
-    () => visibleWorkspaceRows(rows, collapsedWorkspaceKeys, expandedWorkspaceSessionKeys),
-    [collapsedWorkspaceKeys, expandedWorkspaceSessionKeys, rows],
+  const treeInfo = new Map(hierarchy.map((item) => [`workspace:${item.workspace.workspaceId}`, item]))
+  let rowDepth = 0
+  let parentHidden = false
+  const visibleRows = visibleWorkspaceRows(rows, collapsedWorkspaceKeys, expandedWorkspaceSessionKeys).flatMap(
+    (item) => {
+      if (groupBy !== 'workspace-tree') return [{ ...item, depth: 0 }]
+      if (item.kind === 'workspace') {
+        const info = treeInfo.get(item.key)
+        rowDepth = info?.depth ?? 0
+        parentHidden = info?.ancestors.some((id) => collapsedWorkspaceKeys.has(`workspace:${id}`)) ?? false
+      }
+      return parentHidden ? [] : [{ ...item, depth: rowDepth }]
+    },
   )
+  const pickOrder = (next: 'manual' | 'updated'): void => {
+    if (next === 'updated') {
+      updateView(scope, { orderBy: next })
+      return
+    }
+    const orders = { ...view.orders }
+    const recent = sortSessions(allSessions, 'updated')
+    for (const account of ['flat', 'ungrouped', ...workspaces.map((workspace) => workspace.workspaceId)]) {
+      const members =
+        account === 'flat'
+          ? recent
+          : recent.filter(
+              (item) => (workspaceForSession(workspaces, item.sessionId)?.workspaceId ?? 'ungrouped') === account,
+            )
+      orders[account] = reconcileDrawerOrder(
+        orders[account] ?? [],
+        members.map((item) => item.sessionId),
+      )
+    }
+    updateView(scope, { orderBy: next, orders })
+  }
+  const moveSession = (id: string, direction: -1 | 1): void => {
+    const account = accountFor(id)
+    const members = allSessions.filter((item) => accountFor(item.sessionId) === account).map((item) => item.sessionId)
+    const order = reconcileDrawerOrder(view.orders[account] ?? [], members)
+    const visible = orderedSessions.filter(
+      (item) => accountFor(item.sessionId) === account && item.origin !== 'subagent' && item.blank !== true,
+    )
+    visible.sort((a, b) => order.indexOf(a.sessionId) - order.indexOf(b.sessionId))
+    const neighbor = visible[visible.findIndex((item) => item.sessionId === id) + direction]?.sessionId
+    if (neighbor === undefined) return
+    const from = order.indexOf(id)
+    const to = order.indexOf(neighbor)
+    ;[order[from], order[to]] = [order[to], order[from]]
+    updateView(scope, { orders: { ...view.orders, [account]: order } })
+  }
 
-  const closeDrawer = (): void => navigation.closeDrawer()
+  // The vendored drawer only honours CLOSE_DRAWER when it is addressed to the
+  // drawer navigator's own state key (`DrawerView`'s `handleDrawerClose`); a
+  // bare `navigation.closeDrawer()` is a no-op here, so the action carries the
+  // target the same way the drawer's own item list does.
+  const closeDrawer = (): void => {
+    navigation.dispatch({ type: 'CLOSE_DRAWER', target: state.key })
+  }
   const openSession = (sessionId: string): void => {
+    if (archivedSessionIds.has(sessionId)) {
+      Alert.alert(message('drawer.archived'), message('drawer.archivedNotOpenable'))
+      return
+    }
+    clearSearch()
     closeDrawer()
     if (connection !== undefined) void selectSession(connection, sessionId)
     if (sessionId !== currentSessionId) router.push({ pathname: '/session/[sessionId]', params: { sessionId } })
   }
+  /**
+   * Re-syncs everything the drawer can show: the session list, the open
+   * session's history and transport caches, and the SSE stream itself. The
+   * stream restart matters most — a dropped connection leaves the list frozen
+   * with no other way to recover short of restarting the app.
+   */
+  const syncSessions = async (): Promise<void> => {
+    setSyncing(true)
+    const startedAt = Date.now()
+    useMobileSyncStore.getState().restartStream()
+    try {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: queryKeys.sessionList() }),
+        queryClient.invalidateQueries({ queryKey: queryKeys.sessionHistory() }),
+        queryClient.invalidateQueries({ queryKey: queryKeys.sessionEvents() }),
+        queryClient.invalidateQueries({ queryKey: queryKeys.sessionQueue() }),
+        queryClient.invalidateQueries({ queryKey: queryKeys.sessionJobs() }),
+        queryClient.invalidateQueries({ queryKey: queryKeys.sessionInteractions() }),
+        queryClient.invalidateQueries({ queryKey: queryKeys.sessionSubagents() }),
+      ])
+    } finally {
+      // A local refresh answers in tens of milliseconds; without a floor the
+      // spinner never paints and the tap reads as ignored.
+      const remaining = SYNC_FEEDBACK_MS - (Date.now() - startedAt)
+      if (remaining > 0) await new Promise((resolve) => setTimeout(resolve, remaining))
+      setSyncing(false)
+    }
+  }
   const openSettings = (): void => {
     closeDrawer()
+    // A section route shares this pathname, so only the bare index replaces the
+    // entry; otherwise the drawer's Settings row would leave the section in place.
     if (state.routes[state.index]?.name !== 'settings') router.push('/settings')
+    else router.replace('/settings')
   }
   const toggleWorkspace = (workspaceKey: string): void =>
     setCollapsedWorkspaceKeys((current) => {
@@ -122,7 +298,7 @@ export function SessionDrawer(props: DrawerContentComponentProps): React.JSX.Ele
     })
   const refreshSessions = async (): Promise<void> => {
     await Promise.all([
-      queryClient.invalidateQueries({ queryKey: ['session-list', connection?.gatewayUrl, connection?.deviceId] }),
+      queryClient.invalidateQueries({ queryKey: queryKeys.sessionList(connection?.gatewayUrl, connection?.deviceId) }),
     ])
   }
   const createSession = async (): Promise<void> => {
@@ -131,27 +307,50 @@ export function SessionDrawer(props: DrawerContentComponentProps): React.JSX.Ele
       await refreshSessions()
       openSession(created.sessionId)
     } catch (error) {
-      Alert.alert(message('drawer.newSessionFailedTitle'), error instanceof Error ? error.message : message('common.retry'))
+      Alert.alert(
+        message('drawer.newSessionFailedTitle'),
+        error instanceof Error ? error.message : message('common.retry'),
+      )
     }
   }
   const forkSession = async (sessionId: string): Promise<void> => {
     try {
       const created = await new MobileApi(requireConnection(connection)).forkSession(sessionId)
       await refreshSessions()
-      setExpandedSessionId(undefined)
       openSession(created.sessionId)
     } catch (error) {
       Alert.alert(message('drawer.forkFailedTitle'), error instanceof Error ? error.message : message('common.retry'))
+    }
+  }
+  // One export per session at a time: paging a long log and writing the file is
+  // slow enough for a second tap to start a duplicate share sheet otherwise.
+  const exportingSessions = useRef(new Set<string>())
+  const exportSession = async (session: SessionSummary): Promise<void> => {
+    if (exportingSessions.current.has(session.sessionId)) return
+    exportingSessions.current.add(session.sessionId)
+    try {
+      const outcome = await shareSessionLog(new MobileApi(requireConnection(connection)), {
+        sessionId: session.sessionId,
+        title: sessionDisplayTitle(session),
+      })
+      if (outcome === 'empty') Alert.alert(message('log.emptyTitle'), message('log.emptyBody'))
+      if (outcome === 'unsupported') Alert.alert(message('log.unsupportedTitle'), message('log.unsupportedBody'))
+    } catch (error) {
+      Alert.alert(message('log.failedTitle'), error instanceof Error ? error.message : message('common.retry'))
+    } finally {
+      exportingSessions.current.delete(session.sessionId)
     }
   }
   const archiveSession = async (sessionId: string): Promise<void> => {
     try {
       await new MobileApi(requireConnection(connection)).archiveSession(sessionId)
       await refreshSessions()
-      setExpandedSessionId(undefined)
       if (sessionId === currentSessionId) router.replace('/workspace')
     } catch (error) {
-      Alert.alert(message('drawer.archiveFailedTitle'), error instanceof Error ? error.message : message('common.retry'))
+      Alert.alert(
+        message('drawer.archiveFailedTitle'),
+        error instanceof Error ? error.message : message('common.retry'),
+      )
     }
   }
   const deleteWorkspace = async (workspaceId: string): Promise<void> => {
@@ -160,7 +359,10 @@ export function SessionDrawer(props: DrawerContentComponentProps): React.JSX.Ele
       await refreshSessions()
       setExpandedWorkspaceId(undefined)
     } catch (error) {
-      Alert.alert(message('drawer.removeWorkspaceFailedTitle'), error instanceof Error ? error.message : message('common.retry'))
+      Alert.alert(
+        message('drawer.removeWorkspaceFailedTitle'),
+        error instanceof Error ? error.message : message('common.retry'),
+      )
     }
   }
   const confirmDeleteWorkspace = (workspaceId: string, title: string): void => {
@@ -170,7 +372,8 @@ export function SessionDrawer(props: DrawerContentComponentProps): React.JSX.Ele
     ])
   }
   const confirmArchive = (session: SessionSummary): void => {
-    const title = typeof session.title === 'string' && session.title.trim() ? session.title : message('drawer.newSession')
+    const title =
+      typeof session.title === 'string' && session.title.trim() ? session.title : message('drawer.newSession')
     Alert.alert(message('drawer.archiveSession'), format('drawer.archiveSessionBody', { title }), [
       { text: message('common.cancel'), style: 'cancel' },
       { text: message('drawer.archive'), style: 'destructive', onPress: () => void archiveSession(session.sessionId) },
@@ -179,21 +382,15 @@ export function SessionDrawer(props: DrawerContentComponentProps): React.JSX.Ele
 
   return (
     <SafeAreaView edges={['top', 'left', 'bottom']} style={styles.drawerSafe}>
-      <View style={styles.drawerFrame}>
-        <DrawerContentScrollView
-          {...props}
-          contentContainerStyle={styles.drawerContent}
-          keyboardDismissMode="on-drag"
-          keyboardShouldPersistTaps="handled"
-          refreshControl={
-            <RefreshControl
-              tintColor={theme.colors.accent}
-              refreshing={query.isFetching}
-              onRefresh={() => void query.refetch()}
-            />
-          }
-          style={styles.drawerScroll}
-        >
+      <View
+        ref={frameRef}
+        style={styles.drawerFrame}
+        onLayout={(event) => {
+          setFrameHeight(event.nativeEvent.layout.height)
+          setOptionsOpen(false)
+        }}
+      >
+        <View style={styles.drawerHeader}>
           <View style={styles.brandRow}>
             <View style={styles.brand}>
               <NativeBrandMark size={24} />
@@ -209,7 +406,7 @@ export function SessionDrawer(props: DrawerContentComponentProps): React.JSX.Ele
               onPress={closeDrawer}
               style={({ pressed }) => [styles.topIcon, pressed && styles.pressed]}
             >
-              <NativeIcon name="close-outline" size={22} color={theme.colors.inkMuted} />
+              <NativeIcon name="close-outline" size={16} color={theme.colors.inkMuted} />
             </Pressable>
           </View>
 
@@ -218,142 +415,128 @@ export function SessionDrawer(props: DrawerContentComponentProps): React.JSX.Ele
             accessibilityLabel={message('drawer.newSession')}
             disabled={!connection}
             onPress={() => void createSession()}
-            style={({ pressed }) => [styles.newSession, !connection && styles.disabledAction, pressed && styles.pressed]}
+            style={({ pressed }) => [
+              styles.newSession,
+              !connection && styles.disabledAction,
+              pressed && styles.pressed,
+            ]}
           >
-            <NativeIcon name="new-chat-outline" size={21} color={connection ? theme.colors.accent : theme.colors.inkFaint} />
-            <View style={styles.newSessionTextWrap}>
-              <Text style={connection ? styles.newSessionText : styles.newSessionTextDisabled}>{message('drawer.newSession')}</Text>
-              <Text style={styles.newSessionHint}>{connection ? message('drawer.createOnDesktop') : message('drawer.connectFirst')}</Text>
-            </View>
+            <NativeIcon
+              name="new-chat-outline"
+              size={16}
+              color={connection ? theme.colors.ink : theme.colors.inkFaint}
+            />
+            <Text numberOfLines={1} style={connection ? styles.newSessionText : styles.newSessionTextDisabled}>
+              {connection ? message('drawer.newSession') : message('drawer.connectFirst')}
+            </Text>
           </Pressable>
 
           <View style={styles.workspaceHeader}>
-            <Text style={styles.workspaceTitle}>{groupBy === 'workspace' ? message('drawer.workspaces') : message('drawer.sessions')}</Text>
-            <View style={styles.workspaceActions}>
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel={message('drawer.searchSessions')}
-                hitSlop={4}
-                onPress={() => setSearchOpen(value => !value)}
-                style={({ pressed }) => [styles.actionIcon, pressed && styles.pressed]}
-              >
-                <NativeIcon name="search-outline" size={21} color={theme.colors.inkMuted} />
-              </Pressable>
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel={optionsOpen ? message('drawer.collapseOptions') : message('drawer.expandOptions')}
-                hitSlop={4}
-                onPress={() => {
-                  setOptionsOpen(value => !value)
-                  setExpandedViewSection(undefined)
-                }}
-                style={({ pressed }) => [styles.actionIcon, pressed && styles.pressed]}
-              >
-                <NativeIcon name={optionsOpen ? 'chevron-up-outline' : 'sliders-two-outline'} size={21} color={theme.colors.inkMuted} />
-              </Pressable>
-              <View
-                accessible
-                accessibilityLabel={message('drawer.addWorkspaceDesktopOnly')}
-                accessibilityState={{ disabled: true }}
-                style={[styles.actionIcon, styles.disabledAction]}
-              >
-                <NativeIcon name="project-add-outline" size={21} color={theme.colors.inkFaint} />
-              </View>
-            </View>
-          </View>
-
-          {optionsOpen ? (
-            <View accessible accessibilityLabel={message('drawer.viewSettings')} style={styles.compactOptions}>
-              <NativeListRow
-                title={message('drawer.groupBy')}
-                description={groupBy === 'workspace' ? message('drawer.groupByWorkspace') : message('drawer.singleList')}
-                accessibilityRole="button"
-                onPress={() => setExpandedViewSection(value => (value === 'group' ? undefined : 'group'))}
-                right={
-                  <NativeIcon
-                    name={expandedViewSection === 'group' ? 'chevron-up-outline' : 'chevron-right-outline'}
-                    size={18}
-                    color={theme.colors.inkMuted}
-                  />
-                }
-              />
-              {expandedViewSection === 'group' ? (
-                <View style={styles.compactChoices}>
-                  <OptionRow
-                    label={workspaceDataAvailable ? message('drawer.groupByWorkspace') : message('drawer.groupByWorkspaceUngrouped')}
-                    selected={groupBy === 'workspace'}
+            {searchOpen ? (
+              <DrawerSearchInput value={search} onChange={setSearch} onClose={clearSearch} />
+            ) : (
+              <>
+                <Text style={styles.workspaceTitle}>
+                  {groupBy === 'flat' ? message('drawer.sessions') : message('drawer.workspaces')}
+                </Text>
+                <View style={styles.workspaceActions}>
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel={message('drawer.searchSessions')}
+                    accessibilityState={{ expanded: searchOpen }}
                     onPress={() => {
-                      setGroupBy('workspace')
-                      setExpandedViewSection(undefined)
+                      setOptionsOpen(false)
+                      setSearchOpen(true)
                     }}
-                  />
-                  <OptionRow
-                    label={message('drawer.singleList')}
-                    selected={groupBy === 'flat'}
-                    onPress={() => {
-                      setGroupBy('flat')
-                      setExpandedViewSection(undefined)
-                    }}
-                  />
-                </View>
-              ) : null}
-              <View style={styles.optionDivider} />
-              <NativeListRow
-                title={message('drawer.sortBy')}
-                description={message('drawer.recentlyUpdated')}
-                accessibilityRole="button"
-                onPress={() => setExpandedViewSection(value => (value === 'sort' ? undefined : 'sort'))}
-                right={
-                  <NativeIcon
-                    name={expandedViewSection === 'sort' ? 'chevron-up-outline' : 'chevron-right-outline'}
-                    size={18}
-                    color={theme.colors.inkMuted}
-                  />
-                }
-              />
-              {expandedViewSection === 'sort' ? (
-                <View style={styles.compactChoices}>
-                  <OptionRow label={message('drawer.recentlyUpdated')} selected onPress={() => setExpandedViewSection(undefined)} />
+                    style={({ pressed }) => [styles.actionIcon, pressed && styles.pressed]}
+                  >
+                    <NativeIcon name="search-outline" size={16} color={theme.colors.inkMuted} />
+                  </Pressable>
+                  <View ref={optionsRef} collapsable={false}>
+                    <Pressable
+                      accessibilityRole="button"
+                      accessibilityLabel={message('drawer.viewSettings')}
+                      accessibilityState={{ expanded: optionsOpen }}
+                      onPress={() => {
+                        if (optionsOpen) {
+                          setOptionsOpen(false)
+                          return
+                        }
+                        Keyboard.dismiss()
+                        if (frameRef.current)
+                          optionsRef.current?.measureLayout(frameRef.current, (_x, y, _w, h) => {
+                            setAnchorBottom(y + h)
+                            setOptionsOpen(true)
+                          })
+                      }}
+                      style={({ pressed }) => [
+                        styles.actionIcon,
+                        optionsOpen && styles.selected,
+                        pressed && styles.pressed,
+                      ]}
+                    >
+                      <NativeIcon name="sliders-two-outline" size={16} color={theme.colors.inkMuted} />
+                    </Pressable>
+                  </View>
                   <View
                     accessible
-                    accessibilityLabel={message('drawer.manualOrderUnsupported')}
+                    accessibilityLabel={message('drawer.addWorkspaceDesktopOnly')}
                     accessibilityState={{ disabled: true }}
-                    style={styles.disabledOptionRow}
+                    style={[styles.actionIcon, styles.disabledAction]}
                   >
-                    <Text style={styles.disabledOptionLabel}>{message('drawer.manualOrderUnsupported')}</Text>
+                    <NativeIcon name="project-add-outline" size={16} color={theme.colors.inkFaint} />
                   </View>
                 </View>
-              ) : null}
-            </View>
-          ) : null}
-          {searchOpen ? (
-            <View style={styles.searchBox}>
-              <NativeIcon name="search-outline" size={18} color={theme.colors.inkMuted} />
-              <TextInput
-                accessibilityLabel={message('drawer.searchSessions')}
-                autoFocus
-                onChangeText={setSearch}
-                placeholder={message('drawer.searchPlaceholder')}
-                placeholderTextColor={theme.colors.inkFaint}
-                maxLength={500}
-                style={styles.searchInput}
-                value={search}
-              />
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel={message('drawer.clearSearch')}
-                hitSlop={4}
-                onPress={() => setSearch('')}
-                style={styles.clearSearch}
-              >
-                <NativeIcon name="close-outline" size={18} color={theme.colors.inkMuted} />
-              </Pressable>
-            </View>
-          ) : null}
-
+              </>
+            )}
+          </View>
+        </View>
+        <DrawerContentScrollView
+          {...props}
+          contentContainerStyle={styles.drawerContent}
+          keyboardDismissMode="on-drag"
+          keyboardShouldPersistTaps="handled"
+          style={styles.drawerScroll}
+        >
           <View style={styles.listArea}>
             <View style={styles.list}>
-              {rows.length === 0 ? (
+              {searchActive ? (
+                <>
+                  {searchResults.items.map((result) => (
+                    <DrawerSearchRow
+                      key={result.session.sessionId}
+                      result={result}
+                      selected={result.session.sessionId === currentSessionId}
+                      onPress={() => openSession(result.session.sessionId)}
+                    />
+                  ))}
+                  {searchPending ? (
+                    <View
+                      accessibilityRole="progressbar"
+                      accessibilityLabel={message('drawer.searching')}
+                      style={styles.searchSkeletons}
+                    >
+                      {(searchResults.items.length === 0 ? [0, 1] : [0]).map((index) => (
+                        <View key={index} style={styles.searchSkeleton}>
+                          <View style={styles.skeletonLine} />
+                          <View style={[styles.skeletonLine, styles.skeletonShort]} />
+                        </View>
+                      ))}
+                    </View>
+                  ) : null}
+                  {!searchPending && contentSearch.isError ? (
+                    <Text accessibilityRole="alert" style={styles.searchHint}>
+                      {message('drawer.searchFailed')}
+                    </Text>
+                  ) : null}
+                  {!searchPending && searchResults.items.length === 0 && !contentSearch.isError ? (
+                    <Text style={styles.emptyState}>{message('drawer.noSearchResults')}</Text>
+                  ) : null}
+                  {searchResults.hasMore || (remoteCurrent && contentSearch.data?.hasMore) ? (
+                    <Text style={styles.searchHint}>{message('drawer.searchTooManyResults')}</Text>
+                  ) : null}
+                </>
+              ) : rows.length === 0 ? (
                 query.isFetching ? (
                   <ActivityIndicator color={theme.colors.accent} style={styles.emptyState} />
                 ) : (
@@ -370,10 +553,13 @@ export function SessionDrawer(props: DrawerContentComponentProps): React.JSX.Ele
                   </Text>
                 )
               ) : (
-                visibleRows.map(item =>
+                visibleRows.map((item) =>
                   item.kind === 'workspace' ? (
-                    <View key={item.key}>
+                    <View key={item.key} style={{ marginLeft: item.depth * 12 }}>
                       <WorkspaceItem
+                        active={
+                          item.workspace !== undefined && item.workspace.sessionIds.includes(currentSessionId ?? '')
+                        }
                         workspaceKey={item.key}
                         label={item.label}
                         collapsed={collapsedWorkspaceKeys.has(item.key)}
@@ -382,20 +568,27 @@ export function SessionDrawer(props: DrawerContentComponentProps): React.JSX.Ele
                           item.workspace === undefined
                             ? undefined
                             : () =>
-                              setExpandedWorkspaceId(current =>
-                                current === item.workspace?.workspaceId ? undefined : item.workspace?.workspaceId,
-                              )
+                                setExpandedWorkspaceId((current) =>
+                                  current === item.workspace?.workspaceId ? undefined : item.workspace?.workspaceId,
+                                )
                         }
                       />
                       {item.workspace !== undefined && expandedWorkspaceId === item.workspace.workspaceId ? (
-                        <View accessible accessibilityLabel={message('drawer.workspaceActions')} style={styles.sessionActions}>
+                        <View
+                          accessible
+                          accessibilityLabel={message('drawer.workspaceActions')}
+                          style={styles.sessionActions}
+                        >
                           <NativeListRow
                             title={message('drawer.renameWorkspace')}
                             accessibilityRole="button"
                             onPress={() =>
                               router.push({
                                 pathname: '/workspace/[workspaceId]/rename',
-                                params: { workspaceId: item.workspace?.workspaceId ?? '', title: item.workspace?.title ?? item.label },
+                                params: {
+                                  workspaceId: item.workspace?.workspaceId ?? '',
+                                  title: item.workspace?.title ?? item.label,
+                                },
                               })
                             }
                             right={<NativeIcon name="edit-outline" size={18} color={theme.colors.inkMuted} />}
@@ -404,7 +597,12 @@ export function SessionDrawer(props: DrawerContentComponentProps): React.JSX.Ele
                             title={message('drawer.removeWorkspace')}
                             description={message('drawer.removeWorkspaceDetail')}
                             accessibilityRole="button"
-                            onPress={() => confirmDeleteWorkspace(item.workspace?.workspaceId ?? '', item.workspace?.title ?? item.label)}
+                            onPress={() =>
+                              confirmDeleteWorkspace(
+                                item.workspace?.workspaceId ?? '',
+                                item.workspace?.title ?? item.label,
+                              )
+                            }
                             right={<NativeIcon name="folder-close" size={18} color={theme.colors.danger} />}
                           />
                         </View>
@@ -414,12 +612,24 @@ export function SessionDrawer(props: DrawerContentComponentProps): React.JSX.Ele
                     <Pressable
                       key={item.key}
                       accessibilityRole="button"
-                      accessibilityLabel={item.expanded ? message('drawer.collapseSession') : format('drawer.expandMore', { count: item.hiddenCount })}
+                      accessibilityLabel={
+                        item.expanded
+                          ? message('drawer.collapseSession')
+                          : format('drawer.expandMore', { count: item.hiddenCount })
+                      }
                       accessibilityState={{ expanded: item.expanded }}
                       onPress={() => toggleWorkspaceSessions(item.workspaceKey)}
-                      style={({ pressed }) => [styles.expandButton, pressed && styles.pressed]}
+                      style={({ pressed }) => [
+                        styles.expandButton,
+                        { marginLeft: item.depth * 12 },
+                        pressed && styles.pressed,
+                      ]}
                     >
-                      <Text style={styles.expandText}>{item.expanded ? message('drawer.collapse') : format('drawer.expandMore', { count: item.hiddenCount })}</Text>
+                      <Text style={styles.expandText}>
+                        {item.expanded
+                          ? message('drawer.collapse')
+                          : format('drawer.expandMore', { count: item.hiddenCount })}
+                      </Text>
                       <NativeIcon
                         name={item.expanded ? 'chevron-up-outline' : 'chevron-down-outline'}
                         size={18}
@@ -427,49 +637,31 @@ export function SessionDrawer(props: DrawerContentComponentProps): React.JSX.Ele
                       />
                     </Pressable>
                   ) : (
-                    <View key={item.key}>
+                    <View key={item.key} style={{ marginLeft: item.depth * 12 }}>
                       <SessionItem
+                        archived={archivedSessionIds.has(item.session.sessionId)}
+                        onMoveUp={orderBy === 'manual' ? () => moveSession(item.session.sessionId, -1) : undefined}
+                        onMoveDown={orderBy === 'manual' ? () => moveSession(item.session.sessionId, 1) : undefined}
+                        onArchive={() => confirmArchive(item.session)}
+                        onExport={() => void exportSession(item.session)}
+                        onFork={() => void forkSession(item.session.sessionId)}
+                        onRename={() =>
+                          router.push({
+                            pathname: '/session/[sessionId]/rename',
+                            params: {
+                              sessionId: item.session.sessionId,
+                              title: item.session.title ?? message('session.untitled'),
+                            },
+                          })
+                        }
                         session={item.session}
                         selected={item.session.sessionId === currentSessionId}
                         onPress={() => openSession(item.session.sessionId)}
-                        onLongPress={() =>
-                          setExpandedSessionId(current =>
-                            current === item.session.sessionId ? undefined : item.session.sessionId,
-                          )
-                        }
                       />
-                      {expandedSessionId === item.session.sessionId ? (
-                        <View accessible accessibilityLabel={message('drawer.sessionActions')} style={styles.sessionActions}>
-                          <NativeListRow
-                            title={message('drawer.rename')}
-                            accessibilityRole="button"
-                            onPress={() =>
-                              router.push({
-                                pathname: '/session/[sessionId]/rename',
-                                params: { sessionId: item.session.sessionId, title: item.session.title ?? message('session.untitled') },
-                              })
-                            }
-                            right={<NativeIcon name="edit-outline" size={18} color={theme.colors.inkMuted} />}
-                          />
-                          <NativeListRow
-                            title={message('drawer.forkSession')}
-                            accessibilityRole="button"
-                            onPress={() => void forkSession(item.session.sessionId)}
-                            right={<NativeIcon name="branch-outline" size={18} color={theme.colors.inkMuted} />}
-                          />
-                          <NativeListRow
-                            title={message('drawer.archiveSession')}
-                            accessibilityRole="button"
-                            onPress={() => confirmArchive(item.session)}
-                            right={<NativeIcon name="folder-close" size={18} color={theme.colors.danger} />}
-                          />
-                        </View>
-                      ) : null}
                     </View>
                   ),
                 )
               )}
-              {searchActive && contentSearch.data?.hasMore ? <Text style={styles.searchHint}>{message('drawer.searchTooManyResults')}</Text> : null}
             </View>
           </View>
         </DrawerContentScrollView>
@@ -483,113 +675,36 @@ export function SessionDrawer(props: DrawerContentComponentProps): React.JSX.Ele
             <NativeIcon name="settings-outline" size={14} color={theme.colors.ink} />
             <Text style={styles.footerActionText}>{message('settings.title')}</Text>
           </Pressable>
+          <Pressable
+            accessibilityLabel={message('drawer.syncSessions')}
+            accessibilityRole="button"
+            accessibilityState={{ busy: syncing, disabled: syncing }}
+            disabled={syncing}
+            onPress={() => void syncSessions()}
+            style={({ pressed }) => [styles.footerSync, syncing && styles.footerSyncBusy, pressed && styles.pressed]}
+          >
+            {syncing ? (
+              <ActivityIndicator color={theme.colors.ink} size="small" />
+            ) : (
+              <NativeIcon name="refresh-outline" size={16} color={theme.colors.ink} />
+            )}
+          </Pressable>
         </View>
+        {optionsOpen ? (
+          <DrawerViewMenu
+            anchorBottom={anchorBottom}
+            frameHeight={frameHeight}
+            groupBy={groupBy}
+            orderBy={orderBy}
+            archivedFilter={archivedFilter}
+            onClose={() => setOptionsOpen(false)}
+            onGroupPick={(value) => updateView(scope, { groupBy: value })}
+            onOrderPick={pickOrder}
+            onFilterPick={(value) => updateView(scope, { archivedFilter: value })}
+          />
+        ) : null}
       </View>
     </SafeAreaView>
-  )
-}
-
-function WorkspaceItem({
-  workspaceKey,
-  label,
-  collapsed,
-  onPress,
-  onLongPress,
-}: {
-  workspaceKey: string
-  label: string
-  collapsed: boolean
-  onPress: () => void
-  onLongPress?: () => void
-}): React.JSX.Element {
-  const theme = useAppTheme()
-  const styles = useThemedStyles(makeStyles)
-  const ungrouped = workspaceKey === 'workspace:ungrouped'
-  return (
-    <Pressable
-      accessibilityRole="button"
-      accessibilityLabel={`${collapsed ? message('drawer.expand') : message('drawer.collapse')}${label}`}
-      accessibilityState={{ expanded: !collapsed }}
-      onPress={onPress}
-      onLongPress={onLongPress}
-      delayLongPress={350}
-      hitSlop={{ top: 4, bottom: 4 }}
-      style={({ pressed }) => [styles.folder, pressed && styles.pressed]}
-    >
-      <NativeIcon name={collapsed ? 'chevron-right-outline' : 'chevron-down-outline'} size={18} color={theme.colors.inkMuted} />
-      <NativeIcon
-        name={collapsed ? 'folder-close' : 'folder-open'}
-        size={20}
-        color={ungrouped ? theme.colors.inkMuted : theme.colors.accent}
-      />
-      <Text numberOfLines={1} style={styles.folderText}>
-        {label}
-      </Text>
-    </Pressable>
-  )
-}
-
-function SessionItem({
-  session,
-  selected,
-  onPress,
-  onLongPress,
-}: {
-  session: SessionSummary
-  selected: boolean
-  onPress: () => void
-  onLongPress: () => void
-}): React.JSX.Element {
-  const styles = useThemedStyles(makeStyles)
-  const title = sessionDisplayTitle(session)
-  const time = sessionTimeLabel(session)
-  const snippet = typeof session.searchSnippet === 'string' ? session.searchSnippet : undefined
-  return (
-    <Pressable
-      accessibilityRole="button"
-      accessibilityLabel={format('drawer.openSession', { title })}
-      accessibilityState={{ selected }}
-      onPress={onPress}
-      onLongPress={onLongPress}
-      delayLongPress={350}
-      hitSlop={{ top: 6, bottom: 6 }}
-      style={({ pressed }) => [styles.session, selected && styles.selected, pressed && styles.rowPressed]}
-    >
-      <Text numberOfLines={1} style={styles.sessionTitle}>
-        {title}
-      </Text>
-      <Text numberOfLines={snippet === undefined ? 1 : 2} style={styles.sessionTime}>
-        {snippet ?? time}
-      </Text>
-    </Pressable>
-  )
-}
-
-function OptionRow({
-  label,
-  selected,
-  disabled = false,
-  onPress,
-}: {
-  label: string
-  selected: boolean
-  disabled?: boolean
-  onPress?: () => void
-}): React.JSX.Element {
-  const theme = useAppTheme()
-  const styles = useThemedStyles(makeStyles)
-  return (
-    <Pressable
-      accessibilityRole="radio"
-      accessibilityState={{ disabled, selected }}
-      disabled={disabled}
-      hitSlop={{ top: 4, bottom: 4 }}
-      onPress={onPress}
-      style={({ pressed }) => [styles.optionRow, disabled && styles.disabledOptionRow, pressed && styles.pressed]}
-    >
-      <Text style={disabled ? styles.disabledOptionLabel : styles.optionLabel}>{label}</Text>
-      {selected ? <NativeIcon name="check-outline" size={17} color={theme.colors.accentText} /> : null}
-    </Pressable>
   )
 }
 
@@ -610,221 +725,3 @@ function requireConnection(connection: ReturnType<typeof useConnectionStore.getS
   if (!connection) throw new Error(message('drawer.connectFirstBody'))
   return connection
 }
-
-const makeStyles = (theme: AppTheme) =>
-  StyleSheet.create({
-    drawerFrame: { backgroundColor: theme.colors.drawerBackground, flex: 1, position: 'relative' },
-    drawerSafe: { backgroundColor: theme.colors.drawerBackground, flex: 1 },
-    drawerScroll: { backgroundColor: theme.colors.drawerBackground },
-    drawerContent: { flexGrow: 1, paddingBottom: 64, paddingTop: theme.spacing.xs },
-    brandRow: {
-      alignItems: 'center',
-      flexDirection: 'row',
-      minHeight: 60,
-      justifyContent: 'space-between',
-      paddingLeft: 4,
-      paddingVertical: 8,
-    },
-    brand: { alignItems: 'center', flexDirection: 'row', gap: 6, minWidth: 0 },
-    brandWord: { color: theme.colors.ink, fontSize: theme.typography.title, fontWeight: '800', letterSpacing: -1 },
-    brandTag: {
-      backgroundColor: theme.colors.ink,
-      borderRadius: theme.radius.xs,
-      color: theme.colors.textOnAccent,
-      fontSize: theme.typography.eyebrow,
-      fontWeight: '700',
-      letterSpacing: 0.8,
-      paddingHorizontal: 5,
-      paddingVertical: 3,
-    },
-    topIcon: {
-      alignItems: 'center',
-      height: theme.touch.iconButton,
-      justifyContent: 'center',
-      width: theme.touch.iconButton,
-    },
-    newSession: {
-      alignItems: 'center',
-      borderColor: theme.colors.border,
-      borderRadius: theme.radius.bubble,
-      borderWidth: 1,
-      flexDirection: 'row',
-      gap: 8,
-      justifyContent: 'center',
-      minHeight: theme.touch.controlHeight,
-      marginBottom: 8,
-    },
-    newSessionTextWrap: { alignItems: 'center', gap: 1 },
-    newSessionText: { color: theme.colors.ink, fontSize: 15, fontWeight: '600' },
-    newSessionTextDisabled: { color: theme.colors.inkMuted, fontSize: 15, fontWeight: '600' },
-    newSessionHint: { color: theme.colors.inkFaint, fontSize: 10 },
-    workspaceHeader: { alignItems: 'center', flexDirection: 'row', justifyContent: 'space-between', marginBottom: 12 },
-    workspaceTitle: { color: theme.colors.inkMuted, fontSize: 14, lineHeight: 20 },
-    workspaceActions: { flexDirection: 'row', gap: 4 },
-    actionIcon: {
-      alignItems: 'center',
-      height: theme.touch.iconButton,
-      justifyContent: 'center',
-      width: theme.touch.iconButton,
-    },
-    clearSearch: {
-      alignItems: 'center',
-      height: theme.touch.iconButton,
-      justifyContent: 'center',
-      width: theme.touch.iconButton,
-    },
-    disabledAction: { opacity: 0.45 },
-    searchBox: {
-      alignItems: 'center',
-      backgroundColor: theme.colors.surface,
-      borderColor: theme.colors.borderStrong,
-      borderRadius: 10,
-      borderWidth: 1,
-      flexDirection: 'row',
-      gap: 6,
-      marginBottom: 4,
-      paddingHorizontal: 8,
-    },
-    // A minimum, not a fixed height: a large Dynamic Type setting must grow the
-    // field instead of clipping the query.
-    searchInput: { color: theme.colors.ink, flex: 1, fontSize: 14, minHeight: 36 },
-    listArea: { flexGrow: 1 },
-    list: { flexGrow: 1, paddingBottom: 52 },
-    folder: {
-      alignItems: 'center',
-      borderRadius: theme.radius.md,
-      flexDirection: 'row',
-      gap: 8,
-      marginBottom: 2,
-      marginHorizontal: 2,
-      minHeight: 36,
-      paddingHorizontal: 8,
-      paddingVertical: 7,
-    },
-    folderText: { color: theme.colors.ink, fontSize: theme.typography.bodyLarge, fontWeight: '500' },
-    sessionActions: {
-      backgroundColor: theme.colors.surfaceMuted,
-      borderColor: theme.colors.border,
-      borderRadius: theme.radius.control,
-      borderWidth: StyleSheet.hairlineWidth,
-      marginBottom: theme.spacing.xs,
-      marginHorizontal: theme.spacing.sm,
-      overflow: 'hidden',
-    },
-    // The desktop's row is 32pt tall with `radius-md`, 8pt inline padding, no gap,
-    // and title margins of 4/6 (Rows.module.css:2,118). Drawn at 32 to match, with
-    // the vertical hit slop below raising the touch target to 44.
-    session: {
-      alignItems: 'center',
-      borderRadius: theme.radius.md,
-      flexDirection: 'row',
-      minHeight: 32,
-      paddingHorizontal: 8,
-    },
-    // Desktop rows take `interactive-bg-hover` when selected (Rows.module.css:21)
-    // and `interactive-bg-active` while held; a solid fill would not composite
-    // over the drawer surface the same way.
-    selected: { backgroundColor: theme.colors.interactiveHover },
-    rowPressed: { backgroundColor: theme.colors.interactiveActive },
-    sessionTitle: { color: theme.colors.ink, flex: 1, fontSize: 14, lineHeight: 20, marginLeft: 4, marginRight: 6 },
-    sessionTime: { color: theme.colors.inkMuted, flexShrink: 0, fontSize: 10, lineHeight: 16 },
-    emptyState: { color: theme.colors.inkMuted, paddingHorizontal: 8, paddingVertical: 24, textAlign: 'center' },
-    expandButton: { alignItems: 'center', flexDirection: 'row', gap: 2, paddingHorizontal: 12, paddingVertical: 12 },
-    expandText: { color: theme.colors.inkMuted, fontSize: 13 },
-    searchHint: { color: theme.colors.inkMuted, fontSize: 12, lineHeight: 18, paddingHorizontal: 4, paddingVertical: 8 },
-    optionsTitle: {
-      color: theme.colors.inkMuted,
-      fontSize: 11,
-      fontWeight: '700',
-      paddingHorizontal: 9,
-      paddingTop: 5,
-      paddingBottom: 3,
-    },
-    compactOptions: {
-      backgroundColor: theme.colors.surfaceRaised,
-      borderColor: theme.colors.border,
-      borderRadius: theme.radius.card,
-      borderWidth: StyleSheet.hairlineWidth,
-      marginBottom: theme.spacing.sm,
-      overflow: 'hidden',
-    },
-    compactChoices: {
-      backgroundColor: theme.colors.surfaceMuted,
-      gap: theme.spacing.xxs,
-      paddingVertical: theme.spacing.xs,
-    },
-    optionDivider: { backgroundColor: theme.colors.border, height: StyleSheet.hairlineWidth },
-    inlineOptions: {
-      backgroundColor: theme.colors.surfaceRaised,
-      borderColor: theme.colors.border,
-      borderRadius: theme.radius.card,
-      borderWidth: StyleSheet.hairlineWidth,
-      marginBottom: theme.spacing.sm,
-      overflow: 'hidden',
-      paddingVertical: theme.spacing.xs,
-    },
-    inlineOptionSection: { gap: theme.spacing.xxs, paddingVertical: theme.spacing.xxs },
-    // Desktop panel row (SidebarRoot.module.css:532): radius-md, min-height 36,
-    // 7/8 padding, 8 gap, 2pt side margin.
-    optionRow: {
-      alignItems: 'center',
-      borderRadius: theme.radius.md,
-      flexDirection: 'row',
-      gap: 8,
-      justifyContent: 'space-between',
-      marginHorizontal: 2,
-      minHeight: 36,
-      paddingHorizontal: 8,
-      paddingVertical: 7,
-    },
-    optionLabel: { color: theme.colors.ink, fontSize: 13 },
-    disabledOptionRow: {
-      alignItems: 'center',
-      borderRadius: theme.radius.md,
-      flexDirection: 'row',
-      minHeight: 36,
-      paddingHorizontal: 9,
-    },
-    disabledOptionLabel: { color: theme.colors.inkFaint, fontSize: 13 },
-    menuSeparator: { backgroundColor: theme.colors.border, height: StyleSheet.hairlineWidth, marginVertical: 6 },
-    addWorkspace: {
-      alignItems: 'center',
-      borderTopColor: theme.colors.border,
-      borderTopWidth: StyleSheet.hairlineWidth,
-      flexDirection: 'row',
-      gap: 7,
-      marginTop: 6,
-      paddingHorizontal: 9,
-      paddingTop: 10,
-    },
-    disabledWorkspaceText: { color: theme.colors.inkFaint, fontSize: 13, fontWeight: '600' },
-    // DSH Pocket keeps a drawer action bar pinned to the bottom and draws each
-    // action as a bordered pill (34pt tall, 12pt radius, 14pt glyph, 13pt label).
-    // The bar keeps the drawer fill so it reads as part of the drawer.
-    footer: {
-      backgroundColor: theme.colors.drawerBackground,
-      borderTopColor: theme.colors.border,
-      borderTopWidth: StyleSheet.hairlineWidth,
-      bottom: 0,
-      flexDirection: 'row',
-      gap: 8,
-      left: 0,
-      padding: 10,
-      position: 'absolute',
-      right: 0,
-    },
-    footerAction: {
-      alignItems: 'center',
-      borderColor: theme.colors.border,
-      borderRadius: 12,
-      borderWidth: 1,
-      flexDirection: 'row',
-      // 44pt rather than Pocket's 34pt: a native control must stay at the
-      // platform's minimum touch target.
-      gap: 8,
-      minHeight: theme.touch.minTarget,
-      paddingHorizontal: 12,
-    },
-    footerActionText: { color: theme.colors.ink, fontSize: 13 },
-    pressed: { opacity: 0.62 },
-  })

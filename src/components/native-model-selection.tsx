@@ -1,7 +1,7 @@
-import type { MobileModelCatalogModel, MobileModelProviderGroup, MobileModelSelection } from '@/types/mobile'
 import { NativeSection } from '@/components/native-list'
 import { NativeSelectionRow } from '@/components/native-selection'
 import { t as message } from '@/locale'
+import type { MobileModelCatalogModel, MobileModelProviderGroup, MobileModelSelection } from '@/types/mobile'
 
 export type NativeModelSelection = Pick<MobileModelSelection, 'provider' | 'model'>
 

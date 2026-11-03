@@ -1,6 +1,6 @@
-import * as SecureStore from 'expo-secure-store'
 import { type StoredSessionSelection } from '@/state/session-selection-logic'
 import type { MobileConnection } from '@/types/mobile'
+import * as SecureStore from 'expo-secure-store'
 
 const SESSION_SELECTION_KEY = 'dsh-mobile-session-selection-v1'
 
@@ -41,11 +41,11 @@ function isStoredSessionSelection(value: unknown): value is StoredSessionSelecti
   if (value === null || Array.isArray(value) || typeof value !== 'object') return false
   const candidate = value as Record<string, unknown>
   return (
-    typeof candidate.gatewayUrl === 'string'
-    && candidate.gatewayUrl.trim() !== ''
-    && typeof candidate.deviceId === 'string'
-    && candidate.deviceId.trim() !== ''
-    && typeof candidate.sessionId === 'string'
-    && candidate.sessionId.trim() !== ''
+    typeof candidate.gatewayUrl === 'string' &&
+    candidate.gatewayUrl.trim() !== '' &&
+    typeof candidate.deviceId === 'string' &&
+    candidate.deviceId.trim() !== '' &&
+    typeof candidate.sessionId === 'string' &&
+    candidate.sessionId.trim() !== ''
   )
 }

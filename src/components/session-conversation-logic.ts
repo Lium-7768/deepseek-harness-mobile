@@ -3,67 +3,67 @@ import type { SharedEventItem } from '@/shared/dsh-presentation'
 
 export type NativeConversationRow =
   | {
-    kind: 'user' | 'assistant'
-    text: string
-    rowKey?: string
-    sourceSeq?: number
-    time?: number
-  }
+      kind: 'user' | 'assistant'
+      text: string
+      rowKey?: string
+      sourceSeq?: number
+      time?: number
+    }
   | {
-    kind: 'reasoning'
-    text: string
-    rowKey?: string
-    sourceSeq?: number
-  }
+      kind: 'reasoning'
+      text: string
+      rowKey?: string
+      sourceSeq?: number
+    }
   | {
-    callId?: string
-    kind: 'tool'
-    output?: string
-    rowKey?: string
-    sourceSeq?: number
-    state: 'completed' | 'failed' | 'running'
-    summary?: string
-    toolInput?: string
-    toolName: string
-  }
+      callId?: string
+      kind: 'tool'
+      output?: string
+      rowKey?: string
+      sourceSeq?: number
+      state: 'completed' | 'failed' | 'running'
+      summary?: string
+      toolInput?: string
+      toolName: string
+    }
   | {
-    delayMs: number
-    failureMessage: string
-    kind: 'retry'
-    maxRetries: number
-    retry: number
-    rowKey?: string
-    sourceSeq?: number
-  }
+      delayMs: number
+      failureMessage: string
+      kind: 'retry'
+      maxRetries: number
+      retry: number
+      rowKey?: string
+      sourceSeq?: number
+    }
   | {
-    code?: string
-    kind: 'turn-error'
-    message: string
-    rowKey?: string
-    sourceSeq?: number
-  }
+      code?: string
+      kind: 'turn-error'
+      message: string
+      rowKey?: string
+      sourceSeq?: number
+    }
   | {
-    commandId?: string
-    kind: 'command'
-    name: string
-    state: 'running' | 'success' | 'error'
-    text?: string
-    rowKey?: string
-    sourceSeq?: number
-  }
+      commandId?: string
+      kind: 'command'
+      name: string
+      state: 'running' | 'success' | 'error'
+      text?: string
+      rowKey?: string
+      sourceSeq?: number
+    }
   | {
-    kind: 'turn-max-tokens'
-    rowKey?: string
-    sourceSeq?: number
-  }
+      kind: 'turn-max-tokens'
+      rowKey?: string
+      sourceSeq?: number
+    }
   | {
-    kind: 'compaction'
-    shadowedItemCount?: number
-    shadowedTokenCount?: number
-    summary: string
-    rowKey?: string
-    sourceSeq?: number
-  }
+      kind: 'compaction'
+      shadowedItemCount?: number
+      shadowedTokenCount?: number
+      summary: string
+      rowKey?: string
+      sourceSeq?: number
+    }
 
 type EventRecord = Record<string, unknown>
 type ContentBlock = { type?: unknown; text?: unknown }
@@ -103,11 +103,11 @@ export function projectNativeConversationRows(items: readonly SharedEventItem[])
       const index = numberField(chunk?.index)
       const text = stringField(chunk?.text)
       if (
-        stepKey !== undefined
-        && !settledAssistantSteps.has(stepKey)
-        && index !== undefined
-        && text !== undefined
-        && (chunkType === 'reasoning-delta' || chunkType === 'text-delta')
+        stepKey !== undefined &&
+        !settledAssistantSteps.has(stepKey) &&
+        index !== undefined &&
+        text !== undefined &&
+        (chunkType === 'reasoning-delta' || chunkType === 'text-delta')
       ) {
         const kind = chunkType === 'reasoning-delta' ? 'reasoning' : 'assistant'
         const blockKey = `${stepKey}:${kind}:${index}`
@@ -125,8 +125,13 @@ export function projectNativeConversationRows(items: readonly SharedEventItem[])
       continue
     }
     if (type === 'user/message') {
-      const text = textFromMessage(data)
-      if (text) rows.push({ kind: 'user', text, ...(sourceSeq === undefined ? {} : { sourceSeq }), ...eventTime(event) })
+      // Only a human turn is a user bubble. Runtime context, the skill catalog, the
+      // time snapshot, agent instructions, and compaction checkpoints are logged as
+      // user-role messages too, and the desktop renders them as context, not as what
+      // the reader typed.
+      const text = humanUserText(data)
+      if (text)
+        rows.push({ kind: 'user', text, ...(sourceSeq === undefined ? {} : { sourceSeq }), ...eventTime(event) })
       continue
     }
     if (type === 'assistant/message') {
@@ -136,10 +141,11 @@ export function projectNativeConversationRows(items: readonly SharedEventItem[])
         }
       }
       const text = messageBlocks(data)
-        .flatMap(block => (block.type === 'text' && typeof block.text === 'string' ? [block.text] : []))
+        .flatMap((block) => (block.type === 'text' && typeof block.text === 'string' ? [block.text] : []))
         .join('')
         .trim()
-      if (text) rows.push({ kind: 'assistant', text, ...(sourceSeq === undefined ? {} : { sourceSeq }), ...eventTime(event) })
+      if (text)
+        rows.push({ kind: 'assistant', text, ...(sourceSeq === undefined ? {} : { sourceSeq }), ...eventTime(event) })
       continue
     }
     if (type === 'tool/call') {
@@ -240,7 +246,9 @@ export function projectNativeConversationRows(items: readonly SharedEventItem[])
         kind: 'compaction',
         summary: compactSummaryText(data),
         ...(summaryBlockCount(data) === undefined ? {} : { shadowedItemCount: summaryBlockCount(data) }),
-        ...(numberField(data.shadowedTokenCount) === undefined ? {} : { shadowedTokenCount: numberField(data.shadowedTokenCount) }),
+        ...(numberField(data.shadowedTokenCount) === undefined
+          ? {}
+          : { shadowedTokenCount: numberField(data.shadowedTokenCount) }),
         ...(sourceSeq === undefined ? {} : { sourceSeq }),
       })
       continue
@@ -311,10 +319,12 @@ function displayFailure(failure: unknown): { code?: string; message: string } {
 
 function compactSummaryText(data: EventRecord): string {
   const blocks = Array.isArray(data.summary)
-    ? data.summary.filter((block): block is ContentBlock => block !== null && typeof block === 'object' && !Array.isArray(block))
+    ? data.summary.filter(
+        (block): block is ContentBlock => block !== null && typeof block === 'object' && !Array.isArray(block),
+      )
     : []
   return blocks
-    .flatMap(block => (block.type === 'text' && typeof block.text === 'string' ? [block.text] : []))
+    .flatMap((block) => (block.type === 'text' && typeof block.text === 'string' ? [block.text] : []))
     .join('')
 }
 
@@ -330,16 +340,28 @@ function eventStepKey(data: EventRecord): string | undefined {
 }
 
 function messageBlocks(data: EventRecord): ContentBlock[] {
+  // A settled assistant message nests the role payload under `message`; a durable
+  // `user/message` carries `content` on its data directly. Reading only the nested
+  // form dropped every human turn from the conversation.
   const message = recordField(data.message)
-  const content = message?.content
+  const content = message === undefined ? data.content : message.content
   return Array.isArray(content)
-    ? content.filter((block): block is ContentBlock => block !== null && typeof block === 'object' && !Array.isArray(block))
+    ? content.filter(
+        (block): block is ContentBlock => block !== null && typeof block === 'object' && !Array.isArray(block),
+      )
     : []
+}
+
+function humanUserText(data: EventRecord): string | undefined {
+  const source = recordField(data.source)
+  const kind = stringField(source?.kind)
+  if (kind !== undefined && kind !== 'user') return undefined
+  return textFromMessage(data)
 }
 
 function textFromMessage(data: EventRecord): string | undefined {
   const text = messageBlocks(data)
-    .flatMap(block => (block.type === 'text' && typeof block.text === 'string' ? [block.text] : []))
+    .flatMap((block) => (block.type === 'text' && typeof block.text === 'string' ? [block.text] : []))
     .join('')
     .trim()
   return text || undefined
@@ -349,7 +371,7 @@ function toolResult(data: EventRecord): { callId?: string; failed: boolean; outp
   const message = recordField(data.message)
   const source = recordField(message?.source)
   const block = Array.isArray(message?.content)
-    ? message.content.find(value => recordField(value)?.type === 'tool-result')
+    ? message.content.find((value) => recordField(value)?.type === 'tool-result')
     : undefined
   const result = recordField(block)
   const content = Array.isArray(result?.content) ? result.content : []
@@ -392,4 +414,56 @@ function fieldText(value: unknown): string | undefined {
   } catch {
     return undefined
   }
+}
+
+/** Argument fields a tool row shows, in the order the desktop prefers them. */
+const TOOL_ARGUMENT_FIELDS = [
+  'command',
+  'file_path',
+  'path',
+  'pattern',
+  'query',
+  'url',
+  'prompt',
+  'description',
+] as const
+
+/**
+ * One-line argument for a tool row: what the call acted on.
+ *
+ * The desktop prints the call's own argument after the verb (`运行命令 · ls -la`,
+ * `读取图片 · /tmp/shot.png`), not the tool's internal name, so the row keeps
+ * meaning when the projection carries no description.
+ *
+ * @param toolInput - The call's raw `arguments` text, usually a JSON object.
+ * @returns The preferred argument, or the raw input when it is not JSON.
+ */
+export function toolArgument(toolInput: string | undefined): string | undefined {
+  if (toolInput === undefined) return undefined
+  const raw = toolInput.trim()
+  if (raw === '') return undefined
+  let parsed: unknown
+  try {
+    parsed = JSON.parse(raw)
+  } catch {
+    return collapseLine(raw)
+  }
+  if (parsed === null || typeof parsed !== 'object' || Array.isArray(parsed)) return collapseLine(raw)
+  const record = parsed as Record<string, unknown>
+  for (const field of TOOL_ARGUMENT_FIELDS) {
+    const value = record[field]
+    if (typeof value === 'string' && value.trim()) return collapseLine(value)
+  }
+  // Any other call shape: the first string it carries still names what it did.
+  for (const value of Object.values(record)) {
+    if (typeof value === 'string' && value.trim()) return collapseLine(value)
+  }
+  // Nothing happened in words (an empty or numeric-only argument object), so
+  // the row falls back to the tool name rather than printing JSON at the reader.
+  return undefined
+}
+
+/** Squeeze an argument onto one line so a row's single line stays informative. */
+function collapseLine(value: string): string {
+  return value.replace(/\s+/g, ' ').trim()
 }

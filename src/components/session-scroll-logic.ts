@@ -1,6 +1,18 @@
 /** Pixel distance from the message list end that still counts as reading the latest conversation. */
 export const LATEST_MESSAGE_PROXIMITY_PX = 72
 
+/**
+ * Time after a touch-driven scroll that still counts as the reader controlling the list, so the
+ * momentum tail of one gesture is not mistaken for programmatic movement.
+ */
+export const READER_SCROLL_TAIL_MS = 350
+
+/**
+ * Time after pinning the list to the newest message that lazily measured rows are allowed to
+ * settle, so the follow-up jump targets the final content length.
+ */
+export const LATEST_PIN_SETTLE_MS = 250
+
 /** Reports whether a list viewport is at or close enough to the newest visible message. */
 export function isNearLatestMessage(
   contentHeight: number,
@@ -13,7 +25,13 @@ export function isNearLatestMessage(
 }
 
 /** Decides whether the native conversation should expose a manual return-to-latest control. */
-export function shouldShowReturnToLatest({ hasMessages, nearLatest }: { hasMessages: boolean; nearLatest: boolean }): boolean {
+export function shouldShowReturnToLatest({
+  hasMessages,
+  nearLatest,
+}: {
+  hasMessages: boolean
+  nearLatest: boolean
+}): boolean {
   return hasMessages && !nearLatest
 }
 

@@ -101,8 +101,5 @@ export const aliases = {
   codeInline: { light: 'rgb(250, 250, 250)', dark: 'rgb(41, 41, 41)' },
 } as const satisfies Record<string, AppearanceValue>
 
-/** Colour role name defined by {@link aliases}. */
-export type AliasName = keyof typeof aliases
-
 /** The single appearance a screen renders in. */
 export type Appearance = 'light' | 'dark'

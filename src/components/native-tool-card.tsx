@@ -1,13 +1,19 @@
-import { useMemo, useState } from 'react'
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
-import { NativeIcon, type NativeIconName } from '@/components/native-icon'
-import type { NativeConversationRow } from '@/components/session-conversation-logic'
-import type { AppTheme } from '@/theme'
-import { useAppTheme, useThemedStyles } from '@/theme/hooks'
-import type { SharedMessagePresentation } from '@/shared/dsh-presentation'
+import { useConversationDisclosure } from './conversation-disclosure'
+import { conversationRowKey } from './conversation-flow'
+import { NativeDiffBlock } from '@/components/native-diff-block'
+import { NativeFlowRow } from '@/components/native-flow-row'
+import type { NativeIconName } from '@/components/native-icon'
+import { toolArgument, type NativeConversationRow } from '@/components/session-conversation-logic'
+import { toolFileChange } from '@/components/tool-diff-logic'
 import { format, t as message } from '@/locale'
+import type { SharedMessagePresentation } from '@/shared/dsh-presentation'
+import type { AppTheme } from '@/theme'
+import { useThemedStyles } from '@/theme/hooks'
+import { MONOSPACE_FONT } from '@/theme/platform'
+import { useMemo } from 'react'
+import { ScrollView, StyleSheet, Text, View } from 'react-native'
 
-type Variant = 'search' | 'read' | 'bash' | 'write' | 'edit' | 'code' | 'web' | 'other'
+type Variant = 'search' | 'read' | 'image' | 'bash' | 'write' | 'edit' | 'code' | 'web' | 'other'
 type ToolRow = Extract<NativeConversationRow, { kind: 'tool' }>
 type ToolCardModel = {
   output?: string
@@ -19,19 +25,22 @@ type ToolCardModel = {
 
 function variantFor(name?: string): Variant {
   const value = (name ?? '').toLowerCase()
+  // The desktop splits image reads out of plain reads (`tool.title.readImage`).
+  if (/image|screenshot/.test(value)) return 'image'
   if (/search|grep|find/.test(value)) return 'search'
-  if (/read|file|cat/.test(value)) return 'read'
   if (/bash|shell|terminal|command/.test(value)) return 'bash'
   if (/write|create/.test(value)) return 'write'
   if (/edit|patch|replace/.test(value)) return 'edit'
   if (/code|python|javascript/.test(value)) return 'code'
   if (/web|browser|fetch/.test(value)) return 'web'
+  if (/read|file|cat/.test(value)) return 'read'
   return 'other'
 }
 
 const META: Record<Variant, [NativeIconName, string]> = {
   search: ['search-outline', message('tool.verbSearch')],
   read: ['deliver-doc', message('tool.verbRead')],
+  image: ['deliver-doc', message('tool.verbReadImage')],
   bash: ['code-outline', message('tool.verbCommand')],
   write: ['new-chat-outline', message('tool.verbWrite')],
   edit: ['edit-outline', message('tool.verbEdit')],
@@ -47,10 +56,17 @@ const META: Record<Variant, [NativeIconName, string]> = {
  * @param props.row - Full primary-session projection with desktop tool metadata.
  * @returns An expandable compact tool row.
  */
-export function NativeToolCard({ presentation, row }: { presentation?: SharedMessagePresentation; row?: ToolRow }): React.JSX.Element {
-  const theme = useAppTheme()
+export function NativeToolCard({
+  presentation,
+  row,
+}: {
+  presentation?: SharedMessagePresentation
+  row?: ToolRow
+}): React.JSX.Element {
   const styles = useThemedStyles(makeStyles)
-  const [expanded, setExpanded] = useState(false)
+  const [expanded, toggleExpanded] = useConversationDisclosure(
+    row ? conversationRowKey(row) : `tool:${presentation?.sourceSeq ?? presentation?.callId ?? 'legacy'}`,
+  )
   const model = useMemo<ToolCardModel>(() => {
     if (row !== undefined) {
       return {
@@ -70,57 +86,57 @@ export function NativeToolCard({ presentation, row }: { presentation?: SharedMes
     }
   }, [presentation, row])
   const [icon, fallbackTitle] = useMemo(() => META[variantFor(model.toolName)], [model.toolName])
-  const title = model.toolName || fallbackTitle
-  const stateLabel = model.state === 'completed' ? message('tool.stateCompleted') : model.state === 'failed' ? message('tool.stateFailed') : message('tool.stateRunning')
+  // The desktop prints "<verb> · <summary>"; the summary carries the argument a
+  // reader needs, and the tool name only stands in when there is none.
+  const summary =
+    model.summary ?? toolArgument(model.toolInput) ?? (model.toolName === fallbackTitle ? undefined : model.toolName)
+  const stateLabel =
+    model.state === 'completed'
+      ? message('tool.stateCompleted')
+      : model.state === 'failed'
+        ? message('tool.stateFailed')
+        : message('tool.stateRunning')
+  // A file mutation reads better as its change than as its arguments, so the
+  // diff replaces the raw input exactly where the desktop replaces it.
+  const change = useMemo(() => toolFileChange(model.toolName, model.toolInput), [model.toolInput, model.toolName])
   const hasDetails = Boolean(model.toolInput || model.output)
   return (
-    <View style={[styles.root, model.state === 'failed' && styles.failedRoot]}>
-      <Pressable
-        accessibilityRole={hasDetails ? 'button' : undefined}
-        accessibilityLabel={format('tool.accessibilityLabel', { tool: title, state: stateLabel })}
-        accessibilityState={{ busy: model.state === 'running', expanded: hasDetails ? expanded : undefined }}
-        disabled={!hasDetails}
-        onPress={() => setExpanded(value => !value)}
-        style={({ pressed }) => [styles.row, hasDetails && pressed && styles.pressed]}
+    <View style={styles.root}>
+      <NativeFlowRow
+        accessibilityLabel={format('tool.accessibilityLabel', { tool: summary ?? fallbackTitle, state: stateLabel })}
+        expandable={hasDetails}
+        icon={icon}
+        open={expanded}
+        summary={summary}
+        title={fallbackTitle}
+        tone={model.state === 'failed' ? 'danger' : 'tertiary'}
+        {...(hasDetails ? { onToggle: toggleExpanded } : {})}
       >
-        <NativeIcon name={icon} size={15} color={model.state === 'failed' ? theme.colors.danger : theme.colors.inkMuted} />
-        <Text numberOfLines={1} style={styles.label}>
-          Tool call
-        </Text>
-        <Text style={styles.separator}>·</Text>
-        <Text numberOfLines={1} style={styles.title}>
-          {title}
-        </Text>
-        {model.summary ? (
-          <>
-            <Text style={styles.separator}>·</Text>
-            <Text numberOfLines={1} style={styles.summary}>
-              {model.summary}
-            </Text>
-          </>
+        {change === undefined ? (
+          model.toolInput ? (
+            <ToolPayload label={message('tool.input')} text={model.toolInput} />
+          ) : null
+        ) : (
+          <NativeDiffBlock change={change} />
+        )}
+        {model.toolInput && model.output ? <View style={styles.divider} /> : null}
+        {model.output ? (
+          <ToolPayload label={message('tool.output')} text={model.output} failed={model.state === 'failed'} />
         ) : null}
-        <View style={styles.state}>
-          <View
-            style={[
-              styles.dot,
-              model.state === 'completed' ? styles.completedDot : model.state === 'failed' ? styles.failedDot : styles.runningDot,
-            ]}
-          />
-          {hasDetails ? <NativeIcon name={expanded ? 'chevron-up-outline' : 'chevron-down-outline'} size={15} color={theme.colors.inkFaint} /> : null}
-        </View>
-      </Pressable>
-      {expanded ? (
-        <View style={styles.details}>
-          {model.toolInput ? <ToolPayload label="IN" text={model.toolInput} /> : null}
-          {model.toolInput && model.output ? <View style={styles.divider} /> : null}
-          {model.output ? <ToolPayload label="OUT" text={model.output} failed={model.state === 'failed'} /> : null}
-        </View>
-      ) : null}
+      </NativeFlowRow>
     </View>
   )
 }
 
-function ToolPayload({ label, text, failed = false }: { label: 'IN' | 'OUT'; text: string; failed?: boolean }): React.JSX.Element {
+function ToolPayload({
+  label,
+  text,
+  failed = false,
+}: {
+  label: string
+  text: string
+  failed?: boolean
+}): React.JSX.Element {
   const styles = useThemedStyles(makeStyles)
   return (
     <View style={styles.payload}>
@@ -136,30 +152,11 @@ function ToolPayload({ label, text, failed = false }: { label: 'IN' | 'OUT'; tex
 
 const makeStyles = (theme: AppTheme) =>
   StyleSheet.create({
-    root: { borderLeftColor: 'transparent', borderLeftWidth: 2 },
-    failedRoot: { borderLeftColor: theme.colors.danger },
-    row: { alignItems: 'center', flexDirection: 'row', gap: 5, minHeight: 32, paddingHorizontal: 2, paddingVertical: 4 },
-    pressed: { opacity: 0.62 },
-    label: { color: theme.colors.inkMuted, fontSize: 12 },
-    separator: { color: theme.colors.inkFaint, fontSize: 12 },
-    title: { color: theme.colors.inkMuted, fontSize: 12 },
-    summary: { color: theme.colors.inkMuted, flex: 1, fontSize: 12 },
-    state: { alignItems: 'center', flexDirection: 'row', gap: 4, marginLeft: 'auto' },
-    dot: { borderRadius: 4, height: 7, width: 7 },
-    runningDot: { backgroundColor: theme.colors.warning },
-    completedDot: { backgroundColor: theme.colors.success },
-    failedDot: { backgroundColor: theme.colors.danger },
-    details: {
-      backgroundColor: theme.colors.surfaceMuted,
-      borderRadius: theme.radius.control,
-      marginBottom: 6,
-      marginLeft: 20,
-      padding: theme.spacing.sm,
-    },
+    root: { minWidth: 0 },
     divider: { backgroundColor: theme.colors.border, height: StyleSheet.hairlineWidth },
     payload: { gap: 4 },
-    payloadLabel: { color: theme.colors.inkFaint, fontSize: 10, fontWeight: '800' },
+    payloadLabel: { color: theme.colors.inkTertiary, fontSize: 11, fontWeight: '500', lineHeight: 16 },
     payloadScroll: { maxHeight: 208 },
-    detailText: { color: theme.colors.ink, fontFamily: 'Menlo', fontSize: 12, lineHeight: 18 },
+    detailText: { color: theme.colors.ink, fontFamily: MONOSPACE_FONT, fontSize: 12, lineHeight: 18 },
     failedDetailText: { color: theme.colors.danger },
   })

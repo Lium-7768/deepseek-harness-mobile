@@ -34,11 +34,14 @@ describe('colour tokens', () => {
 })
 
 /**
- * Sizes the desktop itself sets: the scale in `gradient-shadow-text.css` plus the
- * two it uses outside the scale — 10 for meta text (Rows `.time`, menu hints) and
- * 28 for an onboarding heading.
+ * Sizes the desktop itself sets: the scale in `gradient-shadow-text.css` — the
+ * 14px body, its 13px secondary and 12px inline code, the 11px code block, and
+ * the 21/19/18 markdown headings — plus the sizes it uses outside that scale —
+ * 10 for meta text (Rows `.time`, menu hints), 16 for the page title, 20 and 24
+ * for the larger headings, 26 for the workspace hero, and 28 for an onboarding
+ * heading.
  */
-const SCALE = new Set([10, 11, 12, 13, 14, 16, 20, 24, 28])
+const SCALE = new Set([10, 11, 12, 13, 14, 16, 18, 19, 20, 21, 24, 26, 28])
 
 describe('type scale', () => {
   it('uses only sizes from the desktop scale in literal font sizes', () => {

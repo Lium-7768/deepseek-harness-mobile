@@ -1,5 +1,8 @@
 # Client audit
 
+> Historical audit. Route counts, paths, tests and open findings below describe an earlier tree.
+> See [NATIVE-REVIEW.md](NATIVE-REVIEW.md) and [IMPROVEMENT-PLAN.md](IMPROVEMENT-PLAN.md) for the current review.
+
 A complete inventory of the native client and every defect the inventory
 surfaced. Line counts and counts are taken from the tree at the commit that
 added this file; re-derive them rather than trusting the numbers after large

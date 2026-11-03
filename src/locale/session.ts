@@ -12,20 +12,45 @@ export const session = {
   untitled: '未命名会话',
   running: '处理中',
   timeUnknown: '时间未知',
+  /** Compact relative time, matching the desktop sidebar's `time.*` dictionary. */
+  timeNow: '刚刚',
+  timeMinutes: '{n}分钟',
+  timeHours: '{n}小时',
+  timeDays: '{n}天',
+  timeMonths: '{n}个月',
+  timeYears: '{n}年',
   ungrouped: '未分组',
   /** Same-year timestamp; `{month}` and `{day}` are 1-based. */
   dateSameYear: '{month}月{day}日',
   /** Older timestamp that needs the year. */
   dateWithYear: '{year}年{month}月{day}日',
 
-  /** `{turns}` completed turns and `{steps}` steps. */
-  statsTurns: '{turns} 轮 · {steps} 步',
-  /** `{duration}` is already formatted for display. */
-  statsToolTime: '工具调用 {duration}',
-  statsFirstToken: '首 token 平均 {duration}',
-  /** `{percent}` is a rounded integer. */
+  /** `{turns}` completed turns and `{steps}` steps, matching `stats.counts`. */
+  statsCounts: '{turns} 轮 {steps} 步',
+  /** `{count}` is an already-compacted token total, matching `message.turnUsage.count`. */
+  statsTokens: '{count} tok',
+  /** `{percent}` may carry decimals when a near-full cache hit would round up. */
   statsCacheHit: '缓存命中 {percent}%',
-  statsTokens: '输入 {input} tok · 输出 {output} tok',
+  /** `{percent}` is the composer dock's context-occupancy reading. */
+  contextUsed: '上下文已用 {percent}%',
+  contextUsedLabel: '上下文已用',
+  /** Context panel legend, in `ContextMeter` bar-segment order. */
+  contextSystem: '系统提示词',
+  contextTools: '工具定义',
+  contextMessages: '对话消息',
+
+  /** Statistics panels opened from a dock pill (`StatsPills` / stat-dialog). */
+  statsDialogTitle: '会话统计',
+  statsUsageTitle: 'Token 用量',
+  statsModelTime: '模型用时',
+  statsToolCallTime: '工具调用用时',
+  statsFirstTokenLabel: '首 token 平均（TTFT）',
+  statsSpeedLabel: '输出速度（TPS）',
+  statsCacheHitLabel: '缓存命中',
+  statsInputLabel: '未缓存输入',
+  statsCacheReadLabel: '缓存读取',
+  statsCacheWriteLabel: '缓存写入',
+  statsOutputLabel: '输出',
 
   toolCall: '工具调用',
   toolResult: '工具结果',

@@ -1,5 +1,3 @@
-import { useEffect } from 'react'
-import { create } from 'zustand'
 import {
   clearStoredSessionSelection,
   loadStoredSessionSelection,
@@ -7,6 +5,8 @@ import {
 } from '@/api/session-selection-store'
 import { restorableSessionId } from '@/state/session-selection-logic'
 import type { MobileConnection } from '@/types/mobile'
+import { useEffect } from 'react'
+import { create } from 'zustand'
 
 interface SessionSelectionState {
   selectedSessionId?: string
@@ -17,7 +17,7 @@ interface SessionSelectionState {
 }
 
 /** Keeps the active session stable across native navigation and safe application reloads. */
-export const useSessionSelectionStore = create<SessionSelectionState>(set => ({
+export const useSessionSelectionStore = create<SessionSelectionState>((set) => ({
   selectedSessionId: undefined,
   async clearSelection(): Promise<void> {
     await clearStoredSessionSelection()
@@ -40,7 +40,7 @@ export const useSessionSelectionStore = create<SessionSelectionState>(set => ({
 
 /** Synchronizes a nested session route into the transient workspace selection state. */
 export function useRouteSessionSelection(sessionId: string | undefined): void {
-  const selectSessionForRoute = useSessionSelectionStore(state => state.selectSessionForRoute)
+  const selectSessionForRoute = useSessionSelectionStore((state) => state.selectSessionForRoute)
   useEffect(() => {
     if (sessionId !== undefined && sessionId !== '') selectSessionForRoute(sessionId)
   }, [selectSessionForRoute, sessionId])

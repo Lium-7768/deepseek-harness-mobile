@@ -1,8 +1,8 @@
-import { ActivityIndicator } from 'react-native'
 import { NativeIcon } from '@/components/native-icon'
 import { NativeListRow } from '@/components/native-list'
-import { useAppTheme } from '@/theme/hooks'
 import { t as message } from '@/locale'
+import { useAppTheme } from '@/theme/hooks'
+import { ActivityIndicator } from 'react-native'
 
 type NativeSelectionRowProps = {
   title: string
@@ -33,7 +33,10 @@ export function NativeSelectionRow({
   const theme = useAppTheme()
   return (
     <NativeListRow
-      accessibilityLabel={accessibilityLabel ?? `${title}${selected ? message('common.selectedSuffix') : ''}${disabled ? message('common.disabledSuffix') : ''}`}
+      accessibilityLabel={
+        accessibilityLabel ??
+        `${title}${selected ? message('common.selectedSuffix') : ''}${disabled ? message('common.disabledSuffix') : ''}`
+      }
       accessibilityRole="radio"
       description={description}
       disabled={disabled}

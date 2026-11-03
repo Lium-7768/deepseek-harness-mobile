@@ -1,3 +1,4 @@
+import { useAppTheme } from '@/theme/hooks'
 import { Image, StyleSheet } from 'react-native'
 import whaleMark from '../../assets/whale-mark.png'
 
@@ -6,11 +7,12 @@ import whaleMark from '../../assets/whale-mark.png'
  * @returns The decorative brand mark.
  */
 export function NativeBrandMark({ size = 28 }: { size?: number }): React.JSX.Element {
+  const theme = useAppTheme()
   return (
     <Image
       accessibilityIgnoresInvertColors
       source={whaleMark}
-      style={[styles.mark, { height: size, width: size }]}
+      style={[styles.mark, { height: size, width: size, tintColor: theme.colors.brand }]}
     />
   )
 }

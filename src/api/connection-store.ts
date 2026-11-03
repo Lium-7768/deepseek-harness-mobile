@@ -1,5 +1,5 @@
-import * as SecureStore from 'expo-secure-store'
 import type { MobileConnection } from '@/types/mobile'
+import * as SecureStore from 'expo-secure-store'
 
 const CONNECTION_KEY = 'dsh-mobile-connection-v1'
 
@@ -29,5 +29,9 @@ export async function clearConnection(): Promise<void> {
 function isConnection(value: unknown): value is MobileConnection {
   if (value === null || Array.isArray(value) || typeof value !== 'object') return false
   const candidate = value as Record<string, unknown>
-  return typeof candidate.gatewayUrl === 'string' && typeof candidate.deviceId === 'string' && typeof candidate.accessToken === 'string'
+  return (
+    typeof candidate.gatewayUrl === 'string' &&
+    typeof candidate.deviceId === 'string' &&
+    typeof candidate.accessToken === 'string'
+  )
 }

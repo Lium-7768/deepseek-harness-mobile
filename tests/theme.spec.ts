@@ -35,7 +35,7 @@ describe('theme appearances', () => {
   })
 
   it('separates the two appearances rather than reusing one palette', () => {
-    const shared = colorKeys.filter(name => mobileTheme.colors[name] === darkTheme.colors[name])
+    const shared = colorKeys.filter((name) => mobileTheme.colors[name] === darkTheme.colors[name])
     // Code surfaces and the success hue are appearance-independent by design; a
     // palette where most roles collide would mean the dark appearance was never
     // derived.

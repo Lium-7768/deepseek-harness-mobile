@@ -1,7 +1,7 @@
-import { ActivityIndicator, Pressable, StyleSheet, Text, type StyleProp, type ViewStyle } from 'react-native'
 import { NativeIcon, type NativeIconName } from '@/components/native-icon'
 import type { AppTheme } from '@/theme'
 import { useAppTheme, useThemedStyles } from '@/theme/hooks'
+import { ActivityIndicator, Pressable, StyleSheet, Text, type StyleProp, type ViewStyle } from 'react-native'
 
 type NativeActionButtonProps = {
   label: string
@@ -29,7 +29,7 @@ export function NativeActionButton({
   const theme = useAppTheme()
   const styles = useThemedStyles(makeStyles)
   const surface = surfaceFor(variant, styles)
-  const glyph = glyphFor(variant, theme)
+  const glyph = disabled && variant === 'primary' ? theme.colors.inkMuted : glyphFor(variant, theme)
   return (
     <Pressable
       accessibilityRole="button"
@@ -40,7 +40,15 @@ export function NativeActionButton({
       style={({ pressed }) => [styles.button, surface, style, stateStyle(variant, pressed, disabled, styles)]}
     >
       {loading ? <ActivityIndicator color={glyph} /> : <NativeIcon name={icon} color={glyph} size={17} />}
-      <Text style={[styles.label, labelTintFor(variant, theme)]}>{label}</Text>
+      <Text
+        style={[
+          styles.label,
+          labelTintFor(variant, theme),
+          disabled && variant === 'primary' && { color: theme.colors.inkMuted },
+        ]}
+      >
+        {label}
+      </Text>
     </Pressable>
   )
 }
@@ -113,33 +121,34 @@ function labelTintFor(variant: NativeActionButtonProps['variant'], theme: AppThe
 
 const makeStyles = (theme: AppTheme) =>
   StyleSheet.create({
-      button: {
-        alignItems: 'center',
-        borderRadius: theme.radius.control,
-        borderWidth: 1,
-        flexDirection: 'row',
-        gap: 7,
-        justifyContent: 'center',
-        minHeight: 44,
-        paddingHorizontal: 16,
-      },
-      // The desktop's primary action fills with `button-primary-fill` and swaps to
-      // `button-primary-hover` while pressed; nothing fades.
-      primary: { backgroundColor: theme.colors.brand, borderColor: theme.colors.brand },
-      primaryPressed: { backgroundColor: theme.colors.brandHover, borderColor: theme.colors.brandHover },
-      primaryDisabled: { backgroundColor: theme.colors.primaryDimmed, borderColor: theme.colors.primaryDimmed },
-      // Its neutral raised control is `button-elevated-fill` behind a `border-l3`
-      // hairline, `radius-md`, 14/500 label (SidebarRoot.module.css:415).
-      secondary: {
-        backgroundColor: theme.colors.elevatedFill,
-        borderColor: theme.colors.borderL3,
-        borderRadius: theme.radius.md,
-      },
-      secondaryPressed: { backgroundColor: theme.colors.surfaceMuted },
-      secondaryDisabled: { backgroundColor: theme.colors.surfaceMuted, borderColor: theme.colors.border },
-      danger: { backgroundColor: theme.colors.dangerSoft, borderColor: theme.colors.dangerBorder },
-      dangerPressed: { opacity: 0.68 },
-      dangerDisabled: { opacity: 0.5 },
-      label: { fontSize: 14, fontWeight: '500' },
-      pressed: { opacity: 1 },
+    button: {
+      alignItems: 'center',
+      borderRadius: theme.radius.control,
+      borderWidth: 1,
+      flexDirection: 'row',
+      gap: 7,
+      justifyContent: 'center',
+      minHeight: 44,
+      paddingHorizontal: 16,
+      paddingVertical: 8,
+    },
+    // The desktop's primary action fills with `button-primary-fill` and swaps to
+    // `button-primary-hover` while pressed; nothing fades.
+    primary: { backgroundColor: theme.colors.brand, borderColor: theme.colors.brand },
+    primaryPressed: { backgroundColor: theme.colors.brandHover, borderColor: theme.colors.brandHover },
+    primaryDisabled: { backgroundColor: theme.colors.primaryDimmed, borderColor: theme.colors.primaryDimmed },
+    // Its neutral raised control is `button-elevated-fill` behind a `border-l3`
+    // hairline, `radius-md`, 14/500 label (SidebarRoot.module.css:415).
+    secondary: {
+      backgroundColor: theme.colors.elevatedFill,
+      borderColor: theme.colors.borderL3,
+      borderRadius: theme.radius.md,
+    },
+    secondaryPressed: { backgroundColor: theme.colors.surfaceMuted },
+    secondaryDisabled: { backgroundColor: theme.colors.surfaceMuted, borderColor: theme.colors.border },
+    danger: { backgroundColor: theme.colors.dangerSoft, borderColor: theme.colors.dangerBorder },
+    dangerPressed: { opacity: 0.68 },
+    dangerDisabled: { opacity: 0.5 },
+    label: { flexShrink: 1, textAlign: 'center', fontSize: 14, fontWeight: '500' },
+    pressed: { opacity: 1 },
   })

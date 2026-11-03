@@ -72,13 +72,18 @@ If the Gateway reports an expired or revoked device, create a new QR code in the
 | `pnpm android` | Build, install, and open the Android development app. |
 | `pnpm test` | Run mobile API and UI-logic tests. |
 | `pnpm test:watch` | Run tests in watch mode. |
-| `pnpm typecheck` | Type-check TypeScript without emitting files. |
+| `pnpm typecheck` | Type-check TypeScript, including unused imports and parameters. |
+| `pnpm format:check` | Verify shared formatting rules. |
+| `pnpm format` | Format routes, features, components, tests and visual fixtures. |
 
 ## Project map
 
 | Path | Purpose |
 | --- | --- |
-| `app/` | Expo Router screens and modal routes. |
+| `app/` | Thin Expo Router route entries and the native root layout. |
+| `src/features/` | Feature screens and session query/action hooks. |
+| `src/sync/` | SSE lifecycle, event decoding, cache projection and conversation windows. |
+| `src/hooks/` | Native foreground/focus lifecycle hooks. |
 | `src/api/` | Gateway API client and connection persistence. |
 | `src/components/` | Reusable native UI, conversation, drawer, and sync components. |
 | `src/state/` | React Query-facing selection and sync state. |
@@ -88,7 +93,7 @@ If the Gateway reports an expired or revoked device, create a new QR code in the
 
 ## Native build note
 
-This repository contains a pnpm-managed `expo-modules-jsi` compatibility patch for the current Xcode 26.0.1 / Swift 6.2 toolchain. It is applied automatically by `pnpm install`; do not edit `node_modules` manually. After a fresh native dependency install, run `cd ios && pod install` before `pnpm ios` if CocoaPods has not already been run.
+This repository contains a pnpm-managed `expo-modules-jsi` compatibility patch for the current Xcode 26.0.1 / Swift 6.2 toolchain. The patch targets `expo-modules-jsi@57.1.3` and is applied automatically by `pnpm install`; do not edit `node_modules` manually. After a fresh native dependency install, run `cd ios && pod install` before `pnpm ios` if CocoaPods has not already been run.
 
 ## Contract and contribution rules
 
@@ -108,3 +113,13 @@ A release bundle is deliberately blocked until a private signing configuration e
 ## Releases
 
 The tested Android, iOS, EAS, version-tag, signing, and GitHub draft-release process is documented in [docs/RELEASING.md](docs/RELEASING.md). Release signing credentials and store submission tokens must remain outside Git.
+
+## Native UI and reliability maintenance
+
+The task ledger and acceptance results are in [docs/IMPROVEMENT-PLAN.md](docs/IMPROVEMENT-PLAN.md).
+The current architecture and native UI review are in [docs/NATIVE-REVIEW.md](docs/NATIVE-REVIEW.md).
+
+For repeatable visual checks without touching desktop sessions, run `node scripts/visual/gateway-fixture.mjs`.
+It serves synthetic data on loopback port 8094. On an Android emulator, use `adb reverse tcp:8094 tcp:8094`,
+then connect the development app to `http://127.0.0.1:8094` with any non-empty password.
+The fixture must stay local; it is a development aid with no real authentication, execution or persistence.

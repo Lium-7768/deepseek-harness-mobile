@@ -1,8 +1,8 @@
+import type { AppTheme } from '@/theme'
+import { useThemedStyles } from '@/theme/hooks'
 import type { PropsWithChildren } from 'react'
 import { ScrollView, StyleSheet, View } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
-import type { AppTheme } from '@/theme'
-import { useThemedStyles } from '@/theme/hooks'
 export interface ScreenProps extends PropsWithChildren {
   scroll?: boolean
 }

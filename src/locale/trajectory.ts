@@ -28,9 +28,11 @@ export const trajectory = {
   actionViewJobOutput: '查看任务输出',
   actionBrowse: '访问网页',
 
-  /** `{seconds}` already carries one decimal. */
-  durationSeconds: '{seconds}秒',
-  durationMinutesSeconds: '{minutes}分{seconds}秒',
+  // `unit.milliseconds` / `unit.seconds` from ui-trajectory's locale: the Web
+  // prints milliseconds below one second and seconds with two decimals below
+  // ten, so the native tool row reads the same durations.
+  durationMilliseconds: '{value} 毫秒',
+  durationSeconds: '{value} 秒',
   /** `{action}` is one of the action names above. */
   running: '正在{action}。',
   runningWithTarget: '{action}：{target}',

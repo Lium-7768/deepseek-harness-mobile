@@ -1,0 +1,585 @@
+import { ConversationDisclosureContext } from '@/components/conversation-disclosure'
+import { assistantActionSequences, conversationFlowGap, conversationRowKey } from '@/components/conversation-flow'
+import { MobileApi } from '@/api/mobile-api'
+import { NativeAgentActivity } from '@/components/native-agent-activity'
+import { NativeGoalBar } from '@/components/native-goal-bar'
+import { goalFromProjection } from '@/components/session-goal-logic'
+import { NativeTurnStatus } from '@/components/native-conversation-status'
+import { NativeIcon } from '@/components/native-icon'
+import { NativeProcessGroup } from '@/components/native-process-group'
+import { NativeQueueDock } from '@/components/native-queue-dock'
+import { NativeTurnGroup } from '@/components/native-turn-group'
+import { firstParam, withErrorContext } from '@/components/route-params'
+import { readPermissionSelect } from '@/components/session-composer-logic'
+import {
+  activeTurnStartedAt,
+  projectNativeConversationRows,
+  type NativeConversationRow,
+} from '@/components/session-conversation-logic'
+import { sessionDisplayTitle } from '@/components/session-drawer-logic'
+import { MessageRow } from '@/components/session-message-row'
+import { groupProcessRows, runningProcessTitle, type NativeProcessRow } from '@/components/session-process-logic'
+import { ConnectionStatus, ErrorNotice, SessionDock, UnavailableState } from '@/components/session-screen-state'
+import { makeSessionStyles } from '@/components/session-screen-styles'
+import {
+  LATEST_PIN_SETTLE_MS,
+  READER_SCROLL_TAIL_MS,
+  isNearLatestMessage,
+  shouldScrollToLatest,
+  shouldShowReturnToLatest,
+  shouldTrackLatestProximity,
+} from '@/components/session-scroll-logic'
+import {
+  foldCompletedTurns,
+  turnSpans,
+  type NativeRow,
+  type NativeTurnMemberRow,
+} from '@/components/session-turn-logic'
+import { ContextRows, TrajectoryPanel, WorkbenchTabs, type WorkbenchTab } from '@/components/session-workbench'
+import { SkeletonConversation } from '@/components/skeleton'
+import { WorkspaceComposer } from '@/components/workspace-composer'
+import { WorkspaceShell } from '@/components/workspace-shell'
+import { workspaceKeyboardVerticalOffset } from '@/components/workspace-shell-logic'
+import { format, t as message } from '@/locale'
+import { type SharedEventItem } from '@/shared/dsh-presentation'
+import { useConnectionStore } from '@/state/connection'
+import { useMobileSyncStore } from '@/state/mobile-sync'
+import { useRouteSessionSelection } from '@/state/session-selection'
+import { mergeEventItems } from '@/sync/event-items'
+import { sessionWindow } from '@/sync/session-window'
+import { useAppTheme, useThemedStyles } from '@/theme/hooks'
+import { useMutation } from '@tanstack/react-query'
+import { router, useLocalSearchParams } from 'expo-router'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import {
+  Alert,
+  FlatList,
+  KeyboardAvoidingView,
+  Platform,
+  Pressable,
+  Text,
+  View,
+  type NativeScrollEvent,
+  type NativeSyntheticEvent,
+} from 'react-native'
+import { useSafeAreaInsets } from 'react-native-safe-area-context'
+import { useSessionActions } from './use-session-actions'
+import { useSessionQueries } from './use-session-queries'
+
+export default function SessionScreen(): React.JSX.Element {
+  const theme = useAppTheme()
+  const s = useThemedStyles(makeSessionStyles)
+  const { sessionId: rawSessionId, draft } = useLocalSearchParams<{
+    sessionId?: string | string[]
+    draft?: string | string[]
+  }>()
+  const sessionId = firstParam(rawSessionId)
+  const connection = useConnectionStore((state) => state.connection)
+  const insets = useSafeAreaInsets()
+  const client = useMemo(() => (connection ? new MobileApi(connection) : undefined), [connection])
+  const listRef = useRef<FlatList<NativeRow>>(null)
+  const submittedDraft = useRef<string | undefined>(undefined)
+  const initialLatestPositionPending = useRef(true)
+  // Sticky-latest latch: only a reader's own drag or momentum may release it, so
+  // content that grows while the list grows too keeps the newest message in view.
+  const nearLatestMessage = useRef(true)
+  const readerScrolling = useRef(false)
+  const readerScrollIdleTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const latestPinTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const [showReturnToLatest, setShowReturnToLatest] = useState(false)
+  const [olderItems, setOlderItems] = useState<SharedEventItem[]>([])
+  const [olderHasMore, setOlderHasMore] = useState<boolean | undefined>()
+  const [tab, setTab] = useState<WorkbenchTab>('chat')
+  /** Set once `pinToLatest` exists so the send callback can reach it. */
+  const pinToLatestRef = useRef<() => void>(() => undefined)
+  const ready = Boolean(client && sessionId)
+  const { history, events, queue, jobs, subagents, interactions, activeSession, models, presets } = useSessionQueries(
+    client,
+    connection,
+    sessionId,
+  )
+  const sessionTitle = sessionDisplayTitle(activeSession)
+  const {
+    selectModelMutation,
+    selectPresetMutation,
+    selectPermissionMutation,
+    branch,
+    send,
+    updateQueue,
+    cancel,
+    goalMutation,
+    interruptSubagent,
+  } = useSessionActions(client, connection, sessionId, () => pinToLatestRef.current())
+  const branchFromMessage = branch.mutate
+  const loadOlder = useMutation({
+    mutationFn: async () => {
+      if (!client || !sessionId) throw new Error(message('conversation.openFromList'))
+      const source = sourceItems
+      const beforeSeq = Math.min(...source.flatMap((item) => (typeof item.seq === 'number' ? [item.seq] : [])))
+      if (!Number.isFinite(beforeSeq)) throw new Error(message('conversation.noMoreHistory'))
+      return client.sessionHistory(sessionId, { beforeSeq, maxMessages: 200 })
+    },
+    onSuccess: (page) => {
+      setOlderItems((current) => mergeEventItems(page.items, current))
+      setOlderHasMore(page.hasMore ?? false)
+    },
+    onError: (error) =>
+      Alert.alert(
+        message('conversation.loadOlderFailedTitle'),
+        withErrorContext(message('conversation.historyNotLoaded'), error),
+      ),
+  })
+  const sendMessage = useRef(send.mutate)
+  sendMessage.current = send.mutate
+
+  useRouteSessionSelection(sessionId)
+
+  useEffect(() => {
+    submittedDraft.current = undefined
+    initialLatestPositionPending.current = true
+    nearLatestMessage.current = true
+    setShowReturnToLatest(false)
+    setOlderItems([])
+    setOlderHasMore(undefined)
+  }, [sessionId])
+
+  useEffect(() => {
+    const value = firstParam(draft)
+    if (!client || !sessionId || !value || submittedDraft.current === value) return
+    submittedDraft.current = value
+    sendMessage.current([{ type: 'text', text: value }])
+  }, [client, draft, sessionId])
+
+  useEffect(() => {
+    if (tab !== 'chat') return
+    initialLatestPositionPending.current = true
+    nearLatestMessage.current = true
+    setShowReturnToLatest(false)
+  }, [tab])
+
+  const recentWindow = useMemo(
+    () => sessionWindow(mergeEventItems(history.data?.items ?? [], events.data?.items ?? [])),
+    [history.data?.items, events.data?.items],
+  )
+  const sourceItems = useMemo(() => mergeEventItems(olderItems, recentWindow.items), [olderItems, recentWindow])
+  const messages = useMemo(() => projectNativeConversationRows(sourceItems), [sourceItems])
+  const runningTurnStartedAt = useMemo(() => activeTurnStartedAt(sourceItems), [sourceItems])
+  const spans = useMemo(() => turnSpans(sourceItems), [sourceItems])
+  const actionSequences = useMemo(() => assistantActionSequences(messages, spans), [messages, spans])
+  // The running Turn is flat like the desktop's latest Turn: one header names
+  // what the agent is doing now, and later steps continue under it.
+  const liveTurnStartSeq = useMemo(() => {
+    if (runningTurnStartedAt === undefined) return undefined
+    const open = spans.find((span) => span.endSeq === Number.MAX_SAFE_INTEGER)
+    return open?.startSeq
+  }, [runningTurnStartedAt, spans])
+  const liveTitle = useMemo(
+    () => (runningTurnStartedAt === undefined ? undefined : runningProcessTitle(messages)),
+    [messages, runningTurnStartedAt],
+  )
+  const stepRows = useMemo(
+    () =>
+      groupProcessRows(messages, {
+        running: runningTurnStartedAt !== undefined,
+        ...(liveTurnStartSeq === undefined ? {} : { liveTurnStartSeq }),
+        ...(liveTitle === undefined ? {} : { liveTitle }),
+      }),
+    [liveTitle, liveTurnStartSeq, messages, runningTurnStartedAt],
+  )
+  // A settled Turn folds behind one control; an open Turn has no end sequence, so
+  // its steps keep their live headers.
+  const displayRows = useMemo(() => foldCompletedTurns(stepRows, { spans }), [spans, stepRows])
+  const eventBySeq = useMemo(
+    () =>
+      new Map(sourceItems.flatMap((item) => (typeof item.seq === 'number' ? [[item.seq, item.event] as const] : []))),
+    [sourceItems],
+  )
+
+  // Unstable list props re-render every mounted cell. The reader's own scroll
+  // updates `showReturnToLatest`, so an inline renderItem re-rendered the whole
+  // conversation on every scroll frame; these callbacks and the event lookup keep
+  // their identity across those renders.
+  const eventBySeqRef = useRef(eventBySeq)
+  eventBySeqRef.current = eventBySeq
+  const getEvent = useCallback(
+    (seq: number | undefined) => (seq === undefined ? undefined : eventBySeqRef.current.get(seq)),
+    [],
+  )
+  const renderRow = useCallback(
+    (row: NativeConversationRow) => (
+      <MessageRow
+        api={client}
+        event={getEvent(row.sourceSeq)}
+        item={row}
+        onBranch={branchFromMessage}
+        sessionId={sessionId}
+        showActions={row.kind !== 'assistant' || (row.sourceSeq !== undefined && actionSequences.has(row.sourceSeq))}
+      />
+    ),
+    [actionSequences, branchFromMessage, client, getEvent, sessionId],
+  )
+  // A step's rows sit behind one collapsed header, the way the desktop groups a
+  // step instead of printing a row per call.
+  // Open steps live here, not in the row: the list recycles rows, so a disclosure
+  // held by the row would collapse whenever it scrolled out of view and back.
+  const [openSteps, setOpenSteps] = useState<ReadonlySet<string>>(() => new Set())
+  const toggleStep = useCallback((rowKey: string) => {
+    if (latestPinTimer.current) clearTimeout(latestPinTimer.current)
+    initialLatestPositionPending.current = false
+    setOpenSteps((current) => {
+      const next = new Set(current)
+      if (next.has(rowKey)) next.delete(rowKey)
+      else next.add(rowKey)
+      return next
+    })
+  }, [])
+  const renderGroupRow = useCallback((row: NativeConversationRow) => renderRow(row), [renderRow])
+  const renderStep = useCallback(
+    (row: NativeProcessRow) => (
+      <NativeProcessGroup
+        expanded={row.running ? !openSteps.has(`closed:${row.rowKey}`) : openSteps.has(row.rowKey)}
+        item={row}
+        onToggle={(key) => toggleStep(row.running ? `closed:${key}` : key)}
+        renderRow={renderGroupRow}
+      />
+    ),
+    [openSteps, renderGroupRow, toggleStep],
+  )
+  // A Turn's control reveals step groups, retries, and command rows together, so
+  // the member renderer dispatches on the row rather than assuming a step.
+  const renderTurnMember = useCallback(
+    (row: NativeTurnMemberRow) =>
+      row.kind === 'process' ? (
+        <View style={s.processMembers}>
+          {row.rows.map((member, index) => (
+            <View key={conversationRowKey(member, index)}>{renderRow(member)}</View>
+          ))}
+        </View>
+      ) : (
+        renderRow(row)
+      ),
+    [renderRow, s.processMembers],
+  )
+  const renderItem = useCallback(
+    ({ item, index }: { item: NativeRow; index: number }) => {
+      const content =
+        item.kind === 'turn' ? (
+          <NativeTurnGroup
+            expanded={openSteps.has(item.rowKey)}
+            item={item}
+            onToggle={toggleStep}
+            renderRow={renderTurnMember}
+          />
+        ) : item.kind === 'process' ? (
+          renderStep(item)
+        ) : (
+          renderRow(item)
+        )
+      return <View style={{ paddingTop: conversationFlowGap(item, displayRows[index - 1]) }}>{content}</View>
+    },
+    [displayRows, openSteps, renderRow, renderStep, renderTurnMember, toggleStep],
+  )
+  const keyExtractor = useCallback((item: NativeRow, index: number) => conversationRowKey(item, index), [])
+  const disclosures = useMemo(() => ({ expanded: openSteps, toggle: toggleStep }), [openSteps, toggleStep])
+  useEffect(() => {
+    setOpenSteps(new Set())
+  }, [sessionId])
+  useEffect(() => {
+    if (tab !== 'chat' || messages.length === 0 || !initialLatestPositionPending.current) return
+    const timer = setTimeout(() => listRef.current?.scrollToEnd({ animated: false }), 0)
+    return () => clearTimeout(timer)
+  }, [messages.length, tab])
+
+  /**
+   * Records how far the reader is from the newest message and mirrors it into the
+   * return-to-latest control.
+   * @param event - Native scroll measurement that produced the current offset.
+   * @param releaseLatch - Whether this measurement may move the sticky-latest latch.
+   */
+  const applyScrollProximity = (event: NativeScrollEvent, releaseLatch: boolean): void => {
+    if (!shouldTrackLatestProximity({ initialPositionPending: initialLatestPositionPending.current })) return
+    if (releaseLatch) {
+      nearLatestMessage.current = isNearLatestMessage(
+        event.contentSize.height,
+        event.layoutMeasurement.height,
+        event.contentOffset.y,
+      )
+    }
+    // The control mirrors the latch, not this measurement: a programmatic scroll that
+    // outruns content growth must not advertise a return-to-latest that lands nowhere.
+    setShowReturnToLatest(
+      shouldShowReturnToLatest({ hasMessages: messages.length > 0, nearLatest: nearLatestMessage.current }),
+    )
+  }
+
+  /** Opens a window in which measurements count as the reader steering the list. */
+  const beginReaderScroll = (): void => {
+    if (readerScrollIdleTimer.current) clearTimeout(readerScrollIdleTimer.current)
+    readerScrollIdleTimer.current = null
+    readerScrolling.current = true
+  }
+
+  /** Closes the reader window after the momentum tail of the current gesture. */
+  const settleReaderScroll = (event: NativeSyntheticEvent<NativeScrollEvent>): void => {
+    applyScrollProximity(event.nativeEvent, true)
+    if (readerScrollIdleTimer.current) clearTimeout(readerScrollIdleTimer.current)
+    readerScrollIdleTimer.current = setTimeout(() => {
+      readerScrolling.current = false
+      readerScrollIdleTimer.current = null
+    }, READER_SCROLL_TAIL_MS)
+  }
+
+  /**
+   * Pins the list to the newest message and keeps the sticky latch closed.
+   *
+   * Lazily measured rows settle after the jump, so the target length read at jump time is
+   * stale and any animation towards it stops short; the jump is instant and re-asserted
+   * once the re-measured layout stops growing.
+   */
+  function pinToLatest(): void {
+    nearLatestMessage.current = true
+    setShowReturnToLatest(false)
+    listRef.current?.scrollToEnd({ animated: false })
+    // One re-assert only: a repeating pin turns every lazy row measurement into a
+    // visible jump, which reads as the list flickering up and down on open.
+    if (latestPinTimer.current) clearTimeout(latestPinTimer.current)
+    latestPinTimer.current = setTimeout(() => {
+      latestPinTimer.current = null
+      listRef.current?.scrollToEnd({ animated: false })
+    }, LATEST_PIN_SETTLE_MS)
+  }
+  pinToLatestRef.current = pinToLatest
+
+  useEffect(
+    () => () => {
+      if (readerScrollIdleTimer.current) clearTimeout(readerScrollIdleTimer.current)
+      if (latestPinTimer.current) clearTimeout(latestPinTimer.current)
+    },
+    [],
+  )
+
+  const hasMoreHistory =
+    olderHasMore ??
+    (recentWindow.truncated || events.data?.windowStartSeq !== undefined || history.data?.hasMore === true)
+  const actions = interactions.data?.items.length ?? 0
+  const goal = goalFromProjection(history.data?.projections?.values)
+  const reportedStatus = events.data?.status ?? message('conversation.connecting')
+  const running = reportedStatus === 'running' || activeSession?.running === true || runningTurnStartedAt !== undefined
+  const status = running ? 'running' : reportedStatus
+  const syncStatus = useMobileSyncStore((state) => state.status)
+  const displayStatus =
+    !connection || syncStatus === 'disconnected' ? 'disconnected' : syncStatus === 'connecting' ? 'connecting' : status
+
+  return (
+    <ConversationDisclosureContext.Provider value={disclosures}>
+      <WorkspaceShell title={sessionTitle} rightAction={<ConnectionStatus status={displayStatus} />}>
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          keyboardVerticalOffset={workspaceKeyboardVerticalOffset(insets.top, false)}
+          style={s.canvas}
+        >
+          {!connection ? (
+            <UnavailableState
+              message={message('drawer.connectFirstBody')}
+              action={message('conversation.goConnect')}
+              onPress={() => router.replace('/connect')}
+            />
+          ) : !sessionId ? (
+            <UnavailableState
+              message={message('conversation.missingSessionId')}
+              action={message('conversation.backToWorkspace')}
+              onPress={() => router.replace('/workspace')}
+            />
+          ) : (
+            <>
+              <WorkbenchTabs tab={tab} onChange={setTab} />
+              {actions > 0 ? (
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel={message('conversation.viewPending')}
+                  onPress={() => router.push({ pathname: '/session/[sessionId]/interactions', params: { sessionId } })}
+                  style={({ pressed }) => [s.action, pressed && s.pressed]}
+                >
+                  <NativeIcon name="warning-triangle-outline" size={18} color={theme.colors.warning} />
+                  <Text style={s.actionText}>{format('conversation.pendingCount', { count: actions })}</Text>
+                  <NativeIcon name="chevron-right-outline" size={18} color={theme.colors.inkMuted} />
+                </Pressable>
+              ) : null}
+              {history.isError ? (
+                <ErrorNotice
+                  text={withErrorContext(message('conversation.historyFailed'), history.error)}
+                  onRetry={() => void history.refetch()}
+                />
+              ) : null}
+              {events.isError ? (
+                <ErrorNotice
+                  text={withErrorContext(message('conversation.eventsFailed'), events.error)}
+                  onRetry={() => void events.refetch()}
+                />
+              ) : null}
+              {interactions.isError ? (
+                <ErrorNotice
+                  text={withErrorContext(message('conversation.interactionsFailed'), interactions.error)}
+                  onRetry={() => void interactions.refetch()}
+                />
+              ) : null}
+              {tab === 'trajectory' ? <TrajectoryPanel items={sourceItems} /> : null}
+              {tab === 'chat' ? <ContextRows items={sourceItems} /> : null}
+              <View style={tab === 'chat' ? s.listStage : s.hidden}>
+                <FlatList
+                  style={s.listView}
+                  ref={listRef}
+                  data={displayRows}
+                  keyExtractor={keyExtractor}
+                  // A long session can hold hundreds of rows; bound the first paint and
+                  // the batch size so opening one does not mount every row at once.
+                  initialNumToRender={14}
+                  maxToRenderPerBatch={10}
+                  updateCellsBatchingPeriod={40}
+                  windowSize={11}
+                  // The list owns its own arrival: rows keep their measured height while
+                  // the first jump settles, so a re-render cannot reset the offset.
+                  maintainVisibleContentPosition={{ minIndexForVisible: 0 }}
+                  renderItem={renderItem}
+                  contentContainerStyle={s.list}
+                  keyboardDismissMode="on-drag"
+                  keyboardShouldPersistTaps="handled"
+                  showsVerticalScrollIndicator={false}
+                  ListHeaderComponent={
+                    <>
+                      <NativeAgentActivity
+                        jobs={jobs.data?.items ?? []}
+                        subagents={subagents.data?.entries ?? []}
+                        interruptingId={interruptSubagent.isPending ? interruptSubagent.variables : undefined}
+                        onOpenSubagent={(entry) =>
+                          router.push({
+                            pathname: '/session/[sessionId]/subagent',
+                            params: { sessionId: entry.id, parentSessionId: sessionId, mode: entry.mode },
+                          })
+                        }
+                        onInterruptSubagent={(entry) => interruptSubagent.mutate(entry.id)}
+                      />
+                      {hasMoreHistory ? (
+                        <Pressable
+                          accessibilityRole="button"
+                          accessibilityLabel={message('conversation.loadOlder')}
+                          accessibilityState={{ busy: loadOlder.isPending }}
+                          disabled={loadOlder.isPending}
+                          onPress={() => void loadOlder.mutateAsync()}
+                          style={({ pressed }) => [s.loadOlder, pressed && s.pressed]}
+                        >
+                          <NativeIcon name="chevron-up-outline" size={16} color={theme.colors.accentText} />
+                          <Text style={s.loadOlderText}>
+                            {loadOlder.isPending ? message('conversation.loading') : message('conversation.loadOlder')}
+                          </Text>
+                        </Pressable>
+                      ) : null}
+                    </>
+                  }
+                  ListFooterComponent={
+                    status === 'running' ? (
+                      <View style={s.turnStatusSlot}>
+                        <NativeTurnStatus startedAt={runningTurnStartedAt} />
+                      </View>
+                    ) : null
+                  }
+                  ListEmptyComponent={
+                    history.isPending ? (
+                      <SkeletonConversation />
+                    ) : (
+                      <Text style={s.empty}>{message('conversation.noMessages')}</Text>
+                    )
+                  }
+                  onContentSizeChange={() => {
+                    // Content grows while the initial jump is still settling, so the
+                    // list re-pins until the laid-out length matches what it jumped to.
+                    // Pinning on every later growth would fight the reader's position
+                    // and re-trigger itself, which is the flicker this guards against.
+                    if (!initialLatestPositionPending.current) return
+                    if (
+                      !shouldScrollToLatest({
+                        hasMessages: messages.length > 0,
+                        initialPositionPending: true,
+                        nearLatest: true,
+                      })
+                    )
+                      return
+                    pinToLatest()
+                    initialLatestPositionPending.current = false
+                  }}
+                  onMomentumScrollBegin={() => {
+                    // Extend the reader window for a gesture's momentum tail; momentum that
+                    // follows a programmatic scroll must not release the sticky latch.
+                    if (readerScrolling.current) beginReaderScroll()
+                  }}
+                  onMomentumScrollEnd={(event: NativeSyntheticEvent<NativeScrollEvent>) => {
+                    if (readerScrolling.current) settleReaderScroll(event)
+                  }}
+                  onScroll={(event: NativeSyntheticEvent<NativeScrollEvent>) => {
+                    if (!shouldTrackLatestProximity({ initialPositionPending: initialLatestPositionPending.current }))
+                      return
+                    applyScrollProximity(event.nativeEvent, readerScrolling.current)
+                  }}
+                  onScrollBeginDrag={beginReaderScroll}
+                  onScrollEndDrag={settleReaderScroll}
+                  scrollEventThrottle={16}
+                />
+                {showReturnToLatest ? (
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel={message('conversation.backToLatest')}
+                    onPress={pinToLatest}
+                    style={({ pressed }) => [s.returnToLatest, pressed && s.returnToLatestPressed]}
+                  >
+                    <NativeIcon name="chevron-down-outline" size={20} color={theme.colors.ink} />
+                  </Pressable>
+                ) : null}
+              </View>
+              <NativeQueueDock
+                items={queue.data?.items ?? []}
+                onUpdate={(itemId, action) => updateQueue.mutateAsync({ itemId, action }).then(() => undefined)}
+                running={status === 'running'}
+              />
+              <WorkspaceComposer
+                key={sessionId ?? 'workspace'}
+                agentPreset={activeSession?.agentPreset}
+                model={models.data?.current}
+                header={
+                  <NativeGoalBar
+                    goal={goal}
+                    pending={goalMutation.isPending}
+                    onMutate={(action, ref, objective) =>
+                      goalMutation.mutateAsync({ action, ref, objective }).then(() => undefined)
+                    }
+                  />
+                }
+                placeholder={message('conversation.composerPlaceholder')}
+                onSend={(content) => send.mutateAsync(content).then(() => undefined)}
+                onCancel={() => cancel.mutate()}
+                permissions={readPermissionSelect(history.data?.projections?.values.permissions)}
+                sessionId={sessionId}
+                cancelling={cancel.isPending}
+                disabled={!ready}
+                sending={send.isPending}
+                running={status === 'running'}
+                modelCatalog={models.data?.groups}
+                onSelectMode={(value) => selectPresetMutation.mutate(value)}
+                onSelectModel={(selection) => selectModelMutation.mutate(selection)}
+                onSelectPermission={(value) => selectPermissionMutation.mutate(value)}
+                permissionLocked={
+                  events.isError || events.isPending || events.isStale || status === 'running' || status === 'waiting'
+                }
+                presets={presets.data?.presets}
+                footer={
+                  tab === 'chat' ? (
+                    <SessionDock items={sourceItems} projectionValues={history.data?.projections?.values} />
+                  ) : undefined
+                }
+              />
+            </>
+          )}
+        </KeyboardAvoidingView>
+      </WorkspaceShell>
+    </ConversationDisclosureContext.Provider>
+  )
+}

@@ -26,6 +26,7 @@ jobs:
       - run: pnpm audit --prod
       - run: pnpm test
       - run: pnpm typecheck
+      - run: pnpm format:check
       - run: pnpm exec expo export --platform ios --output-dir /tmp/dsh-ios-export
       - run: pnpm exec expo export --platform android --output-dir /tmp/dsh-android-export
       - run: cd android && ./gradlew :app:assembleDebug --no-daemon

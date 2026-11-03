@@ -5,9 +5,9 @@
 
 /** Agent activity copy. */
 export const activity = {
-  goalRunning: '执行中',
-  goalPaused: '已暂停',
-  goalBlocked: '已阻塞',
+  goalRunning: '执行中的目标',
+  goalPaused: '已暂停的目标',
+  goalBlocked: '受阻的目标',
   pauseGoal: '暂停目标',
   resumeGoal: '继续目标',
   editGoal: '编辑目标',

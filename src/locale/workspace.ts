@@ -6,6 +6,10 @@
 /** Workspace screen copy. */
 export const workspace = {
   sectionTitle: '工作区',
+  /** The empty new-session hero, matching the desktop's own headline. */
+  heroTitle: '探索未至之境',
+  /** Badge beside the hero headline; the desktop shows it on preview builds. */
+  heroBadge: '预览版',
   pickSession: '选择会话',
   pickSessionFirst: '请先选择一个会话后再发送。',
   selectedSessionLabel: '选择桌面会话',

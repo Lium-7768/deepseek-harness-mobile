@@ -93,10 +93,34 @@ describe('projectNativeConversationRows', () => {
   it('projects in-progress reasoning and text deltas before a durable assistant message exists', () => {
     expect(
       projectNativeConversationRows([
-        { seq: 1, event: { type: 'assistant/chunk', data: { turn: 3, step: 2, chunk: { type: 'reasoning-delta', index: 0, text: '分析' } } } },
-        { seq: 2, event: { type: 'assistant/chunk', data: { turn: 3, step: 2, chunk: { type: 'reasoning-delta', index: 0, text: '中' } } } },
-        { seq: 3, event: { type: 'assistant/chunk', data: { turn: 3, step: 2, chunk: { type: 'text-delta', index: 1, text: '正在' } } } },
-        { seq: 4, event: { type: 'assistant/chunk', data: { turn: 3, step: 2, chunk: { type: 'text-delta', index: 1, text: '处理。' } } } },
+        {
+          seq: 1,
+          event: {
+            type: 'assistant/chunk',
+            data: { turn: 3, step: 2, chunk: { type: 'reasoning-delta', index: 0, text: '分析' } },
+          },
+        },
+        {
+          seq: 2,
+          event: {
+            type: 'assistant/chunk',
+            data: { turn: 3, step: 2, chunk: { type: 'reasoning-delta', index: 0, text: '中' } },
+          },
+        },
+        {
+          seq: 3,
+          event: {
+            type: 'assistant/chunk',
+            data: { turn: 3, step: 2, chunk: { type: 'text-delta', index: 1, text: '正在' } },
+          },
+        },
+        {
+          seq: 4,
+          event: {
+            type: 'assistant/chunk',
+            data: { turn: 3, step: 2, chunk: { type: 'text-delta', index: 1, text: '处理。' } },
+          },
+        },
       ]),
     ).toEqual([
       { kind: 'reasoning', rowKey: 'stream:3:2:reasoning:0', sourceSeq: 1, text: '分析中' },
@@ -107,7 +131,13 @@ describe('projectNativeConversationRows', () => {
   it('replaces same-step streaming deltas with the durable assistant message once settled', () => {
     expect(
       projectNativeConversationRows([
-        { seq: 1, event: { type: 'assistant/chunk', data: { turn: 3, step: 2, chunk: { type: 'text-delta', index: 0, text: '临时' } } } },
+        {
+          seq: 1,
+          event: {
+            type: 'assistant/chunk',
+            data: { turn: 3, step: 2, chunk: { type: 'text-delta', index: 0, text: '临时' } },
+          },
+        },
         {
           seq: 2,
           event: {

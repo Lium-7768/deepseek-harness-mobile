@@ -1,10 +1,10 @@
-import { useEffect, useMemo, useState } from 'react'
-import { Alert, Pressable, StyleSheet, Text, TextInput, View } from 'react-native'
 import { NativeIcon } from '@/components/native-icon'
-import type { MobilePromptContent, MobileQueueItem } from '@/types/mobile'
+import { format, t as message } from '@/locale'
 import type { AppTheme } from '@/theme'
 import { useAppTheme, useThemedStyles } from '@/theme/hooks'
-import { format, t as message } from '@/locale'
+import type { MobilePromptContent, MobileQueueItem } from '@/types/mobile'
+import { useEffect, useMemo, useState } from 'react'
+import { Alert, Pressable, StyleSheet, Text, TextInput, View } from 'react-native'
 
 type Props = {
   items: readonly MobileQueueItem[]
@@ -22,7 +22,7 @@ type Editing = { id: string; text: string } | undefined
 export function NativeQueueDock({ items, onUpdate, running }: Props): React.JSX.Element | null {
   const theme = useAppTheme()
   const s = useThemedStyles(makeStyles)
-  const queue = useMemo(() => items.filter(item => item.placement === 'queued'), [items])
+  const queue = useMemo(() => items.filter((item) => item.placement === 'queued'), [items])
   const [collapsed, setCollapsed] = useState(true)
   const [editing, setEditing] = useState<Editing>()
   const [busyId, setBusyId] = useState<string | undefined>()
@@ -33,7 +33,7 @@ export function NativeQueueDock({ items, onUpdate, running }: Props): React.JSX.
       setEditing(undefined)
       return
     }
-    if (editing !== undefined && !queue.some(item => item.id === editing.id)) setEditing(undefined)
+    if (editing !== undefined && !queue.some((item) => item.id === editing.id)) setEditing(undefined)
   }, [editing, queue])
 
   if (queue.length === 0) return null
@@ -50,7 +50,7 @@ export function NativeQueueDock({ items, onUpdate, running }: Props): React.JSX.
       Alert.alert(message('queue.failedTitle'), failure)
       return false
     } finally {
-      setBusyId(current => (current === itemId ? undefined : current))
+      setBusyId((current) => (current === itemId ? undefined : current))
     }
   }
 
@@ -71,15 +71,22 @@ export function NativeQueueDock({ items, onUpdate, running }: Props): React.JSX.
       {queue.length > 1 ? (
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel={format('queue.summary', { count: queue.length, action: expanded ? message('queue.collapse') : message('queue.expand') })}
+          accessibilityLabel={format('queue.summary', {
+            count: queue.length,
+            action: expanded ? message('queue.collapse') : message('queue.expand'),
+          })}
           accessibilityState={{ expanded, disabled: interactionActive }}
           disabled={interactionActive}
-          onPress={() => setCollapsed(value => !value)}
+          onPress={() => setCollapsed((value) => !value)}
           style={({ pressed }) => [s.header, pressed && s.pressed]}
         >
           <NativeIcon name="new-chat-outline" size={15} color={theme.colors.inkMuted} />
           <Text style={s.headerText}>{format('queue.header', { count: queue.length })}</Text>
-          <NativeIcon name={expanded ? 'chevron-up-outline' : 'chevron-down-outline'} size={17} color={theme.colors.inkMuted} />
+          <NativeIcon
+            name={expanded ? 'chevron-up-outline' : 'chevron-down-outline'}
+            size={17}
+            color={theme.colors.inkMuted}
+          />
         </Pressable>
       ) : null}
       {listVisible ? (
@@ -90,13 +97,15 @@ export function NativeQueueDock({ items, onUpdate, running }: Props): React.JSX.
             const busy = busyId !== undefined
             return (
               <View key={item.id} style={s.row}>
-                {queue.length === 1 ? <NativeIcon name="new-chat-outline" size={15} color={theme.colors.inkMuted} /> : null}
+                {queue.length === 1 ? (
+                  <NativeIcon name="new-chat-outline" size={15} color={theme.colors.inkMuted} />
+                ) : null}
                 {isEditing ? (
                   <TextInput
                     accessibilityLabel={message('queue.edit')}
                     autoFocus
                     multiline
-                    onChangeText={value => setEditing({ id: item.id, text: value })}
+                    onChangeText={(value) => setEditing({ id: item.id, text: value })}
                     style={s.editor}
                     value={editing.text}
                   />
@@ -114,7 +123,12 @@ export function NativeQueueDock({ items, onUpdate, running }: Props): React.JSX.
                         icon="check-outline"
                         onPress={() => void save()}
                       />
-                      <QueueAction disabled={busy} label={message('queue.cancelEdit')} icon="close-outline" onPress={() => setEditing(undefined)} />
+                      <QueueAction
+                        disabled={busy}
+                        label={message('queue.cancelEdit')}
+                        icon="close-outline"
+                        onPress={() => setEditing(undefined)}
+                      />
                     </>
                   ) : (
                     <>
@@ -180,14 +194,19 @@ function QueueAction({
 
 function editableText(item: MobileQueueItem): string | undefined {
   const { content } = item.message
-  if (!content.every(part => part.type === 'text')) return undefined
-  return content.map(part => part.text).join('')
+  if (!content.every((part) => part.type === 'text')) return undefined
+  return content.map((part) => part.text).join('')
 }
 
 function queuePreview(item: MobileQueueItem): string {
   const text = editableText(item)
   if (text !== undefined) return text
-  return item.message.content.map(part => (part.type === 'text' ? part.text : message('queue.imagePlaceholder'))).join(' ').trim() || message('queue.attachmentPlaceholder')
+  return (
+    item.message.content
+      .map((part) => (part.type === 'text' ? part.text : message('queue.imagePlaceholder')))
+      .join(' ')
+      .trim() || message('queue.attachmentPlaceholder')
+  )
 }
 
 const makeStyles = (theme: AppTheme) =>
@@ -203,10 +222,10 @@ const makeStyles = (theme: AppTheme) =>
       paddingVertical: theme.spacing.sm,
     },
     header: { alignItems: 'center', flexDirection: 'row', gap: 7, minHeight: theme.touch.minTarget },
-    headerText: { color: theme.colors.inkMuted, flex: 1, fontSize: 13, fontWeight: '600' },
+    headerText: { color: theme.colors.inkTertiary, flex: 1, fontSize: 13, fontWeight: '500', lineHeight: 20 },
     list: { gap: 4 },
     row: { alignItems: 'center', flexDirection: 'row', gap: 7, minHeight: theme.touch.minTarget },
-    preview: { color: theme.colors.ink, flex: 1, fontSize: 13, lineHeight: 18 },
+    preview: { color: theme.colors.ink, flex: 1, fontSize: 13, lineHeight: 20 },
     editor: {
       backgroundColor: theme.colors.surfaceRaised,
       borderColor: theme.colors.borderStrong,
@@ -215,7 +234,7 @@ const makeStyles = (theme: AppTheme) =>
       color: theme.colors.ink,
       flex: 1,
       fontSize: 13,
-      lineHeight: 18,
+      lineHeight: 20,
       maxHeight: 88,
       minHeight: 36,
       paddingHorizontal: 9,

@@ -1,14 +1,16 @@
-import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native'
 import { NativeIcon, type NativeIconName } from '@/components/native-icon'
 import {
   formatTrajectoryDuration,
   projectNativeTrajectoryActivities,
+  trajectoryDetailPreview,
   type NativeTrajectoryActivity,
 } from '@/components/session-trajectory-logic'
+import { format, t as message } from '@/locale'
+import type { SharedEventItem } from '@/shared/dsh-presentation'
 import type { AppTheme } from '@/theme'
 import { useAppTheme, useThemedStyles } from '@/theme/hooks'
-import type { SharedEventItem } from '@/shared/dsh-presentation'
-import { format, t as message } from '@/locale'
+import { MONOSPACE_FONT } from '@/theme/platform'
+import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native'
 
 export type WorkbenchTab = 'chat' | 'trajectory'
 
@@ -22,24 +24,17 @@ export function WorkbenchTabs({
   const s = useThemedStyles(makeStyles)
   return (
     <View style={s.tabs}>
-      <Tab active={tab === 'chat'} icon="new-chat-outline" label={message('workbench.chat')} onPress={() => onChange('chat')} />
-      <Tab active={tab === 'trajectory'} icon="branch-outline" label={message('workbench.trajectory')} onPress={() => onChange('trajectory')} />
+      <Tab active={tab === 'chat'} label={message('workbench.chat')} onPress={() => onChange('chat')} />
+      <Tab
+        active={tab === 'trajectory'}
+        label={message('workbench.trajectory')}
+        onPress={() => onChange('trajectory')}
+      />
     </View>
   )
 }
 
-function Tab({
-  active,
-  icon,
-  label,
-  onPress,
-}: {
-  active: boolean
-  icon: NativeIconName
-  label: string
-  onPress: () => void
-}): React.JSX.Element {
-  const theme = useAppTheme()
+function Tab({ active, label, onPress }: { active: boolean; label: string; onPress: () => void }): React.JSX.Element {
   const s = useThemedStyles(makeStyles)
   return (
     <Pressable
@@ -48,10 +43,10 @@ function Tab({
       accessibilityState={{ selected: active }}
       hitSlop={{ top: 5, bottom: 5 }}
       onPress={onPress}
-      style={[s.tab, active && s.tabActive]}
+      style={s.tab}
     >
-      <NativeIcon name={icon} size={16} color={active ? theme.colors.accentText : theme.colors.inkMuted} />
       <Text style={[s.tabText, active && s.tabTextActive]}>{label}</Text>
+      {active ? <View style={s.tabBar} /> : null}
     </Pressable>
   )
 }
@@ -66,7 +61,7 @@ export function TrajectoryPanel({ items }: { items: SharedEventItem[] }): React.
   return (
     <FlatList
       data={activities}
-      keyExtractor={activity => activity.id}
+      keyExtractor={(activity) => activity.id}
       contentContainerStyle={s.panelList}
       renderItem={({ item }) => <TrajectoryActivityRow activity={item} />}
       ListEmptyComponent={<Text style={s.empty}>{message('workbench.emptyTrajectory')}</Text>}
@@ -79,7 +74,11 @@ function TrajectoryActivityRow({ activity }: { activity: NativeTrajectoryActivit
   const s = useThemedStyles(makeStyles)
   const stateLabel = activityStateLabel(activity)
   const detailLabel = activity.detail === undefined ? '' : `：${activity.detail}`
-  const durationLabel = activity.durationMs === undefined ? '' : format('workbench.elapsed', { duration: formatTrajectoryDuration(activity.durationMs) })
+  const durationLabel =
+    activity.durationMs === undefined
+      ? ''
+      : format('workbench.elapsed', { duration: formatTrajectoryDuration(activity.durationMs) })
+  const preview = trajectoryDetailPreview(activity.detail)
   return (
     <View accessibilityLabel={`${activity.title}${stateLabel}${detailLabel}${durationLabel}`} style={s.activityWrap}>
       {activity.showTurn === true && activity.turn !== undefined ? (
@@ -92,15 +91,19 @@ function TrajectoryActivityRow({ activity }: { activity: NativeTrajectoryActivit
         <View style={s.traceBody}>
           <View style={s.activityTitleRow}>
             <Text style={s.traceLabel}>{activity.title}</Text>
-            {stateLabel ? <Text style={[s.state, activity.state === 'failed' && s.stateFailed]}>{stateLabel}</Text> : null}
+            {stateLabel ? (
+              <Text style={[s.state, activity.state === 'failed' && s.stateFailed]}>{stateLabel}</Text>
+            ) : null}
           </View>
-          {activity.detail ? (
-            <Text selectable numberOfLines={3} style={s.traceDetail}>
-              {activity.detail}
+          {preview ? (
+            <Text ellipsizeMode="tail" numberOfLines={1} style={s.traceDetail}>
+              {preview}
             </Text>
           ) : null}
         </View>
-        {activity.durationMs !== undefined ? <Text style={s.duration}>{formatTrajectoryDuration(activity.durationMs)}</Text> : null}
+        {activity.durationMs !== undefined ? (
+          <Text style={s.duration}>{formatTrajectoryDuration(activity.durationMs)}</Text>
+        ) : null}
       </View>
     </View>
   )
@@ -108,15 +111,24 @@ function TrajectoryActivityRow({ activity }: { activity: NativeTrajectoryActivit
 
 function activityIcon(activity: NativeTrajectoryActivity): NativeIconName {
   switch (activity.kind) {
-    case 'assistant': return 'agent-preset-outline'
-    case 'compaction': return 'data-outline'
-    case 'context': return 'deliver-doc'
-    case 'error': return 'warning-triangle-outline'
-    case 'question': return 'warning-triangle-outline'
-    case 'reasoning': return 'think-outline'
-    case 'retry': return 'refresh-outline'
-    case 'tool': return 'skill-outline'
-    case 'user': return 'new-chat-outline'
+    case 'assistant':
+      return 'agent-preset-outline'
+    case 'compaction':
+      return 'data-outline'
+    case 'context':
+      return 'deliver-doc'
+    case 'error':
+      return 'warning-triangle-outline'
+    case 'question':
+      return 'warning-triangle-outline'
+    case 'reasoning':
+      return 'think-outline'
+    case 'retry':
+      return 'refresh-outline'
+    case 'tool':
+      return 'skill-outline'
+    case 'user':
+      return 'new-chat-outline'
   }
 }
 
@@ -136,11 +148,11 @@ function activityStateLabel(activity: NativeTrajectoryActivity): string | undefi
 export function ContextRows({ items }: { items: SharedEventItem[] }): React.JSX.Element | null {
   const theme = useAppTheme()
   const s = useThemedStyles(makeStyles)
-  const names = Array.from(new Set(items.flatMap(item => contextName(item.event))))
+  const names = Array.from(new Set(items.flatMap((item) => contextName(item.event))))
   if (!names.length) return null
   return (
     <View style={s.contextCompact}>
-      {names.map(name => (
+      {names.map((name) => (
         <View key={name} style={s.contextCompactRow}>
           <NativeIcon name="deliver-doc" size={15} color={theme.colors.inkMuted} />
           <Text numberOfLines={1} style={s.contextCompactText}>
@@ -156,7 +168,7 @@ function contextName(event: Record<string, unknown>): string[] {
   const type = typeof event.type === 'string' ? event.type.toLowerCase() : ''
   if (!type.includes('context')) return []
   const source = [event.sourceName, event.source, event.filename, event.fileName].find(
-    value => typeof value === 'string' && value.trim(),
+    (value) => typeof value === 'string' && value.trim(),
   )
   if (typeof source !== 'string') return []
   const name = source.split(/[\\/]/).at(-1)?.trim() ?? ''
@@ -169,23 +181,41 @@ function isInternalContextName(name: string): boolean {
 
 const makeStyles = (theme: AppTheme) =>
   StyleSheet.create({
+    // `ConversationRoot.module.css .tabs` / `.viewTabs` / `.tab`: a 25px row of
+    // 46px tab boxes 12px apart (measured: 对话 at 10..56, 轨迹 at 68..114), with a
+    // 2px bar under the active one that reaches 1px past the tab box onto the
+    // header rule.
     tabs: {
       borderBottomColor: theme.colors.border,
       borderBottomWidth: StyleSheet.hairlineWidth,
       flexDirection: 'row',
-      gap: theme.spacing.sm,
-      paddingHorizontal: theme.spacing.sm,
+      gap: 12,
+      paddingLeft: theme.spacing.sm,
     },
     tab: {
       alignItems: 'center',
-      flexDirection: 'row',
-      gap: 6,
-      minHeight: theme.touch.minTarget,
-      paddingHorizontal: theme.spacing.sm,
+      justifyContent: 'center',
+      minHeight: 35,
+      paddingBottom: 9,
+      paddingHorizontal: 10,
+      paddingTop: 10,
+      position: 'relative',
     },
-    tabActive: { borderBottomColor: theme.colors.accent, borderBottomWidth: 2 },
-    tabText: { color: theme.colors.inkMuted, fontSize: 13, fontWeight: '500' },
-    tabTextActive: { color: theme.colors.accentText },
+    tabBar: {
+      backgroundColor: theme.colors.accent,
+      borderRadius: 2,
+      bottom: -1,
+      height: 2,
+      left: 10,
+      position: 'absolute',
+      right: 10,
+    },
+    // The Web prints the tab label at 13/500 on its 16px line with no glyph.
+    tabText: { color: theme.colors.inkTertiary, fontSize: 13, fontWeight: '500', lineHeight: 16 },
+    // The Web's active tab is `state-business-primary` (deepseek-500), the same
+    // tone as the underline beneath it; a lighter accent tone would split the
+    // label from its own indicator.
+    tabTextActive: { color: theme.colors.accent },
     panelList: { gap: 8, padding: 14 },
     activityWrap: { gap: 5 },
     // The disclosed turn heading is a 24pt line box inside 28pt, leaving 4pt under
@@ -223,13 +253,15 @@ const makeStyles = (theme: AppTheme) =>
       paddingBottom: 12,
     },
     activityTitleRow: { alignItems: 'baseline', flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
-    traceLabel: { color: theme.colors.ink, fontSize: 13, fontWeight: '600' },
-    traceDetail: { color: theme.colors.inkMuted, fontSize: 12, lineHeight: 18 },
-    state: { color: theme.colors.inkMuted, fontSize: 11, fontWeight: '500' },
+    traceLabel: { color: theme.colors.ink, fontSize: 14, lineHeight: 22 },
+    // `Trajectory.module.css` prints each cell as one truncated mono line at
+    // 12/18 in `label-tertiary`; the row grows no taller than that.
+    traceDetail: { color: theme.colors.inkTertiary, fontFamily: MONOSPACE_FONT, fontSize: 12, lineHeight: 18 },
+    state: { color: theme.colors.inkTertiary, fontSize: 11, fontWeight: '500', lineHeight: 16 },
     stateFailed: { color: theme.colors.danger },
-    duration: { color: theme.colors.inkMuted, fontSize: 11, lineHeight: 20 },
+    duration: { color: theme.colors.inkTertiary, fontSize: 11, lineHeight: 16 },
     contextCompact: { gap: 8, marginTop: 2, paddingHorizontal: 16, paddingTop: 12 },
     contextCompactRow: { alignItems: 'center', flexDirection: 'row', gap: 7 },
-    contextCompactText: { color: theme.colors.inkMuted, flex: 1, fontSize: 12 },
+    contextCompactText: { color: theme.colors.inkTertiary, flex: 1, fontSize: 13, lineHeight: 20 },
     empty: { color: theme.colors.inkMuted, paddingVertical: 24, textAlign: 'center' },
   })

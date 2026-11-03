@@ -9,12 +9,12 @@
 /** Settings screen copy. */
 export const settings = {
   title: '设置',
-  subtitle: '管理桌面端运行时和移动端连接',
 
   sectionGeneral: '通用设置',
+  sectionConnection: '桌面端连接',
   sectionModels: '模型',
-  sectionPlugins: '插件',
-  sectionPresets: '智能体预设',
+  sectionPlugins: '内置插件',
+  sectionPresets: 'Agent 预设',
 
   savedTitle: '设置已保存',
   saveFailedTitle: '设置保存失败',
@@ -23,8 +23,14 @@ export const settings = {
   mobileScopeNote: '移动端只修改桌面端明确允许的设置；敏感配置仍由桌面端管理。',
   readOnlyProvider: '桌面端设置提供方为只读，修改控件已禁用。',
 
+  currentVersion: '当前版本：{version}',
+
   builtinMode: '内置模式',
   customMode: '自定义模式',
+  modeStandardDetail: '处理代码、文件和资料，适合大多数任务。Agent 会按需使用检索、编辑和终端等工具。',
+  modePtcDetail: '包含标准模式的所有能力，更适合批量调用工具，并对结果进行筛选、整理、去重、统计或汇总的任务。',
+  modeMinimalDetail: 'Agent 使用终端和图片读取工具，并支持上下文压缩，适合测试和对比其基础表现。',
+  modeCreativeDetail: '用对话定制 DSH：让 Agent 编写插件，添加新功能或界面；也能组合工具和提示词，创建自己的模式。',
   modeAppliesToNewSessions: '之后创建的会话将使用此模式。',
   noPresetsConfigured: '桌面端未配置智能体预设。',
   noPresets: '桌面端没有可用的智能体预设。',
@@ -34,9 +40,11 @@ export const settings = {
   presetEmpty: '预设内容为空。',
   /** `{name}` is the preset's display name or id. */
   viewPreset: '查看 {name}',
-  isDefaultSuffix: '（默认）',
+  /** Pill on the preset a new session starts with. */
+  defaultTag: '新任务默认',
+  /** Pill on a preset the product ships rather than the user authoring. */
+  shippedTag: '内置',
 
-  permissionReadOnly: '新会话默认使用只读权限。',
   permissionWorkspace: '新会话默认使用工作区写入权限。',
   permissionFull: '新会话默认使用完全访问权限。',
 
@@ -61,9 +69,9 @@ export const settings = {
   groupTerminal: '终端',
   groupAgentLoop: '智能体循环',
 
-  themeDark: '深色（桌面端）',
-  themeSystem: '跟随系统（桌面端）',
-  themeLight: '浅色（桌面端）',
+  themeDark: '深色',
+  themeSystem: '跟随系统',
+  themeLight: '浅色',
 
   connectionSection: '桌面端连接',
   connected: '已连接',
@@ -90,24 +98,21 @@ export const settings = {
   loadingPresetBody: '正在读取预设…',
 
   /** Section entry copy on the settings index. */
-  generalDescription: '默认模式、权限和桌面端行为',
-  modelsDescription: '查看提供方与模型目录；API 密钥需在桌面端维护',
-  pluginsDescription: '移动端仅查看，插件安装和配置需在桌面端完成',
-  presetsDescription: '查看预设，并为仍为空白的会话选择模式',
 
   modeSectionTitle: '新会话默认智能体模式',
   modeSectionDescription: '仅影响之后创建的会话。运行中的会话不会改变。',
   permissionSectionTitle: '默认权限',
   permissionSectionDescription: '仅影响之后创建的会话；当前会话的权限请求仍需逐项审批。',
   permissionReadOnlyLabel: '只读',
-  permissionReadOnlyDetail: '禁止写入工作区',
   permissionWorkspaceLabel: '工作区写入',
-  permissionWorkspaceDetail: '允许在工作区内写入文件',
   permissionFullLabel: '完全访问',
-  permissionFullDetail: '不限制工作区访问范围',
 
   appearance: '外观',
-  appearanceDetail: '移动端当前固定浅色主题；请在桌面端修改主题。',
+  appearanceDetail: '选择手机端的显示外观，或跟随系统设置。',
+  appearanceSaved: '外观已更新。',
+  appearanceLight: '浅色',
+  appearanceDark: '深色',
+  appearanceSystem: '跟随系统',
   language: '语言',
   languageValue: '中文',
   languageDetail: '移动端当前提供中文界面；桌面端语言设置不会改变移动端文案。',
@@ -122,6 +127,8 @@ export const settings = {
 
   pluginsLoadFailed: '插件配置加载失败，请稍后重试。',
   pluginsReadOnlyNote: '移动端不安装、卸载或任意修改插件。下列配置命名空间仅用于确认桌面端已加载的能力。',
+  searchPlugins: '搜索插件',
+  noPluginMatches: '没有匹配的插件。',
   namespacesTitle: '桌面端配置命名空间',
   namespacesDescription: '插件的完整配置表单和敏感字段只在桌面端提供。',
   pluginManagement: '插件管理',
@@ -130,8 +137,21 @@ export const settings = {
   presetReadFailed: '预设读取失败，请稍后重试。',
   editPreset: '编辑此预设',
   editPresetDetail: '移动端不打开或修改本地预设文件。',
-  presetsIntro: '预设决定会话使用的工具和能力。点击可查看内容；新会话默认值在通用设置中修改。',
+  // `sectionIntro` and `builtInGroup` from ui-agent-preset's locale: the Web's
+  // Agent 预设 tab describes the presets themselves, then groups the shipped
+  // ones under 内置.
+  presetsIntro: '选择 Agent 的工具和工作方式。日常任务用「标准模式」，扩展 DSH 的能力用「创造模式」。',
+  presetsBuiltInGroup: '内置',
+  // The desktop's preset card footer and the opening paragraph of its 如何使用
+  // guide; the mobile dialog shows that paragraph instead of the full guide.
+  presetExplanation: '模式说明',
+  presetHowToUse: '如何使用',
+  presetGuideStandard: '新建任务时选择「标准模式」，说明要完成什么、相关文件在哪里，以及怎样判断任务完成。',
+  presetGuidePtc: '新建任务时选择「PTC 模式」，说明输入文件、处理规则和输出格式。代码由 Agent 编写。',
+  presetGuideMinimal: '新建任务时选择「极简模式」。做对照测试时，保持模型、权限、任务输入和工作区起始状态一致。',
+  presetGuideCordis: '新建任务时选择「创造模式」，说明希望增加什么能力、从哪里使用，以及怎样验证效果。',
 
   forgetAction: '忘记此桌面端',
   backToSettings: '返回设置',
+  close: '关闭设置',
 } as const

@@ -1,50 +1,38 @@
+import { useComposerDraftStore } from '@/state/composer-drafts'
 import 'react-native-gesture-handler'
 
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { Drawer } from 'expo-router/drawer'
-import { ActivityIndicator, View, useWindowDimensions } from 'react-native'
-import { useEffect, useRef, useState } from 'react'
+import { createMobileQueryClient } from '@/api/query-client'
 import { MobileSyncBridge } from '@/components/mobile-sync-bridge'
-import { useConnectionStore } from '@/state/connection'
-import { mobileConnectionScope } from '@/state/connection-scope'
 import { SessionDrawer } from '@/components/session-drawer'
 import { drawerWidthForViewport } from '@/components/session-drawer-logic'
+import { StartupGate } from '@/components/startup-gate'
+import { useNativeQueryFocus } from '@/hooks/use-native-query-focus'
+import { useConnectionStore } from '@/state/connection'
+import { mobileConnectionScope } from '@/state/connection-scope'
 import { useAppTheme } from '@/theme/hooks'
+import { QueryClientProvider } from '@tanstack/react-query'
+import { Drawer } from 'expo-router/drawer'
+import { useEffect, useState } from 'react'
+import { StatusBar, useWindowDimensions } from 'react-native'
 
 export default function RootLayout(): React.JSX.Element {
-  const [queryClient] = useState(() => new QueryClient())
-  const connection = useConnectionStore(state => state.connection)
+  const connection = useConnectionStore((state) => state.connection)
   const connectionScope = mobileConnectionScope(connection)
-  const previousConnectionScope = useRef(connectionScope)
-  const initialized = useConnectionStore(state => state.initialized)
-  const initialize = useConnectionStore(state => state.initialize)
+  const initializationError = useConnectionStore((state) => state.initializationError)
+  const initialized = useConnectionStore((state) => state.initialized)
+  const initialize = useConnectionStore((state) => state.initialize)
   const { width } = useWindowDimensions()
   const theme = useAppTheme()
   useEffect(() => {
     void initialize()
   }, [initialize])
-  useEffect(() => {
-    if (previousConnectionScope.current !== connectionScope) queryClient.clear()
-    previousConnectionScope.current = connectionScope
-  }, [connectionScope, queryClient])
-  if (!initialized)
-    return (
-      <View
-        style={{
-          alignItems: 'center',
-          backgroundColor: theme.colors.background,
-          flex: 1,
-          justifyContent: 'center',
-        }}
-      >
-        <ActivityIndicator color={theme.colors.inkFaint} />
-      </View>
-    )
+  if (!initialized || initializationError) return <StartupGate />
   return (
-    <QueryClientProvider client={queryClient}>
+    <ConnectionQueries key={connectionScope ?? 'unpaired'}>
+      <StatusBar barStyle={theme.appearance === 'dark' ? 'light-content' : 'dark-content'} />
       <MobileSyncBridge />
       <Drawer
-        drawerContent={props => <SessionDrawer {...props} />}
+        drawerContent={(props) => <SessionDrawer {...props} />}
         screenOptions={{
           headerShown: false,
           drawerPosition: 'left',
@@ -60,14 +48,25 @@ export default function RootLayout(): React.JSX.Element {
         <Drawer.Screen name="connect/scan" options={{ swipeEnabled: false }} />
         <Drawer.Screen name="session/[sessionId]" />
         <Drawer.Screen name="session/[sessionId]/interactions" />
-        <Drawer.Screen name="session/[sessionId]/mode" options={{ swipeEnabled: false }} />
-        <Drawer.Screen name="session/[sessionId]/model" options={{ swipeEnabled: false }} />
-        <Drawer.Screen name="session/[sessionId]/permission" options={{ swipeEnabled: false }} />
         <Drawer.Screen name="session/[sessionId]/rename" options={{ swipeEnabled: false }} />
         <Drawer.Screen name="session/[sessionId]/subagent" options={{ swipeEnabled: false }} />
         <Drawer.Screen name="workspace/[workspaceId]/rename" options={{ swipeEnabled: false }} />
         <Drawer.Screen name="settings" />
       </Drawer>
-    </QueryClientProvider>
+    </ConnectionQueries>
   )
+}
+
+/** A desktop switch gets a fresh cache: late callbacks can only reach the disposed client. */
+function ConnectionQueries({ children }: { children: React.ReactNode }): React.JSX.Element {
+  const [queryClient] = useState(createMobileQueryClient)
+  useNativeQueryFocus()
+  useEffect(
+    () => () => {
+      queryClient.clear()
+      useComposerDraftStore.getState().clear()
+    },
+    [queryClient],
+  )
+  return <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
 }

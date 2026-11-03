@@ -5,7 +5,10 @@
 
 /** Conversation status copy. */
 export const status = {
-  viewThink: '查看 Think 内容',
+  deepDiving: 'Deep diving…',
+  /** The Think disclosure's title row, as the desktop prints it. */
+  think: '思考',
+  viewThink: '查看思考内容',
   /** `{attempt}` is the retry number. */
   retryLabel: '已重试模型请求，第 {attempt} 次',
   /** `{attempt}`, `{max}`, and `{seconds}` describe one retry. */

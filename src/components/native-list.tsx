@@ -1,14 +1,31 @@
+import type { AppTheme } from '@/theme'
+import { useThemedStyles } from '@/theme/hooks'
 import type { ReactNode } from 'react'
 import type { AccessibilityRole } from 'react-native'
 import { Pressable, StyleSheet, Text, View } from 'react-native'
-import type { AppTheme } from '@/theme'
-import { useThemedStyles } from '@/theme/hooks'
 
-export function NativeSection({ title, children }: { title?: string; children: ReactNode }): React.JSX.Element {
+/**
+ * Groups rows under one heading and one bordered card.
+ *
+ * The optional description sits above the card, which keeps prose out of the
+ * bordered surface the rows share.
+ * @param props - Heading, optional section-level description, and the rows.
+ * @returns A headed section card.
+ */
+export function NativeSection({
+  title,
+  description,
+  children,
+}: {
+  title?: string
+  description?: string
+  children: ReactNode
+}): React.JSX.Element {
   const styles = useThemedStyles(makeStyles)
   return (
     <View style={styles.section}>
       {title ? <Text style={styles.sectionTitle}>{title}</Text> : null}
+      {description ? <Text style={styles.sectionDescription}>{description}</Text> : null}
       <View style={styles.sectionBody}>{children}</View>
     </View>
   )
@@ -52,7 +69,10 @@ export function NativeListRow({
             {title}
           </Text>
           {description ? (
-            <Text numberOfLines={multiline ? undefined : 2} style={[styles.description, subdued && styles.disabledText]}>
+            <Text
+              numberOfLines={multiline ? undefined : 2}
+              style={[styles.description, subdued && styles.disabledText]}
+            >
               {description}
             </Text>
           ) : null}
@@ -65,7 +85,7 @@ export function NativeListRow({
     return (
       <View
         accessibilityLabel={accessibilityLabel}
-        accessibilityState={{ disabled, selected }}
+        accessibilityState={{ disabled, ...(accessibilityRole === 'radio' ? { checked: selected } : { selected }) }}
         style={[styles.row, multiline && styles.rowMultiline, selected && styles.selected, subdued && styles.disabled]}
       >
         {content}
@@ -75,7 +95,7 @@ export function NativeListRow({
     <Pressable
       accessibilityRole={accessibilityRole}
       accessibilityLabel={accessibilityLabel ?? title}
-      accessibilityState={{ disabled, selected }}
+      accessibilityState={{ disabled, ...(accessibilityRole === 'radio' ? { checked: selected } : { selected }) }}
       disabled={disabled}
       onPress={onPress}
       style={({ pressed }) => [
@@ -99,7 +119,12 @@ const makeStyles = (theme: AppTheme) =>
       fontSize: theme.typography.caption,
       fontWeight: '600',
       paddingHorizontal: theme.spacing.sm,
-      textTransform: 'uppercase',
+    },
+    sectionDescription: {
+      color: theme.colors.inkMuted,
+      fontSize: theme.typography.caption,
+      lineHeight: 17,
+      paddingHorizontal: theme.spacing.sm,
     },
     sectionBody: {
       backgroundColor: theme.colors.surfaceRaised,
@@ -121,12 +146,20 @@ const makeStyles = (theme: AppTheme) =>
     leading: { alignItems: 'center', justifyContent: 'center', marginRight: theme.spacing.sm, width: 24 },
     leadingMultiline: { marginTop: 2 },
     copy: { flex: 1, gap: theme.spacing.xxs, minWidth: 0 },
-    title: { color: theme.colors.ink, fontSize: theme.typography.body, fontWeight: '500' },
-    description: { color: theme.colors.inkMuted, fontSize: theme.typography.caption, lineHeight: 17 },
+    // `Menu.module.css` item: 13/400 on a 20px line in label-primary; the
+    // supporting line under it is 12/400 on 16 in label-caption.
+    title: { color: theme.colors.ink, fontSize: 13, fontWeight: '400', lineHeight: 20 },
+    description: { color: theme.colors.inkFaint, fontSize: 12, lineHeight: 16 },
     trailing: { alignItems: 'center', justifyContent: 'center', marginLeft: theme.spacing.sm },
     trailingMultiline: { marginTop: 2 },
-    selected: { backgroundColor: theme.colors.accentSoft },
-    disabled: { opacity: 0.52 },
-    disabledText: { color: theme.colors.inkFaint },
+    // `Menu.module.css` marks the chosen row with the hover fill (`selectedFill`),
+    // not an accent tint, so a picked row reads as a resting choice.
+    selected: { backgroundColor: theme.colors.interactiveHover },
+    // `.item:disabled` dims to 0.4.
+    disabled: { opacity: 0.4 },
+    // `.item:disabled` dims the whole row to 0.4 and leaves the label on
+    // label-primary, so the title still outranks its description. Recolouring the
+    // text instead inverted that hierarchy: the caption read darker than the title.
+    disabledText: { color: theme.colors.ink },
     pressed: { opacity: 0.68 },
   })

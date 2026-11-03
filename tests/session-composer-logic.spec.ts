@@ -38,7 +38,17 @@ describe('session composer projections', () => {
       currentValue: 'workspace-write',
       options: [{ value: 'workspace-write', name: 'workspace-write', description: 'write in workspace' }],
     })
-    expect(readPermissionSelect({ currentValue: 'workspace-write', options: 'invalid' })).toBeUndefined()
+    // The host projection publishes only the current value; the composed presets fill the picker.
+    const composed = readPermissionSelect({ currentValue: 'danger-full-access' })
+    expect(composed?.currentValue).toBe('danger-full-access')
+    expect(composed?.options.map((option) => option.value)).toEqual([
+      'read-only',
+      'workspace-write',
+      'danger-full-access',
+    ])
+    // An unusable catalog falls back to the same composed presets instead of dropping the projection.
+    expect(readPermissionSelect({ currentValue: 'workspace-write', options: 'invalid' })?.options).toHaveLength(3)
+    expect(readPermissionSelect({ currentValue: '', options: [] })).toBeUndefined()
   })
 
   it('localizes built-in composer labels without hiding unknown host values', () => {
