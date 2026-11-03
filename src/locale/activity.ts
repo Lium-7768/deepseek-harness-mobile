@@ -5,14 +5,18 @@
 
 /** Agent activity copy. */
 export const activity = {
-  goalRunning: '执行中的目标',
+  goalRunning: '进行中的目标',
   goalPaused: '已暂停的目标',
   goalBlocked: '受阻的目标',
   pauseGoal: '暂停目标',
-  resumeGoal: '继续目标',
+  resumeGoal: '恢复目标',
   editGoal: '编辑目标',
   clearGoal: '清除目标',
   goalLabel: '目标内容',
+  saveGoal: '保存目标',
+  cancelGoalEdit: '取消编辑',
+  createGoal: '新建目标',
+  createGoalPlaceholder: '描述这个会话要完成的目标…',
 
   backgroundJobs: '后台任务',
   subagents: '子 Agent',

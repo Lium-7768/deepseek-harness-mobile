@@ -1,0 +1,100 @@
+import { NativeAnchoredPanel } from '@/components/native-anchored-panel'
+import { NativeActionButton } from '@/components/native-action-button'
+import { t as message } from '@/locale'
+import type { AppTheme } from '@/theme'
+import { useAppTheme, useThemedStyles } from '@/theme/hooks'
+import { useEffect, useRef, useState } from 'react'
+import { StyleSheet, Text, TextInput, View } from 'react-native'
+
+/** A native entry to the desktop's goals/create action; never inserts a fake local Goal. */
+export function NativeGoalEditor({
+  open,
+  pending,
+  onClose,
+  onCreate,
+}: {
+  open: boolean
+  pending: boolean
+  onClose(): void
+  onCreate(objective: string): Promise<void>
+}): React.JSX.Element | null {
+  const s = useThemedStyles(makeStyles)
+  const theme = useAppTheme()
+  const [draft, setDraft] = useState('')
+  const submitting = useRef(false)
+  useEffect(() => {
+    if (open) setDraft('')
+  }, [open])
+  const save = async (): Promise<void> => {
+    if (pending || submitting.current || draft.trim() === '') return
+    submitting.current = true
+    try {
+      await onCreate(draft.trim())
+      onClose()
+    } catch {
+      /* The command hook presents the failure; retain the draft. */
+    } finally {
+      submitting.current = false
+    }
+  }
+  return (
+    <NativeAnchoredPanel
+      open={open}
+      onClose={() => {
+        if (!pending && !submitting.current) onClose()
+      }}
+    >
+      <View style={s.content}>
+        <Text style={s.title}>{message('activity.createGoal')}</Text>
+        <TextInput
+          autoFocus
+          multiline
+          accessibilityLabel={message('activity.goalLabel')}
+          placeholder={message('activity.createGoalPlaceholder')}
+          placeholderTextColor={theme.colors.inkTertiary}
+          selectionColor={theme.colors.accent}
+          editable={!pending}
+          value={draft}
+          onChangeText={setDraft}
+          style={s.input}
+        />
+        <View style={s.actions}>
+          <NativeActionButton
+            label={message('activity.saveGoal')}
+            icon="check-outline"
+            loading={pending}
+            disabled={pending || draft.trim() === ''}
+            onPress={() => void save()}
+          />
+          <NativeActionButton
+            label={message('activity.cancelGoalEdit')}
+            icon="close-outline"
+            variant="secondary"
+            disabled={pending}
+            onPress={onClose}
+          />
+        </View>
+      </View>
+    </NativeAnchoredPanel>
+  )
+}
+
+const makeStyles = (theme: AppTheme) =>
+  StyleSheet.create({
+    content: { padding: 16, gap: 12 },
+    title: { color: theme.colors.ink, fontSize: 16, fontWeight: '500', lineHeight: 24 },
+    input: {
+      color: theme.colors.ink,
+      backgroundColor: theme.colors.surfaceMuted,
+      borderColor: theme.colors.border,
+      borderWidth: StyleSheet.hairlineWidth,
+      borderRadius: theme.radius.control,
+      fontSize: 14,
+      lineHeight: 22,
+      minHeight: 88,
+      maxHeight: 160,
+      padding: 12,
+      textAlignVertical: 'top',
+    },
+    actions: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  })

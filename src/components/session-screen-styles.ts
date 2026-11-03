@@ -3,6 +3,7 @@ import { StyleSheet } from 'react-native'
 
 export const makeSessionStyles = (theme: AppTheme) =>
   StyleSheet.create({
+    composerContext: { gap: 6, marginBottom: 6 },
     canvas: { flex: 1 },
     processMembers: { gap: 4 },
     hidden: { display: 'none' },
@@ -115,14 +116,5 @@ export const makeSessionStyles = (theme: AppTheme) =>
     statusPending: { backgroundColor: theme.colors.warning },
     statusOffline: { backgroundColor: theme.colors.inkFaint },
     statusText: { color: theme.colors.inkTertiary, fontSize: 11, lineHeight: 16 },
-    headerMeta: { alignItems: 'center', flex: 1, flexDirection: 'row', justifyContent: 'space-between' },
-    headerMetaLabel: { color: theme.colors.ink, fontSize: 12, fontWeight: '600' },
-    headerMetaHint: {
-      color: theme.colors.inkMuted,
-      flexShrink: 1,
-      fontSize: 11,
-      marginLeft: 12,
-      textAlign: 'right',
-    },
     pressed: { opacity: 0.62 },
   })

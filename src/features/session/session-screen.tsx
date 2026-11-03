@@ -2,8 +2,9 @@ import { ConversationDisclosureContext } from '@/components/conversation-disclos
 import { assistantActionSequences, conversationFlowGap, conversationRowKey } from '@/components/conversation-flow'
 import { MobileApi } from '@/api/mobile-api'
 import { NativeAgentActivity } from '@/components/native-agent-activity'
+import { NativeGoalEditor } from '@/components/native-goal-editor'
 import { NativeGoalBar } from '@/components/native-goal-bar'
-import { goalFromProjection } from '@/components/session-goal-logic'
+import { goalFromProjection, goalWithActivation } from '@/components/session-goal-logic'
 import { NativeTurnStatus } from '@/components/native-conversation-status'
 import { NativeIcon } from '@/components/native-icon'
 import { NativeProcessGroup } from '@/components/native-process-group'
@@ -64,6 +65,7 @@ import {
 } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useSessionActions } from './use-session-actions'
+import { useSessionSelections } from '@/hooks/use-session-selections'
 import { useSessionQueries } from './use-session-queries'
 
 export default function SessionScreen(): React.JSX.Element {
@@ -90,26 +92,33 @@ export default function SessionScreen(): React.JSX.Element {
   const [olderItems, setOlderItems] = useState<SharedEventItem[]>([])
   const [olderHasMore, setOlderHasMore] = useState<boolean | undefined>()
   const [tab, setTab] = useState<WorkbenchTab>('chat')
+  const [goalEditorOpen, setGoalEditorOpen] = useState(false)
+  const [goalEditRequest, setGoalEditRequest] = useState(0)
+  useEffect(() => {
+    setGoalEditorOpen(false)
+    setGoalEditRequest(0)
+  }, [sessionId])
   /** Set once `pinToLatest` exists so the send callback can reach it. */
   const pinToLatestRef = useRef<() => void>(() => undefined)
   const ready = Boolean(client && sessionId)
-  const { history, events, queue, jobs, subagents, interactions, activeSession, models, presets } = useSessionQueries(
-    client,
-    connection,
-    sessionId,
-  )
-  const sessionTitle = sessionDisplayTitle(activeSession)
   const {
-    selectModelMutation,
-    selectPresetMutation,
-    selectPermissionMutation,
-    branch,
-    send,
-    updateQueue,
-    cancel,
-    goalMutation,
-    interruptSubagent,
-  } = useSessionActions(client, connection, sessionId, () => pinToLatestRef.current())
+    history,
+    goal: liveGoal,
+    events,
+    queue,
+    jobs,
+    subagents,
+    interactions,
+    activeSession,
+    models,
+    presets,
+  } = useSessionQueries(client, connection, sessionId)
+  const sessionTitle = sessionDisplayTitle(activeSession)
+  const { branch, send, updateQueue, cancel, goalMutation, createGoalMutation, interruptSubagent } = useSessionActions(
+    client,
+    sessionId,
+    () => pinToLatestRef.current(),
+  )
   const branchFromMessage = branch.mutate
   const loadOlder = useMutation({
     mutationFn: async () => {
@@ -362,10 +371,25 @@ export default function SessionScreen(): React.JSX.Element {
     olderHasMore ??
     (recentWindow.truncated || events.data?.windowStartSeq !== undefined || history.data?.hasMore === true)
   const actions = interactions.data?.items.length ?? 0
-  const goal = goalFromProjection(history.data?.projections?.values)
+  const goal = goalWithActivation(
+    goalFromProjection(history.data?.projections?.values),
+    liveGoal.isError ? undefined : liveGoal.data?.goal,
+  )
   const reportedStatus = events.data?.status ?? message('conversation.connecting')
   const running = reportedStatus === 'running' || activeSession?.running === true || runningTurnStartedAt !== undefined
   const status = running ? 'running' : reportedStatus
+  const selections = useSessionSelections({
+    client,
+    sessionId,
+    permissions: readPermissionSelect(history.data?.projections?.values.permissions),
+    model: models.data?.current,
+    agentPreset: activeSession?.agentPreset,
+    eventsError: events.isError || history.isError,
+    eventsPending: events.isPending || history.isPending,
+    eventsStale: events.isStale,
+    status,
+    unavailable: !ready || send.isPending || cancel.isPending,
+  })
   const syncStatus = useMobileSyncStore((state) => state.status)
   const displayStatus =
     !connection || syncStatus === 'disconnected' ? 'disconnected' : syncStatus === 'connecting' ? 'connecting' : status
@@ -535,23 +559,39 @@ export default function SessionScreen(): React.JSX.Element {
                   </Pressable>
                 ) : null}
               </View>
-              <NativeQueueDock
-                items={queue.data?.items ?? []}
-                onUpdate={(itemId, action) => updateQueue.mutateAsync({ itemId, action }).then(() => undefined)}
-                running={status === 'running'}
+              <NativeGoalEditor
+                open={goalEditorOpen}
+                pending={createGoalMutation.isPending}
+                onClose={() => setGoalEditorOpen(false)}
+                onCreate={(objective) => createGoalMutation.mutateAsync(objective).then(() => undefined)}
               />
               <WorkspaceComposer
                 key={sessionId ?? 'workspace'}
                 agentPreset={activeSession?.agentPreset}
                 model={models.data?.current}
+                onOpenGoal={() => {
+                  if (goal && goal.phase !== 'complete') setGoalEditRequest((value) => value + 1)
+                  else setGoalEditorOpen(true)
+                }}
                 header={
-                  <NativeGoalBar
-                    goal={goal}
-                    pending={goalMutation.isPending}
-                    onMutate={(action, ref, objective) =>
-                      goalMutation.mutateAsync({ action, ref, objective }).then(() => undefined)
-                    }
-                  />
+                  (goal && goal.phase !== 'complete') ||
+                  queue.data?.items.some((item) => item.placement === 'queued') ? (
+                    <View style={s.composerContext}>
+                      <NativeGoalBar
+                        goal={goal}
+                        editRequest={goalEditRequest}
+                        pending={goalMutation.isPending}
+                        onMutate={(action, ref, objective) =>
+                          goalMutation.mutateAsync({ action, ref, objective }).then(() => undefined)
+                        }
+                      />
+                      <NativeQueueDock
+                        items={queue.data?.items ?? []}
+                        onUpdate={(itemId, action) => updateQueue.mutateAsync({ itemId, action }).then(() => undefined)}
+                        running={status === 'running'}
+                      />
+                    </View>
+                  ) : undefined
                 }
                 placeholder={message('conversation.composerPlaceholder')}
                 onSend={(content) => send.mutateAsync(content).then(() => undefined)}
@@ -562,13 +602,14 @@ export default function SessionScreen(): React.JSX.Element {
                 disabled={!ready}
                 sending={send.isPending}
                 running={status === 'running'}
-                modelCatalog={models.data?.groups}
-                onSelectMode={(value) => selectPresetMutation.mutate(value)}
-                onSelectModel={(selection) => selectModelMutation.mutate(selection)}
-                onSelectPermission={(value) => selectPermissionMutation.mutate(value)}
-                permissionLocked={
-                  events.isError || events.isPending || events.isStale || status === 'running' || status === 'waiting'
-                }
+                modelCatalog={models.data}
+                modelCatalogError={models.isError}
+                modelCatalogLoading={models.isPending}
+                selectionPending={selections.pending}
+                onSelectMode={selections.selectPreset}
+                onSelectModel={selections.selectModel}
+                onSelectPermission={selections.selectPermission}
+                permissionLocked={selections.permissionLocked}
                 presets={presets.data?.presets}
                 footer={
                   tab === 'chat' ? (

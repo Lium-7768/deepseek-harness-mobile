@@ -1,0 +1,173 @@
+import type { MobileApi } from '@/api/mobile-api'
+import { queryKeys } from '@/api/query-keys'
+import { withErrorContext } from '@/components/route-params'
+import { permissionOptionsLocked } from '@/components/session-route-logic'
+import { createSelectionGate, permissionSelectionDecision } from '@/components/session-selection-logic'
+import { t as message } from '@/locale'
+import type { MobileModelSelection, MobilePermissionSelect } from '@/types/mobile'
+import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { useEffect, useRef } from 'react'
+import { Alert } from 'react-native'
+
+type State = {
+  client?: MobileApi
+  sessionId?: string
+  permissions?: MobilePermissionSelect
+  model?: MobileModelSelection
+  agentPreset?: string
+  eventsError: boolean
+  eventsPending: boolean
+  eventsStale: boolean
+  status?: string
+  unavailable: boolean
+}
+
+/** Shared by the hero and conversation. Confirmation rechecks live state and session identity before sending. */
+export function useSessionSelections(state: State) {
+  const queryClient = useQueryClient()
+  const gate = useRef(createSelectionGate()).current
+  const current = useRef(state)
+  current.current = state
+  const mounted = useRef(true)
+  useEffect(() => {
+    mounted.current = true
+    return () => {
+      mounted.current = false
+    }
+  }, [])
+  const awaitingConfirmation = useRef(false)
+  const refresh = async (sessionId: string): Promise<void> => {
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey: queryKeys.sessionHistory(sessionId) }),
+      queryClient.invalidateQueries({ queryKey: queryKeys.sessionEvents(sessionId) }),
+      queryClient.invalidateQueries({ queryKey: queryKeys.sessionModels() }),
+      queryClient.invalidateQueries({ queryKey: queryKeys.sessionList() }),
+    ])
+  }
+  const permission = useMutation({
+    mutationFn: ({ client, sessionId, value }: { client: MobileApi; sessionId: string; value: string }) =>
+      client.sendMessage(sessionId, [{ type: 'text', text: `/permission ${value}` }]),
+    onSuccess: (_result, variables) => refresh(variables.sessionId),
+    onError: (error) =>
+      Alert.alert(
+        message('permission.switchFailedTitle'),
+        withErrorContext(message('permission.switchFailedBody'), error),
+      ),
+  })
+  const model = useMutation({
+    mutationFn: ({
+      client,
+      sessionId,
+      selection,
+    }: {
+      client: MobileApi
+      sessionId: string
+      selection: MobileModelSelection
+    }) => client.selectSessionModel(sessionId, selection),
+    onSuccess: (_result, variables) => refresh(variables.sessionId),
+    onError: (error) =>
+      Alert.alert(message('model.switchFailedTitle'), withErrorContext(message('model.switchFailedBody'), error)),
+  })
+  const preset = useMutation({
+    mutationFn: ({ client, sessionId, value }: { client: MobileApi; sessionId: string; value: string }) =>
+      client.selectSessionPreset(sessionId, value),
+    onSuccess: (_result, variables) => refresh(variables.sessionId),
+    onError: (error) =>
+      Alert.alert(message('mode.switchFailedTitle'), withErrorContext(message('mode.switchFailedBody'), error)),
+  })
+  const pending = permission.isPending || model.isPending || preset.isPending
+  const locked = (snapshot: State): boolean =>
+    snapshot.unavailable ||
+    !snapshot.client ||
+    !snapshot.sessionId ||
+    permissionOptionsLocked({ ...snapshot, status: snapshot.status, submitting: gate.busy })
+  const selectPermission = (value: string): void => {
+    const snapshot = current.current
+    if (awaitingConfirmation.current) return
+    const decision = permissionSelectionDecision(value, snapshot.permissions, locked(snapshot))
+    if (decision === 'ignore') return
+    const submit = (): void => {
+      const latest = current.current
+      if (
+        !mounted.current ||
+        latest.client !== snapshot.client ||
+        latest.sessionId !== snapshot.sessionId ||
+        permissionSelectionDecision(value, latest.permissions, locked(latest)) === 'ignore' ||
+        !latest.client ||
+        !latest.sessionId
+      )
+        return
+      const { client, sessionId } = latest
+      void gate.run(() => permission.mutateAsync({ client, sessionId, value })).catch(() => undefined)
+    }
+    if (decision === 'confirm') {
+      awaitingConfirmation.current = true
+      Alert.alert(
+        message('settings.fullAccessTitle'),
+        message('permission.fullAccessBody'),
+        [
+          {
+            text: message('common.cancel'),
+            style: 'cancel',
+            onPress: () => {
+              awaitingConfirmation.current = false
+            },
+          },
+          {
+            text: message('common.continue'),
+            style: 'destructive',
+            onPress: () => {
+              awaitingConfirmation.current = false
+              submit()
+            },
+          },
+        ],
+        {
+          cancelable: true,
+          onDismiss: () => {
+            awaitingConfirmation.current = false
+          },
+        },
+      )
+    } else submit()
+  }
+  const selectModel = (selection: MobileModelSelection): void => {
+    const latest = current.current
+    if (latest.unavailable || !latest.client || !latest.sessionId || gate.busy) return
+    if (
+      latest.model?.provider === selection.provider &&
+      latest.model.model === selection.model &&
+      latest.model.reasoningEffort === selection.reasoningEffort
+    )
+      return
+    const { client, sessionId } = latest
+    void gate.run(() => model.mutateAsync({ client, sessionId, selection })).catch(() => undefined)
+  }
+  const selectPreset = (value: string): void => {
+    const latest = current.current
+    if (
+      latest.unavailable ||
+      !latest.client ||
+      !latest.sessionId ||
+      gate.busy ||
+      value === (latest.agentPreset ?? 'standard')
+    )
+      return
+    const { client, sessionId } = latest
+    void gate.run(() => preset.mutateAsync({ client, sessionId, value })).catch(() => undefined)
+  }
+  return {
+    selectPermission,
+    selectModel,
+    selectPreset,
+    pending,
+    permissionPending: permission.isPending,
+    modelPending: model.isPending,
+    presetPending: preset.isPending,
+    permissionLocked:
+      state.unavailable ||
+      !state.client ||
+      !state.sessionId ||
+      permissionOptionsLocked({ ...state, status: state.status, submitting: pending }),
+  }
+}

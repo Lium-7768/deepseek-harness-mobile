@@ -4,6 +4,7 @@
 
 /** Permission picker copy. */
 export const permission = {
+  fullAccessBody: '完全权限将允许该会话绕过沙箱限制访问文件和运行命令。确认仅在可信的工作区中继续。',
   selectTitle: '选择权限',
   noProjection: '桌面端没有提供当前会话的权限投影，移动端不会猜测或修改权限。',
   lockedWhileRunning: '会话状态正在确认或会话正在处理，权限暂时锁定。',

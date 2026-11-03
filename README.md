@@ -123,3 +123,8 @@ For repeatable visual checks without touching desktop sessions, run `node script
 It serves synthetic data on loopback port 8094. On an Android emulator, use `adb reverse tcp:8094 tcp:8094`,
 then connect the development app to `http://127.0.0.1:8094` with any non-empty password.
 The fixture must stay local; it is a development aid with no real authentication, execution or persistence.
+
+
+### Native resource ownership
+
+The checked-in `ios/` and `android/` projects own the shipping launcher and splash resources. `app.json` keeps matching Expo asset inputs for tooling; `expo prebuild` regenerates native projects and is not a routine build step. After an intentional prebuild, review its icon, splash, permission and network-policy diffs before keeping them.

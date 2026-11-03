@@ -1,4 +1,4 @@
-import { NativeAnchoredPanel, panelCardStyle } from '@/components/native-anchored-panel'
+import { NativeAnchoredPanel } from '@/components/native-anchored-panel'
 import { NativeIcon } from '@/components/native-icon'
 import type { SessionStatisticPanel, SessionStatisticsPill } from '@/components/session-stats-logic'
 import type { AppTheme } from '@/theme'
@@ -95,7 +95,7 @@ const makeStyles = (theme: AppTheme) =>
     // `stat-dialog.module.css .panel`: menu surface, r12, 16px padding, prominent
     // elevation, 12/18 secondary text.
     scroll: { flexShrink: 1 },
-    panel: panelCardStyle(theme, 16),
+    panel: { padding: 16 },
     // `.title`: section name left, headline value right, 16px apart, both primary.
     title: { flexDirection: 'row', gap: 16, justifyContent: 'space-between', marginBottom: 8 },
     titleLabel: { alignItems: 'center', flexDirection: 'row', flexShrink: 1, gap: 6, minWidth: 0 },

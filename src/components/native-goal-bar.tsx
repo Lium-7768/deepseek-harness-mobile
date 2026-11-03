@@ -5,37 +5,30 @@ import type { AppTheme } from '@/theme'
 import { useAppTheme, useThemedStyles } from '@/theme/hooks'
 import type { MobileGoalRef, MobileGoalView } from '@/types/mobile'
 import { useEffect, useRef, useState } from 'react'
-import {
-  ActivityIndicator,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  View,
-  useWindowDimensions,
-} from 'react-native'
+import { ActivityIndicator, Pressable, StyleSheet, Text, TextInput, View, useWindowDimensions } from 'react-native'
 
 /** Desktop goal dock, with larger native touch targets and wrapping for enlarged text. */
 export function NativeGoalBar({
   goal,
   pending,
   onMutate,
+  editRequest = 0,
 }: {
   goal: MobileGoalView | undefined
   pending: boolean
+  editRequest?: number
   onMutate: (action: 'edit' | 'pause' | 'resume' | 'clear', ref: MobileGoalRef, objective?: string) => Promise<void>
 }): React.JSX.Element | null {
   const theme = useAppTheme()
   const s = useThemedStyles(makeStyles)
   const { width, fontScale } = useWindowDimensions()
   const [editing, setEditing] = useState(false)
-  const [expanded, setExpanded] = useState(false)
   const [draft, setDraft] = useState('')
   const [working, setWorking] = useState(false)
   const [clearedId, setClearedId] = useState<string>()
   const inFlight = useRef(false)
   const mounted = useRef(true)
+  const lastEditRequest = useRef(0)
   const goalId = useRef(goal?.id)
   goalId.current = goal?.id
   useEffect(() => {
@@ -46,14 +39,20 @@ export function NativeGoalBar({
   }, [])
   useEffect(() => {
     setEditing(false)
-    setExpanded(false)
     setClearedId(undefined)
   }, [goal?.id])
+  useEffect(() => {
+    if (editRequest === lastEditRequest.current) return
+    lastEditRequest.current = editRequest
+    if (editRequest > 0 && goal && goal.phase !== 'complete') {
+      setDraft(goal.objective)
+      setEditing(true)
+    }
+  }, [editRequest, goal?.id])
   const state = goalDockState(goal)
   if (goal === undefined || state === undefined || goal.id === clearedId) return null
   const currentGoal = goal
   const busy = pending || working
-  const stacked = width / Math.max(fontScale, 1) < 600
   const largeText = width / Math.max(fontScale, 1) < 300
   async function run(action: 'edit' | 'pause' | 'resume' | 'clear', objective?: string): Promise<void> {
     if (pending || inFlight.current) return
@@ -87,21 +86,19 @@ export function NativeGoalBar({
             value={draft}
           />
         ) : (
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel={`${message(`activity.${state.label}`)} ${goal.objective}`}
-            accessibilityState={{ expanded }}
-            onPress={() => setExpanded((value) => !value)}
-            style={[s.summary, stacked && s.summaryStacked, largeText && s.summaryFullWidth]}
+          <View
+            accessible
+            accessibilityLabel={`${message(`activity.${state.label}`)} ${goal.objective}${goal.blockedReason?.message ? ` ${goal.blockedReason.message}` : ''}`}
+            style={[s.summary, largeText && s.summaryFullWidth]}
           >
             <View style={s.title}>
               <NativeIcon name="goal-outline" size={16} color={theme.colors.inkTertiary} />
               <Text style={s.label}>{message(`activity.${state.label}`)}</Text>
             </View>
-            <Text numberOfLines={1} style={[s.objective, stacked && s.objectiveStacked]}>
+            <Text numberOfLines={1} style={s.objective}>
               {goal.objective}
             </Text>
-          </Pressable>
+          </View>
         )}
         <View style={[s.actions, (editing || largeText) && s.actionsTrailing]}>
           {busy ? (
@@ -114,26 +111,30 @@ export function NativeGoalBar({
           {editing ? (
             <>
               <GoalButton
-                label={message('common.cancel')}
-                icon="close-outline"
-                disabled={busy}
-                onPress={() => setEditing(false)}
-              />
-              <GoalButton
-                label={message('common.save')}
+                label={message('activity.saveGoal')}
                 icon="check-outline"
                 disabled={busy || draft.trim() === ''}
                 onPress={() => void run('edit', draft.trim())}
               />
+              <GoalButton
+                label={message('activity.cancelGoalEdit')}
+                icon="close-outline"
+                disabled={busy}
+                onPress={() => setEditing(false)}
+              />
             </>
           ) : (
             <>
-              <GoalButton
-                label={message(state.action === 'pause' ? 'activity.pauseGoal' : 'activity.resumeGoal')}
-                icon={state.action === 'pause' ? 'pause-outline' : 'play-outline'}
-                disabled={busy}
-                onPress={() => void run(state.action)}
-              />
+              {state.action ? (
+                <GoalButton
+                  label={message(state.action === 'pause' ? 'activity.pauseGoal' : 'activity.resumeGoal')}
+                  icon={state.action === 'pause' ? 'pause-outline' : 'play-outline'}
+                  disabled={busy}
+                  onPress={() => {
+                    if (state.action) void run(state.action)
+                  }}
+                />
+              ) : null}
               <GoalButton
                 label={message('activity.editGoal')}
                 icon="edit-outline"
@@ -153,12 +154,6 @@ export function NativeGoalBar({
           )}
         </View>
       </View>
-      {expanded && !editing ? (
-        <ScrollView style={s.details} contentContainerStyle={s.detailsContent}>
-          <Text style={s.detailText}>{goal.objective}</Text>
-          {goal.blockedReason?.message ? <Text style={s.reason}>{goal.blockedReason.message}</Text> : null}
-        </ScrollView>
-      ) : null}
     </View>
   )
 }
@@ -192,7 +187,7 @@ function GoalButton({
 
 const makeStyles = (theme: AppTheme) =>
   StyleSheet.create({
-    dock: { marginHorizontal: 8, marginBottom: 8 },
+    dock: { marginHorizontal: 16 },
     bar: {
       ...theme.elevation.card,
       backgroundColor: theme.colors.surfaceRaised,
@@ -209,12 +204,10 @@ const makeStyles = (theme: AppTheme) =>
     },
     barStacked: { flexDirection: 'column', alignItems: 'stretch' },
     summary: { flex: 1, minWidth: 0, flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 2 },
-    summaryStacked: { flexDirection: 'column', alignItems: 'stretch', gap: 0 },
     summaryFullWidth: { flex: 0, width: '100%' },
     title: { flexDirection: 'row', alignItems: 'center', gap: 6 },
     label: { color: theme.colors.ink, fontSize: 13, fontWeight: '500', lineHeight: 24, flexShrink: 1 },
     objective: { color: theme.colors.inkMuted, fontSize: 13, lineHeight: 20, flex: 1, minWidth: 0 },
-    objectiveStacked: { flex: 0 },
     actions: { flexDirection: 'row', alignItems: 'center', flexShrink: 0 },
     actionsTrailing: { alignSelf: 'flex-end' },
     icon: {
@@ -233,10 +226,6 @@ const makeStyles = (theme: AppTheme) =>
       padding: 4,
       textAlignVertical: 'top',
     },
-    details: { maxHeight: 140 },
-    detailsContent: { paddingHorizontal: 12, paddingVertical: 6, gap: 6 },
-    detailText: { color: theme.colors.ink, fontSize: 13, lineHeight: 20 },
-    reason: { color: theme.colors.inkMuted, fontSize: 12, lineHeight: 18 },
     disabled: { opacity: 0.4 },
     pressed: { backgroundColor: theme.colors.floatingHover },
   })

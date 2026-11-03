@@ -1,4 +1,5 @@
-import { composerLayout } from './native-layout'
+import { composerLayout } from '@/components/native-layout'
+import { catalogModelLabel, selectedCatalogModel } from '@/components/session-selection-logic'
 import { NativeIcon } from '@/components/native-icon'
 import { NativeMenuPanel, type NativeMenuGroup, type NativeMenuNotice } from '@/components/native-menu-panel'
 import { NativeModelPicker } from '@/components/native-model-picker'
@@ -18,7 +19,7 @@ import { useAppTheme, useThemedStyles } from '@/theme/hooks'
 import type {
   MobileAgentPresetEntry,
   MobileImageMediaType,
-  MobileModelProviderGroup,
+  MobileSessionModelsPayload,
   MobileModelSelection,
   MobilePermissionSelect,
   MobilePromptContent,
@@ -68,7 +69,10 @@ type Props = {
   /** Agent presets the mode picker offers; omitted while the catalog loads. */
   presets?: MobileAgentPresetEntry[]
   /** Provider/model catalog the model picker offers. */
-  modelCatalog?: MobileModelProviderGroup[]
+  modelCatalog?: MobileSessionModelsPayload
+  modelCatalogError?: boolean
+  modelCatalogLoading?: boolean
+  selectionPending?: boolean
   /** `true` while the permission projection is missing or the session is busy. */
   permissionLocked?: boolean
   permissions?: MobilePermissionSelect
@@ -81,11 +85,9 @@ type Props = {
 /**
  * Sends text prompts and exposes controls backed by the session APIs.
  *
- * Agent mode and model open native detail routes which submit
- * `agentPreset.select` and `session.selectModel`. Permission choices are
- * shown only when the history projection is present; that projection is the
- * host's durable permission state, and the detail route submits the existing
- * `/permission <preset>` session command. Unsupported controls remain visibly
+ * Native pickers commit the existing desktop preset/model APIs. Permission
+ * choices come from the history projection; the shared selection hook confirms
+ * full access and submits the existing `/permission <preset>` command. Unsupported controls remain visibly
  * disabled instead of changing local state without a desktop acknowledgement.
  *
  * @param props - Prompt callback, session identity, and host projections.
@@ -105,6 +107,9 @@ export function WorkspaceComposer({
   onSelectPermission,
   onSend,
   modelCatalog,
+  modelCatalogError = false,
+  modelCatalogLoading = false,
+  selectionPending = false,
   permissionLocked = false,
   permissions,
   presets,
@@ -212,18 +217,17 @@ export function WorkspaceComposer({
   const selectedModelLabel = modelLabel(model)
   // `ModelSelect` prints the model name in the secondary tone and the effort in
   // the caption tone beside it (`triggerEffort`, 13/20, `label-caption`).
-  const modelName = model === undefined ? message('session.selectModel') : model.model
+  const modelName =
+    model === undefined ? message('session.selectModel') : catalogModelLabel(modelCatalog?.groups ?? [], model)
   const effortLabel = model?.reasoningEffort
   const selectedPermissionLabel =
     permissions === undefined
       ? message('session.permissionWorkspaceBadge')
       : permissionLabel(permissions.currentValue, permissions)
-  const controlsDisabled = disabled || sending || cancelling
-  const submitting = sending || cancelling
+  const controlsDisabled = disabled || sending || cancelling || selectionPending
+  const submitting = sending || cancelling || selectionPending
   // `ModelSelect`'s effort pane lists the selected model's own efforts.
-  const selectedModelEntry = (modelCatalog ?? [])
-    .flatMap((group) => group.models)
-    .find((item) => item.id === model?.model)
+  const selectedModelEntry = selectedCatalogModel(modelCatalog?.groups ?? [], model)
   const effortsOfSelected = (selectedModelEntry?.reasoning?.efforts ?? []).map((effort) => effort.id)
 
   // The three pickers print the same rows the Web's `Menu` primitive does: the
@@ -234,7 +238,8 @@ export function WorkspaceComposer({
         .filter((option) => option.value !== 'custom')
         .map((option) => ({
           description: option.description ?? permissionDescription(option.value),
-          disabled: permissionLocked,
+          disabled: permissionLocked || submitting || option.value === permissions?.currentValue,
+          busy: selectionPending && option.value !== permissions?.currentValue,
           icon: 'shield-outline' as const,
           label: permissionLabel(option.value, permissions ?? option.value),
           selected: option.value === permissions?.currentValue,
@@ -253,7 +258,7 @@ export function WorkspaceComposer({
         .filter((preset) => preset.broken === undefined)
         .map((preset) => ({
           description: preset.description?.trim() || undefined,
-          disabled: hasSession ? false : true,
+          disabled: !hasSession || submitting,
           icon: 'agent-preset-outline' as const,
           label: agentPresetName(preset),
           selected: preset.id === (agentPreset ?? 'standard'),
@@ -265,22 +270,12 @@ export function WorkspaceComposer({
   const modelNotice: NativeMenuNotice | undefined = hasSession
     ? undefined
     : { text: message('composer.modelNeedsSession') }
-  /**
-   * Splits one model-menu value back into its route or effort, then commits it.
-   *
-   * @param value - `provider\0model` for a route, `\0effort` for a reasoning level.
-   */
-  const selectModelOption = (value: string): void => {
-    const [provider, modelId] = value.split('\u0000')
-    if (provider === '' && modelId !== undefined) {
-      if (model !== undefined) void onSelectModel?.({ ...model, reasoningEffort: modelId })
-      return
-    }
-    if (modelId !== undefined) {
-      const entry = (modelCatalog ?? []).flatMap((group) => group.models).find((item) => item.id === modelId)
-      const effort = entry?.reasoning?.defaultEffort
-      void onSelectModel?.({ model: modelId, provider, ...(effort === undefined ? {} : { reasoningEffort: effort }) })
-    }
+  const selectModelOption = (choice: { provider: string; model: string }): void => {
+    if (controlsDisabled || !hasSession) return
+    const entry = selectedCatalogModel(modelCatalog?.groups ?? [], choice)
+    if (entry === undefined) return
+    const effort = entry.reasoning?.defaultEffort
+    void onSelectModel?.({ ...choice, ...(effort === undefined ? {} : { reasoningEffort: effort }) })
   }
 
   // `ui-commands`: the add menu groups what the press can insert, then the
@@ -288,7 +283,7 @@ export function WorkspaceComposer({
   const addActions: Record<string, () => void> = {
     file: chooseImageSource,
     ...(onOpenGoal === undefined ? {} : { goal: onOpenGoal }),
-    ...(onSelectPermission === undefined || permissions === undefined
+    ...(onSelectPermission === undefined || permissions === undefined || !hasSession
       ? {}
       : { permission: () => setOpenPicker('permission') }),
     ...(onSelectMode === undefined ? {} : { mode: () => setOpenPicker('mode') }),
@@ -320,7 +315,7 @@ export function WorkspaceComposer({
                 value: 'goal',
               },
             ]),
-        ...(onSelectPermission === undefined || permissions === undefined
+        ...(onSelectPermission === undefined || permissions === undefined || !hasSession
           ? []
           : [
               {
@@ -403,7 +398,7 @@ export function WorkspaceComposer({
                 minHeight: variant === 'hero' ? Math.max(60, layout.inputMinHeight) : layout.inputMinHeight,
                 height: Math.max(
                   variant === 'hero' ? Math.max(60, layout.inputMinHeight) : layout.inputMinHeight,
-                  Math.min(inputHeight, height * 0.3),
+                  Math.min(inputHeight, height * 0.3, 336),
                 ),
               },
             ]}
@@ -425,7 +420,7 @@ export function WorkspaceComposer({
               onPress={() => setOpenPicker('add')}
               style={({ pressed }) => [s.add, controlsDisabled && s.iconDisabled, pressed && s.pressed]}
             >
-              <NativeIcon name="plus-outline" size={14} color={theme.colors.ink} />
+              <NativeIcon name="plus-outline" weight="medium" size={14} color={theme.colors.ink} />
             </Pressable>
             <View style={s.tools}>
               {permissions === undefined ? (
@@ -502,6 +497,13 @@ export function WorkspaceComposer({
               )}
             </View>
             <View style={s.trailing}>
+              {selectionPending ? (
+                <ActivityIndicator
+                  accessibilityLabel={message('composer.switching')}
+                  size="small"
+                  color={theme.colors.inkMuted}
+                />
+              ) : null}
               {hasSession ? (
                 <Pressable
                   accessibilityRole="button"
@@ -588,8 +590,7 @@ export function WorkspaceComposer({
         groups={addGroups}
         onClose={() => setOpenPicker(undefined)}
         onSelect={(value) => {
-          const entry = addGroups.flatMap((group) => group.options).find((option) => option.value === value)
-          if (entry !== undefined) addActions[value]?.()
+          addActions[value]?.()
         }}
         open={openPicker === 'add'}
         title={message('composer.addContent')}
@@ -598,7 +599,10 @@ export function WorkspaceComposer({
         groups={permissionGroups}
         notice={permissionNotice}
         onClose={() => setOpenPicker(undefined)}
-        onSelect={(value) => void onSelectPermission?.(value)}
+        onSelect={(value) => {
+          if (!controlsDisabled && !permissionLocked && hasSession && value !== permissions?.currentValue)
+            void onSelectPermission?.(value)
+        }}
         open={openPicker === 'permission'}
         rowRole="select"
         title={message('permission.selectTitle')}
@@ -607,7 +611,9 @@ export function WorkspaceComposer({
         groups={modeGroups}
         notice={modeNotice}
         onClose={() => setOpenPicker(undefined)}
-        onSelect={(value) => void onSelectMode?.(value)}
+        onSelect={(value) => {
+          if (!controlsDisabled && hasSession && value !== (agentPreset ?? 'standard')) void onSelectMode?.(value)
+        }}
         open={openPicker === 'mode'}
         rowRole="select"
         title={message('mode.selectTitle')}
@@ -616,13 +622,18 @@ export function WorkspaceComposer({
         disabled={submitting || !hasSession}
         effort={model?.reasoningEffort}
         efforts={effortsOfSelected}
-        groups={modelCatalog ?? []}
+        groups={modelCatalog?.groups ?? []}
+        failures={modelCatalog?.failures ?? []}
+        routable={modelCatalog?.routable}
+        loading={modelCatalogLoading}
+        failed={modelCatalogError}
         notice={modelNotice?.text}
         onClose={() => setOpenPicker(undefined)}
         onSelectEffort={(level) => {
-          if (model !== undefined) void onSelectModel?.({ ...model, reasoningEffort: level })
+          if (model !== undefined && !controlsDisabled && level !== model.reasoningEffort)
+            void onSelectModel?.({ ...model, reasoningEffort: level })
         }}
-        onSelectModel={(choice) => void selectModelOption(`${choice.provider}\u0000${choice.model}`)}
+        onSelectModel={selectModelOption}
         open={openPicker === 'model'}
         selection={model === undefined ? undefined : { model: model.model, provider: model.provider }}
       />
@@ -674,13 +685,12 @@ const makeStyles = (theme: AppTheme) =>
       color: theme.colors.ink,
       fontSize: 16,
       lineHeight: 24,
-      maxHeight: 336,
       minHeight: 36,
       paddingBottom: 0,
       paddingHorizontal: 14,
       paddingTop: 4,
     },
-    // `wqMmtW_row`: gap 12, `2px 8px 6px`, controls centred, trailing pinned right.
+    // `wqMmtW_row`: gap 8, `2px 8px 6px`, controls centred, trailing pinned right.
     controlRow: {
       alignItems: 'center',
       flexDirection: 'row',
@@ -692,7 +702,7 @@ const makeStyles = (theme: AppTheme) =>
       paddingHorizontal: 8,
       paddingTop: 2,
     },
-    // `wqMmtW_add`: a 28pt circle on the selector fill holding a 14pt plus.
+    // A 36pt circular add control with an expanded native touch target.
     add: {
       alignItems: 'center',
       backgroundColor: theme.colors.surfaceMuted,
@@ -700,7 +710,7 @@ const makeStyles = (theme: AppTheme) =>
       minHeight: 36,
       flexShrink: 0,
       justifyContent: 'center',
-      width: 28,
+      width: 36,
     },
     iconDisabled: { opacity: 0.5 },
     // `wqMmtW_tools` / `wqMmtW_modes`: 8px apart inside the left cluster.
@@ -708,9 +718,9 @@ const makeStyles = (theme: AppTheme) =>
     // `wqMmtW_trailing`: model + send, 8px apart, pinned to the right edge.
     // The trailing cluster gives way before the icon triggers do: the model name
     // ellipsizes (effort first, `ModelSelect .triggerEffort`), while the access
-    // and mode controls keep their drawn 28pt boxes.
+    // and mode controls keep their native touch bounds.
     trailing: { alignItems: 'center', flexDirection: 'row', flex: 1, gap: 6, minWidth: 0 },
-    // `PermissionSelect.trigger` / `ModelSelect.trigger`: 28 tall, `0 4px 0 8px`,
+    // `PermissionSelect.trigger` / `ModelSelect.trigger`: native 36pt floor, `0 4px 0 8px`,
     // r8, 4px between the glyph, labels and chevron.
     tool: {
       alignItems: 'center',

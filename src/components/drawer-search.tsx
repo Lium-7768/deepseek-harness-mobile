@@ -1,3 +1,4 @@
+import { NativeRunningRing } from '@/components/native-running-ring'
 import { NativeIcon } from '@/components/native-icon'
 import { sanitizeDrawerSearch, type DrawerSearchResult } from '@/components/drawer-view-logic'
 import { drawerWidthForViewport, sessionDisplayTitle } from '@/components/session-drawer-logic'
@@ -59,10 +60,12 @@ export function DrawerSearchRow({
   result,
   selected,
   onPress,
+  onRestore,
 }: {
   result: DrawerSearchResult
   selected: boolean
   onPress(): void
+  onRestore(): void
 }): React.JSX.Element {
   const s = useThemedStyles(makeStyles)
   const theme = useAppTheme()
@@ -78,11 +81,23 @@ export function DrawerSearchRow({
       style={({ pressed }) => [s.result, selected && s.selected, pressed && s.selected]}
     >
       <View style={s.heading}>
-        <View style={s.slot}>{result.session.running && !result.archived ? <View style={s.ring} /> : null}</View>
+        <View style={s.slot}>{result.session.running && !result.archived ? <NativeRunningRing /> : null}</View>
         <Text numberOfLines={1} style={[s.title, result.archived && s.archived]}>
           {title}
         </Text>
-        {result.archived ? <NativeIcon name="archive-outline" size={14} color={theme.colors.inkTertiary} /> : null}
+        {result.archived ? (
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={message('drawer.restore')}
+            onPress={(event) => {
+              event.stopPropagation()
+              onRestore()
+            }}
+            style={s.restore}
+          >
+            <NativeIcon name="archive-outline" size={14} color={theme.colors.inkTertiary} />
+          </Pressable>
+        ) : null}
       </View>
       <View style={[s.meta, stacked && s.metaStacked]}>
         <Text
@@ -131,11 +146,11 @@ const makeStyles = (theme: AppTheme) =>
       paddingVertical: 4,
     },
     close: { minWidth: 36, minHeight: 36, alignItems: 'center', justifyContent: 'center' },
+    restore: { width: 36, minHeight: 36, alignItems: 'center', justifyContent: 'center' },
     result: { borderRadius: theme.radius.md, paddingHorizontal: 9, paddingVertical: 8, minHeight: 54, gap: 2 },
     selected: { backgroundColor: theme.colors.interactiveHover },
     heading: { flexDirection: 'row', alignItems: 'center', gap: 4 },
     slot: { width: 16, alignItems: 'center', flexShrink: 0 },
-    ring: { width: 14, height: 14, borderRadius: 7, borderWidth: 1.5, borderColor: theme.colors.inkTertiary },
     title: { flex: 1, color: theme.colors.ink, fontSize: 14, lineHeight: 22 },
     meta: { paddingLeft: 20, minWidth: 0, gap: 6, flexDirection: 'row', alignItems: 'center' },
     metaStacked: { flexDirection: 'column', alignItems: 'stretch', gap: 2 },

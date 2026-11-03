@@ -17,11 +17,17 @@ describe('native reading layouts', () => {
 
 describe('modal keyboard geometry', () => {
   it('keeps a full-screen modal above an overlaid keyboard', () => {
-    expect(sheetGeometry(800, 500, 44, 24)).toEqual({ bottom: 308, maxHeight: 436 })
+    expect(sheetGeometry(800, 300, 44, 24, 800)).toEqual({ bottom: 308, maxHeight: 436 })
   })
 
   it('does not count a keyboard twice after Android resizes the modal', () => {
-    expect(sheetGeometry(500, 500, 44, 24)).toEqual({ bottom: 24, maxHeight: 420 })
-    expect(sheetGeometry(800, undefined, 44, 34)).toEqual({ bottom: 34, maxHeight: 710 })
+    expect(sheetGeometry(500, 300, 44, 24, 800)).toEqual({ bottom: 24, maxHeight: 420 })
+    expect(sheetGeometry(800, 0, 44, 34, 800)).toEqual({ bottom: 34, maxHeight: 710 })
   })
+})
+
+it('uses keyboard and modal lengths without depending on a screen origin, including partial resize', () => {
+  expect(sheetGeometry(650, 300, 20, 24, 800)).toEqual({ bottom: 158, maxHeight: 460 })
+  expect(sheetGeometry(0, 300, 20, 24, 800).maxHeight).toBe(0)
+  expect(sheetGeometry(500, 300, 20, 24, 500)).toEqual({ bottom: 308, maxHeight: 160 })
 })

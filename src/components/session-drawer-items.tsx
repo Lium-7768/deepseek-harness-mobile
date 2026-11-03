@@ -5,6 +5,7 @@
  * Split from the drawer body so the drawer's query, menu state, and mutations
  * stay readable; these components own presentation only.
  */
+import { NativeRunningRing } from '@/components/native-running-ring'
 import { NativeIcon } from '@/components/native-icon'
 import { NativeMenuPanel } from '@/components/native-menu-panel'
 import { sessionDisplayTitle, sessionTimeLabel } from '@/components/session-drawer-logic'
@@ -72,6 +73,7 @@ export function WorkspaceItem({
  */
 export function SessionItem({
   onArchive,
+  onRestore,
   onMoveUp,
   onMoveDown,
   archived = false,
@@ -83,6 +85,7 @@ export function SessionItem({
   session,
 }: {
   onArchive: () => void
+  onRestore: () => void
   onMoveUp?: () => void
   onMoveDown?: () => void
   archived?: boolean
@@ -108,7 +111,7 @@ export function SessionItem({
     { label: message('log.action'), icon: 'download-outline' as const, onPress: onExport },
     { label: message('drawer.forkSession'), icon: 'branch-outline' as const, onPress: onFork },
     ...(archived
-      ? []
+      ? [{ label: message('drawer.restore'), icon: 'archive-outline' as const, onPress: onRestore }]
       : [{ label: message('drawer.archiveSession'), icon: 'archive-outline' as const, onPress: onArchive }]),
     ...(onMoveUp ? [{ label: message('drawer.moveUp'), icon: 'chevron-up-outline' as const, onPress: onMoveUp }] : []),
     ...(onMoveDown
@@ -131,9 +134,7 @@ export function SessionItem({
           pressed && styles.rowPressed,
         ]}
       >
-        <View style={styles.sessionStatus}>
-          {session.running === true && !archived ? <View style={styles.sessionRunningRing} /> : null}
-        </View>
+        <View style={styles.sessionStatus}>{session.running === true && !archived ? <NativeRunningRing /> : null}</View>
         <Text numberOfLines={1} style={[styles.sessionTitle, archived && styles.archivedLabel]}>
           {title}
         </Text>
@@ -152,7 +153,7 @@ export function SessionItem({
               onPress={() => setMenuOpen((current) => !current)}
               style={({ pressed }) => [styles.rowAction, pressed && styles.pressed]}
             >
-              <NativeIcon name="ellipsis-outline" size={16} color={theme.colors.inkMuted} />
+              <NativeIcon name="ellipsis-outline" size={13} color={theme.colors.inkMuted} />
             </Pressable>
           </>
         )}

@@ -143,6 +143,5 @@ const makeStyles = (theme: AppTheme) =>
       width: theme.touch.iconButton,
     },
     diagnostic: { color: theme.colors.warning, fontSize: 13, lineHeight: 20 },
-    disabled: { opacity: 0.45 },
     pressed: { opacity: 0.62 },
   })

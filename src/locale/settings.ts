@@ -8,6 +8,7 @@
 
 /** Settings screen copy. */
 export const settings = {
+  fieldAccessibilityLabel: '{label}：{value}',
   title: '设置',
 
   sectionGeneral: '通用设置',

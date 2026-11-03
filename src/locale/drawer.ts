@@ -5,6 +5,11 @@
 
 /** Session drawer copy. */
 export const drawer = {
+  plugins: '插件',
+  automations: '自动化任务',
+  more: '更多',
+  restore: '恢复会话',
+  restoreFailed: '恢复会话失败',
   newSession: '新会话',
   connectFirst: '请先连接桌面端',
   /** The sentence form, used where the copy is not a control label. */
@@ -22,7 +27,7 @@ export const drawer = {
   showArchived: '全部对话（显示已归档）',
   onlyArchived: '仅显示已归档',
   archived: '已归档',
-  archivedNotOpenable: '该会话已归档，请先在桌面端恢复后再打开。',
+  archivedNotOpenable: '该会话已归档，请先恢复后再打开。',
   moveUp: '上移',
   moveDown: '下移',
   singleList: '单列表',

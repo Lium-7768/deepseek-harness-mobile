@@ -288,6 +288,8 @@ describe('MobileApi agent observation and control requests', () => {
     await api.subagentHistory('parent/a', 'child/a', 'continuable')
     await api.sendSubagentMessage('parent/a', 'child/a', [{ type: 'text', text: 'Continue the task.' }])
     await api.interruptSubagent('parent/a', 'child/a')
+    await api.sessionGoal('parent/a')
+    await api.createGoal('parent/a', 'Complete the review.')
     await api.mutateGoal('parent/a', 'pause', { id: 'goal-1', revision: 3 })
     await api.mutateGoal('parent/a', 'edit', { id: 'goal-1', revision: 3 }, { objective: 'Complete the review.' })
 
@@ -306,6 +308,8 @@ describe('MobileApi agent observation and control requests', () => {
         body: { mode: 'continuable', content: [{ type: 'text', text: 'Continue the task.' }] },
       },
       { url: '/v1/sessions/parent%2Fa/subagents/child%2Fa/interrupt', body: { mode: 'continuable' } },
+      { url: '/v1/sessions/parent%2Fa/goal/read', body: {} },
+      { url: '/v1/sessions/parent%2Fa/goal/create', body: { objective: 'Complete the review.' } },
       { url: '/v1/sessions/parent%2Fa/goal/pause', body: { ref: { id: 'goal-1', revision: 3 } } },
       {
         url: '/v1/sessions/parent%2Fa/goal/edit',
@@ -351,5 +355,60 @@ describe('MobileApi safe search and attachment reads', () => {
         body: {},
       },
     ])
+  })
+})
+
+describe('desktop automation and archive management boundary', () => {
+  it('forwards only the selected versioned schedule action and encoded restore identity', async () => {
+    const calls: { path: string; body: unknown }[] = []
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (url: string, init: RequestInit) => {
+        calls.push({ path: new URL(url).pathname, body: JSON.parse(String(init.body)) })
+        return jsonResponse({ contractVersion: 1, data: url.endsWith('/catalog') ? { items: [] } : {} }, 200)
+      }),
+    )
+    try {
+      const api = new MobileApi(connection)
+      await api.unarchiveSession('a/b')
+      await api.schedules()
+      await api.updateSchedule(
+        {
+          id: 'task/a',
+          title: 'title',
+          prompt: 'prompt',
+          status: 'active',
+          scheduledAt: '',
+          updatedAt: 'v1',
+          target: { kind: 'new' },
+        },
+        'pause',
+      )
+      expect(calls).toEqual([
+        { path: '/v1/sessions/a%2Fb/unarchive', body: {} },
+        { path: '/v1/schedules/catalog', body: {} },
+        { path: '/v1/schedules/task%2Fa/pause', body: { expectedUpdatedAt: 'v1' } },
+      ])
+    } finally {
+      vi.unstubAllGlobals()
+    }
+  })
+  it('rejects a malformed catalog and optimistic update conflicts', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => jsonResponse({ contractVersion: 1, data: { code: 'schedule_conflict' } }, 200)),
+    )
+    try {
+      const api = new MobileApi(connection)
+      await expect(api.schedules()).rejects.toThrow()
+      await expect(
+        api.updateSchedule(
+          { id: 'task', title: 'title', prompt: 'prompt', status: 'paused', scheduledAt: '', target: { kind: 'new' } },
+          'resume',
+        ),
+      ).rejects.toThrow()
+    } finally {
+      vi.unstubAllGlobals()
+    }
   })
 })

@@ -6,6 +6,7 @@
 
 /** Composer copy. */
 export const composer = {
+  switching: '正在切换会话配置…',
   // `ui-conversation` `placeholder.default`, printed by the in-session composer.
   placeholder: '发消息或创建任务…',
   // `placeholder.hero`, printed by the workspace hero whose empty state still

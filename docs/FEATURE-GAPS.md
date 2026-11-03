@@ -30,7 +30,7 @@ General settings.
 | File explorer | `sidebar-files` | No file routes | **New routes + interface** — list, read, download. The largest single widening of the public surface, because a file route reaches the whole project tree |
 | Slash commands | `commands`, `input-trigger` | No command-list route | **New route + interface** — list commands, then send one through the existing message route |
 | Skills | `skill` | No route | **New route + interface** — list installed skills, attach one to a turn |
-| Scheduled turns | `schedule` | No route | **New routes + interface** — list, create, cancel |
+| Scheduled turns | `schedule` | Catalog and pause/resume/delete routes | Native task list and controls are implemented; creating/editing a schedule remains a separate interface |
 
 Each remaining row needs a new public route before any interface work, and every
 new route widens what a paired phone can reach on a public URL.

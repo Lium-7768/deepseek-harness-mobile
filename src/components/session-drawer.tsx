@@ -1,5 +1,6 @@
 import { MobileApi } from '@/api/mobile-api'
 import { queryKeys } from '@/api/query-keys'
+import { NativeMenuPanel } from '@/components/native-menu-panel'
 import { DrawerViewMenu } from '@/components/drawer-view-menu'
 import { DrawerSearchInput, DrawerSearchRow } from '@/components/drawer-search'
 import {
@@ -52,6 +53,7 @@ export function SessionDrawer(props: DrawerContentComponentProps): React.JSX.Ele
   const [search, setSearch] = useState('')
   const debouncedSearch = useDebouncedText(search.trim(), 250)
   const [optionsOpen, setOptionsOpen] = useState(false)
+  const [moreOpen, setMoreOpen] = useState(false)
 
   const frameRef = useRef<View>(null)
   const optionsRef = useRef<View>(null)
@@ -252,6 +254,19 @@ export function SessionDrawer(props: DrawerContentComponentProps): React.JSX.Ele
       exportingSessions.current.delete(session.sessionId)
     }
   }
+  const restoring = useRef(new Set<string>())
+  const restoreSession = async (sessionId: string): Promise<void> => {
+    if (restoring.current.has(sessionId)) return
+    restoring.current.add(sessionId)
+    try {
+      await new MobileApi(requireConnection(connection)).unarchiveSession(sessionId)
+      await refreshSessions()
+    } catch (error) {
+      Alert.alert(message('drawer.restoreFailed'), error instanceof Error ? error.message : message('common.retry'))
+    } finally {
+      restoring.current.delete(sessionId)
+    }
+  }
   const archiveSession = async (sessionId: string): Promise<void> => {
     try {
       await new MobileApi(requireConnection(connection)).archiveSession(sessionId)
@@ -349,6 +364,32 @@ export function SessionDrawer(props: DrawerContentComponentProps): React.JSX.Ele
               </Text>
             </Pressable>
 
+            <View style={styles.navEntries}>
+              <NativeListRow
+                title={message('drawer.plugins')}
+                accessibilityRole="button"
+                onPress={() => {
+                  closeDrawer()
+                  router.push({ pathname: '/settings', params: { section: 'plugins' } })
+                }}
+                left={<NativeIcon name="plugin-pinwheel-outline" size={18} color={theme.colors.ink} />}
+              />
+              <NativeListRow
+                title={message('drawer.automations')}
+                accessibilityRole="button"
+                onPress={() => {
+                  closeDrawer()
+                  router.push('/schedules')
+                }}
+                left={<NativeIcon name="clock-outline" size={18} color={theme.colors.ink} />}
+              />
+              <NativeListRow
+                title={message('drawer.more')}
+                accessibilityRole="button"
+                onPress={() => setMoreOpen(true)}
+                left={<NativeIcon name="apps-add-outline" size={18} color={theme.colors.ink} />}
+              />
+            </View>
             <View style={styles.workspaceHeader}>
               {searchOpen ? (
                 <DrawerSearchInput value={search} onChange={setSearch} onClose={clearSearch} />
@@ -426,6 +467,7 @@ export function SessionDrawer(props: DrawerContentComponentProps): React.JSX.Ele
                         result={result}
                         selected={result.session.sessionId === currentSessionId}
                         onPress={() => openSession(result.session.sessionId)}
+                        onRestore={() => void restoreSession(result.session.sessionId)}
                       />
                     ))}
                     {searchPending ? (
@@ -558,6 +600,7 @@ export function SessionDrawer(props: DrawerContentComponentProps): React.JSX.Ele
                       <View key={item.key} style={{ marginLeft: item.depth * 12 }}>
                         <SessionItem
                           archived={archivedSessionIds.has(item.session.sessionId)}
+                          onRestore={() => void restoreSession(item.session.sessionId)}
                           onMoveUp={orderBy === 'manual' ? () => moveSession(item.session.sessionId, -1) : undefined}
                           onMoveDown={orderBy === 'manual' ? () => moveSession(item.session.sessionId, 1) : undefined}
                           onArchive={() => confirmArchive(item.session)}
@@ -609,6 +652,30 @@ export function SessionDrawer(props: DrawerContentComponentProps): React.JSX.Ele
             </Pressable>
           </View>
         </KeyboardAvoidingView>
+        <NativeMenuPanel
+          open={moreOpen}
+          onClose={() => setMoreOpen(false)}
+          actionMenu
+          title={message('drawer.more')}
+          groups={[
+            {
+              options: [
+                { value: 'settings', label: message('settings.title'), icon: 'settings-outline' },
+                { value: 'connection', label: message('settings.sectionConnection'), icon: 'link-outline' },
+                { value: 'sync', label: message('drawer.syncSessions'), icon: 'refresh-outline', disabled: syncing },
+              ],
+            },
+          ]}
+          onSelect={(value) => {
+            if (value === 'sync') void syncSessions()
+            else {
+              closeDrawer()
+              router.push(
+                value === 'connection' ? { pathname: '/settings', params: { section: 'connection' } } : '/settings',
+              )
+            }
+          }}
+        />
         {optionsOpen ? (
           <DrawerViewMenu
             anchorBottom={anchorBottom}

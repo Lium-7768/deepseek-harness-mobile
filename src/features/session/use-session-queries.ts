@@ -5,6 +5,7 @@ import { mergeEventItems } from '@/sync/event-items'
 import { sessionWindow } from '@/sync/session-window'
 import type { MobileConnection, SessionEventsPayload } from '@/types/mobile'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { useScreenActive } from '@/hooks/use-screen-active'
 import { useMemo } from 'react'
 
 /** Reads desktop-owned state; all reads consume the query's cancellation signal. */
@@ -14,6 +15,7 @@ export function useSessionQueries(
   sessionId: string | undefined,
 ) {
   const queryClient = useQueryClient()
+  const active = useScreenActive()
   const ready = Boolean(client && sessionId)
   const history = useQuery({
     queryKey: queryKeys.sessionHistory(sessionId),
@@ -23,7 +25,20 @@ export function useSessionQueries(
       return client.withSignal(signal).sessionHistory(sessionId)
     },
   })
+  const goal = useQuery({
+    queryKey: queryKeys.sessionGoal(sessionId),
+    enabled: ready && active,
+    queryFn: ({ signal }) => {
+      if (!client || !sessionId) throw new Error(message('conversation.openFromList'))
+      return client.withSignal(signal).sessionGoal(sessionId)
+    },
+    // Activation can change without a durable event; poll only while this screen is foregrounded.
+    refetchInterval: active ? 5_000 : false,
+    refetchIntervalInBackground: false,
+    retry: false,
+  })
   const events = useQuery({
+    staleTime: Infinity, // Explicit stream invalidation marks an uncertain status stale; elapsed time alone does not.
     queryKey: queryKeys.sessionEvents(sessionId),
     enabled: ready,
     queryFn: ({ signal }) => {
@@ -106,5 +121,5 @@ export function useSessionQueries(
       return client.withSignal(signal).agentPresets()
     },
   })
-  return { history, events, queue, jobs, subagents, interactions, sessionList, activeSession, models, presets }
+  return { goal, history, events, queue, jobs, subagents, interactions, sessionList, activeSession, models, presets }
 }

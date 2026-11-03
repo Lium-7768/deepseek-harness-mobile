@@ -9,6 +9,8 @@ export function applyMobileStreamEvent(queryClient: QueryClient, event: MobileSt
     case 'session/event':
       if (sessionId === undefined || event.payload.event === undefined) return
       appendSessionEvent(queryClient, sessionId, event)
+      if (isGoalEvent(event.payload.event))
+        void queryClient.invalidateQueries({ queryKey: queryKeys.sessionGoal(sessionId) })
       if (isGoalEvent(event.payload.event) || isTurnEnd(event.payload.event))
         void queryClient.invalidateQueries({ queryKey: queryKeys.sessionHistory(sessionId) })
       return
@@ -40,6 +42,7 @@ export function applyMobileStreamEvent(queryClient: QueryClient, event: MobileSt
       void queryClient.invalidateQueries({ predicate: (query) => isSessionListQuery(query.queryKey) })
       return
     case 'gateway/ready':
+      void queryClient.invalidateQueries({ queryKey: queryKeys.sessionGoal() })
       void queryClient.invalidateQueries({ queryKey: queryKeys.sessionHistory() })
       void queryClient.invalidateQueries({ queryKey: queryKeys.sessionEvents() })
       void queryClient.invalidateQueries({ queryKey: queryKeys.sessionInteractions() })

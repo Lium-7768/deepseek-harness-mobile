@@ -16,7 +16,10 @@ export function goalFromProjection(values: Record<string, unknown> | undefined):
     objective,
     revision,
     phase,
-    ...(typeof blockedMessage === 'string' && blockedMessage.trim() !== ''
+    ...(candidate.activation === 'armed' || candidate.activation === 'disarmed'
+      ? { activation: candidate.activation }
+      : {}),
+    ...(phase === 'blocked' && typeof blockedMessage === 'string' && blockedMessage.trim() !== ''
       ? { blockedReason: { message: blockedMessage } }
       : {}),
   }
@@ -26,13 +29,22 @@ export function goalFromProjection(values: Record<string, unknown> | undefined):
 export function goalDockState(goal: MobileGoalView | undefined):
   | {
       label: 'goalRunning' | 'goalPaused' | 'goalBlocked'
-      action: 'pause' | 'resume'
+      action?: 'pause' | 'resume'
     }
   | undefined {
   if (goal === undefined || goal.phase === 'complete') return undefined
   return {
-    label: goal.phase === 'active' ? 'goalRunning' : goal.phase === 'paused' ? 'goalPaused' : 'goalBlocked',
-    action: goal.phase === 'active' ? 'pause' : 'resume',
+    label:
+      goal.phase === 'active' && goal.activation !== 'disarmed'
+        ? 'goalRunning'
+        : goal.phase === 'blocked'
+          ? 'goalBlocked'
+          : 'goalPaused',
+    ...(goal.phase !== 'active' || goal.activation === 'disarmed'
+      ? { action: 'resume' as const }
+      : goal.activation === 'armed'
+        ? { action: 'pause' as const }
+        : {}),
   }
 }
 
@@ -40,4 +52,13 @@ function record(value: unknown): Record<string, unknown> | undefined {
   return value !== null && typeof value === 'object' && !Array.isArray(value)
     ? (value as Record<string, unknown>)
     : undefined
+}
+
+/** A late live-read/mutation response must never lend activation to another goal revision. */
+export function goalWithActivation(
+  durable: MobileGoalView | undefined,
+  live: MobileGoalView | null | undefined,
+): MobileGoalView | undefined {
+  if (durable === undefined || !live || live.id !== durable.id || live.revision !== durable.revision) return durable
+  return { ...durable, ...(live.activation === undefined ? {} : { activation: live.activation }) }
 }

@@ -9,6 +9,7 @@ import type {
   MobileFeedbackRating,
   MobileGatewayFault,
   MobileGoalRef,
+  MobileGoalView,
   MobileImageAttachmentPayload,
   MobileJobsPayload,
   MobileModelCatalogPayload,
@@ -373,13 +374,45 @@ export class MobileApi {
     )
   }
 
+  unarchiveSession(sessionId: string): Promise<unknown> {
+    return this.#post(`/v1/sessions/${encodeURIComponent(sessionId)}/unarchive`, {})
+  }
+
+  async schedules(): Promise<{ items: import('@/types/mobile').MobileScheduleEntry[] }> {
+    const result = await this.#post<{ items: import('@/types/mobile').MobileScheduleEntry[] }>(
+      '/v1/schedules/catalog',
+      {},
+    )
+    if (!Array.isArray(result.items)) throw new Error(message('schedule.unsupported'))
+    return result
+  }
+
+  async updateSchedule(
+    task: import('@/types/mobile').MobileScheduleEntry,
+    action: 'pause' | 'resume' | 'delete',
+  ): Promise<void> {
+    const result = await this.#post<{ code?: string }>(`/v1/schedules/${encodeURIComponent(task.id)}/${action}`, {
+      expectedUpdatedAt: task.updatedAt ?? null,
+    })
+    if (result.code !== undefined) throw new Error(message('schedule.conflict'))
+  }
+
+  /** Reads live Goal activation, which is deliberately absent from durable projections. */
+  sessionGoal(sessionId: string): Promise<{ goal: MobileGoalView | null }> {
+    return this.#post(`/v1/sessions/${encodeURIComponent(sessionId)}/goal/read`, {})
+  }
+
+  createGoal(sessionId: string, objective: string): Promise<{ ref: MobileGoalRef }> {
+    return this.#post(`/v1/sessions/${encodeURIComponent(sessionId)}/goal/create`, { objective })
+  }
+
   /** Applies one desktop Goal mutation using the projection's current CAS reference. */
   mutateGoal(
     sessionId: string,
     action: 'edit' | 'pause' | 'resume' | 'clear',
     ref: MobileGoalRef,
     input: { objective?: string } = {},
-  ): Promise<{ ref?: MobileGoalRef; cleared?: true }> {
+  ): Promise<MobileGoalView | MobileGoalRef | { cleared: true }> {
     return this.#post(`/v1/sessions/${encodeURIComponent(sessionId)}/goal/${action}`, { ref, ...input })
   }
 

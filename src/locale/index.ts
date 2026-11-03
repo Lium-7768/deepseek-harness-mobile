@@ -26,6 +26,7 @@ import { permission } from './permission'
 import { process as processCopy } from './process'
 import { queue } from './queue'
 import { rename } from './rename'
+import { schedule } from './schedule'
 import { scan } from './scan'
 import { session } from './session'
 import { settings as settingsCopy } from './settings'
@@ -76,6 +77,7 @@ const areas = {
   queue,
   rename,
   scan,
+  schedule,
   session,
   settings: settingsCopy,
   speaker,

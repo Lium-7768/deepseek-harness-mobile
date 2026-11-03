@@ -14,6 +14,7 @@ export const makeSessionDrawerStyles = (theme: AppTheme) =>
     drawerSafe: { backgroundColor: theme.colors.drawerBackground, flex: 1 },
     drawerScroll: { flex: 1, backgroundColor: theme.colors.drawerBackground },
     drawerChrome: { flex: 1 },
+    navEntries: { marginHorizontal: 4, marginVertical: 8 },
     drawerHeader: { paddingHorizontal: 8, paddingTop: 4 },
     drawerContent: { flexGrow: 1, paddingBottom: 12, paddingTop: theme.spacing.xs },
     brandRow: {
@@ -153,14 +154,6 @@ export const makeSessionDrawerStyles = (theme: AppTheme) =>
     // it so titles line up under the workspace names whether or not the row has
     // a state to print.
     sessionStatus: { alignItems: 'center', flexShrink: 0, height: 20, justifyContent: 'center', width: 16 },
-    // `StateDot` in its `ongoing` appearance: a 14pt ring in `label-tertiary`.
-    sessionRunningRing: {
-      borderColor: theme.colors.inkTertiary,
-      borderRadius: 7,
-      borderWidth: 1.5,
-      height: 14,
-      width: 14,
-    },
     sessionTitle: { color: theme.colors.ink, flex: 1, fontSize: 14, lineHeight: 20, marginLeft: 4, marginRight: 6 },
     // `.rowResting`: the relative time in the caption tier at the row's right.
     sessionTime: {

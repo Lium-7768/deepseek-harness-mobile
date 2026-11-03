@@ -1,11 +1,12 @@
-import { usesStackedFields } from './native-layout'
+import { usesStackedFields } from '@/components/native-layout'
+import { splitModelId } from '@/components/session-selection-logic'
 import { NativeAnchoredPanel } from '@/components/native-anchored-panel'
 import { NativeIcon } from '@/components/native-icon'
 import { format, t as message } from '@/locale'
 import type { AppTheme } from '@/theme'
 import { useAppTheme, useThemedStyles } from '@/theme/hooks'
 import { textStyle } from '@/theme/text'
-import type { MobileModelCatalogModel, MobileModelProviderGroup } from '@/types/mobile'
+import type { MobileModelCatalogFailure, MobileModelCatalogModel, MobileModelProviderGroup } from '@/types/mobile'
 import { useEffect, useMemo, useState } from 'react'
 import {
   Keyboard,
@@ -47,24 +48,6 @@ type Row =
       prefix: string | undefined
     }
 
-/**
- * Splits a catalog id into the part a row prints and the part it drops.
- *
- * Route-style ids (`cline/nvidia/nemotron-3.5-lighting-free`) bury the readable
- * name at the end and repeat the provider the row already prints, so the leaf
- * becomes the title and the dropped segments move to the row's second line.
- *
- * @param id - Model identifier from the desktop catalog.
- * @returns The last path segment and the prefix in front of it.
- */
-export function splitModelId(id: string): { leaf: string; prefix: string | undefined } {
-  const segments = id.split('/').filter((segment) => segment.length > 0)
-  const leaf = segments.at(-1)
-  if (leaf === undefined) return { leaf: id, prefix: undefined }
-  const prefix = segments.slice(0, -1).join('/')
-  return { leaf, prefix: prefix.length === 0 ? undefined : prefix }
-}
-
 function matches(model: MobileModelCatalogModel, providerName: string, query: string): boolean {
   if (query.length === 0) return true
   const needle = query.toLowerCase()
@@ -92,6 +75,10 @@ export function NativeModelPicker({
   effort,
   efforts,
   groups,
+  failures = [],
+  routable,
+  loading = false,
+  failed = false,
   notice,
   onClose,
   onSelectEffort,
@@ -103,6 +90,10 @@ export function NativeModelPicker({
   effort?: string
   efforts: readonly string[]
   groups: MobileModelProviderGroup[]
+  failures?: MobileModelCatalogFailure[]
+  routable?: boolean
+  loading?: boolean
+  failed?: boolean
   notice?: string
   onClose: () => void
   onSelectEffort?: (effort: string) => void
@@ -156,10 +147,9 @@ export function NativeModelPicker({
 
   if (!open) return null
   return (
-    <NativeAnchoredPanel onClose={onClose} open={open}>
+    <NativeAnchoredPanel onClose={onClose} open>
       <View style={s.sheet}>
         <Text style={s.title}>{message('model.selectTitle')}</Text>
-        {notice === undefined ? null : <Text style={s.notice}>{notice}</Text>}
         <View style={s.searchField}>
           <NativeIcon name="search-outline" size={14} color={theme.colors.inkMuted} />
           <TextInput
@@ -191,64 +181,93 @@ export function NativeModelPicker({
         <FlatList
           data={rows}
           ListHeaderComponent={
-            query.trim() ? null : (
-              <>
-                {efforts.length <= 1 ? null : (
-                  <View style={s.effortRow}>
-                    <Text style={s.effortLabel}>{message('model.reasoningEffort')}</Text>
-                    <View style={s.effortChips}>
-                      {efforts.map((level) => {
-                        const active = level === effort
+            <>
+              {loading ? <Text style={s.notice}>{message('common.loading')}</Text> : null}
+              {failed ? (
+                <Text accessibilityRole="alert" style={s.error}>
+                  {message('model.catalogFailed')}
+                </Text>
+              ) : null}
+              {routable === false ? (
+                <Text accessibilityRole="alert" style={s.error}>
+                  {message('model.routingUnavailable')}
+                </Text>
+              ) : null}
+              {failures.map((failure) => (
+                <Text key={failure.id} style={s.error}>
+                  {format('model.providerUnavailable', { name: failure.name })}
+                </Text>
+              ))}
+              {notice === undefined ? null : <Text style={s.notice}>{notice}</Text>}
+              {query.trim() ? null : (
+                <>
+                  {efforts.length <= 1 ? null : (
+                    <View style={s.effortRow}>
+                      <Text style={s.effortLabel}>{message('model.reasoningEffort')}</Text>
+                      <View style={s.effortChips}>
+                        {efforts.map((level) => {
+                          const active = level === effort
+                          return (
+                            <Pressable
+                              accessibilityLabel={effortLabel(level)}
+                              accessibilityRole="radio"
+                              accessibilityState={{ checked: active, disabled }}
+                              disabled={disabled}
+                              key={level}
+                              onPress={() => {
+                                onClose()
+                                onSelectEffort?.(level)
+                              }}
+                              style={({ pressed }) => [s.chip, active && s.chipActive, pressed && s.pressed]}
+                            >
+                              <Text style={[s.chipText, active && s.chipTextActive]}>{effortLabel(level)}</Text>
+                            </Pressable>
+                          )
+                        })}
+                      </View>
+                    </View>
+                  )}
+                  <View style={s.providerBand}>
+                    <ScrollView contentContainerStyle={s.providers} horizontal showsHorizontalScrollIndicator={false}>
+                      {[
+                        { id: undefined, name: message('model.allProviders') },
+                        ...groups.map((group) => ({ id: group.id, name: group.name })),
+                      ].map((entry) => {
+                        const active = entry.id === providerFilter
                         return (
                           <Pressable
-                            accessibilityLabel={effortLabel(level)}
+                            accessibilityLabel={entry.name}
                             accessibilityRole="radio"
-                            accessibilityState={{ checked: active, disabled }}
-                            disabled={disabled}
-                            key={level}
-                            onPress={() => {
-                              onClose()
-                              onSelectEffort?.(level)
-                            }}
-                            style={({ pressed }) => [s.chip, active && s.chipActive, pressed && s.pressed]}
+                            accessibilityState={{ checked: active }}
+                            key={entry.id ?? 'all'}
+                            onPress={() => setProviderFilter(entry.id)}
+                            style={({ pressed }) => [s.providerChip, active && s.chipActive, pressed && s.pressed]}
                           >
-                            <Text style={[s.chipText, active && s.chipTextActive]}>{effortLabel(level)}</Text>
+                            <Text numberOfLines={1} style={[s.chipText, active && s.chipTextActive]}>
+                              {entry.name}
+                            </Text>
                           </Pressable>
                         )
                       })}
-                    </View>
+                    </ScrollView>
                   </View>
-                )}
-                <View style={s.providerBand}>
-                  <ScrollView contentContainerStyle={s.providers} horizontal showsHorizontalScrollIndicator={false}>
-                    {[
-                      { id: undefined, name: message('model.allProviders') },
-                      ...groups.map((group) => ({ id: group.id, name: group.name })),
-                    ].map((entry) => {
-                      const active = entry.id === providerFilter
-                      return (
-                        <Pressable
-                          accessibilityLabel={entry.name}
-                          accessibilityRole="radio"
-                          accessibilityState={{ checked: active }}
-                          key={entry.id ?? 'all'}
-                          onPress={() => setProviderFilter(entry.id)}
-                          style={({ pressed }) => [s.providerChip, active && s.chipActive, pressed && s.pressed]}
-                        >
-                          <Text numberOfLines={1} style={[s.chipText, active && s.chipTextActive]}>
-                            {entry.name}
-                          </Text>
-                        </Pressable>
-                      )
-                    })}
-                  </ScrollView>
-                </View>
-              </>
-            )
+                </>
+              )}
+            </>
           }
           keyboardShouldPersistTaps="handled"
           keyExtractor={(row) => row.key}
-          ListEmptyComponent={<Text style={s.empty}>{message('model.noMatches')}</Text>}
+          ListEmptyComponent={
+            <Text style={s.empty}>
+              {message(
+                loading
+                  ? 'common.loading'
+                  : failed || routable === false
+                    ? 'model.noAvailableModels'
+                    : 'model.noMatches',
+              )}
+            </Text>
+          }
           renderItem={({ item }) =>
             item.kind === 'header' ? (
               <Text style={s.groupTitle}>{item.title}</Text>
@@ -314,8 +333,6 @@ function modelRow(
 const makeStyles = (theme: AppTheme) =>
   StyleSheet.create({
     sheet: {
-      backgroundColor: theme.colors.surfaceRaised,
-      borderRadius: theme.radius.md,
       gap: 8,
       maxHeight: 520,
       flexShrink: 1,
@@ -324,6 +341,7 @@ const makeStyles = (theme: AppTheme) =>
       paddingVertical: 10,
     },
     title: { color: theme.colors.ink, fontSize: 14, fontWeight: '500', lineHeight: 22, paddingHorizontal: 8 },
+    error: { ...textStyle(theme, 'caption', 'tertiary'), color: theme.colors.danger, paddingHorizontal: 8 },
     notice: { ...textStyle(theme, 'caption', 'tertiary'), paddingHorizontal: 8 },
     searchField: {
       alignItems: 'center',

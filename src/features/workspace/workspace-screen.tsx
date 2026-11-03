@@ -1,4 +1,4 @@
-import { MobileApi, mobileErrorMessage } from '@/api/mobile-api'
+import { MobileApi } from '@/api/mobile-api'
 import { queryKeys } from '@/api/query-keys'
 import { NativeBrandMark } from '@/components/native-brand-mark'
 import { NativeIcon } from '@/components/native-icon'
@@ -11,6 +11,7 @@ import {
   workspaceForSession,
   workspaceLabel,
 } from '@/components/session-drawer-logic'
+import { useSessionSelections } from '@/hooks/use-session-selections'
 import { WorkspaceComposer } from '@/components/workspace-composer'
 import { WorkspaceShell } from '@/components/workspace-shell'
 import { workspaceKeyboardVerticalOffset } from '@/components/workspace-shell-logic'
@@ -20,7 +21,7 @@ import { useSessionSelectionStore } from '@/state/session-selection'
 import type { AppTheme } from '@/theme'
 import { useAppTheme, useThemedStyles } from '@/theme/hooks'
 import type { MobileAgentPresetEntry, MobilePromptContent } from '@/types/mobile'
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useQuery } from '@tanstack/react-query'
 import { router, useNavigation } from 'expo-router'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Alert, KeyboardAvoidingView, ScrollView, Platform, Pressable, StyleSheet, Text, View } from 'react-native'
@@ -31,7 +32,6 @@ export default function WorkspaceScreen(): React.JSX.Element {
   const s = useThemedStyles(makeStyles)
   const navigation = useNavigation<{ openDrawer: () => void }>()
   const insets = useSafeAreaInsets()
-  const queryClient = useQueryClient()
   const connection = useConnectionStore((state) => state.connection)
   const client = useMemo(() => (connection === undefined ? undefined : new MobileApi(connection)), [connection])
   const selectedSessionId = useSessionSelectionStore((state) => state.selectedSessionId)
@@ -58,53 +58,33 @@ export default function WorkspaceScreen(): React.JSX.Element {
     queryFn: ({ signal }) =>
       requireClient(client, message('workspace.connectFirst'))
         .withSignal(signal)
-        .sessionHistory(requireSelectedSessionId(selectedSession), { maxMessages: 1 }),
+        .sessionHistory(requireSelectedSessionId(selectedSession)),
   })
   const presets = useQuery({
     queryKey: queryKeys.agentPresets(connection?.gatewayUrl, connection?.deviceId),
     enabled: client !== undefined,
     queryFn: ({ signal }) => requireClient(client, message('workspace.connectFirst')).withSignal(signal).agentPresets(),
   })
-  const selectPreset = useMutation({
-    mutationFn: (agentPreset: string) =>
-      requireClient(client, message('workspace.connectFirst')).selectSessionPreset(
-        requireSelectedSessionId(selectedSession),
-        agentPreset,
-      ),
-    onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: queryKeys.sessionList() })
-      void queryClient.invalidateQueries({ queryKey: queryKeys.sessionHistory() })
-    },
-    onError: (error) =>
-      Alert.alert(message('mode.switchFailedTitle'), mobileErrorMessage(error, message('mode.switchFailedBody'))),
+  const selectedSessionEvents = useQuery({
+    staleTime: Infinity, // Explicit stream invalidation marks an uncertain status stale; elapsed time alone does not.
+    queryKey: queryKeys.sessionEvents(selectedSession?.sessionId),
+    enabled: selectedSession !== undefined && client !== undefined,
+    queryFn: ({ signal }) =>
+      requireClient(client, message('workspace.connectFirst'))
+        .withSignal(signal)
+        .sessionEvents(requireSelectedSessionId(selectedSession), 0),
   })
-  const selectModel = useMutation({
-    mutationFn: (selection: { model: string; provider: string; reasoningEffort?: string }) =>
-      requireClient(client, message('workspace.connectFirst')).selectSessionModel(
-        requireSelectedSessionId(selectedSession),
-        selection,
-      ),
-    onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: queryKeys.sessionModels() })
-      void queryClient.invalidateQueries({ queryKey: queryKeys.sessionHistory() })
-    },
-    onError: (error) =>
-      Alert.alert(message('model.switchFailedTitle'), mobileErrorMessage(error, message('model.switchFailedBody'))),
-  })
-  const selectPermission = useMutation({
-    mutationFn: (preset: string) =>
-      requireClient(client, message('workspace.connectFirst')).sendMessage(requireSelectedSessionId(selectedSession), [
-        { type: 'text', text: `/permission ${preset}` },
-      ]),
-    onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: queryKeys.sessionHistory() })
-      void queryClient.invalidateQueries({ queryKey: queryKeys.sessionEvents() })
-    },
-    onError: (error) =>
-      Alert.alert(
-        message('permission.switchFailedTitle'),
-        mobileErrorMessage(error, message('permission.switchFailedBody')),
-      ),
+  const selections = useSessionSelections({
+    client,
+    sessionId: selectedSession?.sessionId,
+    permissions: readPermissionSelect(selectedSessionHistory.data?.projections?.values.permissions),
+    model: selectedSessionModels.data?.current,
+    agentPreset: selectedSession?.agentPreset,
+    eventsError: selectedSessionEvents.isError || selectedSessionHistory.isError,
+    eventsPending: selectedSessionEvents.isPending || selectedSessionHistory.isPending,
+    eventsStale: selectedSessionEvents.isStale,
+    status: selectedSession?.running ? 'running' : selectedSessionEvents.data?.status,
+    unavailable: !connection || sessions.isError || selectedSession === undefined,
   })
   const selectedWorkspace = workspaceForSession(sessions.data?.workspaces ?? [], selectedSession?.sessionId)
   const workspaceTitle =
@@ -147,7 +127,6 @@ export default function WorkspaceScreen(): React.JSX.Element {
 
   return (
     <WorkspaceShell
-      showBrand={false}
       title={workspaceTitle}
       titleLeading={<NativeIcon name="folder-open" size={21} color={theme.colors.ink} />}
     >
@@ -195,8 +174,8 @@ export default function WorkspaceScreen(): React.JSX.Element {
                 </Pressable>
                 <ModeTrigger
                   agentPreset={selectedSession?.agentPreset}
-                  disabled={!connection || selectedSession === undefined}
-                  onSelect={(value) => selectPreset.mutate(value)}
+                  disabled={!connection || selectedSession === undefined || selections.pending}
+                  onSelect={selections.selectPreset}
                   presets={presets.data?.presets ?? []}
                   sessionId={selectedSession?.sessionId}
                 />
@@ -209,12 +188,13 @@ export default function WorkspaceScreen(): React.JSX.Element {
               model={selectedSessionModels.data?.current}
               placeholder={message('composer.heroPlaceholder')}
               onSend={send}
-              onSelectModel={(selection) => (selectedSession === undefined ? undefined : selectModel.mutate(selection))}
-              onSelectPermission={(value) =>
-                selectedSession === undefined ? undefined : selectPermission.mutate(value)
-              }
-              modelCatalog={selectedSessionModels.data?.groups}
-              permissionLocked={selectedSessionHistory.isPending || selectedSessionHistory.isError}
+              onSelectModel={selections.selectModel}
+              onSelectPermission={selections.selectPermission}
+              modelCatalog={selectedSessionModels.data}
+              modelCatalogError={selectedSessionModels.isError}
+              modelCatalogLoading={selectedSessionModels.isPending}
+              selectionPending={selections.pending}
+              permissionLocked={selections.permissionLocked}
               permissions={readPermissionSelect(selectedSessionHistory.data?.projections?.values.permissions)}
               sessionId={selectedSession?.sessionId}
               disabled={!connection || sessions.isFetching || sessions.isError || selectedSession === undefined}
@@ -307,13 +287,12 @@ const makeStyles = (theme: AppTheme) =>
     canvas: { flex: 1 },
     startScroll: { flexGrow: 1, justifyContent: 'center', paddingVertical: 24 },
     startPanel: { alignSelf: 'center', width: '100%', maxWidth: 760, gap: 12, paddingBottom: 24 },
-    // `FQzohq_composerStack`: 8pt between the identity block and the composer.
+    // `FQzohq_composerStack`: 16pt between the identity block and the composer.
     summary: { gap: 16, paddingTop: 16 },
     // The desktop's new-session hero: brand mark, 26px/500 headline, and the
     // preview badge on one row (ui-conversation EmptyHero).
     // `_wOI4G_root`/`headline`: a 32pt row inset 24pt, the mark ahead of the title.
     hero: { alignItems: 'center', flexDirection: 'row', gap: 12, minHeight: 32, paddingHorizontal: 24 },
-    heroMark: { alignItems: 'center', justifyContent: 'center' },
     heroLine: { flexWrap: 'wrap', rowGap: 4, alignItems: 'center', flexDirection: 'row', flexShrink: 1, gap: 7 },
     heroTitle: {
       flexShrink: 1,
@@ -339,7 +318,7 @@ const makeStyles = (theme: AppTheme) =>
       flexDirection: 'row',
       flexWrap: 'wrap',
       gap: 4,
-      paddingLeft: 20,
+      paddingLeft: 24,
       paddingRight: 16,
     },
     // `_wOI4G_workspace`: an 8pt-radius ghost button, 28pt tall, padded 0 8.

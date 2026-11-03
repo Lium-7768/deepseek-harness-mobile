@@ -59,14 +59,23 @@ const goalFixtures = new Map(
       revision: 1,
       objective: '从总池与新建目标中拿到 20 个非重复成果，并检查完整的移动端对话界面。',
       phase,
+      activation: phase === 'active' ? 'armed' : 'disarmed',
       ...(phase === 'blocked'
         ? { blockedReason: { code: 'needs-input', message: '需要补充可访问的资料后才能继续。' } }
         : {}),
     },
   ]),
 )
+goalFixtures.set('goal-disarmed', {
+  id: 'fixture-disarmed',
+  revision: 1,
+  objective: '恢复已停止自动续跑的目标',
+  phase: 'active',
+  activation: 'disarmed',
+})
 const list = {
   items: [
+    { sessionId: 'model-unavailable', title: '模型不可用状态', updatedAt: now, blank: false },
     { sessionId: 'search-local', title: '搜索示例 · local', updatedAt: now - 1000, blank: false },
     { sessionId: 'search-content', title: '数据层审查', updatedAt: now - 2000, blank: false },
     { sessionId: 'search-archived', title: '归档示例 · archived', updatedAt: now - 3000, blank: false },
@@ -123,6 +132,19 @@ const list = {
   ],
   archivedSessionIds: ['search-archived'],
 }
+let effectivePermission = 'workspace-write'
+const fixtureCommands = []
+const schedules = [
+  {
+    id: 'fixture-schedule',
+    title: '每日界面检查',
+    prompt: '检查项目状态并生成简报。',
+    status: 'active',
+    scheduledAt: new Date(now + 86400000).toISOString(),
+    updatedAt: new Date(now).toISOString(),
+    target: { kind: 'session', sessionId: 'conversation-full' },
+  },
+]
 const models = {
   current: { provider: 'deepseek', model: 'DeepSeek-V4.1', reasoningEffort: 'high' },
   routable: true,
@@ -211,7 +233,26 @@ const server = createServer(async (request, response) => {
   let data
   if (path === '/v1/auth') data = { deviceId: 'visual-review', accessToken: 'synthetic-local-token' }
   else if (path === '/v1/sessions/list') data = list
-  else if (path === '/v1/sessions/running') data = { sessionIds: [] }
+  else if (path === '/v1/test/commands') data = { commands: fixtureCommands }
+  else if (path === '/v1/schedules/catalog') data = { items: schedules }
+  else if (/\/v1\/schedules\/[^/]+\/(pause|resume|delete)$/.test(path)) {
+    const task = schedules.find((item) => item.id === path.split('/')[3])
+    if (!task || (input.expectedUpdatedAt ?? null) !== (task.updatedAt ?? null)) data = { code: 'schedule_conflict' }
+    else {
+      const action = path.split('/').at(-1)
+      if (action === 'delete') {
+        schedules.splice(schedules.indexOf(task), 1)
+        data = { deleted: true }
+      } else {
+        task.status = action === 'pause' ? 'paused' : 'active'
+        task.updatedAt = new Date().toISOString()
+        data = task
+      }
+    }
+  } else if (path.endsWith('/unarchive')) {
+    list.archivedSessionIds = list.archivedSessionIds.filter((id) => id !== path.split('/')[3])
+    data = { archivedSessionIds: list.archivedSessionIds }
+  } else if (path === '/v1/sessions/running') data = { sessionIds: [] }
   else if (path === '/v1/sessions/search') {
     const query = String(input.query ?? '').toLowerCase()
     if (query === 'search-fail') {
@@ -235,8 +276,34 @@ const server = createServer(async (request, response) => {
   else if (path === '/v1/agent-presets/read')
     data = { agentPreset: input.agentPreset, content: 'name: standard\ndescription: Visual review fixture' }
   else if (path === '/v1/settings/describe') data = { namespaces, writable: false, hasDocument: true }
-  else if (path === '/v1/llm/models' || path.endsWith('/models')) data = models
-  else if (/\/goal\/(edit|pause|resume|clear)$/.test(path)) {
+  else if (path === '/v1/llm/models' || path.endsWith('/models'))
+    data = path.includes('/model-unavailable/')
+      ? {
+          ...models,
+          groups: [],
+          routable: false,
+          failures: [{ id: 'down', name: '离线供应商', message: 'Synthetic provider failure' }],
+        }
+      : models
+  else if (path.endsWith('/goal/read')) data = { goal: goalFixtures.get(path.split('/')[3]) ?? null }
+  else if (path.endsWith('/goal/create')) {
+    const id = path.split('/')[3]
+    const current = goalFixtures.get(id)
+    if (current && current.phase !== 'complete') {
+      response.writeHead(409, { 'content-type': 'application/json' })
+      response.end(JSON.stringify({ contractVersion: 1, error: { code: 'conflict', message: '已有目标' } }))
+      return
+    }
+    const goal = {
+      id: `created-${Date.now()}`,
+      revision: 1,
+      objective: input.objective,
+      phase: 'active',
+      activation: 'armed',
+    }
+    goalFixtures.set(id, goal)
+    data = { ref: { id: goal.id, revision: goal.revision } }
+  } else if (/\/goal\/(edit|pause|resume|clear)$/.test(path)) {
     const id = path.split('/')[3]
     const action = path.split('/').at(-1)
     const goal = goalFixtures.get(id)
@@ -253,10 +320,11 @@ const server = createServer(async (request, response) => {
       if (action === 'edit') next.objective = input.objective
       else {
         next.phase = action === 'pause' ? 'paused' : 'active'
+        next.activation = action === 'pause' ? 'disarmed' : 'armed'
         delete next.blockedReason
       }
       goalFixtures.set(id, next)
-      data = { ref: { id: next.id, revision: next.revision } }
+      data = next
     }
   } else if (path.endsWith('/history')) {
     const id = path.split('/')[3]
@@ -267,7 +335,8 @@ const server = createServer(async (request, response) => {
         ...history.projections,
         values: {
           ...history.projections.values,
-          ...(id.startsWith('goal-')
+          permissions: { currentValue: effectivePermission },
+          ...(goalFixtures.has(id) || id.startsWith('goal-')
             ? { goal: goalFixtures.has(id) ? { goal: goalFixtures.get(id), roundsStarted: 20 } : null }
             : {}),
         },
@@ -281,7 +350,17 @@ const server = createServer(async (request, response) => {
       items: transcript.filter((item) => item.seq > (input.since ?? 0)),
       status: id.endsWith('running') ? 'running' : 'idle',
     }
-  } else if (
+  } else if (path.includes('/goal-blocked/') && path.endsWith('/queue'))
+    data = {
+      items: [
+        {
+          id: 'goal-queue',
+          placement: 'queued',
+          message: { content: [{ type: 'text', text: '核对目标栏和输入卡之间的队列' }] },
+        },
+      ],
+    }
+  else if (
     (path.includes('/conversation-') || path.includes('/goal-')) &&
     (path.endsWith('/subagents') || path.endsWith('/jobs') || path.endsWith('/queue') || path.endsWith('/interactions'))
   )
@@ -340,8 +419,13 @@ const server = createServer(async (request, response) => {
       ],
     }
   else if (path.endsWith('/jobs') || path.endsWith('/queue') || path.endsWith('/interactions')) data = { items: [] }
-  else if (path.endsWith('/messages')) data = { accepted: true }
-  else data = {}
+  else if (path.endsWith('/messages')) {
+    fixtureCommands.push({ sessionId: path.split('/')[3], content: input.content })
+    const command = input.content?.find((part) => part.type === 'text')?.text
+    if (command?.startsWith('/permission ')) effectivePermission = command.slice('/permission '.length)
+    await new Promise((resolve) => setTimeout(resolve, 500))
+    data = { accepted: true }
+  } else data = {}
   response.writeHead(200, { 'content-type': 'application/json' })
   response.end(JSON.stringify({ contractVersion: 1, data }))
 })

@@ -128,12 +128,14 @@ export interface MobileSessionProjectionsBlock {
   values: Record<string, unknown>
 }
 
-/** Goal state is desktop-authoritative and arrives only through the session projection. */
+/** Goal lifecycle is desktop-authoritative; live reads additionally carry process-local activation. */
 export interface MobileGoalView {
   id: string
   revision: number
   objective: string
   phase: 'active' | 'paused' | 'blocked' | 'complete'
+  /** Live host continuation authority; never inferred from the durable phase. */
+  activation?: 'armed' | 'disarmed'
   blockedReason?: { message?: string }
 }
 
@@ -423,3 +425,15 @@ export type MobileFeedbackDeleteResult =
       | { code: 'session-not-found'; sessionId: string }
       | { code: 'version-conflict'; current: MobileFeedbackItem | null }
     >
+
+/** Read-only task catalog and optimistic update reference owned by the desktop schedule service. */
+export interface MobileScheduleEntry {
+  id: string
+  title: string
+  prompt: string
+  status: 'active' | 'paused' | 'ended'
+  scheduledAt: string
+  updatedAt?: string
+  target: { kind: 'session' | 'new_once'; sessionId: string } | { kind: 'new' }
+  executionActive?: boolean
+}

@@ -11,6 +11,7 @@ import { useConnectionStore } from '@/state/connection'
 import { mobileConnectionScope } from '@/state/connection-scope'
 import { useAppTheme } from '@/theme/hooks'
 import { QueryClientProvider } from '@tanstack/react-query'
+import { NavigationBar } from 'expo-navigation-bar'
 import { Drawer } from 'expo-router/drawer'
 import { useEffect, useState } from 'react'
 import { StatusBar, useWindowDimensions } from 'react-native'
@@ -30,6 +31,7 @@ export default function RootLayout(): React.JSX.Element {
   return (
     <ConnectionQueries key={connectionScope ?? 'unpaired'}>
       <StatusBar barStyle={theme.appearance === 'dark' ? 'light-content' : 'dark-content'} />
+      <NavigationBar style={theme.appearance === 'dark' ? 'light' : 'dark'} />
       <MobileSyncBridge />
       <Drawer
         drawerContent={(props) => <SessionDrawer {...props} />}
@@ -52,6 +54,7 @@ export default function RootLayout(): React.JSX.Element {
         <Drawer.Screen name="session/[sessionId]/subagent" options={{ swipeEnabled: false }} />
         <Drawer.Screen name="workspace/[workspaceId]/rename" options={{ swipeEnabled: false }} />
         <Drawer.Screen name="settings" />
+        <Drawer.Screen name="schedules" />
       </Drawer>
     </ConnectionQueries>
   )

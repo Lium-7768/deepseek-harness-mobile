@@ -6,7 +6,7 @@ import { NativeSection } from '@/components/native-list'
 import { NativeMenuPanel } from '@/components/native-menu-panel'
 import { type NativeModelSelection } from '@/components/native-model-selection'
 import { NativeSelectionRow } from '@/components/native-selection'
-import { t as message } from '@/locale'
+import { format, t as message } from '@/locale'
 import { useAppTheme, useThemedStyles } from '@/theme/hooks'
 import type { MobileSettingsNamespaceView, MobileSettingsPayload } from '@/types/mobile'
 import { useWindowDimensions, ActivityIndicator, Pressable, Text, View } from 'react-native'
@@ -73,7 +73,7 @@ export function SettingsFieldRow({
   return (
     <Pressable
       accessibilityRole={onPress === undefined ? undefined : 'button'}
-      accessibilityLabel={`${label}：${value}`}
+      accessibilityLabel={format('settings.fieldAccessibilityLabel', { label, value })}
       accessibilityState={{ disabled: inactive }}
       disabled={inactive}
       onPress={onPress}

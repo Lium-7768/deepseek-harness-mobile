@@ -1,4 +1,3 @@
-import { NativeBrandMark } from '@/components/native-brand-mark'
 import { NativeIcon } from '@/components/native-icon'
 import { workspaceHeaderMinHeight } from '@/components/workspace-shell-logic'
 import { t as message } from '@/locale'
@@ -17,7 +16,6 @@ type WorkspaceShellProps = {
   titleAccessory?: React.ReactNode
   titleAccessibilityLabel?: string
   onTitlePress?: () => void
-  showBrand?: boolean
   leftAction?: React.ReactNode
   rightAction?: React.ReactNode
   /** Optional compact metadata row used by session/workspace headers. */
@@ -33,7 +31,6 @@ type WorkspaceShellProps = {
  * @param titleAccessory - Optional compact element rendered beside the title.
  * @param titleAccessibilityLabel - Screen-reader label for an interactive title.
  * @param onTitlePress - Optional action that makes the title row a native button.
- * @param showBrand - Whether the standard product mark is rendered before the title.
  * @param leftAction - Optional replacement for the drawer menu button.
  * @param rightAction - Optional action rendered at the trailing edge.
  * @param headerMeta - Optional second-row metadata rendered below the top row.
@@ -47,7 +44,6 @@ export function WorkspaceShell({
   titleAccessory,
   titleAccessibilityLabel,
   onTitlePress,
-  showBrand = false,
   leftAction,
   rightAction,
   headerMeta,
@@ -85,11 +81,6 @@ export function WorkspaceShell({
         <View style={[s.header, { minHeight: workspaceHeaderMinHeight(hasHeaderMeta), paddingTop: insets.top }]}>
           <View style={s.headerTop}>
             {leftAction ?? menu}
-            {showBrand ? (
-              <View accessibilityElementsHidden style={s.brandAnchor}>
-                <NativeBrandMark size={20} />
-              </View>
-            ) : null}
             {onTitlePress === undefined ? (
               titleContent
             ) : (
@@ -139,7 +130,6 @@ const makeStyles = (theme: AppTheme) =>
       justifyContent: 'center',
       width: 28,
     },
-    brandAnchor: { alignItems: 'center', height: 28, justifyContent: 'center', marginHorizontal: 4, width: 28 },
     titleButton: { flex: 1, minWidth: 0 },
     titleGroup: { alignItems: 'center', flex: 1, flexDirection: 'row', minWidth: 0 },
     titleLeading: { alignItems: 'center', marginRight: 7 },

@@ -56,3 +56,21 @@ it('retains a complete response after 5,000 deltas and marks settled history sta
   expect(client.getQueryState(historyKey)?.isInvalidated).toBe(true)
   client.clear()
 })
+
+it('refreshes live Goal activation along with its durable projection after Goal changes and reconnect', () => {
+  const client = new QueryClient()
+  const key = queryKeys.sessionGoal('s')
+  client.setQueryData(key, { goal: { id: 'g', revision: 1, activation: 'armed' } })
+  applyMobileStreamEvent(client, {
+    contractVersion: 1,
+    eventId: 'goal',
+    sessionId: 's',
+    type: 'session/event',
+    payload: { event: { type: 'goal/change' } },
+  })
+  expect(client.getQueryState(key)?.isInvalidated).toBe(true)
+  client.setQueryData(key, { goal: null })
+  applyMobileStreamEvent(client, { contractVersion: 1, eventId: 'reconnect', type: 'gateway/ready', payload: {} })
+  expect(client.getQueryState(key)?.isInvalidated).toBe(true)
+  client.clear()
+})

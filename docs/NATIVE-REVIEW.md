@@ -1,6 +1,6 @@
 # Native client review
 
-This review covers the mobile repository, preserving the pre-existing uncommitted implementation. The desktop repository is a read-only design and protocol reference. Desktop application downloads, installation and updater surfaces are excluded.
+This review covers the mobile repository, covering the current implementation. The desktop repository is a read-only design and protocol reference. Desktop application downloads, installation and updater surfaces are excluded.
 
 ## Desktop design references
 
@@ -64,10 +64,10 @@ Push notifications and Gateway-side idempotent message submission require separa
 
 The dependency audit was also run: compatible transitive patches removed the critical finding and 20 other advisories. Four Expo CLI/config advisories remain and are recorded as A7 in the task ledger; the audit CI gate remains enabled.
 
-## Complete-conversation follow-up
+## Conversation behavior
 
-The initial review underrepresented full transcripts. The follow-up covers multi-Turn conversation flow and all expanded tool/reasoning states using synthetic fixture sessions `conversation-full`, `conversation-failure`, and `conversation-running`. See C1–C4 in the task ledger for changes and evidence. In particular, the Turn is now the unit for completion actions and process disclosure, nested tool rows no longer pull negative margins, and Markdown has explicit block spacing plus desktop-coloured syntax highlighting. Native horizontal code scrolling preserves source formatting on narrow screens.
+The synthetic validation covers multi-Turn conversation flow and all expanded tool/reasoning states using synthetic fixture sessions `conversation-full`, `conversation-failure`, and `conversation-running`. the Turn is now the unit for completion actions and process disclosure, nested tool rows no longer pull negative margins, and Markdown has explicit block spacing plus desktop-coloured syntax highlighting. Native horizontal code scrolling preserves source formatting on narrow screens.
 
 ## Narrow screens and enlarged text
 
-The deeper pass exercised a 320pt viewport with 150% font scaling. Effective reading width now selects compact composer chrome, stacked settings/actions and stacked model/provider rows. Sheets measure their own viewport and keyboard overlap, own one elevation, expose a close/escape action and let content scroll. Search results take precedence over model-picker chrome while searching. The task ledger's D1–D4 entries record the actual screen matrix and remaining validation limits.
+The deeper pass exercised a 320pt viewport with 150% font scaling. Effective reading width now selects compact composer chrome, stacked settings/actions and stacked model/provider rows. Sheets measure their own viewport and keyboard overlap, own one elevation, expose a close/escape action and let content scroll. Search results take precedence over model-picker chrome while searching. The implementation and acceptance document lists the validated matrix and remaining behavior gaps.

@@ -1,14 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- The desktop gateway is reached at whatever origin its 手机访问 page prints.
-     A quick tunnel is https; a LAN address or an `adb reverse` port is plain
-     http, and a phone pairs with both. Cleartext therefore stays allowed for
-     the loopback, private-range, and emulator-host origins, so a self-hosted
-     gateway works without asking the user to terminate TLS by hand. -->
+<!-- A user-selected gateway may use an arbitrary LAN IP, local hostname,
+     loopback or emulator-host HTTP origin. Android domain-config cannot express
+     private CIDR ranges, so this app-wide exception deliberately permits HTTP.
+     HTTPS gateways use only the system CA store; user-installed CAs are not
+     trusted by release builds. -->
 <network-security-config>
   <base-config cleartextTrafficPermitted="true">
     <trust-anchors>
       <certificates src="system"/>
-      <certificates src="user"/>
     </trust-anchors>
   </base-config>
 </network-security-config>

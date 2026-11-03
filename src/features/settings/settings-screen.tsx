@@ -57,7 +57,6 @@ export default function SettingsScreen(): React.JSX.Element {
       showMenu={false}
       title={message('settings.title')}
       titleLeading={null}
-      showBrand={false}
     >
       {connection === undefined ? (
         <ConnectionSettings connection={connection} />

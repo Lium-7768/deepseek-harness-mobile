@@ -75,7 +75,7 @@ export function NativeMenuPanel({
   if (!open) return null
   const rows = groups.reduce((count, group) => count + group.options.length, 0)
   return (
-    <NativeAnchoredPanel onClose={onClose} open={open}>
+    <NativeAnchoredPanel onClose={onClose} open>
       <View style={s.menu}>
         {title === undefined ? null : <Text style={s.title}>{title}</Text>}
         {notice === undefined ? null : (
@@ -149,8 +149,6 @@ const makeStyles = (theme: AppTheme) =>
   StyleSheet.create({
     // `ui-primitives Menu`: menu fill, r12, prominent elevation.
     menu: {
-      backgroundColor: theme.colors.surfaceRaised,
-      borderRadius: theme.radius.md,
       maxHeight: 480,
       flexShrink: 1,
       minHeight: 0,

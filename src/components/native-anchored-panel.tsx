@@ -1,35 +1,10 @@
-import { sheetGeometry } from './native-layout'
-import { NativeIcon } from './native-icon'
+import { sheetGeometry } from '@/components/native-layout'
 import { t as message } from '@/locale'
 import type { AppTheme } from '@/theme'
-import { useAppTheme, useThemedStyles } from '@/theme/hooks'
-import { useEffect, useState } from 'react'
+import { useThemedStyles } from '@/theme/hooks'
+import { useEffect, useRef, useState } from 'react'
 import { Keyboard, Modal, Pressable, StyleSheet, View, useWindowDimensions } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
-
-/** Style of the panel card every composer menu and detail panel wears. */
-export function panelCardStyle(
-  theme: AppTheme,
-  padding: number,
-): {
-  borderRadius: number
-  elevation: number
-  padding: number
-  shadowColor: string
-  shadowOffset: { height: number; width: number }
-  shadowOpacity: number
-  shadowRadius: number
-  backgroundColor: string
-} {
-  return {
-    ...theme.elevation.sheet,
-    shadowOpacity: 0,
-    elevation: 0,
-    backgroundColor: theme.colors.surfaceRaised,
-    borderRadius: theme.radius.md,
-    padding,
-  }
-}
 
 /**
  * Renders one click-open panel above a dock trigger.
@@ -55,23 +30,23 @@ export function NativeAnchoredPanel({
   const s = useThemedStyles(makeStyles)
   const insets = useSafeAreaInsets()
   const { height } = useWindowDimensions()
-  const theme = useAppTheme()
   const [modalHeight, setModalHeight] = useState(height)
-  // A sheet that owns a text field would otherwise open under the keyboard: its
-  // modal window is its own surface, so the activity's adjustResize never moves
-  // it. The anchor lifts by the reported keyboard height instead.
-  const [keyboardTop, setKeyboardTop] = useState<number | undefined>(undefined)
+  const unobscuredHeight = useRef(height)
+  const [keyboardHeight, setKeyboardHeight] = useState(0)
   useEffect(() => {
     if (!open) return
-    setKeyboardTop(Keyboard.metrics()?.screenY)
-    const show = Keyboard.addListener('keyboardDidShow', (event) => setKeyboardTop(event.endCoordinates.screenY))
-    const hide = Keyboard.addListener('keyboardDidHide', () => setKeyboardTop(undefined))
+    setKeyboardHeight(Keyboard.metrics()?.height ?? 0)
+    const update = (event: import('react-native').KeyboardEvent): void => setKeyboardHeight(event.endCoordinates.height)
+    const show = Keyboard.addListener('keyboardDidShow', update)
+    const change = Keyboard.addListener('keyboardWillChangeFrame', update)
+    const hide = Keyboard.addListener('keyboardDidHide', () => setKeyboardHeight(0))
     return () => {
       show.remove()
+      change.remove()
       hide.remove()
     }
   }, [open])
-  const geometry = sheetGeometry(modalHeight, keyboardTop, insets.top, insets.bottom)
+  const geometry = sheetGeometry(modalHeight, keyboardHeight, insets.top, insets.bottom, unobscuredHeight.current)
   if (!open) return null
   return (
     <Modal
@@ -82,7 +57,14 @@ export function NativeAnchoredPanel({
       statusBarTranslucent
       navigationBarTranslucent
     >
-      <View style={s.viewport} onLayout={(event) => setModalHeight(event.nativeEvent.layout.height)}>
+      <View
+        style={s.viewport}
+        onLayout={(event) => {
+          const measured = event.nativeEvent.layout.height
+          if (!Keyboard.isVisible() && keyboardHeight === 0) unobscuredHeight.current = measured
+          setModalHeight(measured)
+        }}
+      >
         <Pressable
           accessibilityLabel={message('common.close')}
           accessibilityRole="button"
@@ -95,18 +77,7 @@ export function NativeAnchoredPanel({
             onAccessibilityEscape={onClose}
             style={[s.content, { maxHeight: geometry.maxHeight }]}
           >
-            <View style={s.chrome}>
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel={message('common.close')}
-                onPress={onClose}
-                hitSlop={6}
-                style={s.close}
-              >
-                <NativeIcon name="close-outline" size={18} color={theme.colors.inkMuted} />
-              </Pressable>
-            </View>
-            {children}
+            <View style={s.clippedContent}>{children}</View>
           </View>
         </View>
       </View>
@@ -116,11 +87,8 @@ export function NativeAnchoredPanel({
 
 const makeStyles = (theme: AppTheme) =>
   StyleSheet.create({
-    // `stat-dialog.module.css .panel` / `ContextMeter .panel`: menu surface, 12px
-    // radius, 16px padding (the meter keeps 12), prominent elevation.
+    // One surface and shadow for menus and detail panels.
     viewport: { flex: 1 },
-    chrome: { flexDirection: 'row', justifyContent: 'flex-end', paddingHorizontal: 8, minHeight: 32, flexShrink: 0 },
-    close: { width: 32, minHeight: 32, alignItems: 'center', justifyContent: 'center' },
     backdrop: { bottom: 0, left: 0, position: 'absolute', right: 0, top: 0, backgroundColor: theme.colors.panelScrim },
     anchor: { flex: 1, justifyContent: 'flex-end', paddingHorizontal: 12 },
     content: {
@@ -130,8 +98,7 @@ const makeStyles = (theme: AppTheme) =>
       maxWidth: 640,
       flexShrink: 1,
       backgroundColor: theme.colors.surfaceRaised,
-      borderRadius: theme.radius.xl,
-      paddingTop: 4,
-      overflow: 'hidden',
+      borderRadius: theme.radius.md,
     },
+    clippedContent: { flexShrink: 1, borderRadius: theme.radius.md, overflow: 'hidden' },
   })

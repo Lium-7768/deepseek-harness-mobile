@@ -1,0 +1,17 @@
+export const schedule = {
+  title: '自动化任务',
+  empty: '暂无自动化任务',
+  loadFailed: '自动化任务加载失败',
+  unsupported: '当前桌面端未提供自动化任务目录，请更新手机访问插件后重试。',
+  active: '运行中',
+  paused: '已暂停',
+  ended: '已结束',
+  next: '下次执行：{time}',
+  pause: '暂停任务',
+  resume: '恢复任务',
+  remove: '删除任务',
+  removeBody: '删除“{title}”及其执行记录？',
+  failed: '任务操作失败',
+  conflict: '任务已被修改，请刷新后重试。',
+  openSession: '打开目标会话',
+} as const

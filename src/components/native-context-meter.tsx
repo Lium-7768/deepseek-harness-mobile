@@ -1,4 +1,4 @@
-import { NativeAnchoredPanel, panelCardStyle } from '@/components/native-anchored-panel'
+import { NativeAnchoredPanel } from '@/components/native-anchored-panel'
 import type { ContextMeterPanel } from '@/components/session-stats-logic'
 import { format } from '@/locale'
 import type { AppTheme } from '@/theme'
@@ -106,7 +106,7 @@ const makeStyles = (theme: AppTheme) =>
     text: textStyle(theme, 'body', 'tertiary'),
     // `ContextMeter .panel`: menu surface, r12, 12px padding, 12/20 secondary.
     scroll: { flexShrink: 1 },
-    panel: panelCardStyle(theme, 12),
+    panel: { padding: 12 },
     header: { alignItems: 'center', flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
     headline: { color: theme.colors.inkTertiary, fontSize: 12, lineHeight: 20 },
     // `.percent`: the reading takes the primary tone at the same weight.
