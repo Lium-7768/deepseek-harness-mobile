@@ -4,23 +4,16 @@ import { DrawerViewMenu } from '@/components/drawer-view-menu'
 import { DrawerSearchInput, DrawerSearchRow } from '@/components/drawer-search'
 import {
   drawerSearchResults,
-  filterArchivedSessions,
-  reconcileDrawerOrder,
-  workspaceHierarchy,
+  drawerViewRows,
+  initialDrawerOrders,
+  moveDrawerSession,
 } from '@/components/drawer-view-logic'
 import { defaultDrawerView, useDrawerViewStore } from '@/state/drawer-view'
 import { NativeBrandMark } from '@/components/native-brand-mark'
 import { NativeIcon } from '@/components/native-icon'
 import { NativeListRow } from '@/components/native-list'
 import { SessionItem, WorkspaceItem } from '@/components/session-drawer-items'
-import {
-  sessionDisplayTitle,
-  sessionIdFromRoute,
-  sessionRows,
-  sortSessions,
-  visibleWorkspaceRows,
-  workspaceForSession,
-} from '@/components/session-drawer-logic'
+import { sessionDisplayTitle, sessionIdFromRoute } from '@/components/session-drawer-logic'
 import { makeSessionDrawerStyles } from '@/components/session-drawer-styles'
 import { shareSessionLog } from '@/export/session-log-share'
 import { format, t as message } from '@/locale'
@@ -33,8 +26,8 @@ import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { router } from 'expo-router'
 import { DrawerContentScrollView, useDrawerStatus, type DrawerContentComponentProps } from 'expo-router/drawer'
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { ActivityIndicator, Alert, Keyboard, Pressable, Text, View } from 'react-native'
-import { SafeAreaView } from 'react-native-safe-area-context'
+import { ActivityIndicator, Alert, Keyboard, KeyboardAvoidingView, Platform, Pressable, Text, View } from 'react-native'
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 
 /**
  * Renders the root Expo Router drawer content for session navigation.
@@ -51,6 +44,7 @@ const SYNC_FEEDBACK_MS = 900
 
 export function SessionDrawer(props: DrawerContentComponentProps): React.JSX.Element {
   const theme = useAppTheme()
+  const insets = useSafeAreaInsets()
   const styles = useThemedStyles(makeSessionDrawerStyles)
   const { navigation, state } = props
   const drawerStatus = useDrawerStatus()
@@ -116,10 +110,6 @@ export function SessionDrawer(props: DrawerContentComponentProps): React.JSX.Ele
     [query.data?.archivedSessionIds],
   )
   const allSessions = query.data?.items ?? []
-  const sessions = useMemo(
-    () => filterArchivedSessions(query.data?.items ?? [], archivedSessionIds, archivedFilter),
-    [query.data?.items, archivedSessionIds, archivedFilter],
-  )
   const workspaces = query.data?.workspaces ?? []
   const searchActive = search.trim().length > 0
   const remoteCurrent = debouncedSearch === search.trim()
@@ -132,102 +122,23 @@ export function SessionDrawer(props: DrawerContentComponentProps): React.JSX.Ele
     remoteCurrent ? (contentSearch.data?.items ?? []) : [],
   )
   const searchPending = !remoteCurrent || contentSearch.isPending || contentSearch.isFetching
-  const accountFor = (id: string): string =>
-    groupBy === 'flat' ? 'flat' : (workspaceForSession(workspaces, id)?.workspaceId ?? 'ungrouped')
-  const orderedSessions = sortSessions(sessions, orderBy)
-  if (orderBy === 'manual' && groupBy === 'flat') {
-    const rank = new Map(
-      reconcileDrawerOrder(
-        view.orders.flat ?? [],
-        allSessions.map((item) => item.sessionId),
-      ).map((id, index) => [id, index]),
-    )
-    orderedSessions.sort((a, b) => (rank.get(a.sessionId) ?? Infinity) - (rank.get(b.sessionId) ?? Infinity))
-  }
-  const hierarchy = workspaceHierarchy(workspaces)
-  const orderedWorkspaces = (groupBy === 'workspace-tree' ? hierarchy.map((item) => item.workspace) : workspaces).map(
-    (workspace) => {
-      const members =
-        orderBy === 'updated'
-          ? orderedSessions
-              .filter((item) => workspace.sessionIds.includes(item.sessionId))
-              .map((item) => item.sessionId)
-          : reconcileDrawerOrder(view.orders[workspace.workspaceId] ?? workspace.sessionIds, workspace.sessionIds)
-      return { ...workspace, sessionIds: members }
-    },
-  )
-  const ungrouped = orderedSessions.filter((item) => workspaceForSession(workspaces, item.sessionId) === undefined)
-  if (orderBy === 'manual') {
-    const rank = new Map(
-      reconcileDrawerOrder(
-        view.orders.ungrouped ?? [],
-        allSessions
-          .filter((item) => workspaceForSession(workspaces, item.sessionId) === undefined)
-          .map((item) => item.sessionId),
-      ).map((id, index) => [id, index]),
-    )
-    ungrouped.sort((a, b) => (rank.get(a.sessionId) ?? Infinity) - (rank.get(b.sessionId) ?? Infinity))
-  }
-  const rows = sessionRows(
-    groupBy === 'flat'
-      ? orderedSessions
-      : ungrouped.concat(
-          orderedSessions.filter((item) => workspaceForSession(workspaces, item.sessionId) !== undefined),
-        ),
-    orderedWorkspaces,
-    groupBy === 'flat' ? 'flat' : 'workspace',
+  const { rows, visibleRows } = drawerViewRows(
+    allSessions,
+    workspaces,
+    archivedSessionIds,
+    view,
     currentSessionId,
-    orderBy,
-  )
-  const treeInfo = new Map(hierarchy.map((item) => [`workspace:${item.workspace.workspaceId}`, item]))
-  let rowDepth = 0
-  let parentHidden = false
-  const visibleRows = visibleWorkspaceRows(rows, collapsedWorkspaceKeys, expandedWorkspaceSessionKeys).flatMap(
-    (item) => {
-      if (groupBy !== 'workspace-tree') return [{ ...item, depth: 0 }]
-      if (item.kind === 'workspace') {
-        const info = treeInfo.get(item.key)
-        rowDepth = info?.depth ?? 0
-        parentHidden = info?.ancestors.some((id) => collapsedWorkspaceKeys.has(`workspace:${id}`)) ?? false
-      }
-      return parentHidden ? [] : [{ ...item, depth: rowDepth }]
-    },
+    collapsedWorkspaceKeys,
+    expandedWorkspaceSessionKeys,
   )
   const pickOrder = (next: 'manual' | 'updated'): void => {
-    if (next === 'updated') {
-      updateView(scope, { orderBy: next })
-      return
-    }
-    const orders = { ...view.orders }
-    const recent = sortSessions(allSessions, 'updated')
-    for (const account of ['flat', 'ungrouped', ...workspaces.map((workspace) => workspace.workspaceId)]) {
-      const members =
-        account === 'flat'
-          ? recent
-          : recent.filter(
-              (item) => (workspaceForSession(workspaces, item.sessionId)?.workspaceId ?? 'ungrouped') === account,
-            )
-      orders[account] = reconcileDrawerOrder(
-        orders[account] ?? [],
-        members.map((item) => item.sessionId),
-      )
-    }
-    updateView(scope, { orderBy: next, orders })
+    updateView(scope, {
+      orderBy: next,
+      ...(next === 'manual' ? { orders: initialDrawerOrders(allSessions, workspaces, view.orders) } : {}),
+    })
   }
   const moveSession = (id: string, direction: -1 | 1): void => {
-    const account = accountFor(id)
-    const members = allSessions.filter((item) => accountFor(item.sessionId) === account).map((item) => item.sessionId)
-    const order = reconcileDrawerOrder(view.orders[account] ?? [], members)
-    const visible = orderedSessions.filter(
-      (item) => accountFor(item.sessionId) === account && item.origin !== 'subagent' && item.blank !== true,
-    )
-    visible.sort((a, b) => order.indexOf(a.sessionId) - order.indexOf(b.sessionId))
-    const neighbor = visible[visible.findIndex((item) => item.sessionId === id) + direction]?.sessionId
-    if (neighbor === undefined) return
-    const from = order.indexOf(id)
-    const to = order.indexOf(neighbor)
-    ;[order[from], order[to]] = [order[to], order[from]]
-    updateView(scope, { orders: { ...view.orders, [account]: order } })
+    updateView(scope, { orders: moveDrawerSession(allSessions, workspaces, archivedSessionIds, view, id, direction) })
   }
 
   // The vendored drawer only honours CLOSE_DRAWER when it is addressed to the
@@ -390,306 +301,314 @@ export function SessionDrawer(props: DrawerContentComponentProps): React.JSX.Ele
           setOptionsOpen(false)
         }}
       >
-        <View style={styles.drawerHeader}>
-          <View style={styles.brandRow}>
-            <View style={styles.brand}>
-              <NativeBrandMark size={24} />
-              <Text numberOfLines={1} style={styles.brandWord}>
-                deepseek
-              </Text>
-              <Text style={styles.brandTag}>HARNESS</Text>
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          keyboardVerticalOffset={insets.top}
+          style={styles.drawerChrome}
+          accessibilityElementsHidden={optionsOpen}
+          importantForAccessibility={optionsOpen ? 'no-hide-descendants' : 'auto'}
+        >
+          <View style={styles.drawerHeader}>
+            <View style={styles.brandRow}>
+              <View style={styles.brand}>
+                <NativeBrandMark size={24} />
+                <Text numberOfLines={1} style={styles.brandWord}>
+                  deepseek
+                </Text>
+                <Text style={styles.brandTag}>HARNESS</Text>
+              </View>
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel={message('drawer.close')}
+                hitSlop={8}
+                onPress={closeDrawer}
+                style={({ pressed }) => [styles.topIcon, pressed && styles.pressed]}
+              >
+                <NativeIcon name="close-outline" size={16} color={theme.colors.inkMuted} />
+              </Pressable>
             </View>
+
             <Pressable
               accessibilityRole="button"
-              accessibilityLabel={message('drawer.close')}
-              hitSlop={8}
-              onPress={closeDrawer}
-              style={({ pressed }) => [styles.topIcon, pressed && styles.pressed]}
+              accessibilityLabel={message('drawer.newSession')}
+              disabled={!connection}
+              onPress={() => void createSession()}
+              style={({ pressed }) => [
+                styles.newSession,
+                !connection && styles.disabledAction,
+                pressed && styles.pressed,
+              ]}
             >
-              <NativeIcon name="close-outline" size={16} color={theme.colors.inkMuted} />
+              <NativeIcon
+                name="new-chat-outline"
+                size={16}
+                color={connection ? theme.colors.ink : theme.colors.inkFaint}
+              />
+              <Text numberOfLines={1} style={connection ? styles.newSessionText : styles.newSessionTextDisabled}>
+                {connection ? message('drawer.newSession') : message('drawer.connectFirst')}
+              </Text>
             </Pressable>
-          </View>
 
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel={message('drawer.newSession')}
-            disabled={!connection}
-            onPress={() => void createSession()}
-            style={({ pressed }) => [
-              styles.newSession,
-              !connection && styles.disabledAction,
-              pressed && styles.pressed,
-            ]}
-          >
-            <NativeIcon
-              name="new-chat-outline"
-              size={16}
-              color={connection ? theme.colors.ink : theme.colors.inkFaint}
-            />
-            <Text numberOfLines={1} style={connection ? styles.newSessionText : styles.newSessionTextDisabled}>
-              {connection ? message('drawer.newSession') : message('drawer.connectFirst')}
-            </Text>
-          </Pressable>
-
-          <View style={styles.workspaceHeader}>
-            {searchOpen ? (
-              <DrawerSearchInput value={search} onChange={setSearch} onClose={clearSearch} />
-            ) : (
-              <>
-                <Text style={styles.workspaceTitle}>
-                  {groupBy === 'flat' ? message('drawer.sessions') : message('drawer.workspaces')}
-                </Text>
-                <View style={styles.workspaceActions}>
-                  <Pressable
-                    accessibilityRole="button"
-                    accessibilityLabel={message('drawer.searchSessions')}
-                    accessibilityState={{ expanded: searchOpen }}
-                    onPress={() => {
-                      setOptionsOpen(false)
-                      setSearchOpen(true)
-                    }}
-                    style={({ pressed }) => [styles.actionIcon, pressed && styles.pressed]}
-                  >
-                    <NativeIcon name="search-outline" size={16} color={theme.colors.inkMuted} />
-                  </Pressable>
-                  <View ref={optionsRef} collapsable={false}>
-                    <Pressable
-                      accessibilityRole="button"
-                      accessibilityLabel={message('drawer.viewSettings')}
-                      accessibilityState={{ expanded: optionsOpen }}
-                      onPress={() => {
-                        if (optionsOpen) {
-                          setOptionsOpen(false)
-                          return
-                        }
-                        Keyboard.dismiss()
-                        if (frameRef.current)
-                          optionsRef.current?.measureLayout(frameRef.current, (_x, y, _w, h) => {
-                            setAnchorBottom(y + h)
-                            setOptionsOpen(true)
-                          })
-                      }}
-                      style={({ pressed }) => [
-                        styles.actionIcon,
-                        optionsOpen && styles.selected,
-                        pressed && styles.pressed,
-                      ]}
-                    >
-                      <NativeIcon name="sliders-two-outline" size={16} color={theme.colors.inkMuted} />
-                    </Pressable>
-                  </View>
-                  <View
-                    accessible
-                    accessibilityLabel={message('drawer.addWorkspaceDesktopOnly')}
-                    accessibilityState={{ disabled: true }}
-                    style={[styles.actionIcon, styles.disabledAction]}
-                  >
-                    <NativeIcon name="project-add-outline" size={16} color={theme.colors.inkFaint} />
-                  </View>
-                </View>
-              </>
-            )}
-          </View>
-        </View>
-        <DrawerContentScrollView
-          {...props}
-          contentContainerStyle={styles.drawerContent}
-          keyboardDismissMode="on-drag"
-          keyboardShouldPersistTaps="handled"
-          style={styles.drawerScroll}
-        >
-          <View style={styles.listArea}>
-            <View style={styles.list}>
-              {searchActive ? (
-                <>
-                  {searchResults.items.map((result) => (
-                    <DrawerSearchRow
-                      key={result.session.sessionId}
-                      result={result}
-                      selected={result.session.sessionId === currentSessionId}
-                      onPress={() => openSession(result.session.sessionId)}
-                    />
-                  ))}
-                  {searchPending ? (
-                    <View
-                      accessibilityRole="progressbar"
-                      accessibilityLabel={message('drawer.searching')}
-                      style={styles.searchSkeletons}
-                    >
-                      {(searchResults.items.length === 0 ? [0, 1] : [0]).map((index) => (
-                        <View key={index} style={styles.searchSkeleton}>
-                          <View style={styles.skeletonLine} />
-                          <View style={[styles.skeletonLine, styles.skeletonShort]} />
-                        </View>
-                      ))}
-                    </View>
-                  ) : null}
-                  {!searchPending && contentSearch.isError ? (
-                    <Text accessibilityRole="alert" style={styles.searchHint}>
-                      {message('drawer.searchFailed')}
-                    </Text>
-                  ) : null}
-                  {!searchPending && searchResults.items.length === 0 && !contentSearch.isError ? (
-                    <Text style={styles.emptyState}>{message('drawer.noSearchResults')}</Text>
-                  ) : null}
-                  {searchResults.hasMore || (remoteCurrent && contentSearch.data?.hasMore) ? (
-                    <Text style={styles.searchHint}>{message('drawer.searchTooManyResults')}</Text>
-                  ) : null}
-                </>
-              ) : rows.length === 0 ? (
-                query.isFetching ? (
-                  <ActivityIndicator color={theme.colors.accent} style={styles.emptyState} />
-                ) : (
-                  <Text style={styles.emptyState}>
-                    {query.isError
-                      ? message('drawer.sessionsLoadFailed')
-                      : searchActive && contentSearch.isPending
-                        ? message('drawer.searching')
-                        : searchActive && contentSearch.isError
-                          ? message('drawer.searchFailed')
-                          : searchActive
-                            ? message('drawer.noSearchResults')
-                            : message('drawer.noSessions')}
-                  </Text>
-                )
+            <View style={styles.workspaceHeader}>
+              {searchOpen ? (
+                <DrawerSearchInput value={search} onChange={setSearch} onClose={clearSearch} />
               ) : (
-                visibleRows.map((item) =>
-                  item.kind === 'workspace' ? (
-                    <View key={item.key} style={{ marginLeft: item.depth * 12 }}>
-                      <WorkspaceItem
-                        active={
-                          item.workspace !== undefined && item.workspace.sessionIds.includes(currentSessionId ?? '')
-                        }
-                        workspaceKey={item.key}
-                        label={item.label}
-                        collapsed={collapsedWorkspaceKeys.has(item.key)}
-                        onPress={() => toggleWorkspace(item.key)}
-                        onLongPress={
-                          item.workspace === undefined
-                            ? undefined
-                            : () =>
-                                setExpandedWorkspaceId((current) =>
-                                  current === item.workspace?.workspaceId ? undefined : item.workspace?.workspaceId,
-                                )
-                        }
-                      />
-                      {item.workspace !== undefined && expandedWorkspaceId === item.workspace.workspaceId ? (
-                        <View
-                          accessible
-                          accessibilityLabel={message('drawer.workspaceActions')}
-                          style={styles.sessionActions}
-                        >
-                          <NativeListRow
-                            title={message('drawer.renameWorkspace')}
-                            accessibilityRole="button"
-                            onPress={() =>
-                              router.push({
-                                pathname: '/workspace/[workspaceId]/rename',
-                                params: {
-                                  workspaceId: item.workspace?.workspaceId ?? '',
-                                  title: item.workspace?.title ?? item.label,
-                                },
-                              })
-                            }
-                            right={<NativeIcon name="edit-outline" size={18} color={theme.colors.inkMuted} />}
-                          />
-                          <NativeListRow
-                            title={message('drawer.removeWorkspace')}
-                            description={message('drawer.removeWorkspaceDetail')}
-                            accessibilityRole="button"
-                            onPress={() =>
-                              confirmDeleteWorkspace(
-                                item.workspace?.workspaceId ?? '',
-                                item.workspace?.title ?? item.label,
-                              )
-                            }
-                            right={<NativeIcon name="folder-close" size={18} color={theme.colors.danger} />}
-                          />
-                        </View>
-                      ) : null}
-                    </View>
-                  ) : item.kind === 'overflow' ? (
+                <>
+                  <Text style={styles.workspaceTitle}>
+                    {groupBy === 'flat' ? message('drawer.sessions') : message('drawer.workspaces')}
+                  </Text>
+                  <View style={styles.workspaceActions}>
                     <Pressable
-                      key={item.key}
                       accessibilityRole="button"
-                      accessibilityLabel={
-                        item.expanded
-                          ? message('drawer.collapseSession')
-                          : format('drawer.expandMore', { count: item.hiddenCount })
-                      }
-                      accessibilityState={{ expanded: item.expanded }}
-                      onPress={() => toggleWorkspaceSessions(item.workspaceKey)}
-                      style={({ pressed }) => [
-                        styles.expandButton,
-                        { marginLeft: item.depth * 12 },
-                        pressed && styles.pressed,
-                      ]}
+                      accessibilityLabel={message('drawer.searchSessions')}
+                      accessibilityState={{ expanded: searchOpen }}
+                      onPress={() => {
+                        setOptionsOpen(false)
+                        setSearchOpen(true)
+                      }}
+                      style={({ pressed }) => [styles.actionIcon, pressed && styles.pressed]}
                     >
-                      <Text style={styles.expandText}>
-                        {item.expanded
-                          ? message('drawer.collapse')
-                          : format('drawer.expandMore', { count: item.hiddenCount })}
-                      </Text>
-                      <NativeIcon
-                        name={item.expanded ? 'chevron-up-outline' : 'chevron-down-outline'}
-                        size={18}
-                        color={theme.colors.inkMuted}
-                      />
+                      <NativeIcon name="search-outline" size={16} color={theme.colors.inkMuted} />
                     </Pressable>
-                  ) : (
-                    <View key={item.key} style={{ marginLeft: item.depth * 12 }}>
-                      <SessionItem
-                        archived={archivedSessionIds.has(item.session.sessionId)}
-                        onMoveUp={orderBy === 'manual' ? () => moveSession(item.session.sessionId, -1) : undefined}
-                        onMoveDown={orderBy === 'manual' ? () => moveSession(item.session.sessionId, 1) : undefined}
-                        onArchive={() => confirmArchive(item.session)}
-                        onExport={() => void exportSession(item.session)}
-                        onFork={() => void forkSession(item.session.sessionId)}
-                        onRename={() =>
-                          router.push({
-                            pathname: '/session/[sessionId]/rename',
-                            params: {
-                              sessionId: item.session.sessionId,
-                              title: item.session.title ?? message('session.untitled'),
-                            },
-                          })
-                        }
-                        session={item.session}
-                        selected={item.session.sessionId === currentSessionId}
-                        onPress={() => openSession(item.session.sessionId)}
-                      />
+                    <View ref={optionsRef} collapsable={false}>
+                      <Pressable
+                        accessibilityRole="button"
+                        accessibilityLabel={message('drawer.viewSettings')}
+                        accessibilityState={{ expanded: optionsOpen }}
+                        onPress={() => {
+                          if (optionsOpen) {
+                            setOptionsOpen(false)
+                            return
+                          }
+                          Keyboard.dismiss()
+                          if (frameRef.current)
+                            optionsRef.current?.measureLayout(frameRef.current, (_x, y, _w, h) => {
+                              setAnchorBottom(y + h)
+                              setOptionsOpen(true)
+                            })
+                        }}
+                        style={({ pressed }) => [
+                          styles.actionIcon,
+                          optionsOpen && styles.selected,
+                          pressed && styles.pressed,
+                        ]}
+                      >
+                        <NativeIcon name="sliders-two-outline" size={16} color={theme.colors.inkMuted} />
+                      </Pressable>
                     </View>
-                  ),
-                )
+                    <View
+                      accessible
+                      accessibilityLabel={message('drawer.addWorkspaceDesktopOnly')}
+                      accessibilityState={{ disabled: true }}
+                      style={[styles.actionIcon, styles.disabledAction]}
+                    >
+                      <NativeIcon name="project-add-outline" size={16} color={theme.colors.inkFaint} />
+                    </View>
+                  </View>
+                </>
               )}
             </View>
           </View>
-        </DrawerContentScrollView>
-        <View style={styles.footer}>
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel={message('drawer.openSettings')}
-            onPress={openSettings}
-            style={({ pressed }) => [styles.footerAction, pressed && styles.pressed]}
+          <DrawerContentScrollView
+            {...props}
+            contentContainerStyle={styles.drawerContent}
+            keyboardDismissMode="on-drag"
+            keyboardShouldPersistTaps="handled"
+            style={styles.drawerScroll}
           >
-            <NativeIcon name="settings-outline" size={14} color={theme.colors.ink} />
-            <Text style={styles.footerActionText}>{message('settings.title')}</Text>
-          </Pressable>
-          <Pressable
-            accessibilityLabel={message('drawer.syncSessions')}
-            accessibilityRole="button"
-            accessibilityState={{ busy: syncing, disabled: syncing }}
-            disabled={syncing}
-            onPress={() => void syncSessions()}
-            style={({ pressed }) => [styles.footerSync, syncing && styles.footerSyncBusy, pressed && styles.pressed]}
-          >
-            {syncing ? (
-              <ActivityIndicator color={theme.colors.ink} size="small" />
-            ) : (
-              <NativeIcon name="refresh-outline" size={16} color={theme.colors.ink} />
-            )}
-          </Pressable>
-        </View>
+            <View style={styles.listArea}>
+              <View style={styles.list}>
+                {searchActive ? (
+                  <>
+                    {searchResults.items.map((result) => (
+                      <DrawerSearchRow
+                        key={result.session.sessionId}
+                        result={result}
+                        selected={result.session.sessionId === currentSessionId}
+                        onPress={() => openSession(result.session.sessionId)}
+                      />
+                    ))}
+                    {searchPending ? (
+                      <View
+                        accessibilityRole="progressbar"
+                        accessibilityLabel={message('drawer.searching')}
+                        style={styles.searchSkeletons}
+                      >
+                        {(searchResults.items.length === 0 ? [0, 1] : [0]).map((index) => (
+                          <View key={index} style={styles.searchSkeleton}>
+                            <View style={styles.skeletonLine} />
+                            <View style={[styles.skeletonLine, styles.skeletonShort]} />
+                          </View>
+                        ))}
+                      </View>
+                    ) : null}
+                    {!searchPending && contentSearch.isError ? (
+                      <Text accessibilityRole="alert" style={styles.searchHint}>
+                        {message('drawer.searchFailed')}
+                      </Text>
+                    ) : null}
+                    {!searchPending && searchResults.items.length === 0 && !contentSearch.isError ? (
+                      <Text style={styles.emptyState}>{message('drawer.noSearchResults')}</Text>
+                    ) : null}
+                    {searchResults.hasMore || (remoteCurrent && contentSearch.data?.hasMore) ? (
+                      <Text style={styles.searchHint}>{message('drawer.searchTooManyResults')}</Text>
+                    ) : null}
+                  </>
+                ) : rows.length === 0 ? (
+                  query.isFetching ? (
+                    <ActivityIndicator color={theme.colors.accent} style={styles.emptyState} />
+                  ) : (
+                    <Text style={styles.emptyState}>
+                      {query.isError
+                        ? message('drawer.sessionsLoadFailed')
+                        : searchActive && contentSearch.isPending
+                          ? message('drawer.searching')
+                          : searchActive && contentSearch.isError
+                            ? message('drawer.searchFailed')
+                            : searchActive
+                              ? message('drawer.noSearchResults')
+                              : message('drawer.noSessions')}
+                    </Text>
+                  )
+                ) : (
+                  visibleRows.map((item) =>
+                    item.kind === 'workspace' ? (
+                      <View key={item.key} style={{ marginLeft: item.depth * 12 }}>
+                        <WorkspaceItem
+                          active={
+                            item.workspace !== undefined && item.workspace.sessionIds.includes(currentSessionId ?? '')
+                          }
+                          workspaceKey={item.key}
+                          label={item.label}
+                          collapsed={collapsedWorkspaceKeys.has(item.key)}
+                          onPress={() => toggleWorkspace(item.key)}
+                          onLongPress={
+                            item.workspace === undefined
+                              ? undefined
+                              : () =>
+                                  setExpandedWorkspaceId((current) =>
+                                    current === item.workspace?.workspaceId ? undefined : item.workspace?.workspaceId,
+                                  )
+                          }
+                        />
+                        {item.workspace !== undefined && expandedWorkspaceId === item.workspace.workspaceId ? (
+                          <View
+                            accessible
+                            accessibilityLabel={message('drawer.workspaceActions')}
+                            style={styles.sessionActions}
+                          >
+                            <NativeListRow
+                              title={message('drawer.renameWorkspace')}
+                              accessibilityRole="button"
+                              onPress={() =>
+                                router.push({
+                                  pathname: '/workspace/[workspaceId]/rename',
+                                  params: {
+                                    workspaceId: item.workspace?.workspaceId ?? '',
+                                    title: item.workspace?.title ?? item.label,
+                                  },
+                                })
+                              }
+                              right={<NativeIcon name="edit-outline" size={18} color={theme.colors.inkMuted} />}
+                            />
+                            <NativeListRow
+                              title={message('drawer.removeWorkspace')}
+                              description={message('drawer.removeWorkspaceDetail')}
+                              accessibilityRole="button"
+                              onPress={() =>
+                                confirmDeleteWorkspace(
+                                  item.workspace?.workspaceId ?? '',
+                                  item.workspace?.title ?? item.label,
+                                )
+                              }
+                              right={<NativeIcon name="folder-close" size={18} color={theme.colors.danger} />}
+                            />
+                          </View>
+                        ) : null}
+                      </View>
+                    ) : item.kind === 'overflow' ? (
+                      <Pressable
+                        key={item.key}
+                        accessibilityRole="button"
+                        accessibilityLabel={
+                          item.expanded
+                            ? message('drawer.collapseSession')
+                            : format('drawer.expandMore', { count: item.hiddenCount })
+                        }
+                        accessibilityState={{ expanded: item.expanded }}
+                        onPress={() => toggleWorkspaceSessions(item.workspaceKey)}
+                        style={({ pressed }) => [
+                          styles.expandButton,
+                          { marginLeft: item.depth * 12 },
+                          pressed && styles.pressed,
+                        ]}
+                      >
+                        <Text style={styles.expandText}>
+                          {item.expanded
+                            ? message('drawer.collapse')
+                            : format('drawer.expandMore', { count: item.hiddenCount })}
+                        </Text>
+                        <NativeIcon
+                          name={item.expanded ? 'chevron-up-outline' : 'chevron-down-outline'}
+                          size={18}
+                          color={theme.colors.inkMuted}
+                        />
+                      </Pressable>
+                    ) : (
+                      <View key={item.key} style={{ marginLeft: item.depth * 12 }}>
+                        <SessionItem
+                          archived={archivedSessionIds.has(item.session.sessionId)}
+                          onMoveUp={orderBy === 'manual' ? () => moveSession(item.session.sessionId, -1) : undefined}
+                          onMoveDown={orderBy === 'manual' ? () => moveSession(item.session.sessionId, 1) : undefined}
+                          onArchive={() => confirmArchive(item.session)}
+                          onExport={() => void exportSession(item.session)}
+                          onFork={() => void forkSession(item.session.sessionId)}
+                          onRename={() =>
+                            router.push({
+                              pathname: '/session/[sessionId]/rename',
+                              params: {
+                                sessionId: item.session.sessionId,
+                                title: item.session.title ?? message('session.untitled'),
+                              },
+                            })
+                          }
+                          session={item.session}
+                          selected={item.session.sessionId === currentSessionId}
+                          onPress={() => openSession(item.session.sessionId)}
+                        />
+                      </View>
+                    ),
+                  )
+                )}
+              </View>
+            </View>
+          </DrawerContentScrollView>
+          <View style={styles.footer}>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={message('drawer.openSettings')}
+              onPress={openSettings}
+              style={({ pressed }) => [styles.footerAction, pressed && styles.pressed]}
+            >
+              <NativeIcon name="settings-outline" size={14} color={theme.colors.ink} />
+              <Text style={styles.footerActionText}>{message('settings.title')}</Text>
+            </Pressable>
+            <Pressable
+              accessibilityLabel={message('drawer.syncSessions')}
+              accessibilityRole="button"
+              accessibilityState={{ busy: syncing, disabled: syncing }}
+              disabled={syncing}
+              onPress={() => void syncSessions()}
+              style={({ pressed }) => [styles.footerSync, syncing && styles.footerSyncBusy, pressed && styles.pressed]}
+            >
+              {syncing ? (
+                <ActivityIndicator color={theme.colors.ink} size="small" />
+              ) : (
+                <NativeIcon name="refresh-outline" size={16} color={theme.colors.ink} />
+              )}
+            </Pressable>
+          </View>
+        </KeyboardAvoidingView>
         {optionsOpen ? (
           <DrawerViewMenu
             anchorBottom={anchorBottom}

@@ -1,10 +1,8 @@
-import type { ArchivedFilter, DrawerGrouping } from '@/components/drawer-view-logic'
-import type { SessionOrder } from '@/components/session-drawer-logic'
+import type { DrawerViewPreferences } from '@/components/drawer-view-logic'
 import * as FileSystem from 'expo-file-system/legacy'
 import { create } from 'zustand'
 
-type ViewPreferences = { groupBy: DrawerGrouping; orderBy: SessionOrder; archivedFilter: ArchivedFilter }
-type DrawerView = ViewPreferences & { orders: Record<string, string[]> }
+type DrawerView = DrawerViewPreferences
 const defaultView: DrawerView = { groupBy: 'workspace', orderBy: 'updated', archivedFilter: 'default', orders: {} }
 const path = `${FileSystem.documentDirectory}drawer-view-v1.json`
 let saving: Promise<unknown> = Promise.resolve()
@@ -47,10 +45,11 @@ export const useDrawerViewStore = create<{
   },
   update(scope, changes) {
     set((state) => ({ views: { ...state.views, [scope]: { ...(state.views[scope] ?? defaultView), ...changes } } }))
-    const encoded = JSON.stringify(get().views)
+    const initialized = get().initialize()
     saving = saving
       .catch(() => undefined)
-      .then(() => FileSystem.writeAsStringAsync(path, encoded))
+      .then(() => initialized)
+      .then(() => FileSystem.writeAsStringAsync(path, JSON.stringify(get().views)))
       .catch(() => undefined)
   },
 }))

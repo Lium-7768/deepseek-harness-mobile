@@ -67,6 +67,9 @@ const goalFixtures = new Map(
 )
 const list = {
   items: [
+    { sessionId: 'search-local', title: '搜索示例 · local', updatedAt: now - 1000, blank: false },
+    { sessionId: 'search-content', title: '数据层审查', updatedAt: now - 2000, blank: false },
+    { sessionId: 'search-archived', title: '归档示例 · archived', updatedAt: now - 3000, blank: false },
     ...[...goalFixtures.keys(), 'goal-absent'].map((sessionId) => ({
       sessionId,
       title: `目标栏 · ${sessionId}`,
@@ -106,13 +109,19 @@ const list = {
   ],
   workspaces: [
     {
+      workspaceId: 'nested-review',
+      title: '源代码',
+      path: '/projects/mobile/src',
+      sessionIds: ['search-local', 'search-content', 'search-archived'],
+    },
+    {
       workspaceId: 'mobile',
       title: 'deepseek-harness-mobile',
       path: '/projects/mobile',
       sessionIds: [...Object.keys(transcripts), 'design-review', 'blank'],
     },
   ],
-  archivedSessionIds: [],
+  archivedSessionIds: ['search-archived'],
 }
 const models = {
   current: { provider: 'deepseek', model: 'DeepSeek-V4.1', reasoningEffort: 'high' },
@@ -203,9 +212,26 @@ const server = createServer(async (request, response) => {
   if (path === '/v1/auth') data = { deviceId: 'visual-review', accessToken: 'synthetic-local-token' }
   else if (path === '/v1/sessions/list') data = list
   else if (path === '/v1/sessions/running') data = { sessionIds: [] }
-  else if (path === '/v1/sessions/search')
-    data = { items: list.items.map((item) => ({ sessionId: item.sessionId, snippet: item.title })), hasMore: false }
-  else if (path === '/v1/agent-presets/list') data = presets
+  else if (path === '/v1/sessions/search') {
+    const query = String(input.query ?? '').toLowerCase()
+    if (query === 'search-fail') {
+      response.writeHead(503, { 'content-type': 'application/json' })
+      response.end(
+        JSON.stringify({ contractVersion: 1, error: { code: 'unavailable', message: 'Synthetic search failure' } }),
+      )
+      return
+    }
+    if (query === 'slow') await new Promise((resolve) => setTimeout(resolve, 1600))
+    data = {
+      items: list.items.flatMap((item) => {
+        const snippet = item.sessionId === 'search-content' ? 'needle：只在历史正文中匹配的内容摘要。' : item.title
+        return `${item.sessionId} ${snippet}`.toLowerCase().includes(query)
+          ? [{ sessionId: item.sessionId, snippet }]
+          : []
+      }),
+      hasMore: false,
+    }
+  } else if (path === '/v1/agent-presets/list') data = presets
   else if (path === '/v1/agent-presets/read')
     data = { agentPreset: input.agentPreset, content: 'name: standard\ndescription: Visual review fixture' }
   else if (path === '/v1/settings/describe') data = { namespaces, writable: false, hasDocument: true }

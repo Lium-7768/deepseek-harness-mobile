@@ -1,5 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import {
+  drawerViewRows,
+  initialDrawerOrders,
+  moveDrawerSession,
   drawerMenuGeometry,
   drawerSearchResults,
   filterArchivedSessions,
@@ -110,5 +113,69 @@ describe('desktop drawer view and search behavior', () => {
   it('clamps the anchored menu inside short drawer frames so its content can scroll', () => {
     expect(drawerMenuGeometry(700, 180)).toEqual({ top: 184, maxHeight: 504 })
     expect(drawerMenuGeometry(300, 270)).toEqual({ top: 120, maxHeight: 168 })
+  })
+
+  it('switches grouping and ordering, and hides descendants when their parent tree folder collapses', () => {
+    const nested = [
+      ...workspaces,
+      { workspaceId: 'nested', title: '子项目', path: '/repo/app', sessionIds: ['nested-session'] },
+    ]
+    const items = [...sessions, { sessionId: 'nested-session', title: '嵌套会话', updatedAt: 10 }]
+    const view = {
+      groupBy: 'workspace-tree' as const,
+      orderBy: 'updated' as const,
+      archivedFilter: 'default' as const,
+      orders: {},
+    }
+    const open = drawerViewRows(items, nested, archived, view, undefined, new Set(), new Set()).visibleRows
+    expect(open.find((row) => row.key === 'workspace:nested')?.depth).toBe(1)
+    expect(open.find((row) => row.key === 'session:nested-session')?.depth).toBe(1)
+    const closed = drawerViewRows(
+      items,
+      nested,
+      archived,
+      view,
+      undefined,
+      new Set(['workspace:project']),
+      new Set(),
+    ).visibleRows
+    expect(closed.map((row) => row.key)).toEqual(['workspace:project'])
+    const flat = drawerViewRows(
+      items,
+      nested,
+      archived,
+      { ...view, groupBy: 'flat' },
+      undefined,
+      new Set(),
+      new Set(),
+    ).visibleRows
+    expect(flat.every((row) => row.kind === 'session')).toBe(true)
+    expect(flat[0]?.key).toBe('session:nested-session')
+  })
+
+  it('moves manual rows within their own account while preserving hidden archived ids and saved positions', () => {
+    const orders = initialDrawerOrders(sessions, workspaces, {})
+    expect(orders.project).toEqual(['two', 'archived', 'one'])
+    const view = {
+      groupBy: 'workspace' as const,
+      orderBy: 'manual' as const,
+      archivedFilter: 'default' as const,
+      orders,
+    }
+    const moved = moveDrawerSession(sessions, workspaces, archived, view, 'one', -1)
+    expect(moved.project).toEqual(['one', 'archived', 'two'])
+    expect(orders.project).toEqual(['two', 'archived', 'one'])
+    expect(initialDrawerOrders(sessions, workspaces, moved).project).toEqual(moved.project)
+    expect(moveDrawerSession(sessions, workspaces, archived, { ...view, orders: moved }, 'one', -1)).toBe(moved)
+    const rows = drawerViewRows(
+      sessions,
+      workspaces,
+      archived,
+      { ...view, orders: moved },
+      undefined,
+      new Set(),
+      new Set(),
+    ).visibleRows
+    expect(rows.map((row) => row.key)).toEqual(['workspace:project', 'session:one', 'session:two'])
   })
 })

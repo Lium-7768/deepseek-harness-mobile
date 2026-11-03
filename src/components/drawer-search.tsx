@@ -1,10 +1,10 @@
 import { NativeIcon } from '@/components/native-icon'
 import { sanitizeDrawerSearch, type DrawerSearchResult } from '@/components/drawer-view-logic'
-import { sessionDisplayTitle } from '@/components/session-drawer-logic'
+import { drawerWidthForViewport, sessionDisplayTitle } from '@/components/session-drawer-logic'
 import { t as message } from '@/locale'
 import type { AppTheme } from '@/theme'
 import { useThemedStyles, useAppTheme } from '@/theme/hooks'
-import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native'
+import { Pressable, StyleSheet, Text, TextInput, View, useWindowDimensions } from 'react-native'
 
 /** Expanded desktop search occupies the section header instead of adding a separate row. */
 export function DrawerSearchInput({
@@ -67,6 +67,8 @@ export function DrawerSearchRow({
   const s = useThemedStyles(makeStyles)
   const theme = useAppTheme()
   const title = sessionDisplayTitle(result.session)
+  const { width, fontScale } = useWindowDimensions()
+  const stacked = drawerWidthForViewport(width) / Math.max(1, fontScale) < 240
   return (
     <Pressable
       accessibilityRole="button"
@@ -82,12 +84,19 @@ export function DrawerSearchRow({
         </Text>
         {result.archived ? <NativeIcon name="archive-outline" size={14} color={theme.colors.inkTertiary} /> : null}
       </View>
-      <View style={s.meta}>
-        <Text numberOfLines={1} style={[s.workspace, result.archived && s.archived]}>
+      <View style={[s.meta, stacked && s.metaStacked]}>
+        <Text
+          numberOfLines={1}
+          style={[
+            s.workspace,
+            result.snippet && !stacked ? s.workspaceWithSnippet : undefined,
+            result.archived && s.archived,
+          ]}
+        >
           {result.workspace || message('session.ungrouped')}
         </Text>
         {result.snippet ? (
-          <Text numberOfLines={1} style={[s.snippet, result.archived && s.archived]}>
+          <Text numberOfLines={1} style={[s.snippet, stacked && s.snippetStacked, result.archived && s.archived]}>
             {result.snippet}
           </Text>
         ) : null}
@@ -128,8 +137,11 @@ const makeStyles = (theme: AppTheme) =>
     slot: { width: 16, alignItems: 'center', flexShrink: 0 },
     ring: { width: 14, height: 14, borderRadius: 7, borderWidth: 1.5, borderColor: theme.colors.inkTertiary },
     title: { flex: 1, color: theme.colors.ink, fontSize: 14, lineHeight: 22 },
-    meta: { paddingLeft: 20, minWidth: 0, gap: 2 },
-    workspace: { color: theme.colors.inkTertiary, fontSize: 11, lineHeight: 16 },
-    snippet: { color: theme.colors.inkMuted, fontSize: 12, lineHeight: 18 },
+    meta: { paddingLeft: 20, minWidth: 0, gap: 6, flexDirection: 'row', alignItems: 'center' },
+    metaStacked: { flexDirection: 'column', alignItems: 'stretch', gap: 2 },
+    workspaceWithSnippet: { maxWidth: '40%' },
+    workspace: { color: theme.colors.inkTertiary, fontSize: 12, lineHeight: 17 },
+    snippet: { color: theme.colors.inkMuted, fontSize: 12, lineHeight: 17, flex: 1, minWidth: 0 },
+    snippetStacked: { flex: 0 },
     archived: { color: theme.colors.inkTertiary },
   })

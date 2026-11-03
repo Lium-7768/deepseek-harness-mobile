@@ -13,6 +13,7 @@ export const makeSessionDrawerStyles = (theme: AppTheme) =>
     drawerFrame: { backgroundColor: theme.colors.drawerBackground, flex: 1, position: 'relative' },
     drawerSafe: { backgroundColor: theme.colors.drawerBackground, flex: 1 },
     drawerScroll: { flex: 1, backgroundColor: theme.colors.drawerBackground },
+    drawerChrome: { flex: 1 },
     drawerHeader: { paddingHorizontal: 8, paddingTop: 4 },
     drawerContent: { flexGrow: 1, paddingBottom: 12, paddingTop: theme.spacing.xs },
     brandRow: {
