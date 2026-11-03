@@ -240,7 +240,8 @@ const server = createServer(async (request, response) => {
   else if (path === '/v1/schedules/catalog') data = { items: schedules }
   else if (/\/v1\/schedules\/[^/]+\/(pause|resume|delete)$/.test(path)) {
     const task = schedules.find((item) => item.id === path.split('/')[3])
-    if (!task || (input.expectedUpdatedAt ?? null) !== (task.updatedAt ?? null)) data = { code: 'schedule_conflict' }
+    if (!task) data = { code: 'schedule_not_found' }
+    else if ((input.expectedUpdatedAt ?? null) !== (task.updatedAt ?? null)) data = { code: 'schedule_conflict' }
     else {
       const action = path.split('/').at(-1)
       if (action === 'delete') {
@@ -317,7 +318,7 @@ const server = createServer(async (request, response) => {
     }
     if (action === 'clear') {
       goalFixtures.delete(id)
-      data = { cleared: true }
+      data = { id: goal.id, revision: goal.revision + 1 }
     } else {
       const next = { ...goal, revision: goal.revision + 1 }
       if (action === 'edit') next.objective = input.objective

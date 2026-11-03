@@ -1,5 +1,5 @@
 import { createElement } from 'react'
-import { act, create, type ReactTestRenderer } from 'react-test-renderer'
+import { act, render, cleanup, type RenderResult } from './support/native-testing'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 const mocks = vi.hoisted(() => ({
@@ -46,25 +46,25 @@ vi.mock('react-native-reanimated', async () => {
 })
 import { NativeRunningRing } from '@/components/native-running-ring'
 
-let renderer: ReactTestRenderer
+let renderer: RenderResult
 beforeEach(() => {
   vi.stubGlobal('IS_REACT_ACT_ENVIRONMENT', true)
   vi.clearAllMocks()
   mocks.readReduced.mockResolvedValue(false)
 })
 afterEach(async () => {
-  await act(() => renderer.unmount())
+  await cleanup()
   vi.unstubAllGlobals()
 })
 
 describe('native running ring lifecycle', () => {
   it('runs the arc/rotation through Reanimated and stops for reduced motion and backgrounding', async () => {
     await act(async () => {
-      renderer = create(createElement(NativeRunningRing))
+      renderer = await render(createElement(NativeRunningRing))
     })
     expect(mocks.timing).toHaveBeenCalledExactlyOnceWith(1, { duration: 1500, easing: 'linear' })
     expect(mocks.repeat).toHaveBeenCalledWith(1, -1)
-    expect(renderer.root.findByType('AnimatedCircle').props.animatedProps).toEqual({
+    expect(renderer.container.queryAll((node) => node.type === 'AnimatedCircle')[0].props.animatedProps).toEqual({
       strokeDasharray: [12, 150],
       strokeDashoffset: 0,
     })
@@ -85,14 +85,14 @@ describe('native running ring lifecycle', () => {
       mocks.appState!('active')
     })
     expect(mocks.timing).toHaveBeenCalledTimes(3)
-    await act(() => renderer.unmount())
+    await cleanup()
     expect(mocks.removeReduced).toHaveBeenCalledTimes(1)
     expect(mocks.removeAppState).toHaveBeenCalledTimes(1)
   })
   it('never starts an animation when the system already requests reduced motion', async () => {
     mocks.readReduced.mockResolvedValue(true)
     await act(async () => {
-      renderer = create(createElement(NativeRunningRing))
+      renderer = await render(createElement(NativeRunningRing))
     })
     expect(mocks.timing).not.toHaveBeenCalled()
   })

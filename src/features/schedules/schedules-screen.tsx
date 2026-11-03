@@ -42,8 +42,11 @@ export default function SchedulesScreen(): React.JSX.Element {
       return client.updateSchedule(task, action)
     },
     onSuccess: () => cache.invalidateQueries({ queryKey: queryKeys.schedules() }),
-    onError: (error) =>
-      Alert.alert(message('schedule.failed'), error instanceof Error ? error.message : message('common.retry')),
+    onError: (error) => {
+      if (error instanceof MobileApiError && ['schedule-conflict', 'schedule-not-found'].includes(error.kind))
+        void cache.invalidateQueries({ queryKey: queryKeys.schedules() })
+      Alert.alert(message('schedule.failed'), error instanceof Error ? error.message : message('common.retry'))
+    },
   })
   const update = (task: MobileScheduleEntry, action: 'pause' | 'resume' | 'delete'): void => {
     if (gate.current) return

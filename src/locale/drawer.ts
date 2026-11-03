@@ -17,8 +17,6 @@ export const drawer = {
 
   workspaces: '工作区',
   sessions: '会话',
-  collapseOptions: '收起分组和排序选项',
-  expandOptions: '展开分组和排序选项',
   groupByWorkspace: '按工作区',
   groupByWorkspaceTree: '按工作区树',
   manualOrder: '手动排序',
@@ -31,8 +29,6 @@ export const drawer = {
   moveUp: '上移',
   moveDown: '下移',
   singleList: '单列表',
-  groupByWorkspaceUngrouped: '按工作区（仅未分组）',
-  manualOrderUnsupported: '手动排序（暂不支持）',
 
   sessionsLoadFailed: '会话加载失败，请稍后重试。',
   searching: '正在搜索会话历史…',

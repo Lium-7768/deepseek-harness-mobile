@@ -1,4 +1,5 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { PERMISSION_CONFIRMATION_TIMEOUT } from '@/components/permission-confirmation'
 
 const mocks = vi.hoisted(() => ({
   refs: [] as { current: unknown }[],
@@ -70,6 +71,9 @@ const flush = async () => {
 }
 
 describe('production session selection controller', () => {
+  afterEach(() => {
+    vi.useRealTimers()
+  })
   beforeEach(() => {
     mocks.refs = []
     mocks.cursor = 0
@@ -146,5 +150,39 @@ describe('production session selection controller', () => {
     mocks.alert.mock.calls[0][2][1].onPress()
     await flush()
     expect(state.client.sendMessage).not.toHaveBeenCalled()
+  })
+  it('recovers when another native alert swallows the prompt, and ignores the expired confirmation', async () => {
+    vi.useFakeTimers()
+    const state = createState()
+    const selection = render(state)
+    selection.selectPermission('danger-full-access')
+    const expired = mocks.alert.mock.calls[0][2][1].onPress
+    selection.selectPermission('read-only')
+    expect(state.client.sendMessage).not.toHaveBeenCalled()
+    await vi.advanceTimersByTimeAsync(PERMISSION_CONFIRMATION_TIMEOUT)
+    selection.selectPermission('danger-full-access')
+    const current = mocks.alert.mock.calls[1][2][1].onPress
+    expired()
+    expect(state.client.sendMessage).not.toHaveBeenCalled()
+    current()
+    current()
+    await vi.advanceTimersByTimeAsync(0)
+    expect(state.client.sendMessage).toHaveBeenCalledExactlyOnceWith('one', [
+      { type: 'text', text: '/permission danger-full-access' },
+    ])
+  })
+  it('releases the gate if the native Alert throws without sending full-access', async () => {
+    const state = createState()
+    mocks.alert.mockImplementationOnce(() => {
+      throw new Error('Native presenter unavailable')
+    })
+    const selection = render(state)
+    selection.selectPermission('danger-full-access')
+    expect(state.client.sendMessage).not.toHaveBeenCalled()
+    selection.selectPermission('read-only')
+    await flush()
+    expect(state.client.sendMessage).toHaveBeenCalledExactlyOnceWith('one', [
+      { type: 'text', text: '/permission read-only' },
+    ])
   })
 })

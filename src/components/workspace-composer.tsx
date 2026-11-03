@@ -696,37 +696,37 @@ const makeStyles = (theme: AppTheme) =>
       paddingHorizontal: 14,
       paddingTop: 4,
     },
-    // `wqMmtW_row`: gap 8, `2px 8px 6px`, controls centred, trailing pinned right.
+    // Desktop compact row: gap 12, `2px 8px 6px`; touch insets extend beyond 28pt controls.
     controlRow: {
       alignItems: 'center',
       flexDirection: 'row',
-      gap: 8,
+      gap: 12,
       flexWrap: 'nowrap',
       justifyContent: 'space-between',
       minWidth: 0,
-      paddingBottom: 8,
+      paddingBottom: 6,
       paddingHorizontal: 8,
       paddingTop: 2,
     },
-    // A 36pt circular add control with an expanded native touch target.
+    // Desktop 28pt circle; hitSlop={8} provides a 44pt native touch target.
     add: {
       alignItems: 'center',
       backgroundColor: theme.colors.surfaceMuted,
       borderRadius: theme.radius.pill,
-      minHeight: 36,
+      height: 28,
       flexShrink: 0,
       justifyContent: 'center',
-      width: 36,
+      width: 28,
     },
     iconDisabled: { opacity: 0.5 },
     // `wqMmtW_tools` / `wqMmtW_modes`: 8px apart inside the left cluster.
-    tools: { alignItems: 'center', flexDirection: 'row', flexShrink: 0, gap: 4, minWidth: 0 },
+    tools: { alignItems: 'center', flexDirection: 'row', flexShrink: 0, gap: 8, minWidth: 0 },
     // `wqMmtW_trailing`: model + send, 8px apart, pinned to the right edge.
     // The trailing cluster gives way before the icon triggers do: the model name
     // ellipsizes (effort first, `ModelSelect .triggerEffort`), while the access
     // and mode controls keep their native touch bounds.
-    trailing: { alignItems: 'center', justifyContent: 'flex-end', flexDirection: 'row', flex: 1, gap: 6, minWidth: 0 },
-    // `PermissionSelect.trigger` / `ModelSelect.trigger`: native 36pt floor, `0 4px 0 8px`,
+    trailing: { alignItems: 'center', justifyContent: 'flex-end', flexDirection: 'row', flex: 1, gap: 8, minWidth: 0 },
+    // Desktop 28pt selectors, with vertical hitSlop={8} for a 44pt touch target; `0 4px 0 8px`,
     // r8, 4px between the glyph, labels and chevron.
     tool: {
       alignItems: 'center',
@@ -735,7 +735,7 @@ const makeStyles = (theme: AppTheme) =>
       flexDirection: 'row',
       flexShrink: 1,
       gap: 4,
-      minHeight: 36,
+      minHeight: 28,
       minWidth: 0,
       paddingLeft: 8,
       paddingRight: 4,
@@ -752,7 +752,7 @@ const makeStyles = (theme: AppTheme) =>
       flexDirection: 'row',
       flexShrink: 0,
       gap: 4,
-      minHeight: 36,
+      minHeight: 28,
       opacity: 0.5,
       paddingLeft: 8,
       paddingRight: 4,

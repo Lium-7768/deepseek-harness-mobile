@@ -31,8 +31,9 @@ export function useSessionQueries(
       if (!client || !sessionId) throw new Error(message('conversation.openFromList'))
       return client.withSignal(signal).sessionGoal(sessionId)
     },
-    // Activation can change without a durable event; poll only while this screen is foregrounded.
-    refetchInterval: active ? 5_000 : false,
+    // Keep one initial read/SSE refresh, but only poll while an unfinished Goal exists.
+    refetchInterval: (query) =>
+      active && query.state.data?.goal && query.state.data.goal.phase !== 'complete' ? 5_000 : false,
     refetchIntervalInBackground: false,
     retry: false,
   })

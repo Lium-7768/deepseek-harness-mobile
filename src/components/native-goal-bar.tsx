@@ -57,7 +57,7 @@ export function NativeGoalBar({
       setDraft(goal.objective)
       setEditing(true)
     }
-  }, [editRequest, goal?.id])
+  }, [editRequest, goal])
   const state = goalDockState(goal)
   if (goal === undefined || state === undefined || goal.id === clearedId) return null
   const currentGoal = goal

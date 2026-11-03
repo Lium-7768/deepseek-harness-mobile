@@ -1,5 +1,5 @@
 import { createElement, type ReactElement } from 'react'
-import { act, create, type ReactTestRenderer } from 'react-test-renderer'
+import { act, render, cleanup, type RenderResult } from './support/native-testing'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { MobileModelProviderGroup } from '@/types/mobile'
 
@@ -79,7 +79,7 @@ const groups: MobileModelProviderGroup[] = [
     ],
   },
 ]
-let renderer: ReactTestRenderer
+let renderer: RenderResult
 beforeEach(() => {
   vi.stubGlobal('IS_REACT_ACT_ENVIRONMENT', true)
   mocks.appearance = 'light'
@@ -91,7 +91,7 @@ afterEach(async () => {
 })
 async function mount(element: ReactElement) {
   await act(async () => {
-    renderer = create(element)
+    renderer = await render(element)
   })
 }
 function options() {
@@ -106,9 +106,14 @@ function options() {
   }
 }
 const press = (label: string) =>
-  renderer.root.findAllByType('Pressable').find((node) => node.props.accessibilityLabel === label)!
-const texts = () => renderer.root.findAllByType('Text').map((node) => node.props.children)
-const slider = () => renderer.root.findAllByType('View').find((node) => node.props.accessibilityRole === 'adjustable')!
+  renderer.container
+    .queryAll((node) => node.type === 'Pressable')
+    .find((node) => node.props.accessibilityLabel === label)!
+const texts = () => renderer.container.queryAll((node) => node.type === 'Text').map((node) => node.props.children)
+const slider = () =>
+  renderer.container
+    .queryAll((node) => node.type === 'View')
+    .find((node) => node.props.accessibilityRole === 'adjustable')!
 
 describe('model picker interaction', () => {
   it('opens a compact effort card; drills into one checked model row and preserves search/provider identity', async () => {
@@ -116,14 +121,18 @@ describe('model picker interaction', () => {
     await mount(createElement(NativeModelPicker, props))
     expect(texts()).toContain('高')
     expect(texts()).toContain('chat')
-    expect(renderer.root.findAllByType('List')).toHaveLength(0)
+    expect(renderer.container.queryAll((node) => node.type === 'List')).toHaveLength(0)
     await act(() => press('选择模型：chat').props.onPress())
-    expect(renderer.root.findAllByType('List')).toHaveLength(1)
+    expect(renderer.container.queryAll((node) => node.type === 'List')).toHaveLength(1)
     const radios = () =>
-      renderer.root.findAllByType('Pressable').filter((node) => node.props.accessibilityRole === 'radio')
+      renderer.container
+        .queryAll((node) => node.type === 'Pressable')
+        .filter((node) => node.props.accessibilityRole === 'radio')
     expect(radios()).toHaveLength(6)
     expect(radios().filter((node) => node.props.accessibilityState.checked)).toHaveLength(1)
-    await act(() => renderer.root.findByType('TextInput').props.onChangeText('Other provider'))
+    await act(() =>
+      renderer.container.queryAll((node) => node.type === 'TextInput')[0].props.onChangeText('Other provider'),
+    )
     expect(radios()).toHaveLength(2)
     await act(() => radios()[0].props.onPress())
     expect(props.onSelectModel).toHaveBeenCalledExactlyOnceWith({ provider: 'two', model: 'route/chat' })
@@ -135,20 +144,22 @@ describe('model picker interaction', () => {
     await act(() => press('恢复模型默认推理等级').props.onPress())
     expect(props.onSelectEffort).toHaveBeenCalledExactlyOnceWith('medium')
     await act(() => press('选择模型：chat').props.onPress())
-    await act(() => renderer.root.findByType('TextInput').props.onChangeText('missing'))
+    await act(() => renderer.container.queryAll((node) => node.type === 'TextInput')[0].props.onChangeText('missing'))
     expect(texts()).toContain('没有匹配的模型')
     await act(() => press('返回推理等级').props.onPress())
-    expect(renderer.root.findAllByType('List')).toHaveLength(0)
+    expect(renderer.container.queryAll((node) => node.type === 'List')).toHaveLength(0)
     expect(props.onSelectModel).not.toHaveBeenCalled()
     expect(mocks.dismiss).toHaveBeenCalled()
     await act(() => press('选择模型：chat').props.onPress())
-    expect(renderer.root.findByType('TextInput').props.value).toBe('')
+    expect(renderer.container.queryAll((node) => node.type === 'TextInput')[0].props.value).toBe('')
   })
   it('selecting the current route closes without issuing a command or resetting effort', async () => {
     const props = options()
     await mount(createElement(NativeModelPicker, props))
     await act(() => press('选择模型：chat').props.onPress())
-    const current = renderer.root.findAllByType('Pressable').find((node) => node.props.accessibilityState?.checked)!
+    const current = renderer.container
+      .queryAll((node) => node.type === 'Pressable')
+      .find((node) => node.props.accessibilityState?.checked)!
     await act(() => current.props.onPress())
     expect(props.onClose).toHaveBeenCalledTimes(1)
     expect(props.onSelectModel).not.toHaveBeenCalled()
@@ -164,11 +175,11 @@ describe('model picker interaction', () => {
         failures: [{ id: 'broken', name: 'Unavailable', message: 'failed' }],
       }),
     )
-    expect(renderer.root.findAllByType('List')).toHaveLength(1)
+    expect(renderer.container.queryAll((node) => node.type === 'List')).toHaveLength(1)
     expect(texts()).toContain('模型目录加载失败，请关闭后重试。')
     expect(texts()).toContain('当前会话没有可用的模型路由。')
     expect(texts()).toContain('供应商 Unavailable 暂时不可用。')
-    expect(renderer.root.findAllByType(NativeEffortSlider)).toHaveLength(0)
+    expect(renderer.container.queryAll((node) => node.props.accessibilityRole === 'adjustable')).toHaveLength(0)
   })
   it.each(['light', 'dark'] as const)(
     'uses the desktop %s palette and blocks changes while pending',
@@ -176,15 +187,17 @@ describe('model picker interaction', () => {
       mocks.appearance = appearance
       const props = { ...options(), disabled: true }
       await mount(createElement(NativeModelPicker, props))
-      const title = renderer.root.findAllByType('Text').find((node) => node.props.children === '高')!
+      const title = renderer.container
+        .queryAll((node) => node.type === 'Text')
+        .find((node) => node.props.children === '高')!
       expect(title.props.style.color).toBe(themes[appearance].colors.accentText)
       expect(slider().props.accessibilityState.disabled).toBe(true)
       await act(() => slider().props.onAccessibilityAction({ nativeEvent: { actionName: 'increment' } }))
       expect(props.onSelectEffort).not.toHaveBeenCalled()
       await act(() => press('选择模型：chat').props.onPress())
       expect(
-        renderer.root
-          .findAllByType('Pressable')
+        renderer.container
+          .queryAll((node) => node.type === 'Pressable')
           .filter((node) => node.props.accessibilityRole === 'radio')
           .every((node) => node.props.disabled),
       ).toBe(true)

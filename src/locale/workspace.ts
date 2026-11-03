@@ -12,7 +12,6 @@ export const workspace = {
   heroBadge: '预览版',
   pickSession: '选择会话',
   pickSessionFirst: '请先选择一个会话后再发送。',
-  selectedSessionLabel: '选择桌面会话',
   currentSession: '当前会话',
   /** `{title}` is the selected session's display title. */
   currentSessionNamed: '当前会话：{title}',
@@ -24,12 +23,6 @@ export const workspace = {
 
   connectFirst: '请先连接桌面端。',
   pickDesktopSession: '请先选择一个桌面会话。',
-  loading: '正在加载桌面工作区…',
   /** `{reason}` is the failure the API client reported. */
   loadFailed: '桌面工作区加载失败：{reason}',
-  empty: '桌面端暂无会话，请在桌面端创建会话。',
-  /** `{count}` sessions on the desktop. */
-  connected: '已连接桌面端 · {count} 个会话',
-  /** `{time}` is the most recent update, already formatted. */
-  recentlyUpdated: '最近更新 · {time}',
 } as const

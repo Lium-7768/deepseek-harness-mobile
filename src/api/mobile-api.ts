@@ -52,6 +52,8 @@ export type MobileApiErrorKind =
   | 'agent-preset-invalid'
   | 'settings-rejected'
   | 'settings-conflict'
+  | 'schedule-conflict'
+  | 'schedule-not-found'
   | 'unsupported'
   | 'protocol'
   | 'http'
@@ -415,7 +417,11 @@ export class MobileApi {
       expectedUpdatedAt: task.updatedAt ?? null,
     })
     if (!isRecord(result)) throw createError('protocol', message('errors.responseInvalid'))
-    if (result.code !== undefined) throw new Error(message('schedule.conflict'))
+    if (result.code === 'schedule_conflict')
+      throw createError('schedule-conflict', message('schedule.conflict'), { code: result.code }, false)
+    if (result.code === 'schedule_not_found')
+      throw createError('schedule-not-found', message('schedule.notFound'), { code: result.code }, false)
+    if (result.code !== undefined) throw createError('protocol', message('errors.responseInvalid'))
   }
 
   /** Reads live Goal activation, which is deliberately absent from durable projections. */
@@ -438,14 +444,13 @@ export class MobileApi {
     action: 'edit' | 'pause' | 'resume' | 'clear',
     ref: MobileGoalRef,
     input: { objective?: string } = {},
-  ): Promise<MobileGoalView | MobileGoalRef | { cleared: true }> {
+  ): Promise<MobileGoalView | MobileGoalRef> {
     const result = await this.#post<unknown>(`/v1/sessions/${encodeURIComponent(sessionId)}/goal/${action}`, {
       ref,
       ...input,
     })
     if (isGoalView(result)) return result
     if (isRecord(result) && !('phase' in result) && isGoalRef(result)) return result
-    if (action === 'clear' && isRecord(result) && result.cleared === true) return { cleared: true }
     throw createError('protocol', message('errors.responseInvalid'))
   }
 

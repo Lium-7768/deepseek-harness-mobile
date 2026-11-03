@@ -439,7 +439,7 @@ describe('Goal and schedule response validation', () => {
       ).rejects.toMatchObject({ kind: 'protocol' })
     },
   )
-  it('accepts a full view, a CAS reference, and both supported clear responses', async () => {
+  it('accepts full views and the desktop CAS reference returned by clear', async () => {
     const api = new MobileApi(connection)
     const ref = { id: 'g', revision: 2 }
     const goal = { ...ref, objective: 'Fix the review', phase: 'paused', activation: 'disarmed' }
@@ -447,7 +447,6 @@ describe('Goal and schedule response validation', () => {
       ['pause', goal],
       ['edit', ref],
       ['clear', ref],
-      ['clear', { cleared: true }],
     ] as const) {
       fetchMock.mockResolvedValueOnce(jsonResponse({ contractVersion: 1, data }, 200))
       await expect(api.mutateGoal('one', action, { id: 'g', revision: 1 })).resolves.toEqual(data)
@@ -463,6 +462,25 @@ describe('Goal and schedule response validation', () => {
       fetchMock.mockResolvedValueOnce(jsonResponse({ contractVersion: 1, data }, 200))
       await expect(api.createGoal('one', 'objective')).rejects.toMatchObject({ kind: 'protocol' })
     }
+  })
+  it('rejects a non-contract cleared flag rather than accepting a fake GoalRef', async () => {
+    fetchMock.mockResolvedValueOnce(jsonResponse({ contractVersion: 1, data: { cleared: true } }, 200))
+    await expect(new MobileApi(connection).mutateGoal('one', 'clear', { id: 'g', revision: 1 })).rejects.toMatchObject({
+      kind: 'protocol',
+    })
+  })
+  it.each([
+    ['schedule_not_found', 'schedule-not-found', '该任务已被桌面端删除'],
+    ['schedule_conflict', 'schedule-conflict', '任务已被修改'],
+    ['unrecognized', 'protocol', '桌面端返回了无效响应'],
+  ])('distinguishes the %s schedule action result', async (code, kind, text) => {
+    fetchMock.mockResolvedValueOnce(jsonResponse({ contractVersion: 1, data: { id: 'task', code } }, 200))
+    await expect(
+      new MobileApi(connection).updateSchedule(
+        { id: 'task', title: 'Task', prompt: 'prompt', status: 'active', scheduledAt: '', target: { kind: 'new' } },
+        'pause',
+      ),
+    ).rejects.toMatchObject({ kind, userMessage: expect.stringContaining(text) })
   })
   it.each([null, {}, { items: null }, { items: [null] }, { items: [{ id: 'task', target: null }] }])(
     'reports malformed catalogs as protocol failures, never unsupported: %j',

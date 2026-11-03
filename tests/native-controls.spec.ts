@@ -1,5 +1,5 @@
 import { createElement, type ReactElement } from 'react'
-import { act, create, type ReactTestRenderer } from 'react-test-renderer'
+import { act, render, cleanup, fireEvent, type RenderResult } from './support/native-testing'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { MobileApi, MobileApiError } from '@/api/mobile-api'
@@ -47,7 +47,7 @@ import { NativeGoalBar } from '@/components/native-goal-bar'
 import { useSessionActions } from '@/features/session/use-session-actions'
 import { queryKeys } from '@/api/query-keys'
 
-let renderer: ReactTestRenderer
+let renderer: RenderResult
 let cache: QueryClient
 beforeEach(() => {
   vi.stubGlobal('IS_REACT_ACT_ENVIRONMENT', true)
@@ -57,14 +57,14 @@ beforeEach(() => {
   mocks.alert.mockClear()
 })
 afterEach(async () => {
-  if (renderer) await act(() => renderer.unmount())
+  await cleanup()
   cache.clear()
   vi.restoreAllMocks()
   vi.unstubAllGlobals()
 })
 async function mount(element: ReactElement) {
   await act(async () => {
-    renderer = create(element)
+    renderer = await render(element)
   })
 }
 async function settle(until: () => boolean) {
@@ -93,10 +93,27 @@ const task = (status: 'active' | 'paused'): MobileScheduleEntry => ({
   updatedAt: 'v1',
   target: { kind: 'new' },
 })
-const buttons = () => renderer.root.findAllByType('ActionButton')
+const buttons = () => renderer.container.queryAll((node) => node.type === 'ActionButton')
 const button = (label: string) => buttons().find((node) => node.props.label === label)!
 
 describe('automation screen interaction', () => {
+  it.each(['schedule-not-found', 'schedule-conflict'] as const)(
+    'refreshes the catalog after %s rather than leaving a stale action row',
+    async (kind) => {
+      const schedules = vi
+        .spyOn(MobileApi.prototype, 'schedules')
+        .mockResolvedValueOnce({ items: [task('active')] })
+        .mockResolvedValue({ items: [] })
+      const copy =
+        kind === 'schedule-not-found' ? '该任务已被桌面端删除，请刷新任务列表。' : '任务已被修改，请刷新后重试。'
+      vi.spyOn(MobileApi.prototype, 'updateSchedule').mockRejectedValue(new MobileApiError(kind, copy))
+      await mount(createElement(QueryClientProvider, { client: cache }, createElement(SchedulesScreen)))
+      await settle(() => buttons().length > 0)
+      await fireEvent.press(button('暂停任务'))
+      await settle(() => schedules.mock.calls.length === 2 && buttons().length === 0)
+      expect(mocks.alert).toHaveBeenCalledWith('任务操作失败', copy)
+    },
+  )
   it.each(['network', 'credentials', 'timeout', 'unsupported'] as const)(
     'shows an accurate %s failure and offers a working retry',
     async (kind) => {
@@ -105,14 +122,14 @@ describe('automation screen interaction', () => {
         .mockRejectedValueOnce(new MobileApiError(kind, '测试错误'))
         .mockResolvedValue({ items: [] })
       await mount(createElement(QueryClientProvider, { client: cache }, createElement(SchedulesScreen)))
-      await settle(() => renderer.root.findAllByType('ErrorNotice').length === 1)
-      const notice = renderer.root.findByType('ErrorNotice')
+      await settle(() => renderer.container.queryAll((node) => node.type === 'ErrorNotice').length === 1)
+      const notice = renderer.container.queryAll((node) => node.type === 'ErrorNotice')[0]
       expect(notice.props.text).toContain(kind === 'unsupported' ? '未提供自动化任务目录' : '自动化任务加载失败')
       if (kind !== 'unsupported') expect(notice.props.text).not.toContain('请更新手机访问插件')
       await act(async () => {
         notice.props.onRetry()
       })
-      await settle(() => renderer.root.findAllByType('ErrorNotice').length === 0)
+      await settle(() => renderer.container.queryAll((node) => node.type === 'ErrorNotice').length === 0)
       expect(schedules).toHaveBeenCalledTimes(2)
     },
   )
@@ -174,14 +191,14 @@ describe('Goal editor interaction', () => {
     const onCreate = vi.fn().mockReturnValueOnce(first.promise).mockResolvedValueOnce(undefined)
     const onClose = vi.fn()
     await mount(createElement(NativeGoalEditor, { open: true, pending: false, onCreate, onClose }))
-    const input = () => renderer.root.findByType('TextInput')
+    const input = () => renderer.container.queryAll((node) => node.type === 'TextInput')[0]
     expect(button('保存目标').props.disabled).toBe(true)
     await act(async () => {
       input().props.onChangeText('  Ship the fix  ')
     })
     const save = button('保存目标').props.onPress
     const cancel = button('取消编辑').props.onPress
-    const dismiss = renderer.root.findByType('Panel').props.onClose
+    const dismiss = renderer.container.queryAll((node) => node.type === 'Panel')[0].props.onClose
     await act(async () => {
       save()
       save()
@@ -210,10 +227,10 @@ describe('Goal editor interaction', () => {
     const props = { open: true, pending: false, onCreate, onClose }
     await mount(createElement(NativeGoalEditor, props))
     await act(async () => {
-      renderer.root.findByType('TextInput').props.onChangeText('draft')
+      renderer.container.queryAll((node) => node.type === 'TextInput')[0].props.onChangeText('draft')
     })
     await act(async () => {
-      renderer.update(createElement(NativeGoalEditor, { ...props, pending: true }))
+      await renderer.rerender(createElement(NativeGoalEditor, { ...props, pending: true }))
     })
     await act(async () => {
       button('保存目标').props.onPress()
@@ -221,14 +238,14 @@ describe('Goal editor interaction', () => {
     })
     expect(onCreate).not.toHaveBeenCalled()
     expect(onClose).not.toHaveBeenCalled()
-    expect(renderer.root.findByType('TextInput').props.value).toBe('draft')
+    expect(renderer.container.queryAll((node) => node.type === 'TextInput')[0].props.value).toBe('draft')
     await act(async () => {
-      renderer.update(createElement(NativeGoalEditor, { ...props, open: false }))
+      await renderer.rerender(createElement(NativeGoalEditor, { ...props, open: false }))
     })
     await act(async () => {
-      renderer.update(createElement(NativeGoalEditor, props))
+      await renderer.rerender(createElement(NativeGoalEditor, props))
     })
-    expect(renderer.root.findByType('TextInput').props.value).toBe('')
+    expect(renderer.container.queryAll((node) => node.type === 'TextInput')[0].props.value).toBe('')
   })
 })
 
@@ -242,15 +259,39 @@ describe('blocked Goal presentation', () => {
         onMutate: vi.fn(),
       }),
     )
-    const visible = renderer.root.findAllByType('Text').find((node) => node.props.children === reason)
+    const visible = renderer.container
+      .queryAll((node) => node.type === 'Text')
+      .find((node) => node.props.children === reason)
     expect(visible?.props.numberOfLines).toBe(1)
-    const summary = renderer.root
-      .findAllByType('Pressable')
+    const summary = renderer.container
+      .queryAll((node) => node.type === 'Pressable')
       .find((node) => node.props.accessibilityLabel?.includes(reason))!
     await act(async () => {
       summary.props.onPress()
     })
     expect(mocks.alert).toHaveBeenCalledWith('受阻的目标', reason)
+  })
+})
+
+describe('Goal edit requests', () => {
+  it('opens the latest desktop objective and preserves an unsaved draft until the next explicit edit request', async () => {
+    const onMutate = vi.fn().mockResolvedValue(undefined)
+    const original = { id: 'goal', revision: 1, objective: 'Original desktop objective', phase: 'paused' as const }
+    const props = { goal: original, pending: false, onMutate, editRequest: 0 }
+    await mount(createElement(NativeGoalBar, props))
+    const changed = { ...original, revision: 2, objective: 'Updated on desktop' }
+    await renderer.rerender(createElement(NativeGoalBar, { ...props, goal: changed }))
+    await renderer.rerender(createElement(NativeGoalBar, { ...props, goal: changed, editRequest: 1 }))
+    expect(renderer.getByLabelText('目标内容').props.value).toBe(changed.objective)
+    await fireEvent.changeText(renderer.getByLabelText('目标内容'), 'My unsaved draft')
+    const newest = { ...changed, revision: 3, objective: 'Updated again on desktop' }
+    await renderer.rerender(createElement(NativeGoalBar, { ...props, goal: newest, editRequest: 1 }))
+    expect(renderer.getByLabelText('目标内容').props.value).toBe('My unsaved draft')
+    await fireEvent.press(renderer.getByLabelText('取消编辑'))
+    await renderer.rerender(createElement(NativeGoalBar, { ...props, goal: newest, editRequest: 2 }))
+    expect(renderer.getByLabelText('目标内容').props.value).toBe(newest.objective)
+    await fireEvent.press(renderer.getByLabelText('保存目标'))
+    expect(onMutate).toHaveBeenCalledExactlyOnceWith('edit', { id: 'goal', revision: 3 }, newest.objective)
   })
 })
 

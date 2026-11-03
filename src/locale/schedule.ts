@@ -13,5 +13,6 @@ export const schedule = {
   removeBody: '删除“{title}”及其执行记录？',
   failed: '任务操作失败',
   conflict: '任务已被修改，请刷新后重试。',
+  notFound: '该任务已被桌面端删除，请刷新任务列表。',
   openSession: '打开目标会话',
 } as const

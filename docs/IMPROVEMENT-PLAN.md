@@ -43,6 +43,19 @@ The native client follows the desktop source in `/Users/meiyu/code/deepseek/deep
 | F9  | Done   | Component interaction tests cover schedule error/retry branches, pause/resume/delete serialization and confirmation, Goal draft retention, repeated submission and pending dismissal. The Goal editor closes the same-render cancel gap. |
 | F10 | Done   | Sheet dismissal documentation now names backdrop, Android Back and accessibility escape, with no claim of a visible close toolbar.                                                                                                       |
 
+## Follow-up review fixes
+
+| ID  | Status | Resolution                                                                                                                                                                                                               |
+| --- | ------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| F11 | Done   | Composer controls now use the desktop 28pt geometry with 44pt native hit areas. Row, tool-cluster and trailing gaps match the desktop compact row; comments describe the touch adaptation.                               |
+| F12 | Done   | Goal clear mutations accept the desktop `GoalRef` response only. The unsupported `{ cleared: true }` branch was removed from the mobile contract and fixture.                                                            |
+| F13 | Done   | Full-access confirmation has a bounded lifetime and tokenized callbacks. A swallowed or throwing native Alert cannot leave permission selection permanently locked, and stale callbacks cannot authorize a command.      |
+| F14 | Done   | Live Goal polling starts only after a non-complete Goal is present; absent and complete sessions perform the initial read without a recurring five-second request.                                                       |
+| F15 | Done   | Schedule action results distinguish `schedule_not_found`, `schedule_conflict`, and malformed response codes, with a refresh after stale task errors.                                                                     |
+| F16 | Done   | Removed nine unused locale entries and added the missing schedule not-found copy.                                                                                                                                        |
+| F17 | Done   | Replaced deprecated `react-test-renderer` with React Native Testing Library and `test-renderer`; removed unused `react-dom` from native dependencies. Added portable RNTL support for the Vitest native component tests. |
+| F18 | Done   | Goal edit requests depend on the complete Goal object, so a newly read desktop objective is used when opening the editor. Existing unsaved drafts remain intact until a new edit request.                                |
+
 ## Remaining limits
 
 The dependency audit reports four advisories in Expo CLI/config dependencies. Patched versions require incompatible major upgrades for zod/glob/minimatch; deepmerge has no patched release. These are reported as an external toolchain limitation, not hidden by the audit gate. No incompatible overrides are forced. Production desktop deployment and physical-device/iOS interaction checks remain outside this validation.
@@ -55,7 +68,7 @@ The add menu opens the existing goal editor, or creates an absent/completed goal
 
 ## Validation scope
 
-- Node 22.23.2; 46 test files / 267 tests pass, including desktop icon hashes, malformed Goal responses, activation identity/revision guards, shared-query cursor/window contracts, disconnected selection gates, schedule/Goal editor interactions, drawer filtering/tree/manual order and search merging. TypeScript and formatting pass.
+- Node 22.23.2; 50 test files / 292 tests pass, including desktop icon hashes, malformed Goal and schedule responses, confirmation lifetime guards, Goal polling, shared-query cursor/window contracts, disconnected selection gates, schedule/Goal editor interactions, drawer filtering/tree/manual order and search merging. TypeScript and formatting pass.
 - Android arm64 native debug build and isolated review-package install pass with the navigation-bar module. iOS Pods resolve; Android/iOS JavaScript exports pass.
 - Android API/resource lint (`NewApi`, `InlinedApi`, `ResourceType`) passes with no findings. Full `lintDebug` crashes in the third-party Worklets Kotlin Gradle-script analysis (`Cannot find a KaModule for the VirtualFile`); no lint checks are disabled or baselined in the repository to hide that failure.
 - Android visual checks use a loopback-only synthetic Gateway. Covered light/dark, regular and enlarged text, keyboard editing/search, anchored menu scrolling, workspace trees, archived filters, goal create/edit/clear/resume, queue/input ordering and persisted manual movement. Device display/font/appearance overrides are restored after checking.

@@ -2,6 +2,7 @@ import type { MobileApi } from '@/api/mobile-api'
 import { queryKeys } from '@/api/query-keys'
 import { withErrorContext } from '@/components/route-params'
 import { permissionOptionsLocked } from '@/components/session-route-logic'
+import { createPermissionConfirmation } from '@/components/permission-confirmation'
 import { createSelectionGate, permissionSelectionDecision } from '@/components/session-selection-logic'
 import { t as message } from '@/locale'
 import { useMobileSyncStore } from '@/state/mobile-sync'
@@ -28,6 +29,7 @@ export function useSessionSelections(state: State) {
   const syncStatus = useMobileSyncStore((snapshot) => snapshot.status)
   const queryClient = useQueryClient()
   const gate = useRef(createSelectionGate()).current
+  const confirmation = useRef(createPermissionConfirmation()).current
   const current = useRef({ ...state, syncStatus })
   current.current = { ...state, syncStatus }
   const mounted = useRef(true)
@@ -35,9 +37,10 @@ export function useSessionSelections(state: State) {
     mounted.current = true
     return () => {
       mounted.current = false
+      confirmation.dismiss()
     }
-  }, [])
-  const awaitingConfirmation = useRef(false)
+  }, [confirmation])
+  useEffect(() => confirmation.dismiss, [confirmation, state.client, state.sessionId])
   const refresh = async (sessionId: string): Promise<void> => {
     await Promise.all([
       queryClient.invalidateQueries({ queryKey: queryKeys.sessionHistory(sessionId) }),
@@ -86,7 +89,7 @@ export function useSessionSelections(state: State) {
     permissionOptionsLocked({ ...snapshot, status: snapshot.status, submitting: gate.busy })
   const selectPermission = (value: string): void => {
     const snapshot = current.current
-    if (awaitingConfirmation.current) return
+    if (confirmation.busy) return
     const decision = permissionSelectionDecision(value, snapshot.permissions, locked(snapshot))
     if (decision === 'ignore') return
     const submit = (): void => {
@@ -104,34 +107,37 @@ export function useSessionSelections(state: State) {
       void gate.run(() => permission.mutateAsync({ client, sessionId, value })).catch(() => undefined)
     }
     if (decision === 'confirm') {
-      awaitingConfirmation.current = true
-      Alert.alert(
-        message('settings.fullAccessTitle'),
-        message('permission.fullAccessBody'),
-        [
+      const token = confirmation.begin()
+      try {
+        Alert.alert(
+          message('settings.fullAccessTitle'),
+          message('permission.fullAccessBody'),
+          [
+            {
+              text: message('common.cancel'),
+              style: 'cancel',
+              onPress: () => {
+                confirmation.finish(token)
+              },
+            },
+            {
+              text: message('common.continue'),
+              style: 'destructive',
+              onPress: () => {
+                if (confirmation.finish(token)) submit()
+              },
+            },
+          ],
           {
-            text: message('common.cancel'),
-            style: 'cancel',
-            onPress: () => {
-              awaitingConfirmation.current = false
+            cancelable: true,
+            onDismiss: () => {
+              confirmation.finish(token)
             },
           },
-          {
-            text: message('common.continue'),
-            style: 'destructive',
-            onPress: () => {
-              awaitingConfirmation.current = false
-              submit()
-            },
-          },
-        ],
-        {
-          cancelable: true,
-          onDismiss: () => {
-            awaitingConfirmation.current = false
-          },
-        },
-      )
+        )
+      } catch {
+        confirmation.finish(token)
+      }
     } else submit()
   }
   const selectModel = (selection: MobileModelSelection): void => {
