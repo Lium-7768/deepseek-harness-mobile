@@ -1,17 +1,17 @@
-import { usesStackedFields } from '@/components/native-layout'
-import { splitModelId } from '@/components/session-selection-logic'
 import { NativeAnchoredPanel } from '@/components/native-anchored-panel'
+import { NativeEffortSlider } from '@/components/native-effort-slider'
 import { NativeIcon } from '@/components/native-icon'
+import { reasoningEffortLabel } from '@/components/model-picker-logic'
+import { selectedCatalogModel, splitModelId } from '@/components/session-selection-logic'
 import { format, t as message } from '@/locale'
 import type { AppTheme } from '@/theme'
 import { useAppTheme, useThemedStyles } from '@/theme/hooks'
-import { textStyle } from '@/theme/text'
 import type { MobileModelCatalogFailure, MobileModelCatalogModel, MobileModelProviderGroup } from '@/types/mobile'
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState, type RefObject } from 'react'
 import {
-  Keyboard,
-  useWindowDimensions,
+  ActivityIndicator,
   FlatList,
+  Keyboard,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -20,60 +20,24 @@ import {
   View,
 } from 'react-native'
 
-/** Localizes the catalog's reasoning-depth ids, falling back to the raw id. */
-function effortLabel(id: string): string {
-  const known: Record<string, string> = {
-    high: message('model.effortHigh'),
-    low: message('model.effortLow'),
-    medium: message('model.effortMedium'),
-    off: message('model.effortOff'),
-  }
-  return known[id.toLowerCase()] ?? id
-}
-
-/** The provider/model pair a pick commits. */
 export type NativeModelChoice = { provider: string; model: string }
-
 type Row =
   | { key: string; kind: 'header'; title: string }
   | {
       key: string
       kind: 'model'
-      /** This row is the session's current model, so it carries the check. */
       current: boolean
       provider: string
       providerName: string
       model: MobileModelCatalogModel
-      leaf: string
-      prefix: string | undefined
+      label: string
+      prefix?: string
     }
 
-function matches(model: MobileModelCatalogModel, providerName: string, query: string): boolean {
-  if (query.length === 0) return true
-  const needle = query.toLowerCase()
-  return (
-    model.id.toLowerCase().includes(needle) ||
-    model.name.toLowerCase().includes(needle) ||
-    providerName.toLowerCase().includes(needle)
-  )
-}
-
-/**
- * Renders the model and reasoning-effort picker.
- *
- * The catalog this client receives carries every provider the desktop routes to,
- * which is hundreds of rows and buries the effort levels under all of them. The
- * sheet therefore opens on a search field, a provider filter, and one row per
- * model whose title is the readable tail of the route; the selected model's
- * effort levels sit above the list so changing the depth never means scrolling.
- *
- * @param props - Catalog, current route, effort levels, and their commit actions.
- * @returns The picker sheet, or `null` while closed.
- */
+/** Two-level model control: compact effort card, then a searchable provider-grouped directory. */
 export function NativeModelPicker({
   disabled = false,
   effort,
-  efforts,
   groups,
   failures = [],
   routable,
@@ -85,335 +49,358 @@ export function NativeModelPicker({
   onSelectModel,
   open,
   selection,
+  anchorRef,
 }: {
   disabled?: boolean
   effort?: string
-  efforts: readonly string[]
   groups: MobileModelProviderGroup[]
   failures?: MobileModelCatalogFailure[]
   routable?: boolean
   loading?: boolean
   failed?: boolean
   notice?: string
-  onClose: () => void
+  onClose(): void
   onSelectEffort?: (effort: string) => void
-  onSelectModel: (choice: NativeModelChoice) => void
+  onSelectModel(choice: NativeModelChoice): void
   open: boolean
   selection?: NativeModelChoice
+  anchorRef?: RefObject<View | null>
 }): React.JSX.Element | null {
   const theme = useAppTheme()
   const s = useThemedStyles(makeStyles)
-  const { width, fontScale } = useWindowDimensions()
-  const stacked = usesStackedFields(width, fontScale)
   const [query, setQuery] = useState('')
-  const [providerFilter, setProviderFilter] = useState<string | undefined>(undefined)
+  const [modelsOpen, setModelsOpen] = useState(false)
+  const [previewEffort, setPreviewEffort] = useState<string>()
+  const current = selectedCatalogModel(groups, selection)
+  const choices = current?.reasoning?.efforts ?? []
+  const effectiveEffort = effort ?? current?.reasoning?.defaultEffort
+  const displayEffort = previewEffort ?? effectiveEffort
+  const hasEffort = choices.length > 1 && onSelectEffort !== undefined
+  const showModels = modelsOpen || !hasEffort
+  const label = current
+    ? modelName(current)
+    : selection
+      ? splitModelId(selection.model).leaf
+      : message('model.selectTitle')
+  const resetEffort = current?.reasoning?.defaultEffort
+  const canReset =
+    !disabled &&
+    resetEffort !== undefined &&
+    resetEffort !== effectiveEffort &&
+    choices.some((choice) => choice.id === resetEffort)
   useEffect(() => {
     if (!open) {
       setQuery('')
-      setProviderFilter(undefined)
+      setModelsOpen(false)
+      setPreviewEffort(undefined)
     }
   }, [open])
-
+  useEffect(() => {
+    setPreviewEffort(undefined)
+  }, [selection?.provider, selection?.model, effort])
   const rows = useMemo<Row[]>(() => {
-    const next: Row[] = []
-    const current = groups
-      .flatMap((group) => group.models.map((model) => ({ group, model })))
-      .find((entry) => entry.group.id === selection?.provider && entry.model.id === selection.model)
-    if (
-      current !== undefined &&
-      query.length === 0 &&
-      (providerFilter === undefined || providerFilter === current.group.id)
-    ) {
-      next.push({ key: 'header-current', kind: 'header', title: message('model.currentSection') })
-      next.push(modelRow(current.group, current.model, 'current', selection))
-    }
-    const visible = groups.filter((group) => providerFilter === undefined || group.id === providerFilter)
-    for (const group of visible) {
-      const models = group.models.filter((model) => matches(model, group.name, query))
-      if (models.length === 0) continue
-      const isCurrentGroup = group.id === selection?.provider
-      if (query.length === 0 && providerFilter === undefined) {
-        next.push({ key: `header-${group.id}`, kind: 'header', title: group.name })
-      }
-      for (const model of models) {
-        // The pinned row already shows the selection while the query is empty; with a
-        // query there is no pinned row, so the match keeps its check in place.
-        if (isCurrentGroup && model.id === selection?.model && query.length === 0) continue
-        next.push(modelRow(group, model, group.id, selection))
-      }
-    }
-    return next
-  }, [groups, providerFilter, query, selection?.model, selection?.provider])
-
+    const needle = query.trim().toLowerCase()
+    return groups.flatMap((group) => {
+      const models = group.models.filter((model) =>
+        [model.id, model.name, group.id, group.name].some((value) => value.toLowerCase().includes(needle)),
+      )
+      if (!models.length) return []
+      return [
+        { key: `group:${group.id}`, kind: 'header', title: group.name } as Row,
+        ...models.map((model) => ({
+          key: JSON.stringify([group.id, model.id]),
+          kind: 'model' as const,
+          current: group.id === selection?.provider && model.id === selection?.model,
+          provider: group.id,
+          providerName: group.name,
+          model,
+          label: modelName(model),
+          prefix: splitModelId(model.id).prefix,
+        })),
+      ]
+    })
+  }, [groups, query, selection?.model, selection?.provider])
   if (!open) return null
+  const status = (
+    <>
+      {loading ? <Text style={s.notice}>{message('common.loading')}</Text> : null}
+      {failed ? (
+        <Text accessibilityRole="alert" style={s.error}>
+          {message('model.catalogFailed')}
+        </Text>
+      ) : null}
+      {routable === false ? (
+        <Text accessibilityRole="alert" style={s.error}>
+          {message('model.routingUnavailable')}
+        </Text>
+      ) : null}
+      {failures.map((failure) => (
+        <Text key={failure.id} style={s.error}>
+          {format('model.providerUnavailable', { name: failure.name })}
+        </Text>
+      ))}
+      {notice ? <Text style={s.notice}>{notice}</Text> : null}
+    </>
+  )
   return (
-    <NativeAnchoredPanel onClose={onClose} open>
-      <View style={s.sheet}>
-        <Text style={s.title}>{message('model.selectTitle')}</Text>
-        <View style={s.searchField}>
-          <NativeIcon name="search-outline" size={14} color={theme.colors.inkMuted} />
-          <TextInput
-            accessibilityLabel={message('model.searchPlaceholder')}
-            autoCorrect={false}
-            autoCapitalize="none"
-            returnKeyType="search"
-            onSubmitEditing={Keyboard.dismiss}
-            selectionColor={theme.colors.accent}
-            underlineColorAndroid="transparent"
-            onChangeText={setQuery}
-            placeholder={message('model.searchPlaceholder')}
-            placeholderTextColor={theme.colors.inkFaint}
-            style={s.searchInput}
-            value={query}
-          />
-          {query.length === 0 ? null : (
-            <Pressable
-              accessibilityLabel={message('model.clearSearch')}
-              accessibilityRole="button"
-              hitSlop={8}
-              onPress={() => setQuery('')}
-              style={s.searchClear}
-            >
-              <NativeIcon name="close-outline" size={13} color={theme.colors.inkMuted} />
-            </Pressable>
-          )}
-        </View>
-        <FlatList
-          data={rows}
-          ListHeaderComponent={
-            <>
-              {loading ? <Text style={s.notice}>{message('common.loading')}</Text> : null}
-              {failed ? (
-                <Text accessibilityRole="alert" style={s.error}>
-                  {message('model.catalogFailed')}
-                </Text>
-              ) : null}
-              {routable === false ? (
-                <Text accessibilityRole="alert" style={s.error}>
-                  {message('model.routingUnavailable')}
-                </Text>
-              ) : null}
-              {failures.map((failure) => (
-                <Text key={failure.id} style={s.error}>
-                  {format('model.providerUnavailable', { name: failure.name })}
-                </Text>
-              ))}
-              {notice === undefined ? null : <Text style={s.notice}>{notice}</Text>}
-              {query.trim() ? null : (
-                <>
-                  {efforts.length <= 1 ? null : (
-                    <View style={s.effortRow}>
-                      <Text style={s.effortLabel}>{message('model.reasoningEffort')}</Text>
-                      <View style={s.effortChips}>
-                        {efforts.map((level) => {
-                          const active = level === effort
-                          return (
-                            <Pressable
-                              accessibilityLabel={effortLabel(level)}
-                              accessibilityRole="radio"
-                              accessibilityState={{ checked: active, disabled }}
-                              disabled={disabled}
-                              key={level}
-                              onPress={() => {
-                                onClose()
-                                onSelectEffort?.(level)
-                              }}
-                              style={({ pressed }) => [s.chip, active && s.chipActive, pressed && s.pressed]}
-                            >
-                              <Text style={[s.chipText, active && s.chipTextActive]}>{effortLabel(level)}</Text>
-                            </Pressable>
-                          )
-                        })}
-                      </View>
-                    </View>
-                  )}
-                  <View style={s.providerBand}>
-                    <ScrollView contentContainerStyle={s.providers} horizontal showsHorizontalScrollIndicator={false}>
-                      {[
-                        { id: undefined, name: message('model.allProviders') },
-                        ...groups.map((group) => ({ id: group.id, name: group.name })),
-                      ].map((entry) => {
-                        const active = entry.id === providerFilter
-                        return (
-                          <Pressable
-                            accessibilityLabel={entry.name}
-                            accessibilityRole="radio"
-                            accessibilityState={{ checked: active }}
-                            key={entry.id ?? 'all'}
-                            onPress={() => setProviderFilter(entry.id)}
-                            style={({ pressed }) => [s.providerChip, active && s.chipActive, pressed && s.pressed]}
-                          >
-                            <Text numberOfLines={1} style={[s.chipText, active && s.chipTextActive]}>
-                              {entry.name}
-                            </Text>
-                          </Pressable>
-                        )
-                      })}
-                    </ScrollView>
-                  </View>
-                </>
-              )}
-            </>
-          }
-          keyboardShouldPersistTaps="handled"
-          keyExtractor={(row) => row.key}
-          ListEmptyComponent={
-            <Text style={s.empty}>
-              {message(
-                loading
-                  ? 'common.loading'
-                  : failed || routable === false
-                    ? 'model.noAvailableModels'
-                    : 'model.noMatches',
-              )}
-            </Text>
-          }
-          renderItem={({ item }) =>
-            item.kind === 'header' ? (
-              <Text style={s.groupTitle}>{item.title}</Text>
-            ) : (
+    <NativeAnchoredPanel open onClose={onClose} anchorRef={anchorRef}>
+      {showModels ? (
+        <View style={s.directory}>
+          <View style={s.directoryHeader}>
+            {hasEffort ? (
               <Pressable
-                accessibilityLabel={
-                  item.current
-                    ? format('model.currentModelLabel', { name: item.leaf, provider: item.providerName })
-                    : `${item.model.name}${format('model.modelProviderSuffix', { provider: item.providerName })}`
-                }
-                accessibilityRole="radio"
-                accessibilityState={{ checked: item.current, disabled }}
-                disabled={disabled}
+                accessibilityLabel={message('model.backToEffort')}
+                accessibilityRole="button"
                 onPress={() => {
-                  onClose()
-                  onSelectModel({ model: item.model.id, provider: item.provider })
+                  Keyboard.dismiss()
+                  setModelsOpen(false)
+                  setQuery('')
                 }}
-                style={({ pressed }) => [
-                  s.row,
-                  item.current && s.rowSelected,
-                  disabled && s.rowDisabled,
-                  pressed && s.pressed,
-                ]}
+                style={s.back}
               >
-                <View style={[s.modelCopy, stacked && s.modelCopyStacked]}>
-                  <Text numberOfLines={stacked ? 2 : 1} style={[s.rowTitle, item.current && s.rowTitleSelected]}>
-                    {item.leaf}
-                  </Text>
-                  <Text numberOfLines={1} style={[s.rowProvider, stacked && s.rowProviderStacked]}>
-                    {item.prefix === undefined ? item.providerName : `${item.providerName} · ${item.prefix}`}
-                  </Text>
-                </View>
-                {item.current ? <NativeIcon name="check-outline" size={16} color={theme.colors.accentText} /> : null}
+                <NativeIcon name="chevron-left-outline" size={16} color={theme.colors.inkMuted} />
               </Pressable>
-            )
-          }
-          style={s.list}
-        />
-      </View>
+            ) : null}
+            <Text style={s.title}>{message('model.selectTitle')}</Text>
+            {disabled ? (
+              <ActivityIndicator
+                accessibilityLabel={message('composer.switching')}
+                size="small"
+                color={theme.colors.inkMuted}
+              />
+            ) : null}
+          </View>
+          {groups.reduce((count, group) => count + group.models.length, 0) > 4 || query ? (
+            <View style={s.searchField}>
+              <NativeIcon name="search-outline" size={15} color={theme.colors.inkTertiary} />
+              <TextInput
+                accessibilityLabel={message('model.searchPlaceholder')}
+                autoCorrect={false}
+                autoCapitalize="none"
+                returnKeyType="search"
+                onSubmitEditing={Keyboard.dismiss}
+                selectionColor={theme.colors.accent}
+                underlineColorAndroid="transparent"
+                onChangeText={setQuery}
+                placeholder={message('model.searchPlaceholder')}
+                placeholderTextColor={theme.colors.inkTertiary}
+                style={s.searchInput}
+                value={query}
+              />
+              {query ? (
+                <Pressable
+                  accessibilityLabel={message('model.clearSearch')}
+                  accessibilityRole="button"
+                  hitSlop={6}
+                  onPress={() => setQuery('')}
+                  style={s.back}
+                >
+                  <NativeIcon name="close-outline" size={14} color={theme.colors.inkTertiary} />
+                </Pressable>
+              ) : null}
+            </View>
+          ) : null}
+          <FlatList
+            data={rows}
+            keyExtractor={(row) => row.key}
+            keyboardShouldPersistTaps="handled"
+            ListHeaderComponent={status}
+            ListEmptyComponent={
+              <Text style={s.empty}>
+                {message(
+                  loading
+                    ? 'common.loading'
+                    : failed || routable === false
+                      ? 'model.noAvailableModels'
+                      : 'model.noMatches',
+                )}
+              </Text>
+            }
+            renderItem={({ item }) =>
+              item.kind === 'header' ? (
+                <Text style={s.groupTitle}>{item.title}</Text>
+              ) : (
+                <Pressable
+                  accessibilityRole="radio"
+                  accessibilityLabel={
+                    item.current
+                      ? format('model.currentModelLabel', { name: item.label, provider: item.providerName })
+                      : `${item.label}${format('model.modelProviderSuffix', { provider: item.providerName })}`
+                  }
+                  accessibilityState={{ checked: item.current, disabled }}
+                  disabled={disabled}
+                  onPress={() => {
+                    if (disabled) return
+                    onClose()
+                    if (!item.current) onSelectModel({ provider: item.provider, model: item.model.id })
+                  }}
+                  style={({ pressed }) => [
+                    s.row,
+                    item.current && s.rowSelected,
+                    disabled && s.disabled,
+                    pressed && s.pressed,
+                  ]}
+                >
+                  <View style={s.modelCopy}>
+                    <Text numberOfLines={2} style={s.rowTitle}>
+                      {item.label}
+                    </Text>
+                    {item.prefix ? (
+                      <Text numberOfLines={1} style={s.route}>
+                        {item.prefix}
+                      </Text>
+                    ) : null}
+                  </View>
+                  <View style={s.check}>
+                    {item.current ? <NativeIcon name="check-outline" size={18} color={theme.colors.ink} /> : null}
+                  </View>
+                </Pressable>
+              )
+            }
+            style={s.list}
+          />
+        </View>
+      ) : (
+        <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={s.effortCard}>
+          <View style={s.effortHeader}>
+            <View style={s.balance} />
+            <View style={s.effortCopy}>
+              <Text accessibilityLiveRegion="polite" style={s.effortTitle}>
+                {displayEffort ? reasoningEffortLabel(displayEffort, choices) : message('model.providerDefault')}
+              </Text>
+              <Pressable
+                accessibilityLabel={format('composer.selectModel', { label })}
+                accessibilityRole="button"
+                onPress={() => setModelsOpen(true)}
+                style={({ pressed }) => [s.modelLink, pressed && s.pressed]}
+              >
+                <Text numberOfLines={2} style={s.modelLinkText}>
+                  {label}
+                </Text>
+                <NativeIcon name="chevron-right-outline" size={14} color={theme.colors.inkTertiary} />
+              </Pressable>
+            </View>
+            {disabled ? (
+              <View style={s.balance}>
+                <ActivityIndicator
+                  accessibilityLabel={message('composer.switching')}
+                  color={theme.colors.inkMuted}
+                  size="small"
+                />
+              </View>
+            ) : resetEffort !== undefined && choices.some((choice) => choice.id === resetEffort) ? (
+              <Pressable
+                accessibilityLabel={message('model.resetEffort')}
+                accessibilityRole="button"
+                accessibilityState={{ disabled: !canReset }}
+                disabled={!canReset}
+                onPress={() => {
+                  if (canReset) onSelectEffort?.(resetEffort)
+                }}
+                style={[s.reset, !canReset && s.disabled]}
+              >
+                <NativeIcon name="refresh-outline" size={18} color={theme.colors.inkTertiary} />
+              </Pressable>
+            ) : (
+              <View style={s.balance} />
+            )}
+          </View>
+          <NativeEffortSlider
+            key={JSON.stringify(selection)}
+            choices={choices}
+            value={effectiveEffort}
+            disabled={disabled}
+            onPreview={setPreviewEffort}
+            onCommit={(value) => {
+              if (!disabled && value !== effectiveEffort) onSelectEffort?.(value)
+            }}
+          />
+          {status}
+        </ScrollView>
+      )}
     </NativeAnchoredPanel>
   )
 }
 
-function modelRow(
-  group: MobileModelProviderGroup,
-  model: MobileModelCatalogModel,
-  scope: string,
-  selection?: NativeModelChoice,
-): Row {
-  const { leaf, prefix } = splitModelId(model.id)
-  return {
-    key: `${scope}:${group.id}:${model.id}`,
-    kind: 'model',
-    current: group.id === selection?.provider && model.id === selection.model,
-    model,
-    prefix,
-    provider: group.id,
-    providerName: group.name,
-    leaf: model.name === model.id ? leaf : model.name,
-  }
+function modelName(model: MobileModelCatalogModel): string {
+  return model.name !== model.id ? model.name : splitModelId(model.id).leaf
 }
 
 const makeStyles = (theme: AppTheme) =>
   StyleSheet.create({
-    sheet: {
-      gap: 8,
-      maxHeight: 520,
-      flexShrink: 1,
-      minHeight: 0,
-      paddingHorizontal: 6,
-      paddingVertical: 10,
-    },
-    title: { color: theme.colors.ink, fontSize: 14, fontWeight: '500', lineHeight: 22, paddingHorizontal: 8 },
-    error: { ...textStyle(theme, 'caption', 'tertiary'), color: theme.colors.danger, paddingHorizontal: 8 },
-    notice: { ...textStyle(theme, 'caption', 'tertiary'), paddingHorizontal: 8 },
+    directory: { maxHeight: 480, flexShrink: 1, minHeight: 0, padding: 6 },
+    directoryHeader: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 6, minHeight: 36 },
+    title: { color: theme.colors.inkTertiary, fontSize: 14, lineHeight: 22, flex: 1, paddingVertical: 6 },
+    back: { minWidth: 36, minHeight: 36, alignItems: 'center', justifyContent: 'center' },
     searchField: {
+      flexDirection: 'row',
       alignItems: 'center',
+      gap: 8,
+      marginHorizontal: 6,
+      paddingHorizontal: 10,
       backgroundColor: theme.colors.surfaceMuted,
       borderRadius: theme.radius.control,
-      flexDirection: 'row',
-      gap: 6,
-      marginHorizontal: 8,
-      paddingHorizontal: 10,
+      marginBottom: 4,
     },
-    searchInput: { color: theme.colors.ink, flex: 1, fontSize: 14, minHeight: 44, paddingVertical: 8 },
-    searchClear: { alignItems: 'center', height: 24, justifyContent: 'center', width: 24 },
-    effortRow: {
-      flexWrap: 'wrap',
-      paddingVertical: 4,
-      alignItems: 'center',
-      flexDirection: 'row',
-      gap: 8,
-      paddingHorizontal: 8,
-    },
-    effortLabel: { ...textStyle(theme, 'label', 'tertiary') },
-    effortChips: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
-    providerBand: { flexGrow: 0, paddingVertical: 4 },
-    providers: { alignItems: 'center', gap: 6, paddingHorizontal: 8 },
-    providerChip: {
-      backgroundColor: theme.colors.surfaceMuted,
-      borderRadius: theme.radius.pill,
-      maxWidth: 168,
-      paddingHorizontal: 10,
-      paddingVertical: 8,
-      minHeight: 36,
-      justifyContent: 'center',
-    },
-    chip: {
-      backgroundColor: theme.colors.surfaceMuted,
-      borderRadius: theme.radius.pill,
-      paddingHorizontal: 10,
-      paddingVertical: 8,
-      minHeight: 36,
-      justifyContent: 'center',
-    },
-    chipActive: { backgroundColor: theme.colors.interactiveHover },
-    chipText: { ...textStyle(theme, 'caption', 'secondary') },
-    chipTextActive: { color: theme.colors.ink },
+    searchInput: { flex: 1, color: theme.colors.ink, fontSize: 14, lineHeight: 22, minHeight: 44, paddingVertical: 8 },
     list: { flexGrow: 0, flexShrink: 1, minHeight: 0 },
-    groupTitle: { ...textStyle(theme, 'label', 'tertiary'), paddingHorizontal: 8, paddingTop: 6, paddingBottom: 2 },
-    row: {
-      alignItems: 'center',
-      borderRadius: theme.radius.sm,
-      flexDirection: 'row',
-      gap: 8,
-      minHeight: 44,
-      paddingHorizontal: 8,
-      paddingVertical: 6,
+    groupTitle: {
+      color: theme.colors.inkTertiary,
+      fontSize: 12,
+      lineHeight: 18,
+      paddingHorizontal: 12,
+      paddingTop: 12,
+      paddingBottom: 4,
     },
-    // The current model reads as chosen at a glance: an accent-soft fill the whole
-    // row carries, with the accent check at the trailing edge.
-    rowSelected: { backgroundColor: theme.colors.accentSoft },
-    rowDisabled: { opacity: 0.4 },
-    modelCopy: { flex: 1, minWidth: 0, flexDirection: 'row', alignItems: 'center', gap: 8 },
-    modelCopyStacked: { flexDirection: 'column', alignItems: 'stretch', gap: 2 },
-    rowProviderStacked: { textAlign: 'left' },
-    rowTitle: { ...textStyle(theme, 'paragraph'), flexShrink: 1, minWidth: 0 },
-    rowTitleSelected: { color: theme.colors.accentText, fontWeight: '500' },
-    // The provider trails the name on the same line and yields width first, so a
-    // long route keeps the model name readable and truncates the provenance.
-    rowProvider: { ...textStyle(theme, 'label', 'tertiary'), flexShrink: 1, minWidth: 0, textAlign: 'right' },
-    empty: {
-      ...textStyle(theme, 'caption', 'tertiary'),
-      paddingHorizontal: 8,
-      paddingVertical: 16,
+    row: {
+      minHeight: 46,
+      paddingHorizontal: 12,
+      paddingVertical: 10,
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 12,
+      borderRadius: theme.radius.md,
+    },
+    rowSelected: { backgroundColor: theme.colors.interactiveHover },
+    rowTitle: { color: theme.colors.ink, fontSize: 16, lineHeight: 24 },
+    modelCopy: { flex: 1, minWidth: 0, gap: 2 },
+    route: { color: theme.colors.inkTertiary, fontSize: 11, lineHeight: 16 },
+    check: { width: 24, alignItems: 'center' },
+    empty: { color: theme.colors.inkTertiary, fontSize: 13, lineHeight: 20, textAlign: 'center', padding: 16 },
+    notice: {
+      color: theme.colors.inkTertiary,
+      fontSize: 12,
+      lineHeight: 18,
+      paddingHorizontal: 10,
+      paddingVertical: 4,
+    },
+    error: { color: theme.colors.danger, fontSize: 12, lineHeight: 18, paddingHorizontal: 10, paddingVertical: 4 },
+    effortCard: { paddingHorizontal: 18, paddingTop: 12, paddingBottom: 10, gap: 8 },
+    effortHeader: { flexDirection: 'row', alignItems: 'flex-start' },
+    effortCopy: { flex: 1, alignItems: 'center', minWidth: 0 },
+    effortTitle: {
+      color: theme.colors.accentText,
+      fontSize: 20,
+      lineHeight: 28,
+      fontWeight: '500',
       textAlign: 'center',
     },
-    pressed: { opacity: 0.62 },
+    modelLink: { flexDirection: 'row', alignItems: 'center', gap: 4, minHeight: 36, maxWidth: '100%' },
+    modelLinkText: {
+      color: theme.colors.inkTertiary,
+      fontSize: 14,
+      lineHeight: 22,
+      textAlign: 'center',
+      flexShrink: 1,
+    },
+    balance: { width: 36, minHeight: 36, alignItems: 'center', justifyContent: 'center' },
+    reset: {
+      width: 36,
+      minHeight: 36,
+      alignItems: 'center',
+      justifyContent: 'center',
+      borderRadius: theme.radius.pill,
+    },
+    disabled: { opacity: 0.4 },
+    pressed: { backgroundColor: theme.colors.interactiveHover },
   })

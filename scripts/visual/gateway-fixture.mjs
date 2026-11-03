@@ -159,9 +159,12 @@ const models = {
           name: 'DeepSeek-V4.1',
           description: '通用推理模型',
           reasoning: {
+            defaultEffort: 'high',
             efforts: [
               { id: 'low', name: '低' },
+              { id: 'medium', name: '中' },
               { id: 'high', name: '高' },
+              { id: 'max', name: '极高' },
             ],
           },
         },
@@ -425,6 +428,11 @@ const server = createServer(async (request, response) => {
     if (command?.startsWith('/permission ')) effectivePermission = command.slice('/permission '.length)
     await new Promise((resolve) => setTimeout(resolve, 500))
     data = { accepted: true }
+  } else if (path.endsWith('/model')) {
+    fixtureCommands.push({ sessionId: path.split('/')[3], selection: input })
+    models.current = input
+    await new Promise((resolve) => setTimeout(resolve, 500))
+    data = { selected: models.current }
   } else data = {}
   response.writeHead(200, { 'content-type': 'application/json' })
   response.end(JSON.stringify({ contractVersion: 1, data }))

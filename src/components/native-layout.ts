@@ -7,6 +7,35 @@ const INPUT_VERTICAL_PADDING = 8
 const PANEL_GUTTER = 12
 const KEYBOARD_GAP = 8
 
+export type NativePanelAnchor = { x: number; y: number; width: number; height: number }
+
+/** Positions a bounded card above its trigger, using measurements within the Modal viewport. */
+export function modelPopoverGeometry(
+  viewportWidth: number,
+  viewportHeight: number,
+  topInset: number,
+  bottomClearance: number,
+  anchor: NativePanelAnchor | undefined,
+): { left: number; bottom: number; width: number; maxHeight: number } {
+  const width = Math.max(0, Math.min(380, viewportWidth - PANEL_GUTTER * 2))
+  const availableTop = topInset + PANEL_GUTTER
+  const triggerTop = Math.min(anchor?.y ?? viewportHeight, viewportHeight - bottomClearance)
+  const roomAbove = triggerTop - KEYBOARD_GAP - availableTop
+  const bottom = anchor && roomAbove >= 160 ? viewportHeight - triggerTop + KEYBOARD_GAP : bottomClearance
+  return {
+    left: Math.max(
+      PANEL_GUTTER,
+      Math.min(
+        viewportWidth - width - PANEL_GUTTER,
+        anchor ? anchor.x + anchor.width - width : (viewportWidth - width) / 2,
+      ),
+    ),
+    bottom,
+    width,
+    maxHeight: Math.max(0, viewportHeight - bottom - availableTop),
+  }
+}
+
 /** @returns Whether enlarged text leaves too little reading width for side-by-side fields. */
 export function usesStackedFields(width: number, fontScale: number): boolean {
   return width / Math.max(1, fontScale) < FIELD_STACK_WIDTH

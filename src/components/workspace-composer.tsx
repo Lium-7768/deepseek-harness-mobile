@@ -3,12 +3,12 @@ import { catalogModelLabel, selectedCatalogModel } from '@/components/session-se
 import { NativeIcon } from '@/components/native-icon'
 import { NativeMenuPanel, type NativeMenuGroup, type NativeMenuNotice } from '@/components/native-menu-panel'
 import { NativeModelPicker } from '@/components/native-model-picker'
+import { reasoningEffortLabel } from '@/components/model-picker-logic'
 import {
   agentPresetLabel,
   agentPresetName,
   composerInputPolicy,
   composerPrimaryAction,
-  modelLabel,
   permissionDescription,
   permissionLabel,
 } from '@/components/session-composer-logic'
@@ -25,7 +25,7 @@ import type {
   MobilePromptContent,
 } from '@/types/mobile'
 import * as ImagePicker from 'expo-image-picker'
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import {
   ActivityIndicator,
   Alert,
@@ -134,6 +134,7 @@ export function WorkspaceComposer({
   // same menu, so they share one open state instead of three navigation targets.
   const [openPicker, setOpenPicker] = useState<'add' | 'mode' | 'model' | 'permission' | undefined>(undefined)
   const [draftImages, setDraftImages] = useState<DraftImage[]>([])
+  const modelTriggerRef = useRef<View>(null)
   const hasContent = text.trim() !== '' || draftImages.length > 0
   const action = composerPrimaryAction({ cancelling, disabled, hasText: hasContent, running, sending })
   const send = async (): Promise<void> => {
@@ -214,21 +215,21 @@ export function WorkspaceComposer({
   }
   const hasSession = sessionId !== undefined && sessionId.length > 0
   const modeLabel = agentPresetLabel(agentPreset)
-  const selectedModelLabel = modelLabel(model)
-  // `ModelSelect` prints the model name in the secondary tone and the effort in
-  // the caption tone beside it (`triggerEffort`, 13/20, `label-caption`).
   const modelName =
     model === undefined ? message('session.selectModel') : catalogModelLabel(modelCatalog?.groups ?? [], model)
-  const effortLabel = model?.reasoningEffort
+  const selectedModelEntry = selectedCatalogModel(modelCatalog?.groups ?? [], model)
+  const effectiveEffort = model?.reasoningEffort ?? selectedModelEntry?.reasoning?.defaultEffort
+  const effortLabel =
+    effectiveEffort === undefined
+      ? undefined
+      : reasoningEffortLabel(effectiveEffort, selectedModelEntry?.reasoning?.efforts ?? [])
+  const selectedModelLabel = [modelName, effortLabel].filter(Boolean).join(' · ')
   const selectedPermissionLabel =
     permissions === undefined
       ? message('session.permissionWorkspaceBadge')
       : permissionLabel(permissions.currentValue, permissions)
   const controlsDisabled = disabled || sending || cancelling || selectionPending
   const submitting = sending || cancelling || selectionPending
-  // `ModelSelect`'s effort pane lists the selected model's own efforts.
-  const selectedModelEntry = selectedCatalogModel(modelCatalog?.groups ?? [], model)
-  const effortsOfSelected = (selectedModelEntry?.reasoning?.efforts ?? []).map((effort) => effort.id)
 
   // The three pickers print the same rows the Web's `Menu` primitive does: the
   // projection's own options, with the current value checked.
@@ -506,9 +507,10 @@ export function WorkspaceComposer({
               ) : null}
               {hasSession ? (
                 <Pressable
+                  ref={modelTriggerRef}
                   accessibilityRole="button"
                   accessibilityLabel={format('composer.selectModel', { label: selectedModelLabel })}
-                  accessibilityState={{ disabled: controlsDisabled }}
+                  accessibilityState={{ disabled: controlsDisabled, expanded: openPicker === 'model' }}
                   disabled={controlsDisabled}
                   hitSlop={{ top: 8, bottom: 8 }}
                   onPress={() => setOpenPicker('model')}
@@ -519,7 +521,7 @@ export function WorkspaceComposer({
                     pressed && s.pressed,
                   ]}
                 >
-                  <NativeIcon name="data-outline" size={14} color={theme.colors.inkMuted} />
+                  {layout.iconModel ? <NativeIcon name="data-outline" size={14} color={theme.colors.inkMuted} /> : null}
                   {layout.iconModel ? null : (
                     <Text maxFontSizeMultiplier={1.2} numberOfLines={1} style={s.modelText}>
                       {modelName}
@@ -530,7 +532,11 @@ export function WorkspaceComposer({
                       {effortLabel}
                     </Text>
                   )}
-                  <NativeIcon name="chevron-down-outline" size={14} color={theme.colors.inkFaint} />
+                  <NativeIcon
+                    name={openPicker === 'model' ? 'chevron-up-outline' : 'chevron-down-outline'}
+                    size={14}
+                    color={theme.colors.inkFaint}
+                  />
                 </Pressable>
               ) : (
                 <View
@@ -619,9 +625,9 @@ export function WorkspaceComposer({
         title={message('mode.selectTitle')}
       />
       <NativeModelPicker
-        disabled={submitting || !hasSession}
+        anchorRef={modelTriggerRef}
+        disabled={controlsDisabled || !hasSession || onSelectModel === undefined}
         effort={model?.reasoningEffort}
-        efforts={effortsOfSelected}
         groups={modelCatalog?.groups ?? []}
         failures={modelCatalog?.failures ?? []}
         routable={modelCatalog?.routable}
@@ -719,7 +725,7 @@ const makeStyles = (theme: AppTheme) =>
     // The trailing cluster gives way before the icon triggers do: the model name
     // ellipsizes (effort first, `ModelSelect .triggerEffort`), while the access
     // and mode controls keep their native touch bounds.
-    trailing: { alignItems: 'center', flexDirection: 'row', flex: 1, gap: 6, minWidth: 0 },
+    trailing: { alignItems: 'center', justifyContent: 'flex-end', flexDirection: 'row', flex: 1, gap: 6, minWidth: 0 },
     // `PermissionSelect.trigger` / `ModelSelect.trigger`: native 36pt floor, `0 4px 0 8px`,
     // r8, 4px between the glyph, labels and chevron.
     tool: {
@@ -754,7 +760,14 @@ const makeStyles = (theme: AppTheme) =>
     // Both triggers print 13/500 in label-secondary; only the model name steps
     // down to 400 and its effort value takes the caption tone.
     toolLabel: { color: theme.colors.inkMuted, flexShrink: 1, fontSize: 13, fontWeight: '500', lineHeight: 20 },
-    modelControl: { flex: 1 },
+    modelControl: {
+      flexShrink: 1,
+      maxWidth: 360,
+      backgroundColor: theme.colors.surfaceMuted,
+      borderRadius: theme.radius.pill,
+      paddingLeft: 10,
+      paddingRight: 8,
+    },
     modelText: { color: theme.colors.inkMuted, flexShrink: 1, fontSize: 13, fontWeight: '400', lineHeight: 20 },
     // `.triggerEffort` shrinks 1000× so it ellipsizes away before the name does.
     effortText: { color: theme.colors.inkFaint, flexShrink: 1000, fontSize: 13, lineHeight: 20, minWidth: 0 },

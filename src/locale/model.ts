@@ -11,6 +11,9 @@ export const model = {
   noAvailableModels: '暂无可用模型',
   selectTitle: '选择模型',
   reasoningEffort: '推理等级',
+  providerDefault: '默认推理等级',
+  resetEffort: '恢复模型默认推理等级',
+  backToEffort: '返回推理等级',
   /** Reasoning depth labels; the catalog sends these ids. */
   effortOff: '关闭',
   effortLow: '低',
