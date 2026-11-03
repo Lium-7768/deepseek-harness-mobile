@@ -66,12 +66,16 @@ export function startMobileSync(options: SyncOptions): () => void {
         const cursor = queryClient.getQueryData<SessionEventsPayload>(queryKeys.sessionEvents(sessionId))?.since ?? 0
         const subscription = await api.createSessionSubscription(sessionId, cursor)
         if (!valid()) return
-        queryClient.setQueryData<SessionEventsPayload>(queryKeys.sessionEvents(sessionId), (current) => ({
-          ...current,
-          since: Math.max(current?.since ?? 0, subscription.snapshotSeq),
-          items: sessionWindow(mergeItems(current?.items ?? [], subscription.snapshot.items)).items,
-          status: subscription.snapshot.status,
-        }))
+        queryClient.setQueryData<SessionEventsPayload>(queryKeys.sessionEvents(sessionId), (current) => {
+          const window = sessionWindow(mergeItems(current?.items ?? [], subscription.snapshot.items))
+          return {
+            ...current,
+            since: Math.max(current?.since ?? 0, subscription.snapshotSeq),
+            items: window.items,
+            windowStartSeq: window.truncated ? window.items[0]?.seq : current?.windowStartSeq,
+            status: subscription.snapshot.status,
+          }
+        })
         queryClient.setQueryData(queryKeys.sessionQueue(sessionId), subscription.snapshot.queue)
         queryClient.setQueryData(queryKeys.sessionJobs(sessionId), subscription.snapshot.jobs)
         queryClient.setQueryData(queryKeys.sessionInteractions(sessionId), {

@@ -1,4 +1,5 @@
 import { format, t as message } from '@/locale'
+import { isGoalRef, isGoalView } from '@/api/goal-payload'
 import type {
   MobileAgentPresetDetail,
   MobileAgentPresetListPayload,
@@ -51,6 +52,7 @@ export type MobileApiErrorKind =
   | 'agent-preset-invalid'
   | 'settings-rejected'
   | 'settings-conflict'
+  | 'unsupported'
   | 'protocol'
   | 'http'
   | 'unknown'
@@ -379,41 +381,72 @@ export class MobileApi {
   }
 
   async schedules(): Promise<{ items: import('@/types/mobile').MobileScheduleEntry[] }> {
-    const result = await this.#post<{ items: import('@/types/mobile').MobileScheduleEntry[] }>(
-      '/v1/schedules/catalog',
-      {},
-    )
-    if (!Array.isArray(result.items)) throw new Error(message('schedule.unsupported'))
-    return result
+    let result: unknown
+    try {
+      result = await this.#post('/v1/schedules/catalog', {})
+    } catch (error) {
+      if (
+        error instanceof MobileApiError &&
+        ((error.diagnostic.status === 404 && error.diagnostic.code === 'not-found') ||
+          error.diagnostic.code === 'schedule-unsupported')
+      )
+        throw createError(
+          'unsupported',
+          message('schedule.unsupported'),
+          {
+            code: error.diagnostic.code,
+            status: error.diagnostic.status,
+            rawMessage: error.diagnostic.rawMessage,
+          },
+          false,
+        )
+      throw error
+    }
+    if (!isRecord(result) || !Array.isArray(result.items) || !result.items.every(isScheduleEntry))
+      throw createError('protocol', message('errors.responseInvalid'))
+    return { items: result.items }
   }
 
   async updateSchedule(
     task: import('@/types/mobile').MobileScheduleEntry,
     action: 'pause' | 'resume' | 'delete',
   ): Promise<void> {
-    const result = await this.#post<{ code?: string }>(`/v1/schedules/${encodeURIComponent(task.id)}/${action}`, {
+    const result = await this.#post<unknown>(`/v1/schedules/${encodeURIComponent(task.id)}/${action}`, {
       expectedUpdatedAt: task.updatedAt ?? null,
     })
+    if (!isRecord(result)) throw createError('protocol', message('errors.responseInvalid'))
     if (result.code !== undefined) throw new Error(message('schedule.conflict'))
   }
 
   /** Reads live Goal activation, which is deliberately absent from durable projections. */
-  sessionGoal(sessionId: string): Promise<{ goal: MobileGoalView | null }> {
-    return this.#post(`/v1/sessions/${encodeURIComponent(sessionId)}/goal/read`, {})
+  async sessionGoal(sessionId: string): Promise<{ goal: MobileGoalView | null }> {
+    const result = await this.#post<unknown>(`/v1/sessions/${encodeURIComponent(sessionId)}/goal/read`, {})
+    if (!isRecord(result) || (result.goal !== null && !isGoalView(result.goal)))
+      throw createError('protocol', message('errors.responseInvalid'))
+    return { goal: result.goal }
   }
 
-  createGoal(sessionId: string, objective: string): Promise<{ ref: MobileGoalRef }> {
-    return this.#post(`/v1/sessions/${encodeURIComponent(sessionId)}/goal/create`, { objective })
+  async createGoal(sessionId: string, objective: string): Promise<{ ref: MobileGoalRef }> {
+    const result = await this.#post<unknown>(`/v1/sessions/${encodeURIComponent(sessionId)}/goal/create`, { objective })
+    if (!isRecord(result) || !isGoalRef(result.ref)) throw createError('protocol', message('errors.responseInvalid'))
+    return { ref: result.ref }
   }
 
   /** Applies one desktop Goal mutation using the projection's current CAS reference. */
-  mutateGoal(
+  async mutateGoal(
     sessionId: string,
     action: 'edit' | 'pause' | 'resume' | 'clear',
     ref: MobileGoalRef,
     input: { objective?: string } = {},
   ): Promise<MobileGoalView | MobileGoalRef | { cleared: true }> {
-    return this.#post(`/v1/sessions/${encodeURIComponent(sessionId)}/goal/${action}`, { ref, ...input })
+    const result = await this.#post<unknown>(`/v1/sessions/${encodeURIComponent(sessionId)}/goal/${action}`, {
+      ref,
+      ...input,
+    })
+    if (isGoalView(result)) return result
+    if (isRecord(result) && !('phase' in result) && isGoalRef(result)) return result
+    if (action === 'clear' && isRecord(result) && result.cleared === true) return { cleared: true }
+    throw createError('protocol', message('errors.responseInvalid'))
   }
 
   /** Updates one queued prompt using an existing DSH queue action. */
@@ -693,4 +726,22 @@ function containsChinese(value: string): boolean {
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return value !== null && typeof value === 'object' && !Array.isArray(value)
+}
+
+function isScheduleEntry(value: unknown): value is import('@/types/mobile').MobileScheduleEntry {
+  if (!isRecord(value) || !isRecord(value.target)) return false
+  return (
+    typeof value.id === 'string' &&
+    value.id.trim() !== '' &&
+    typeof value.title === 'string' &&
+    typeof value.prompt === 'string' &&
+    typeof value.scheduledAt === 'string' &&
+    (value.updatedAt === undefined || typeof value.updatedAt === 'string') &&
+    (value.executionActive === undefined || typeof value.executionActive === 'boolean') &&
+    (value.status === 'active' || value.status === 'paused' || value.status === 'ended') &&
+    (value.target.kind === 'new' ||
+      ((value.target.kind === 'session' || value.target.kind === 'new_once') &&
+        typeof value.target.sessionId === 'string' &&
+        value.target.sessionId.trim() !== ''))
+  )
 }

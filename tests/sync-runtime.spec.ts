@@ -16,6 +16,57 @@ afterEach(() => {
 })
 
 describe('native sync lifecycle', () => {
+  it('records a truncated subscription window so older history remains discoverable', async () => {
+    const cache = new QueryClient()
+    const items = Array.from({ length: 1100 }, (_, turn) => [
+      { seq: turn * 3 + 1, event: { type: 'turn/start' } },
+      { seq: turn * 3 + 2, event: { type: 'user/message' } },
+      { seq: turn * 3 + 3, event: { type: 'turn/end' } },
+    ]).flat()
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(
+        async (url: string) =>
+          new Response(
+            JSON.stringify({
+              contractVersion: 1,
+              data: url.endsWith('/running')
+                ? { sessionIds: ['one'] }
+                : url.endsWith('/subscriptions')
+                  ? {
+                      snapshotSeq: 3300,
+                      subscriptionId: 'subscription',
+                      activationToken: 'token',
+                      snapshot: { items, status: 'idle', queue: { items: [] }, jobs: { items: [] }, interactions: [] },
+                    }
+                  : { activated: true },
+            }),
+          ),
+      ),
+    )
+    stop = startMobileSync({
+      connection,
+      queryClient: cache,
+      fetchStream: async () => ({
+        ok: true,
+        status: 200,
+        body: new ReadableStream({
+          start(c) {
+            c.enqueue(encoder.encode(`data: ${ready}\n\n`))
+          },
+        }),
+      }),
+      setStatus: vi.fn(),
+      markEvent: vi.fn(),
+      onUnauthorized: vi.fn(),
+    })
+    await vi.advanceTimersByTimeAsync(0)
+    const result = cache.getQueryData<import('@/types/mobile').SessionEventsPayload>(['session-events', 'one'])!
+    expect(result.since).toBe(3300)
+    expect(result.items.length).toBeLessThanOrEqual(2000)
+    expect(result.windowStartSeq).toBe(result.items[0].seq)
+    cache.clear()
+  })
   it('waits for ready and backs off consecutive failed connections', async () => {
     const fetchStream = vi.fn().mockRejectedValue(new Error('offline'))
     const setStatus = vi.fn()

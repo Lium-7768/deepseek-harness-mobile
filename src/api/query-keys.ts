@@ -8,6 +8,9 @@ export const queryKeys = {
   sessionList: key('session-list'),
   sessionListForSession: key('session-list-for-session'),
   sessionHistory: key('session-history'),
+  // Retain the history prefix for invalidations, but never share data with the full transcript.
+  sessionHistoryTail: (sessionId: string | undefined, maxMessages: number) =>
+    ['session-history', sessionId, 'tail', maxMessages] as const,
   sessionEvents: key('session-events'),
   sessionQueue: key('session-queue'),
   sessionJobs: key('session-jobs'),

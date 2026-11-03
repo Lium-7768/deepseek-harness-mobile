@@ -1,9 +1,8 @@
 import { MobileApi } from '@/api/mobile-api'
 import { queryKeys } from '@/api/query-keys'
+import { sessionEventsOptions } from '@/api/session-query-options'
 import { t as message } from '@/locale'
-import { mergeEventItems } from '@/sync/event-items'
-import { sessionWindow } from '@/sync/session-window'
-import type { MobileConnection, SessionEventsPayload } from '@/types/mobile'
+import type { MobileConnection } from '@/types/mobile'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useScreenActive } from '@/hooks/use-screen-active'
 import { useMemo } from 'react'
@@ -37,30 +36,7 @@ export function useSessionQueries(
     refetchIntervalInBackground: false,
     retry: false,
   })
-  const events = useQuery({
-    staleTime: Infinity, // Explicit stream invalidation marks an uncertain status stale; elapsed time alone does not.
-    queryKey: queryKeys.sessionEvents(sessionId),
-    enabled: ready,
-    queryFn: ({ signal }) => {
-      if (!client || !sessionId) throw new Error(message('conversation.openFromList'))
-      const current = queryClient.getQueryData<SessionEventsPayload>(queryKeys.sessionEvents(sessionId))
-      const cursor = current?.since ?? 0
-      return client
-        .withSignal(signal)
-        .sessionEvents(sessionId, cursor)
-        .then((page) => {
-          // SSE may append while the read is in flight; merge against the latest cache.
-          const latest = queryClient.getQueryData<SessionEventsPayload>(queryKeys.sessionEvents(sessionId))
-          const window = sessionWindow(mergeEventItems(latest?.items ?? [], page.items))
-          return {
-            ...page,
-            since: Math.max(cursor, latest?.since ?? 0, ...page.items.map((item) => item.seq ?? 0)),
-            items: window.items,
-            windowStartSeq: window.truncated ? window.items[0]?.seq : latest?.windowStartSeq,
-          }
-        })
-    },
-  })
+  const events = useQuery(sessionEventsOptions(queryClient, client, sessionId))
   const queue = useQuery({
     queryKey: queryKeys.sessionQueue(sessionId),
     enabled: ready,

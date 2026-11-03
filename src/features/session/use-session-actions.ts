@@ -1,5 +1,6 @@
 import { MobileApi, MobileApiError } from '@/api/mobile-api'
 import { queryKeys } from '@/api/query-keys'
+import { isGoalView } from '@/api/goal-payload'
 import { withErrorContext } from '@/components/route-params'
 import { t as message } from '@/locale'
 import type { MobilePromptContent, SessionEventsPayload } from '@/types/mobile'
@@ -100,7 +101,7 @@ export function useSessionActions(client: MobileApi | undefined, sessionId: stri
     },
     onSuccess: (result, { action }) => {
       if (action === 'clear') queryClient.setQueryData(queryKeys.sessionGoal(sessionId), { goal: null })
-      else if ('phase' in result) queryClient.setQueryData(queryKeys.sessionGoal(sessionId), { goal: result })
+      else if (isGoalView(result)) queryClient.setQueryData(queryKeys.sessionGoal(sessionId), { goal: result })
       return Promise.all([
         queryClient.invalidateQueries({ queryKey: queryKeys.sessionHistory(sessionId) }),
         queryClient.invalidateQueries({ queryKey: queryKeys.sessionGoal(sessionId) }),

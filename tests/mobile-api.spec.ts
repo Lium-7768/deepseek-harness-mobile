@@ -288,9 +288,15 @@ describe('MobileApi agent observation and control requests', () => {
     await api.subagentHistory('parent/a', 'child/a', 'continuable')
     await api.sendSubagentMessage('parent/a', 'child/a', [{ type: 'text', text: 'Continue the task.' }])
     await api.interruptSubagent('parent/a', 'child/a')
+    fetchMock.mockResolvedValueOnce(jsonResponse({ contractVersion: 1, data: { goal: null } }, 200))
     await api.sessionGoal('parent/a')
+    fetchMock.mockResolvedValueOnce(
+      jsonResponse({ contractVersion: 1, data: { ref: { id: 'goal-1', revision: 1 } } }, 200),
+    )
     await api.createGoal('parent/a', 'Complete the review.')
+    fetchMock.mockResolvedValueOnce(jsonResponse({ contractVersion: 1, data: { id: 'goal-1', revision: 4 } }, 200))
     await api.mutateGoal('parent/a', 'pause', { id: 'goal-1', revision: 3 })
+    fetchMock.mockResolvedValueOnce(jsonResponse({ contractVersion: 1, data: { id: 'goal-1', revision: 4 } }, 200))
     await api.mutateGoal('parent/a', 'edit', { id: 'goal-1', revision: 3 }, { objective: 'Complete the review.' })
 
     const calls = fetchMock.mock.calls as Array<[string, RequestInit]>
@@ -410,5 +416,72 @@ describe('desktop automation and archive management boundary', () => {
     } finally {
       vi.unstubAllGlobals()
     }
+  })
+})
+
+describe('Goal and schedule response validation', () => {
+  let fetchMock: ReturnType<typeof vi.fn>
+  beforeEach(() => {
+    fetchMock = vi.fn()
+    vi.stubGlobal('fetch', fetchMock)
+    vi.spyOn(console, 'warn').mockImplementation(() => undefined)
+  })
+  afterEach(() => {
+    vi.restoreAllMocks()
+    vi.unstubAllGlobals()
+  })
+  it.each([null, false, 1, 'goal', [], {}, { phase: 'active' }, { id: 'g', revision: 1, phase: 'unknown' }])(
+    'rejects invalid Goal mutations as protocol errors: %j',
+    async (data) => {
+      fetchMock.mockResolvedValue(jsonResponse({ contractVersion: 1, data }, 200))
+      await expect(
+        new MobileApi(connection).mutateGoal('one', 'pause', { id: 'g', revision: 1 }),
+      ).rejects.toMatchObject({ kind: 'protocol' })
+    },
+  )
+  it('accepts a full view, a CAS reference, and both supported clear responses', async () => {
+    const api = new MobileApi(connection)
+    const ref = { id: 'g', revision: 2 }
+    const goal = { ...ref, objective: 'Fix the review', phase: 'paused', activation: 'disarmed' }
+    for (const [action, data] of [
+      ['pause', goal],
+      ['edit', ref],
+      ['clear', ref],
+      ['clear', { cleared: true }],
+    ] as const) {
+      fetchMock.mockResolvedValueOnce(jsonResponse({ contractVersion: 1, data }, 200))
+      await expect(api.mutateGoal('one', action, { id: 'g', revision: 1 })).resolves.toEqual(data)
+    }
+  })
+  it('validates Goal read/create responses before marking mutations successful', async () => {
+    const api = new MobileApi(connection)
+    for (const data of [null, {}, { goal: false }, { goal: { id: 'g', revision: 1, phase: 'active' } }]) {
+      fetchMock.mockResolvedValueOnce(jsonResponse({ contractVersion: 1, data }, 200))
+      await expect(api.sessionGoal('one')).rejects.toMatchObject({ kind: 'protocol' })
+    }
+    for (const data of [null, {}, { ref: { id: 'g', revision: 0 } }]) {
+      fetchMock.mockResolvedValueOnce(jsonResponse({ contractVersion: 1, data }, 200))
+      await expect(api.createGoal('one', 'objective')).rejects.toMatchObject({ kind: 'protocol' })
+    }
+  })
+  it.each([null, {}, { items: null }, { items: [null] }, { items: [{ id: 'task', target: null }] }])(
+    'reports malformed catalogs as protocol failures, never unsupported: %j',
+    async (data) => {
+      fetchMock.mockResolvedValueOnce(jsonResponse({ contractVersion: 1, data }, 200))
+      await expect(new MobileApi(connection).schedules()).rejects.toMatchObject({ kind: 'protocol' })
+    },
+  )
+  it.each([
+    [404, 'not-found', 'unsupported'],
+    [501, 'schedule-unsupported', 'unsupported'],
+    [404, 'session-not-found', 'session-not-found'],
+    [401, 'unauthorized', 'credentials'],
+    [503, 'upstream-unavailable', 'desktop-unavailable'],
+  ])('classifies the catalog HTTP %s / %s failure as %s', async (status, code, kind) => {
+    fetchMock.mockResolvedValueOnce(jsonResponse({ error: { code, message: 'Upstream failure' } }, status as number))
+    await expect(new MobileApi(connection).schedules()).rejects.toMatchObject({
+      kind,
+      diagnostic: { kind, code, status },
+    })
   })
 })

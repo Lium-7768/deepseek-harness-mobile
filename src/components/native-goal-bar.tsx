@@ -5,7 +5,16 @@ import type { AppTheme } from '@/theme'
 import { useAppTheme, useThemedStyles } from '@/theme/hooks'
 import type { MobileGoalRef, MobileGoalView } from '@/types/mobile'
 import { useEffect, useRef, useState } from 'react'
-import { ActivityIndicator, Pressable, StyleSheet, Text, TextInput, View, useWindowDimensions } from 'react-native'
+import {
+  ActivityIndicator,
+  Alert,
+  Pressable,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
+  useWindowDimensions,
+} from 'react-native'
 
 /** Desktop goal dock, with larger native touch targets and wrapping for enlarged text. */
 export function NativeGoalBar({
@@ -53,6 +62,7 @@ export function NativeGoalBar({
   if (goal === undefined || state === undefined || goal.id === clearedId) return null
   const currentGoal = goal
   const busy = pending || working
+  const blockedReason = goal.phase === 'blocked' ? goal.blockedReason?.message?.trim() : undefined
   const largeText = width / Math.max(fontScale, 1) < 300
   async function run(action: 'edit' | 'pause' | 'resume' | 'clear', objective?: string): Promise<void> {
     if (pending || inFlight.current) return
@@ -86,19 +96,28 @@ export function NativeGoalBar({
             value={draft}
           />
         ) : (
-          <View
+          <Pressable
             accessible
-            accessibilityLabel={`${message(`activity.${state.label}`)} ${goal.objective}${goal.blockedReason?.message ? ` ${goal.blockedReason.message}` : ''}`}
+            accessibilityRole={blockedReason ? 'button' : undefined}
+            accessibilityLabel={`${message(`activity.${state.label}`)} ${goal.objective}${blockedReason ? ` ${blockedReason}` : ''}`}
+            onPress={blockedReason ? () => Alert.alert(message('activity.goalBlocked'), blockedReason) : undefined}
             style={[s.summary, largeText && s.summaryFullWidth]}
           >
-            <View style={s.title}>
-              <NativeIcon name="goal-outline" size={16} color={theme.colors.inkTertiary} />
-              <Text style={s.label}>{message(`activity.${state.label}`)}</Text>
+            <View style={s.summaryHeading}>
+              <View style={s.title}>
+                <NativeIcon name="goal-outline" size={16} color={theme.colors.inkTertiary} />
+                <Text style={s.label}>{message(`activity.${state.label}`)}</Text>
+              </View>
+              <Text numberOfLines={1} style={s.objective}>
+                {goal.objective}
+              </Text>
             </View>
-            <Text numberOfLines={1} style={s.objective}>
-              {goal.objective}
-            </Text>
-          </View>
+            {blockedReason ? (
+              <Text numberOfLines={1} style={s.reason}>
+                {blockedReason}
+              </Text>
+            ) : null}
+          </Pressable>
         )}
         <View style={[s.actions, (editing || largeText) && s.actionsTrailing]}>
           {busy ? (
@@ -203,11 +222,13 @@ const makeStyles = (theme: AppTheme) =>
       paddingVertical: 4,
     },
     barStacked: { flexDirection: 'column', alignItems: 'stretch' },
-    summary: { flex: 1, minWidth: 0, flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 2 },
+    summary: { flex: 1, minWidth: 0, gap: 2, paddingVertical: 2 },
+    summaryHeading: { flexDirection: 'row', alignItems: 'center', gap: 10 },
     summaryFullWidth: { flex: 0, width: '100%' },
     title: { flexDirection: 'row', alignItems: 'center', gap: 6 },
     label: { color: theme.colors.ink, fontSize: 13, fontWeight: '500', lineHeight: 24, flexShrink: 1 },
     objective: { color: theme.colors.inkMuted, fontSize: 13, lineHeight: 20, flex: 1, minWidth: 0 },
+    reason: { color: theme.colors.inkTertiary, fontSize: 12, lineHeight: 18 },
     actions: { flexDirection: 'row', alignItems: 'center', flexShrink: 0 },
     actionsTrailing: { alignSelf: 'flex-end' },
     icon: {

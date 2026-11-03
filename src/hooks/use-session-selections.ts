@@ -4,7 +4,8 @@ import { withErrorContext } from '@/components/route-params'
 import { permissionOptionsLocked } from '@/components/session-route-logic'
 import { createSelectionGate, permissionSelectionDecision } from '@/components/session-selection-logic'
 import { t as message } from '@/locale'
-import type { MobileModelSelection, MobilePermissionSelect } from '@/types/mobile'
+import { useMobileSyncStore } from '@/state/mobile-sync'
+import type { MobileModelSelection, MobilePermissionSelect, MobileSyncStatus } from '@/types/mobile'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useEffect, useRef } from 'react'
 import { Alert } from 'react-native'
@@ -24,10 +25,11 @@ type State = {
 
 /** Shared by the hero and conversation. Confirmation rechecks live state and session identity before sending. */
 export function useSessionSelections(state: State) {
+  const syncStatus = useMobileSyncStore((snapshot) => snapshot.status)
   const queryClient = useQueryClient()
   const gate = useRef(createSelectionGate()).current
-  const current = useRef(state)
-  current.current = state
+  const current = useRef({ ...state, syncStatus })
+  current.current = { ...state, syncStatus }
   const mounted = useRef(true)
   useEffect(() => {
     mounted.current = true
@@ -76,8 +78,9 @@ export function useSessionSelections(state: State) {
       Alert.alert(message('mode.switchFailedTitle'), withErrorContext(message('mode.switchFailedBody'), error)),
   })
   const pending = permission.isPending || model.isPending || preset.isPending
-  const locked = (snapshot: State): boolean =>
+  const locked = (snapshot: State & { syncStatus: MobileSyncStatus }): boolean =>
     snapshot.unavailable ||
+    snapshot.syncStatus !== 'connected' ||
     !snapshot.client ||
     !snapshot.sessionId ||
     permissionOptionsLocked({ ...snapshot, status: snapshot.status, submitting: gate.busy })
@@ -166,6 +169,7 @@ export function useSessionSelections(state: State) {
     presetPending: preset.isPending,
     permissionLocked:
       state.unavailable ||
+      syncStatus !== 'connected' ||
       !state.client ||
       !state.sessionId ||
       permissionOptionsLocked({ ...state, status: state.status, submitting: pending }),

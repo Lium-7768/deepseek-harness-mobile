@@ -21,13 +21,19 @@ export function NativeGoalEditor({
   const s = useThemedStyles(makeStyles)
   const theme = useAppTheme()
   const [draft, setDraft] = useState('')
+  const [working, setWorking] = useState(false)
   const submitting = useRef(false)
+  const busy = pending || working
+  const close = (): void => {
+    if (!pending && !submitting.current) onClose()
+  }
   useEffect(() => {
     if (open) setDraft('')
   }, [open])
   const save = async (): Promise<void> => {
-    if (pending || submitting.current || draft.trim() === '') return
+    if (!open || pending || submitting.current || draft.trim() === '') return
     submitting.current = true
+    setWorking(true)
     try {
       await onCreate(draft.trim())
       onClose()
@@ -35,15 +41,11 @@ export function NativeGoalEditor({
       /* The command hook presents the failure; retain the draft. */
     } finally {
       submitting.current = false
+      setWorking(false)
     }
   }
   return (
-    <NativeAnchoredPanel
-      open={open}
-      onClose={() => {
-        if (!pending && !submitting.current) onClose()
-      }}
-    >
+    <NativeAnchoredPanel open={open} onClose={close}>
       <View style={s.content}>
         <Text style={s.title}>{message('activity.createGoal')}</Text>
         <TextInput
@@ -53,7 +55,7 @@ export function NativeGoalEditor({
           placeholder={message('activity.createGoalPlaceholder')}
           placeholderTextColor={theme.colors.inkTertiary}
           selectionColor={theme.colors.accent}
-          editable={!pending}
+          editable={!busy}
           value={draft}
           onChangeText={setDraft}
           style={s.input}
@@ -62,16 +64,16 @@ export function NativeGoalEditor({
           <NativeActionButton
             label={message('activity.saveGoal')}
             icon="check-outline"
-            loading={pending}
-            disabled={pending || draft.trim() === ''}
+            loading={busy}
+            disabled={busy || draft.trim() === ''}
             onPress={() => void save()}
           />
           <NativeActionButton
             label={message('activity.cancelGoalEdit')}
             icon="close-outline"
             variant="secondary"
-            disabled={pending}
-            onPress={onClose}
+            disabled={busy}
+            onPress={close}
           />
         </View>
       </View>

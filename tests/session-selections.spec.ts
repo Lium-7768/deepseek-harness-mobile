@@ -5,6 +5,7 @@ const mocks = vi.hoisted(() => ({
   cursor: 0,
   alert: vi.fn(),
   invalidate: vi.fn().mockResolvedValue(undefined),
+  syncStatus: 'connected' as 'connected' | 'connecting' | 'disconnected',
 }))
 vi.mock('react', () => ({
   useEffect: (effect: () => () => void) => {
@@ -16,6 +17,9 @@ vi.mock('react', () => ({
   },
 }))
 vi.mock('react-native', () => ({ Alert: { alert: mocks.alert } }))
+vi.mock('@/state/mobile-sync', () => ({
+  useMobileSyncStore: (selector: (state: { status: string }) => unknown) => selector({ status: mocks.syncStatus }),
+}))
 vi.mock('@tanstack/react-query', () => ({
   useQueryClient: () => ({ invalidateQueries: mocks.invalidate }),
   useMutation: (options: {
@@ -71,6 +75,7 @@ describe('production session selection controller', () => {
     mocks.cursor = 0
     mocks.alert.mockClear()
     mocks.invalidate.mockClear()
+    mocks.syncStatus = 'connected'
   })
   it('sends no full-access command before destructive confirmation; cancellation is a no-op', async () => {
     const state = createState()
@@ -115,5 +120,31 @@ describe('production session selection controller', () => {
     expect(state.client.sendMessage).toHaveBeenCalledTimes(1)
     expect(state.client.selectSessionModel).not.toHaveBeenCalled()
     expect(state.client.selectSessionPreset).not.toHaveBeenCalled()
+  })
+  it.each(['disconnected', 'connecting'] as const)(
+    'locks an idle cached session while %s and unlocks after reconnection',
+    async (status) => {
+      const state = createState()
+      mocks.syncStatus = status
+      const disconnected = render(state)
+      expect(disconnected.permissionLocked).toBe(true)
+      disconnected.selectPermission('read-only')
+      expect(state.client.sendMessage).not.toHaveBeenCalled()
+      mocks.syncStatus = 'connected'
+      const connected = render(state)
+      expect(connected.permissionLocked).toBe(false)
+      connected.selectPermission('read-only')
+      await flush()
+      expect(state.client.sendMessage).toHaveBeenCalledTimes(1)
+    },
+  )
+  it('rechecks stream connectivity when full access is confirmed', async () => {
+    const state = createState()
+    render(state).selectPermission('danger-full-access')
+    mocks.syncStatus = 'disconnected'
+    render(state)
+    mocks.alert.mock.calls[0][2][1].onPress()
+    await flush()
+    expect(state.client.sendMessage).not.toHaveBeenCalled()
   })
 })

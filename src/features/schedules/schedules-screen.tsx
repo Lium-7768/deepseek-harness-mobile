@@ -1,8 +1,9 @@
-import { MobileApi } from '@/api/mobile-api'
+import { MobileApi, MobileApiError } from '@/api/mobile-api'
 import { queryKeys } from '@/api/query-keys'
 import { NativeActionButton } from '@/components/native-action-button'
 import { NativeIcon } from '@/components/native-icon'
 import { ErrorNotice } from '@/components/session-screen-state'
+import { withErrorContext } from '@/components/route-params'
 import { WorkspaceShell } from '@/components/workspace-shell'
 import { useScreenActive } from '@/hooks/use-screen-active'
 import { format, t as message } from '@/locale'
@@ -61,7 +62,14 @@ export default function SchedulesScreen(): React.JSX.Element {
       ) : catalog.isPending ? (
         <ActivityIndicator color={theme.colors.inkMuted} />
       ) : catalog.isError ? (
-        <ErrorNotice text={message('schedule.unsupported')} onRetry={() => void catalog.refetch()} />
+        <ErrorNotice
+          text={
+            catalog.error instanceof MobileApiError && catalog.error.kind === 'unsupported'
+              ? message('schedule.unsupported')
+              : withErrorContext(message('schedule.loadFailed'), catalog.error)
+          }
+          onRetry={() => void catalog.refetch()}
+        />
       ) : (
         <ScrollView contentContainerStyle={s.list}>
           {catalog.data.items.length === 0 ? (

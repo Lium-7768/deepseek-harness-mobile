@@ -1,5 +1,6 @@
 import { MobileApi } from '@/api/mobile-api'
 import { queryKeys } from '@/api/query-keys'
+import { sessionEventsOptions, sessionPreviewOptions } from '@/api/session-query-options'
 import { NativeBrandMark } from '@/components/native-brand-mark'
 import { NativeIcon } from '@/components/native-icon'
 import { NativeMenuPanel } from '@/components/native-menu-panel'
@@ -21,7 +22,7 @@ import { useSessionSelectionStore } from '@/state/session-selection'
 import type { AppTheme } from '@/theme'
 import { useAppTheme, useThemedStyles } from '@/theme/hooks'
 import type { MobileAgentPresetEntry, MobilePromptContent } from '@/types/mobile'
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { router, useNavigation } from 'expo-router'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Alert, KeyboardAvoidingView, ScrollView, Platform, Pressable, StyleSheet, Text, View } from 'react-native'
@@ -33,6 +34,7 @@ export default function WorkspaceScreen(): React.JSX.Element {
   const navigation = useNavigation<{ openDrawer: () => void }>()
   const insets = useSafeAreaInsets()
   const connection = useConnectionStore((state) => state.connection)
+  const queryClient = useQueryClient()
   const client = useMemo(() => (connection === undefined ? undefined : new MobileApi(connection)), [connection])
   const selectedSessionId = useSessionSelectionStore((state) => state.selectedSessionId)
   const clearSelection = useSessionSelectionStore((state) => state.clearSelection)
@@ -52,28 +54,13 @@ export default function WorkspaceScreen(): React.JSX.Element {
         .withSignal(signal)
         .sessionModels(requireSelectedSessionId(selectedSession)),
   })
-  const selectedSessionHistory = useQuery({
-    queryKey: queryKeys.sessionHistory(selectedSession?.sessionId),
-    enabled: selectedSession !== undefined && client !== undefined,
-    queryFn: ({ signal }) =>
-      requireClient(client, message('workspace.connectFirst'))
-        .withSignal(signal)
-        .sessionHistory(requireSelectedSessionId(selectedSession)),
-  })
+  const selectedSessionHistory = useQuery(sessionPreviewOptions(client, selectedSession?.sessionId))
   const presets = useQuery({
     queryKey: queryKeys.agentPresets(connection?.gatewayUrl, connection?.deviceId),
     enabled: client !== undefined,
     queryFn: ({ signal }) => requireClient(client, message('workspace.connectFirst')).withSignal(signal).agentPresets(),
   })
-  const selectedSessionEvents = useQuery({
-    staleTime: Infinity, // Explicit stream invalidation marks an uncertain status stale; elapsed time alone does not.
-    queryKey: queryKeys.sessionEvents(selectedSession?.sessionId),
-    enabled: selectedSession !== undefined && client !== undefined,
-    queryFn: ({ signal }) =>
-      requireClient(client, message('workspace.connectFirst'))
-        .withSignal(signal)
-        .sessionEvents(requireSelectedSessionId(selectedSession), 0),
-  })
+  const selectedSessionEvents = useQuery(sessionEventsOptions(queryClient, client, selectedSession?.sessionId))
   const selections = useSessionSelections({
     client,
     sessionId: selectedSession?.sessionId,

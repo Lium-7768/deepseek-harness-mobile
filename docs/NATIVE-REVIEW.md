@@ -70,4 +70,4 @@ The synthetic validation covers multi-Turn conversation flow and all expanded to
 
 ## Narrow screens and enlarged text
 
-The deeper pass exercised a 320pt viewport with 150% font scaling. Effective reading width now selects compact composer chrome, stacked settings/actions and stacked model/provider rows. Sheets measure their own viewport and keyboard overlap, own one elevation, expose a close/escape action and let content scroll. Search results take precedence over model-picker chrome while searching. The implementation and acceptance document lists the validated matrix and remaining behavior gaps.
+The deeper pass exercised a 320pt viewport with 150% font scaling. Effective reading width now selects compact composer chrome, stacked settings/actions and stacked model/provider rows. Sheets measure their own viewport and keyboard overlap, own one elevation and let content scroll. Dismissal uses a backdrop tap, Android Back or accessibility escape; there is no visible close toolbar. Search results take precedence over model-picker chrome while searching. The implementation and acceptance document lists the validated matrix and remaining behavior gaps.
