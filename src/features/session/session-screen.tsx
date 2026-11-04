@@ -9,6 +9,8 @@ import { NativeTurnStatus } from '@/components/native-conversation-status'
 import { NativeIcon } from '@/components/native-icon'
 import { NativeProcessGroup } from '@/components/native-process-group'
 import { NativeQueueDock } from '@/components/native-queue-dock'
+import { NativeTodoDock } from '@/components/native-todo-dock'
+import { todoFromProjection } from '@/components/todo-logic'
 import { NativeTurnGroup } from '@/components/native-turn-group'
 import { firstParam, withErrorContext } from '@/components/route-params'
 import { readPermissionSelect } from '@/components/session-composer-logic'
@@ -375,6 +377,8 @@ export default function SessionScreen(): React.JSX.Element {
     goalFromProjection(history.data?.projections?.values),
     liveGoal.isError ? undefined : liveGoal.data?.goal,
   )
+  // The desktop registers this dock at order 0, ahead of the goal bar and the queue.
+  const todos = todoFromProjection(history.data?.projections?.values)
   const reportedStatus = events.data?.status ?? message('conversation.connecting')
   const running = reportedStatus === 'running' || activeSession?.running === true || runningTurnStartedAt !== undefined
   const status = running ? 'running' : reportedStatus
@@ -575,8 +579,10 @@ export default function SessionScreen(): React.JSX.Element {
                 }}
                 header={
                   (goal && goal.phase !== 'complete') ||
+                  todos !== undefined ||
                   queue.data?.items.some((item) => item.placement === 'queued') ? (
                     <View style={s.composerContext}>
+                      <NativeTodoDock todos={todos} />
                       <NativeGoalBar
                         goal={goal}
                         editRequest={goalEditRequest}

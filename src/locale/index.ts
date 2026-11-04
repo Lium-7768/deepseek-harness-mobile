@@ -33,6 +33,7 @@ import { settings as settingsCopy } from './settings'
 import { speaker } from './speaker'
 import { status } from './status'
 import { subagent } from './subagent'
+import { todo } from './todo'
 import { tool } from './tool'
 import { trajectory } from './trajectory'
 import { turn } from './turn'
@@ -83,6 +84,7 @@ const areas = {
   speaker,
   status,
   subagent,
+  todo,
   tool,
   trajectory,
   turn,

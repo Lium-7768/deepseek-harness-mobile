@@ -124,6 +124,11 @@ export const ICON_ARTWORK = {
     svg: (strokeWidth) =>
       `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="none" stroke-width="${strokeWidth}"><path d="M2.25 8.5L5.49732 11.7473C5.90519 12.1552 6.57263 12.1344 6.95426 11.7018L13.75 4" stroke="currentColor"></path></svg>`,
   },
+  'checklist-outline': {
+    size: 14,
+    svg: (strokeWidth) =>
+      `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="none" stroke-width="${strokeWidth}"><path d="M3.75 6.25C4.7165 6.25 5.5 5.4665 5.5 4.5C5.5 3.5335 4.7165 2.75 3.75 2.75C2.7835 2.75 2 3.5335 2 4.5C2 5.4665 2.7835 6.25 3.75 6.25Z" stroke="currentColor"></path><path d="M7.5 4.5H13.5" stroke="currentColor"></path><path d="M3.75 13.25C4.7165 13.25 5.5 12.4665 5.5 11.5C5.5 10.5335 4.7165 9.75 3.75 9.75C2.7835 9.75 2 10.5335 2 11.5C2 12.4665 2.7835 13.25 3.75 13.25Z" stroke="currentColor"></path><path d="M7.5 11.5H13.5" stroke="currentColor"></path></svg>`,
+  },
   'chevron-down-outline': {
     size: 14,
     svg: (strokeWidth) =>
