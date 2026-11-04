@@ -363,29 +363,32 @@ export function WorkspaceComposer({
     <View style={s.wrap}>
       {header}
       <View style={s.stack}>
-        {draftImages.length > 0 ? (
-          <View accessibilityLabel={format('composer.imagesAdded', { count: draftImages.length })} style={s.previewRow}>
-            {draftImages.map((image, index) => (
-              <View key={`${image.uri}-${index}`} style={s.preview}>
-                <Image
-                  accessibilityLabel={image.name ?? format('composer.attachmentImage', { index: index + 1 })}
-                  source={{ uri: image.uri }}
-                  style={s.previewImage}
-                />
-                <Pressable
-                  accessibilityRole="button"
-                  accessibilityLabel={format('composer.removeAttachment', { index: index + 1 })}
-                  hitSlop={12}
-                  onPress={() => setDraftImages((current) => current.filter((_, itemIndex) => itemIndex !== index))}
-                  style={({ pressed }) => [s.removePreview, pressed && s.pressed]}
-                >
-                  <NativeIcon name="close-outline" size={13} color={theme.colors.onScrim} />
-                </Pressable>
-              </View>
-            ))}
-          </View>
-        ) : null}
         <View style={[s.card, focused && s.cardFocused]}>
+          {draftImages.length > 0 ? (
+            <View
+              accessibilityLabel={format('composer.imagesAdded', { count: draftImages.length })}
+              style={s.previewRow}
+            >
+              {draftImages.map((image, index) => (
+                <View key={`${image.uri}-${index}`} style={s.preview}>
+                  <Image
+                    accessibilityLabel={image.name ?? format('composer.attachmentImage', { index: index + 1 })}
+                    source={{ uri: image.uri }}
+                    style={s.previewImage}
+                  />
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel={format('composer.removeAttachment', { index: index + 1 })}
+                    hitSlop={12}
+                    onPress={() => setDraftImages((current) => current.filter((_, itemIndex) => itemIndex !== index))}
+                    style={({ pressed }) => [s.removePreview, pressed && s.pressed]}
+                  >
+                    <NativeIcon name="close-outline" size={12} color={theme.colors.onScrim} />
+                  </Pressable>
+                </View>
+              ))}
+            </View>
+          ) : null}
           <TextInput
             accessibilityLabel={message('composer.inputLabel')}
             multiline
@@ -658,21 +661,31 @@ const makeStyles = (theme: AppTheme) =>
     wrap: { backgroundColor: theme.colors.canvas, paddingBottom: 4, paddingHorizontal: theme.spacing.lg },
     stack: { flexDirection: 'column', gap: 6 },
     footer: { flexDirection: 'column' },
-    previewRow: { flexDirection: 'row', gap: theme.spacing.sm, marginBottom: theme.spacing.sm },
-    preview: { height: 58, position: 'relative', width: 58 },
-    previewImage: { borderRadius: theme.radius.control, height: 58, width: 58 },
+    // `ComposerAttachments .rail`: `2px 10px 0` with a -6 bottom pull, so the
+    // thumbnails sit closer to the draft than the card's own 12px gap.
+    previewRow: { flexDirection: 'row', gap: 10, marginBottom: -6, paddingHorizontal: 10, paddingTop: 2 },
+    // `AttachmentRail .item` / `.thumbnail`: 64 square on r20.
+    preview: { height: 64, position: 'relative', width: 64 },
+    previewImage: {
+      backgroundColor: theme.colors.interactiveHover,
+      borderColor: theme.colors.borderL2,
+      borderRadius: theme.radius.xl,
+      borderWidth: StyleSheet.hairlineWidth,
+      height: 64,
+      width: 64,
+    },
+    // `AttachmentRail .remove`: an 18pt circle inset 4 from the corner, with no
+    // ring of its own; the contrast fill carries it over any photo.
     removePreview: {
       alignItems: 'center',
       backgroundColor: theme.colors.controlOnMedia,
-      borderColor: theme.colors.canvas,
-      borderRadius: 10,
-      borderWidth: 1,
-      height: 20,
+      borderRadius: theme.radius.pill,
+      height: 18,
       justifyContent: 'center',
       position: 'absolute',
-      right: -5,
-      top: -5,
-      width: 20,
+      right: 4,
+      top: 4,
+      width: 18,
     },
     // `wqMmtW_card`: r28, `8px 0 0` top pad, 12px between the draft and the
     // control row, a white fill above the canvas, and the elevation hairline
