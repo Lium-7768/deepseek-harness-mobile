@@ -196,6 +196,7 @@ function GoalButton({
       accessibilityLabel={label}
       accessibilityState={{ disabled }}
       disabled={disabled}
+      hitSlop={8}
       onPress={onPress}
       style={({ pressed }) => [s.icon, disabled && s.disabled, pressed && s.pressed]}
     >
@@ -207,6 +208,9 @@ function GoalButton({
 const makeStyles = (theme: AppTheme) =>
   StyleSheet.create({
     dock: { marginHorizontal: 16 },
+    // `GoalBar .bar`: `4px 5px 4px 12px`, gap 10, a 36-tall menu surface on r12.
+    // The action buttons keep the desktop's 28pt box; hitSlop carries the touch
+    // target to 44 without growing the bar past the desktop's height.
     bar: {
       ...theme.elevation.card,
       backgroundColor: theme.colors.surfaceRaised,
@@ -215,10 +219,10 @@ const makeStyles = (theme: AppTheme) =>
       borderRadius: theme.radius.md,
       flexDirection: 'row',
       alignItems: 'center',
-      gap: 6,
-      minHeight: 48,
+      gap: 10,
+      minHeight: 36,
       paddingLeft: 12,
-      paddingRight: 2,
+      paddingRight: 5,
       paddingVertical: 4,
     },
     barStacked: { flexDirection: 'column', alignItems: 'stretch' },
@@ -231,11 +235,13 @@ const makeStyles = (theme: AppTheme) =>
     reason: { color: theme.colors.inkTertiary, fontSize: 12, lineHeight: 18 },
     actions: { flexDirection: 'row', alignItems: 'center', flexShrink: 0 },
     actionsTrailing: { alignSelf: 'flex-end' },
+    // The desktop's 28pt action box; hitSlop on the Pressable brings the target
+    // to 44 so the bar can stay 36 tall.
     icon: {
       alignItems: 'center',
       justifyContent: 'center',
-      minWidth: 44,
-      minHeight: 44,
+      minWidth: 28,
+      minHeight: 28,
       borderRadius: theme.radius.control,
     },
     input: {

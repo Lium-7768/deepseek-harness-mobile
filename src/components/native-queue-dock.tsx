@@ -77,6 +77,7 @@ export function NativeQueueDock({ items, onUpdate, running }: Props): React.JSX.
           })}
           accessibilityState={{ expanded, disabled: interactionActive }}
           disabled={interactionActive}
+          hitSlop={{ top: 4, bottom: 4 }}
           onPress={() => setCollapsed((value) => !value)}
           style={({ pressed }) => [s.header, pressed && s.pressed]}
         >
@@ -183,7 +184,7 @@ function QueueAction({
       accessibilityLabel={label}
       accessibilityState={{ disabled }}
       disabled={disabled}
-      hitSlop={5}
+      hitSlop={7}
       onPress={onPress}
       style={({ pressed }) => [s.action, disabled && s.actionDisabled, pressed && s.pressed]}
     >
@@ -225,10 +226,14 @@ const makeStyles = (theme: AppTheme) =>
       paddingHorizontal: 12,
       paddingVertical: 2,
     },
-    header: { alignItems: 'center', flexDirection: 'row', gap: 7, minHeight: theme.touch.minTarget },
+    // `QueueDock .header`: gap 10 in a 36-tall row. The collapsed header is the
+    // only control here, so it carries hitSlop for its own touch target.
+    header: { alignItems: 'center', flexDirection: 'row', gap: 10, minHeight: 36 },
     headerText: { color: theme.colors.inkTertiary, flex: 1, fontSize: 13, fontWeight: '500', lineHeight: 20 },
     list: { gap: 4 },
-    row: { alignItems: 'center', flexDirection: 'row', gap: 7, minHeight: theme.touch.minTarget },
+    // A queued row keeps the desktop's 36 too; its action buttons reach 44
+    // through hitSlop rather than by inflating the row.
+    row: { alignItems: 'center', flexDirection: 'row', gap: 10, minHeight: 36 },
     preview: { color: theme.colors.ink, flex: 1, fontSize: 13, lineHeight: 20 },
     editor: {
       backgroundColor: theme.colors.surfaceRaised,
