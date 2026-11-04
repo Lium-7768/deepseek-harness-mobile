@@ -3,6 +3,9 @@ import { isGoalRef, isGoalView } from '@/api/goal-payload'
 import type {
   MobileAgentPresetDetail,
   MobileAgentPresetListPayload,
+  MobileAccountBalance,
+  MobileAccountProfile,
+  MobileAccountWallet,
   MobileCommandDescriptor,
   MobileConnection,
   MobileFeedbackDeleteResult,
@@ -340,6 +343,26 @@ export class MobileApi {
   /** Lists direct desktop-owned subagent sessions without activating either agent. */
   subagents(sessionId: string): Promise<MobileSubagentCatalogPayload> {
     return this.#post<MobileSubagentCatalogPayload>(`/v1/sessions/${encodeURIComponent(sessionId)}/subagents`, {})
+  }
+
+  /** Reads the desktop's signed-in account profile, or null while signed out. */
+  async accountProfile(): Promise<MobileAccountProfile | null> {
+    const result = await this.#post<unknown>('/v1/account/profile', { client: accountClientMetadata() })
+    if (result === null) return null
+    if (!isAccountProfile(result)) throw createError('protocol', message('errors.responseInvalid'))
+    return { avatarUrl: result.avatarUrl ?? null, contact: result.contact, name: result.name }
+  }
+
+  /** Reads the desktop's account wallets, or null while signed out. */
+  async accountBalance(): Promise<MobileAccountBalance | null> {
+    const result = await this.#post<unknown>('/v1/account/balance', { client: accountClientMetadata() })
+    if (result === null) return null
+    if (!isRecord(result) || !Array.isArray(result.wallets) || !result.wallets.every(isAccountWallet))
+      throw createError('protocol', message('errors.responseInvalid'))
+    return {
+      bonusWallets: Array.isArray(result.bonusWallets) ? result.bonusWallets.filter(isAccountWallet) : [],
+      wallets: result.wallets,
+    }
   }
 
   /** Reads the slash commands the desktop publishes for one session. */
@@ -740,6 +763,38 @@ function containsChinese(value: string): boolean {
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return value !== null && typeof value === 'object' && !Array.isArray(value)
+}
+
+/** Client metadata the account reads require; the gateway validates it again. */
+function accountClientMetadata(): { version: string; locale: string; timezoneOffsetSeconds: number } {
+  return {
+    locale: Intl.DateTimeFormat().resolvedOptions().locale,
+    // `getTimezoneOffset` counts minutes west of UTC; the Host expects the same sign.
+    timezoneOffsetSeconds: -new Date().getTimezoneOffset() * 60,
+    version: '0.1.0',
+  }
+}
+
+function isAccountWallet(value: unknown): value is MobileAccountWallet {
+  return (
+    isRecord(value) &&
+    (value.currency === 'CNY' || value.currency === 'USD') &&
+    typeof value.balance === 'string' &&
+    value.balance.trim() !== ''
+  )
+}
+
+function isAccountProfile(value: unknown): value is {
+  avatarUrl?: string | null
+  contact: string | null
+  name: string | null
+} {
+  return (
+    isRecord(value) &&
+    (value.name === null || typeof value.name === 'string') &&
+    (value.contact === null || typeof value.contact === 'string') &&
+    (value.avatarUrl === undefined || value.avatarUrl === null || typeof value.avatarUrl === 'string')
+  )
 }
 
 /** One slash command the Host advertises; only `name` is required to send it. */

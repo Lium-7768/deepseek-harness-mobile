@@ -445,3 +445,22 @@ export interface MobileCommandDescriptor {
   /** One-line summary the discovery menu prints. */
   description: string
 }
+
+/** One currency wallet on the desktop's account. */
+export interface MobileAccountWallet {
+  currency: 'CNY' | 'USD'
+  balance: string
+}
+
+/** Account wallets the desktop published; bonuses are listed apart from top-ups. */
+export interface MobileAccountBalance {
+  wallets: MobileAccountWallet[]
+  bonusWallets: MobileAccountWallet[]
+}
+
+/** Signed-in identity the desktop published; every field may be masked or absent. */
+export interface MobileAccountProfile {
+  name: string | null
+  contact: string | null
+  avatarUrl: string | null
+}

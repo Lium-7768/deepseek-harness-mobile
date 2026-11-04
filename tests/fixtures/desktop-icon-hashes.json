@@ -353,6 +353,12 @@
     "regular": "1c09e72d8d587bb9bdaddf1762fd6e2a44f20f9bad948afd608af8121d9e8a42",
     "medium": "901e7db48c1a3fe4dfa533de9d81984d737c77b8c14af942ff78789643dbce97"
   },
+  "user-outline": {
+    "aspect": [1, 1],
+    "medium": "f9a2562e45138ba3781250ba8a4cc5c701eba459b710bc49f71b99bf4b002d74",
+    "regular": "305c172b0d8d8467d305a39581bf4d2fa5f14c5989fd79cfc1ecc3099ea044d1",
+    "size": 16
+  },
   "warning-outline": {
     "size": 16,
     "aspect": [1, 1],

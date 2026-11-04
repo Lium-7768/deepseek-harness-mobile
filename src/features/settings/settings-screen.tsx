@@ -15,6 +15,7 @@ import {
   settingsSectionIcon,
   type MobileSettingsSection as SettingsSection,
 } from '@/components/settings-logic'
+import { AccountSettings } from '@/components/settings/settings-account'
 import { ConnectionSettings } from '@/components/settings/settings-connection'
 import { GeneralSettings } from '@/components/settings/settings-general'
 import { ModelSettings } from '@/components/settings/settings-models'
@@ -63,7 +64,9 @@ export default function SettingsScreen(): React.JSX.Element {
       ) : (
         <>
           <SettingsTabs active={section ?? 'general'} preset={preset} />
-          {section === 'connection' ? (
+          {section === 'account' ? (
+            <AccountSettings connection={connection} />
+          ) : section === 'connection' ? (
             <ConnectionSettings connection={connection} />
           ) : section === 'models' ? (
             <ModelSettings connection={connection} />

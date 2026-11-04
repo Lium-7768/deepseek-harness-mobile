@@ -11,6 +11,8 @@ export const settings = {
   fieldAccessibilityLabel: '{label}：{value}',
   title: '设置',
 
+  /** Desktop order -10, ahead of every other section. */
+  sectionAccount: '账号与余额',
   sectionGeneral: '通用设置',
   sectionConnection: '桌面端连接',
   sectionModels: '模型',
@@ -155,4 +157,19 @@ export const settings = {
   forgetAction: '忘记此桌面端',
   backToSettings: '返回设置',
   close: '关闭设置',
+
+  accountReadOnly: '只读：登录、退出与奖励领取请在桌面端操作。',
+  accountSignedOut: '桌面端尚未登录 DeepSeek 账号。',
+  accountName: '账号名称',
+  accountNameDetail: '桌面端登录的显示名称。',
+  accountNameMissing: '未提供',
+  accountContact: '联系方式',
+  accountContactDetail: '桌面端返回的脱敏联系方式。',
+  accountContactMissing: '未提供',
+  accountAvatarPresent: '桌面端已设置头像。',
+  accountBalance: '余额',
+  accountBalanceDetail: '各币种余额，按桌面端返回的精度显示。',
+  accountBalanceEmpty: '暂无余额记录',
+  accountBonus: '赠送额度',
+  accountBonusDetail: '未使用的赠送额度。',
 } as const

@@ -2,10 +2,12 @@ import type { NativeIconName } from '@/components/native-icon'
 import { t as message } from '@/locale'
 
 /** Mobile settings section ids and their Web settings navigation glyphs. */
-export type MobileSettingsSection = 'general' | 'connection' | 'models' | 'plugins' | 'presets'
+export type MobileSettingsSection = 'account' | 'general' | 'connection' | 'models' | 'plugins' | 'presets'
 
 /** Sections shown in the sheet's bar, in the desktop's order. */
 export const SETTINGS_TABS: ReadonlyArray<MobileSettingsSection> = [
+  // The desktop registers `account` at order -10, ahead of every other section.
+  'account',
   'general',
   'connection',
   'models',
@@ -15,6 +17,7 @@ export const SETTINGS_TABS: ReadonlyArray<MobileSettingsSection> = [
 
 /** Maps native route ids to Web canonical settings icon semantics. */
 export function settingsSectionIcon(section: MobileSettingsSection): NativeIconName {
+  if (section === 'account') return 'user-outline'
   if (section === 'connection') return 'link-outline'
   if (section === 'models') return 'data-outline'
   if (section === 'plugins') return 'personalization-outline'
@@ -37,6 +40,7 @@ export function parseSection(value: string | undefined): MobileSettingsSection |
  * @returns Localized section label.
  */
 export function sectionTitle(section: MobileSettingsSection | undefined): string {
+  if (section === 'account') return message('settings.sectionAccount')
   if (section === 'general') return message('settings.sectionGeneral')
   if (section === 'connection') return message('settings.sectionConnection')
   if (section === 'models') return message('settings.sectionModels')
