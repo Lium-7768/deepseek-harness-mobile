@@ -72,6 +72,7 @@ type Props = {
   modelCatalog?: MobileSessionModelsPayload
   modelCatalogError?: boolean
   modelCatalogLoading?: boolean
+  onRetryModels?: () => Promise<unknown>
   selectionPending?: boolean
   /** `true` while the permission projection is missing or the session is busy. */
   permissionLocked?: boolean
@@ -109,6 +110,7 @@ export function WorkspaceComposer({
   modelCatalog,
   modelCatalogError = false,
   modelCatalogLoading = false,
+  onRetryModels,
   selectionPending = false,
   permissionLocked = false,
   permissions,
@@ -633,6 +635,7 @@ export function WorkspaceComposer({
         routable={modelCatalog?.routable}
         loading={modelCatalogLoading}
         failed={modelCatalogError}
+        onRetry={onRetryModels}
         notice={modelNotice?.text}
         onClose={() => setOpenPicker(undefined)}
         onSelectEffort={(level) => {
@@ -763,10 +766,6 @@ const makeStyles = (theme: AppTheme) =>
     modelControl: {
       flexShrink: 1,
       maxWidth: 360,
-      backgroundColor: theme.colors.surfaceMuted,
-      borderRadius: theme.radius.pill,
-      paddingLeft: 10,
-      paddingRight: 8,
     },
     modelText: { color: theme.colors.inkMuted, flexShrink: 1, fontSize: 13, fontWeight: '400', lineHeight: 20 },
     // `.triggerEffort` shrinks 1000× so it ellipsizes away before the name does.

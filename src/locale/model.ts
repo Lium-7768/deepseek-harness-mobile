@@ -7,7 +7,8 @@
 export const model = {
   routingUnavailable: '当前会话没有可用的模型路由。',
   providerUnavailable: '供应商 {name} 暂时不可用。',
-  catalogFailed: '模型目录加载失败，请关闭后重试。',
+  catalogFailed: '模型目录加载失败，请重新加载。',
+  retryCatalog: '重新加载模型',
   noAvailableModels: '暂无可用模型',
   selectTitle: '选择模型',
   reasoningEffort: '推理等级',

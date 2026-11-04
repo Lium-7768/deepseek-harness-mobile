@@ -2,8 +2,8 @@ import { EFFORT_THUMB_SIZE, effortIndexAtPosition, reasoningEffortLabel } from '
 import { t as message } from '@/locale'
 import type { AppTheme } from '@/theme'
 import { useAppTheme, useThemedStyles } from '@/theme/hooks'
-import type { MobileModelReasoningEffort } from '@/types/mobile'
-import { useRef, useState } from 'react'
+import type { MobileModelReasoningEffort, MobileModelSelection } from '@/types/mobile'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { StyleSheet, View } from 'react-native'
 
 /** Preview while dragging; send one command only on release or an accessibility adjustment. */
@@ -13,32 +13,41 @@ export function NativeEffortSlider({
   disabled,
   onPreview,
   onCommit,
+  selection,
 }: {
   choices: readonly MobileModelReasoningEffort[]
   value?: string
   disabled: boolean
   onPreview(value: string | undefined): void
   onCommit(value: string): void
+  selection?: Pick<MobileModelSelection, 'provider' | 'model'>
 }): React.JSX.Element {
   const theme = useAppTheme()
   const s = useThemedStyles(makeStyles)
   const [width, setWidth] = useState(0)
-  const [preview, setPreview] = useState<number>()
-  const dragging = useRef<number | undefined>(undefined)
+  // Route/effort changes cancel gestures, while the measured track width survives.
+  const identity = useMemo(() => ({}), [selection?.provider, selection?.model, value, choices, disabled])
+  const [preview, setPreview] = useState<{ identity: object; index: number }>()
+  const dragging = useRef<object | undefined>(undefined)
+  useEffect(() => {
+    dragging.current = undefined
+    setPreview(undefined)
+    onPreview(undefined)
+  }, [identity, onPreview])
   const selected = choices.findIndex((choice) => choice.id === value)
-  const index = preview ?? selected
+  const index = preview?.identity === identity ? preview.index : selected
   const position = index < 0 ? 0 : index / Math.max(1, choices.length - 1)
   const travel = Math.max(0, width - EFFORT_THUMB_SIZE)
   const locked = disabled || choices.length < 2
   const update = (x: number): number => {
     const next = effortIndexAtPosition(x, width, choices.length)
-    dragging.current = next
-    setPreview(next)
+    dragging.current = identity
+    setPreview({ identity, index: next })
     onPreview(choices[next]?.id)
     return next
   }
   const finish = (x: number): void => {
-    if (dragging.current === undefined) return
+    if (dragging.current !== identity || locked) return
     const next = update(x)
     dragging.current = undefined
     setPreview(undefined)
@@ -78,7 +87,7 @@ export function NativeEffortSlider({
         if (!locked) update(event.nativeEvent.locationX)
       }}
       onResponderMove={(event) => {
-        if (!locked && dragging.current !== undefined) update(event.nativeEvent.locationX)
+        if (!locked && dragging.current === identity) update(event.nativeEvent.locationX)
       }}
       onResponderRelease={(event) => finish(event.nativeEvent.locationX)}
       onResponderTerminate={cancel}

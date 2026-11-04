@@ -108,6 +108,7 @@ export function useSessionSelections(state: State) {
     }
     if (decision === 'confirm') {
       const token = confirmation.begin()
+      let answered = false
       try {
         Alert.alert(
           message('settings.fullAccessTitle'),
@@ -124,7 +125,14 @@ export function useSessionSelections(state: State) {
               text: message('common.continue'),
               style: 'destructive',
               onPress: () => {
+                if (answered) return
+                answered = true
                 if (confirmation.finish(token)) submit()
+                else if (mounted.current && !confirmation.busy)
+                  Alert.alert(
+                    message('permission.confirmationExpiredTitle'),
+                    message('permission.confirmationExpiredBody'),
+                  )
               },
             },
           ],

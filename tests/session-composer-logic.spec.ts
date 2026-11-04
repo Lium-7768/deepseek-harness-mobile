@@ -3,7 +3,6 @@ import {
   agentPresetLabel,
   composerInputPolicy,
   composerPrimaryAction,
-  modelLabel,
   permissionDescription,
   permissionLabel,
   readPermissionSelect,
@@ -66,11 +65,9 @@ describe('session composer projections', () => {
     expect(permissionDescription('workspace-write')).toContain('工作区')
   })
 
-  it('formats preset and model selections for the native controls', () => {
+  it('formats preset selections for the native controls', () => {
     expect(agentPresetLabel(undefined)).toBe('标准模式')
     expect(agentPresetLabel('ptc')).toBe('PTC 模式')
     expect(agentPresetLabel('custom')).toBe('custom')
-    expect(modelLabel(undefined)).toBe('选择模型')
-    expect(modelLabel({ provider: 'deepseek', model: 'chat', reasoningEffort: 'high' })).toBe('chat · high')
   })
 })

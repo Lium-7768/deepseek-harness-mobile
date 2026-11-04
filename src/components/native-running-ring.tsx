@@ -46,8 +46,8 @@ export function NativeRunningRing(): React.JSX.Element {
   }, [progress, reduced, foreground])
   const rotation = useAnimatedStyle(() => ({ transform: [{ rotate: `${progress.value * 360}deg` }] }))
   const arc = useAnimatedProps(() => ({
-    strokeDasharray: [interpolate(progress.value, [0, 0.5, 1], [12, 24, 12]), 150],
-    strokeDashoffset: interpolate(progress.value, [0, 0.5, 1], [0, -6, 0]),
+    strokeDasharray: [reduced ? 18 : interpolate(progress.value, [0, 0.5, 1], [12, 24, 12]), 150],
+    strokeDashoffset: reduced ? -3 : interpolate(progress.value, [0, 0.5, 1], [0, -6, 0]),
   }))
   return (
     <Animated.View accessible={false} style={[{ width: 14, height: 14 }, rotation]}>

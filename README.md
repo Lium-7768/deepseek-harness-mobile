@@ -95,6 +95,8 @@ If the Gateway reports an expired or revoked device, create a new QR code in the
 
 This repository contains a pnpm-managed `expo-modules-jsi` compatibility patch for the current Xcode 26.0.1 / Swift 6.2 toolchain. The patch targets `expo-modules-jsi@57.1.3` and is applied automatically by `pnpm install`; do not edit `node_modules` manually. After a fresh native dependency install, run `cd ios && pod install` before `pnpm ios` if CocoaPods has not already been run.
 
+After any dependency change, including JavaScript-only peer dependency changes, rerun `cd ios && pod install` before an Xcode build or release archive. pnpm can change virtual-directory paths without changing package versions; Pods records those paths. Commit the resulting `ios/Podfile.lock` changes together with `pnpm-lock.yaml`. A successful Expo JavaScript export does not validate native Pod paths.
+
 ## Contract and contribution rules
 
 `src/shared/dsh-presentation.ts` is intentionally local so the mobile client has no direct workspace dependency on the desktop repository. When changing Gateway payloads or durable event projection, update this contract, its tests, and the desktop Gateway compatibility at the same time. Keep desktop authority on the desktop: do not add a mobile Agent Loop, durable session store, desktop file browser, Shell access, or provider credential management.

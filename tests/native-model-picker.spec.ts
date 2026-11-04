@@ -146,6 +146,94 @@ describe('model picker card', () => {
     expect(props.onSelectEffort).toHaveBeenCalledExactlyOnceWith('medium')
     expect(props.onClose).not.toHaveBeenCalled()
   })
+  it('retries the catalog inside the card, serializes repeated taps and permits retry after failure', async () => {
+    let reject!: (error: Error) => void
+    const onRetry = vi
+      .fn()
+      .mockImplementationOnce(
+        () =>
+          new Promise((_yes, no) => {
+            reject = no
+          }),
+      )
+      .mockResolvedValueOnce(undefined)
+    const props = { ...options(), failed: true, onRetry }
+    await mount(createElement(NativeModelPicker, props))
+    await act(() => {
+      press('重新加载模型').props.onPress()
+      press('重新加载模型').props.onPress()
+    })
+    expect(onRetry).toHaveBeenCalledTimes(1)
+    expect(press('重新加载模型').props.accessibilityState).toEqual({ disabled: true, busy: true })
+    expect(props.onClose).not.toHaveBeenCalled()
+    await act(() => reject(new Error('offline')))
+    expect(press('重新加载模型').props.disabled).toBe(false)
+    await act(async () => {
+      press('重新加载模型').props.onPress()
+    })
+    expect(onRetry).toHaveBeenCalledTimes(2)
+    await renderer.rerender(createElement(NativeModelPicker, { ...props, failed: false }))
+    expect(renderer.container.queryAll((node) => node.props.accessibilityLabel === '重新加载模型')).toHaveLength(0)
+  })
+  it('offers reload for provider/routing failures and blocks it during loading or a mutation', async () => {
+    const onRetry = vi.fn().mockResolvedValue(undefined)
+    const props = { ...options(), routable: false, onRetry }
+    await mount(createElement(NativeModelPicker, props))
+    expect(press('重新加载模型').props.disabled).toBe(false)
+    await renderer.rerender(createElement(NativeModelPicker, { ...props, loading: true }))
+    await act(() => press('重新加载模型').props.onPress())
+    expect(onRetry).not.toHaveBeenCalled()
+    await renderer.rerender(
+      createElement(NativeModelPicker, {
+        ...props,
+        routable: true,
+        disabled: true,
+        failures: [{ id: 'p', name: 'Provider', message: 'failed' }],
+      }),
+    )
+    await act(() => press('重新加载模型').props.onPress())
+    expect(onRetry).not.toHaveBeenCalled()
+  })
+  it('retains the slider instance and its measured width when the selected model changes', async () => {
+    const props = options()
+    await mount(createElement(NativeModelPicker, props))
+    const original = slider()
+    await act(() => original.props.onLayout({ nativeEvent: { layout: { width: 340 } } }))
+    await renderer.rerender(
+      createElement(NativeModelPicker, {
+        ...props,
+        groups: [
+          {
+            id: 'one',
+            name: 'Provider',
+            models: [
+              {
+                id: 'other',
+                name: 'Other',
+                reasoning: {
+                  efforts: [
+                    { id: 'low', name: '低' },
+                    { id: 'high', name: '高' },
+                  ],
+                },
+              },
+            ],
+          },
+        ],
+        selection: { provider: 'one', model: 'other' },
+      }),
+    )
+    expect(slider()).toBe(original)
+    const thumb = renderer.container
+      .queryAll(
+        (node) =>
+          node.type === 'View' &&
+          Array.isArray(node.props.style) &&
+          node.props.style.some((style: { left?: number }) => style?.left !== undefined),
+      )
+      .at(-1)!
+    expect(thumb.props.style.at(-1).left).toBe(300)
+  })
   it('keeps diagnostics and the slider card when the catalog fails or the current route is missing', async () => {
     const props = {
       ...options(),
@@ -155,7 +243,7 @@ describe('model picker card', () => {
       failures: [{ id: 'broken', name: 'Unavailable', message: 'failed' }],
     }
     await mount(createElement(NativeModelPicker, props))
-    expect(texts()).toContain('模型目录加载失败，请关闭后重试。')
+    expect(texts()).toContain('模型目录加载失败，请重新加载。')
     expect(texts()).toContain('当前会话没有可用的模型路由。')
     expect(texts()).toContain('供应商 Unavailable 暂时不可用。')
     expect(slider().props.accessibilityState.disabled).toBe(true)
@@ -216,6 +304,36 @@ describe('model picker card', () => {
 })
 
 describe('effort slider commands', () => {
+  it('cancels an in-flight gesture on a route change, even for same-id models on different providers', async () => {
+    const choices = groups[0].models[0].reasoning!.efforts
+    const onCommit = vi.fn(),
+      onPreview = vi.fn()
+    const props = {
+      choices,
+      value: 'low',
+      disabled: false,
+      onCommit,
+      onPreview,
+      selection: { provider: 'one', model: 'chat' },
+    }
+    await mount(createElement(NativeEffortSlider, props))
+    await act(() => slider().props.onLayout({ nativeEvent: { layout: { width: 340 } } }))
+    await act(() => slider().props.onResponderGrant({ nativeEvent: { locationX: 220 } }))
+    expect(slider().props.accessibilityValue.text).toBe('高')
+    await renderer.rerender(
+      createElement(NativeEffortSlider, {
+        ...props,
+        choices: [{ id: 'max', name: '极高' }],
+        value: 'max',
+        selection: { provider: 'two', model: 'chat' },
+      }),
+    )
+    expect(slider().props.accessibilityValue.text).toBe('极高')
+    expect(slider().props.accessibilityState.disabled).toBe(true)
+    await act(() => slider().props.onResponderRelease({ nativeEvent: { locationX: 320 } }))
+    expect(onCommit).not.toHaveBeenCalled()
+    expect(onPreview).toHaveBeenLastCalledWith(undefined)
+  })
   it('previews stops while dragging, commits once on release and cancels interrupted gestures', async () => {
     const onCommit = vi.fn(),
       onPreview = vi.fn()

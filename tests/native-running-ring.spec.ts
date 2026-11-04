@@ -73,10 +73,18 @@ describe('native running ring lifecycle', () => {
     })
     expect(mocks.timing).toHaveBeenCalledTimes(1)
     expect(mocks.cancel).toHaveBeenCalled()
+    expect(renderer.container.queryAll((node) => node.type === 'AnimatedCircle')[0].props.animatedProps).toEqual({
+      strokeDasharray: [18, 150],
+      strokeDashoffset: -3,
+    })
     await act(async () => {
       mocks.reduced!(false)
     })
     expect(mocks.timing).toHaveBeenCalledTimes(2)
+    expect(renderer.container.queryAll((node) => node.type === 'AnimatedCircle')[0].props.animatedProps).toEqual({
+      strokeDasharray: [12, 150],
+      strokeDashoffset: 0,
+    })
     await act(async () => {
       mocks.appState!('background')
     })
@@ -95,5 +103,9 @@ describe('native running ring lifecycle', () => {
       renderer = await render(createElement(NativeRunningRing))
     })
     expect(mocks.timing).not.toHaveBeenCalled()
+    expect(renderer.container.queryAll((node) => node.type === 'AnimatedCircle')[0].props.animatedProps).toEqual({
+      strokeDasharray: [18, 150],
+      strokeDashoffset: -3,
+    })
   })
 })

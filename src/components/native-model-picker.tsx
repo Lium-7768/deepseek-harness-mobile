@@ -7,7 +7,7 @@ import { format, t as message } from '@/locale'
 import type { AppTheme } from '@/theme'
 import { useAppTheme, useThemedStyles } from '@/theme/hooks'
 import type { MobileModelCatalogFailure, MobileModelProviderGroup } from '@/types/mobile'
-import { useEffect, useState, type RefObject } from 'react'
+import { useEffect, useRef, useState, type RefObject } from 'react'
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
 
 export type NativeModelChoice = { provider: string; model: string }
@@ -25,6 +25,7 @@ export function NativeModelPicker({
   onClose,
   onSelectEffort,
   onSelectModel,
+  onRetry,
   open,
   selection,
   anchorRef,
@@ -40,6 +41,7 @@ export function NativeModelPicker({
   onClose(): void
   onSelectEffort?: (effort: string) => void
   onSelectModel(choice: NativeModelChoice): void
+  onRetry?: () => Promise<unknown>
   open: boolean
   selection?: NativeModelChoice
   anchorRef?: RefObject<View | null>
@@ -47,6 +49,28 @@ export function NativeModelPicker({
   const theme = useAppTheme()
   const s = useThemedStyles(makeStyles)
   const [previewEffort, setPreviewEffort] = useState<string>()
+  const [retryPending, setRetryPending] = useState(false)
+  const retrying = useRef(false)
+  const mounted = useRef(true)
+  useEffect(() => {
+    mounted.current = true
+    return () => {
+      mounted.current = false
+    }
+  }, [])
+  const retry = async (): Promise<void> => {
+    if (!onRetry || retrying.current || loading || disabled) return
+    retrying.current = true
+    setRetryPending(true)
+    try {
+      await onRetry()
+    } catch {
+      // Query errors remain visible in this card; do not create a second error surface.
+    } finally {
+      retrying.current = false
+      if (mounted.current) setRetryPending(false)
+    }
+  }
   const current = selectedCatalogModel(groups, selection)
   const routes = groups.flatMap((group) => group.models.map((model) => ({ provider: group.id, model: model.id })))
   const currentIndex = routes.findIndex(
@@ -162,7 +186,7 @@ export function NativeModelPicker({
           </Text>
         ) : null}
         <NativeEffortSlider
-          key={JSON.stringify(selection)}
+          selection={selection}
           choices={choices}
           value={effectiveEffort}
           disabled={!canAdjust}
@@ -186,6 +210,25 @@ export function NativeModelPicker({
             {format('model.providerUnavailable', { name: failure.name })}
           </Text>
         ))}
+        {onRetry && (failed || routable === false || failures.length > 0) ? (
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={message('model.retryCatalog')}
+            accessibilityState={{ disabled: disabled || loading || retryPending, busy: loading || retryPending }}
+            disabled={disabled || loading || retryPending}
+            onPress={() => void retry()}
+            style={s.retry}
+          >
+            {loading || retryPending ? (
+              <ActivityIndicator size="small" color={theme.colors.inkMuted} />
+            ) : (
+              <NativeIcon name="refresh-outline" size={16} color={theme.colors.inkMuted} />
+            )}
+            <Text style={s.retryText}>
+              {message(loading || retryPending ? 'common.loading' : 'model.retryCatalog')}
+            </Text>
+          </Pressable>
+        ) : null}
         {notice ? <Text style={s.notice}>{notice}</Text> : null}
       </ScrollView>
     </NativeAnchoredPanel>
@@ -213,6 +256,16 @@ const makeStyles = (theme: AppTheme) =>
     balance: { width: 44, minHeight: 44, alignItems: 'center', justifyContent: 'center' },
     icon: { width: 44, minHeight: 44, alignItems: 'center', justifyContent: 'center', borderRadius: theme.radius.pill },
     disabled: { opacity: 0.4 },
+    retry: {
+      minHeight: 44,
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 8,
+      borderRadius: theme.radius.control,
+      backgroundColor: theme.colors.surfaceMuted,
+    },
+    retryText: { color: theme.colors.inkMuted, fontSize: 13, lineHeight: 20 },
     notice: { color: theme.colors.inkTertiary, fontSize: 12, lineHeight: 18, paddingVertical: 4 },
     error: { color: theme.colors.danger, fontSize: 12, lineHeight: 18, paddingVertical: 4 },
   })

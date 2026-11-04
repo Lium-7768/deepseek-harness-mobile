@@ -180,6 +180,7 @@ export default function WorkspaceScreen(): React.JSX.Element {
               modelCatalog={selectedSessionModels.data}
               modelCatalogError={selectedSessionModels.isError}
               modelCatalogLoading={selectedSessionModels.isPending}
+              onRetryModels={() => selectedSessionModels.refetch()}
               selectionPending={selections.pending}
               permissionLocked={selections.permissionLocked}
               permissions={readPermissionSelect(selectedSessionHistory.data?.projections?.values.permissions)}

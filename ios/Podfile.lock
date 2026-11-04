@@ -2302,7 +2302,7 @@ PODS:
 
 DEPENDENCIES:
   - "EXConstants (from `../node_modules/.pnpm/expo-constants@57.0.22_expo@57.0.31_react-native@0.86.3_@babel+core@7.29.7_@react-nativ_f51fbd028477087903ab4fbb0b8782fb/node_modules/expo-constants/ios`)"
-  - "Expo (from `../node_modules/.pnpm/expo@57.0.31_@babel+core@7.29.7_@expo+dom-webview@57.0.1_@expo+metro-runtime@57.0.17_ex_5a7df000af8da249257d4d437a04b5fc/node_modules/expo`)"
+  - "Expo (from `../node_modules/.pnpm/expo@57.0.31_@babel+core@7.29.7_@expo+dom-webview@57.0.1_@expo+metro-runtime@57.0.17_ex_b3c700b6513bf403cf634b68bc1c5bfb/node_modules/expo`)"
   - "ExpoAsset (from `../node_modules/.pnpm/expo-asset@57.0.20_expo@57.0.31_react-native@0.86.3_@babel+core@7.29.7_@react-native+me_707076dbcc63b51487948cc58f1a953b/node_modules/expo-asset/ios`)"
   - "ExpoCamera (from `../node_modules/.pnpm/expo-camera@57.0.6_@types+emscripten@1.41.5_expo@57.0.31_react-native@0.86.3_@babel+cor_92865dc6b2bf1ea987e4eddcb7063a90/node_modules/expo-camera/ios/ExpoCamera.podspec`)"
   - "ExpoCameraBarcodeScanning (from `../node_modules/.pnpm/expo-camera@57.0.6_@types+emscripten@1.41.5_expo@57.0.31_react-native@0.86.3_@babel+cor_92865dc6b2bf1ea987e4eddcb7063a90/node_modules/expo-camera/ios/ExpoCameraBarcodeScanning.podspec`)"
@@ -2319,11 +2319,11 @@ DEPENDENCIES:
   - "ExpoModulesJSI (from `../node_modules/.pnpm/expo-modules-jsi@57.1.3_patch_hash=0ce5fa066f0b7e21ca4c54a038d2d7d5ec8ba1cf44175e1f9b46_32ae0d954b3d84303a95fd719c7a7476/node_modules/expo-modules-jsi/apple`)"
   - "ExpoModulesWorklets (from `../node_modules/.pnpm/expo-modules-core@57.0.24_react-native-worklets@0.10.1_@babel+core@7.29.7_@react-native_896a787e890eb3adc81748ab1eb77bdf/node_modules/expo-modules-core/ExpoModulesWorklets.podspec`)"
   - "ExpoModulesWorkletsAdapter (from `../node_modules/.pnpm/expo-modules-core@57.0.24_react-native-worklets@0.10.1_@babel+core@7.29.7_@react-native_896a787e890eb3adc81748ab1eb77bdf/node_modules/expo-modules-core`)"
-  - "ExpoRouter (from `../node_modules/.pnpm/expo-router@57.0.29_2bb433679a91830ccfc1246d8da6d9b7/node_modules/expo-router/ios`)"
+  - "ExpoRouter (from `../node_modules/.pnpm/expo-router@57.0.29_0adf8c1bedeb414083204269da4cfbbe/node_modules/expo-router/ios`)"
   - "ExpoSecureStore (from `../node_modules/.pnpm/expo-secure-store@57.0.4_expo@57.0.31/node_modules/expo-secure-store/ios`)"
   - "ExpoSharing (from `../node_modules/.pnpm/expo-sharing@57.0.24_expo@57.0.31_react-native@0.86.3_@babel+core@7.29.7_@react-native+_9cb33eddb031eae3dea0b672f42f30a8/node_modules/expo-sharing/ios`)"
   - "ExpoSymbols (from `../node_modules/.pnpm/expo-symbols@57.0.3_expo-font@57.0.4_expo@57.0.31_react-native@0.86.3_@babel+core@7.29._38101bd132efd4e4bb6858af2cb9d495/node_modules/expo-symbols/ios`)"
-  - "ExpoUI (from `../node_modules/.pnpm/@expo+ui@57.0.26_@babel+core@7.29.7_@types+react@19.2.18_expo@57.0.31_react-dom@19.2.3__cad85c146cae6f52348f1f1d81eaa9b3/node_modules/@expo/ui/ios`)"
+  - "ExpoUI (from `../node_modules/.pnpm/@expo+ui@57.0.26_@babel+core@7.29.7_@types+react@19.2.18_expo@57.0.31_react-native-work_0d04c2ec60c397faa069e40a10bad0af/node_modules/@expo/ui/ios`)"
   - "FBLazyVector (from `../node_modules/.pnpm/react-native@0.86.3_@babel+core@7.29.7_@react-native+metro-config@0.86.3_@babel+core@7._dcc1ba86c4f0f476b4029bc2604f6bbc/node_modules/react-native/Libraries/FBLazyVector`)"
   - "hermes-engine (from `../node_modules/.pnpm/react-native@0.86.3_@babel+core@7.29.7_@react-native+metro-config@0.86.3_@babel+core@7._dcc1ba86c4f0f476b4029bc2604f6bbc/node_modules/react-native/sdks/hermes-engine/hermes-engine.podspec`)"
   - "RCTDeprecation (from `../node_modules/.pnpm/react-native@0.86.3_@babel+core@7.29.7_@react-native+metro-config@0.86.3_@babel+core@7._dcc1ba86c4f0f476b4029bc2604f6bbc/node_modules/react-native/ReactApple/Libraries/RCTFoundation/RCTDeprecation`)"
@@ -2412,7 +2412,7 @@ EXTERNAL SOURCES:
   EXConstants:
     :path: "../node_modules/.pnpm/expo-constants@57.0.22_expo@57.0.31_react-native@0.86.3_@babel+core@7.29.7_@react-nativ_f51fbd028477087903ab4fbb0b8782fb/node_modules/expo-constants/ios"
   Expo:
-    :path: "../node_modules/.pnpm/expo@57.0.31_@babel+core@7.29.7_@expo+dom-webview@57.0.1_@expo+metro-runtime@57.0.17_ex_5a7df000af8da249257d4d437a04b5fc/node_modules/expo"
+    :path: "../node_modules/.pnpm/expo@57.0.31_@babel+core@7.29.7_@expo+dom-webview@57.0.1_@expo+metro-runtime@57.0.17_ex_b3c700b6513bf403cf634b68bc1c5bfb/node_modules/expo"
   ExpoAsset:
     :path: "../node_modules/.pnpm/expo-asset@57.0.20_expo@57.0.31_react-native@0.86.3_@babel+core@7.29.7_@react-native+me_707076dbcc63b51487948cc58f1a953b/node_modules/expo-asset/ios"
   ExpoCamera:
@@ -2446,7 +2446,7 @@ EXTERNAL SOURCES:
   ExpoModulesWorkletsAdapter:
     :path: "../node_modules/.pnpm/expo-modules-core@57.0.24_react-native-worklets@0.10.1_@babel+core@7.29.7_@react-native_896a787e890eb3adc81748ab1eb77bdf/node_modules/expo-modules-core"
   ExpoRouter:
-    :path: "../node_modules/.pnpm/expo-router@57.0.29_2bb433679a91830ccfc1246d8da6d9b7/node_modules/expo-router/ios"
+    :path: "../node_modules/.pnpm/expo-router@57.0.29_0adf8c1bedeb414083204269da4cfbbe/node_modules/expo-router/ios"
   ExpoSecureStore:
     :path: "../node_modules/.pnpm/expo-secure-store@57.0.4_expo@57.0.31/node_modules/expo-secure-store/ios"
   ExpoSharing:
@@ -2454,7 +2454,7 @@ EXTERNAL SOURCES:
   ExpoSymbols:
     :path: "../node_modules/.pnpm/expo-symbols@57.0.3_expo-font@57.0.4_expo@57.0.31_react-native@0.86.3_@babel+core@7.29._38101bd132efd4e4bb6858af2cb9d495/node_modules/expo-symbols/ios"
   ExpoUI:
-    :path: "../node_modules/.pnpm/@expo+ui@57.0.26_@babel+core@7.29.7_@types+react@19.2.18_expo@57.0.31_react-dom@19.2.3__cad85c146cae6f52348f1f1d81eaa9b3/node_modules/@expo/ui/ios"
+    :path: "../node_modules/.pnpm/@expo+ui@57.0.26_@babel+core@7.29.7_@types+react@19.2.18_expo@57.0.31_react-native-work_0d04c2ec60c397faa069e40a10bad0af/node_modules/@expo/ui/ios"
   FBLazyVector:
     :path: "../node_modules/.pnpm/react-native@0.86.3_@babel+core@7.29.7_@react-native+metro-config@0.86.3_@babel+core@7._dcc1ba86c4f0f476b4029bc2604f6bbc/node_modules/react-native/Libraries/FBLazyVector"
   hermes-engine:

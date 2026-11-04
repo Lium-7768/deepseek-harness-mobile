@@ -605,6 +605,7 @@ export default function SessionScreen(): React.JSX.Element {
                 modelCatalog={models.data}
                 modelCatalogError={models.isError}
                 modelCatalogLoading={models.isPending}
+                onRetryModels={() => models.refetch()}
                 selectionPending={selections.pending}
                 onSelectMode={selections.selectPreset}
                 onSelectModel={selections.selectModel}

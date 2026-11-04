@@ -1,5 +1,5 @@
 import { t as message } from '@/locale'
-import type { MobileModelSelection, MobilePermissionSelect } from '@/types/mobile'
+import type { MobilePermissionSelect } from '@/types/mobile'
 
 /** The multiline composer keeps Return available for newlines; sending is explicit. */
 export const composerInputPolicy = { returnKeyType: 'default', submitBehavior: 'newline' } as const
@@ -148,10 +148,4 @@ export function permissionDescription(value: string): string {
   if (value === 'workspace-write') return message('session.permissionWorkspaceSentence')
   if (value === 'danger-full-access') return message('session.permissionFullSentence')
   return message('session.permissionDesktopPreset')
-}
-
-/** Formats the host-selected model and optional provider reasoning effort. */
-export function modelLabel(model: MobileModelSelection | undefined): string {
-  if (model === undefined) return message('session.selectModel')
-  return model.reasoningEffort === undefined ? model.model : `${model.model} · ${model.reasoningEffort}`
 }

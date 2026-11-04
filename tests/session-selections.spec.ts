@@ -164,12 +164,32 @@ describe('production session selection controller', () => {
     const current = mocks.alert.mock.calls[1][2][1].onPress
     expired()
     expect(state.client.sendMessage).not.toHaveBeenCalled()
+    // Do not replace a newer confirmation with the old alert's expiry notice.
+    expect(mocks.alert).toHaveBeenCalledTimes(2)
     current()
     current()
     await vi.advanceTimersByTimeAsync(0)
     expect(state.client.sendMessage).toHaveBeenCalledExactlyOnceWith('one', [
       { type: 'text', text: '/permission danger-full-access' },
     ])
+  })
+  it('explains an expired confirmation without sending or authorizing full access', async () => {
+    vi.useFakeTimers()
+    const state = createState()
+    const selection = render(state)
+    selection.selectPermission('danger-full-access')
+    const expired = mocks.alert.mock.calls[0][2][1].onPress
+    await vi.advanceTimersByTimeAsync(PERMISSION_CONFIRMATION_TIMEOUT)
+    expired()
+    expect(state.client.sendMessage).not.toHaveBeenCalled()
+    expect(mocks.alert).toHaveBeenLastCalledWith(
+      '权限确认已失效',
+      '本次确认已过期或会话已切换，权限未修改。请重新选择权限并确认。',
+    )
+    selection.selectPermission('danger-full-access')
+    mocks.alert.mock.calls[2][2][1].onPress()
+    await vi.advanceTimersByTimeAsync(0)
+    expect(state.client.sendMessage).toHaveBeenCalledTimes(1)
   })
   it('releases the gate if the native Alert throws without sending full-access', async () => {
     const state = createState()
