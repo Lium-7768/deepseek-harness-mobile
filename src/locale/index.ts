@@ -23,6 +23,7 @@ import { markdown } from './markdown'
 import { mode } from './mode'
 import { model } from './model'
 import { permission } from './permission'
+import { plan } from './plan'
 import { process as processCopy } from './process'
 import { queue } from './queue'
 import { rename } from './rename'
@@ -74,6 +75,7 @@ const areas = {
   mode,
   model,
   permission,
+  plan,
   process: processCopy,
   queue,
   rename,

@@ -14,6 +14,7 @@ import { todoFromProjection } from '@/components/todo-logic'
 import { NativeTurnGroup } from '@/components/native-turn-group'
 import { firstParam, withErrorContext } from '@/components/route-params'
 import { readPermissionSelect } from '@/components/session-composer-logic'
+import { planFromProjection } from '@/components/plan-logic'
 import {
   activeTurnStartedAt,
   projectNativeConversationRows,
@@ -379,6 +380,7 @@ export default function SessionScreen(): React.JSX.Element {
   )
   // The desktop registers this dock at order 0, ahead of the goal bar and the queue.
   const todos = todoFromProjection(history.data?.projections?.values)
+  const plan = planFromProjection(history.data?.projections?.values)
   const reportedStatus = events.data?.status ?? message('conversation.connecting')
   const running = reportedStatus === 'running' || activeSession?.running === true || runningTurnStartedAt !== undefined
   const status = running ? 'running' : reportedStatus
@@ -603,6 +605,7 @@ export default function SessionScreen(): React.JSX.Element {
                 onSend={(content) => send.mutateAsync(content).then(() => undefined)}
                 onCancel={() => cancel.mutate()}
                 permissions={readPermissionSelect(history.data?.projections?.values.permissions)}
+                plan={plan}
                 sessionId={sessionId}
                 cancelling={cancel.isPending}
                 disabled={!ready}

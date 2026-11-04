@@ -213,6 +213,8 @@ const history = {
       },
       tokenUsage: { uncachedInputTokens: 12000, cacheReadTokens: 48000, cacheWriteTokens: 0, outputTokens: 1400 },
       contextPressure: { pressureTokens: 32000, contextWindow: 128000 },
+      // `conversation.input.plan`: the composer plan chip shows while this is on.
+      plan: { active: true, pending: false },
       // The desktop `todo` dock (conversation.input.dock order 0) reads this key.
       todos: [
         { content: 'Read the desktop diff', status: 'completed' },

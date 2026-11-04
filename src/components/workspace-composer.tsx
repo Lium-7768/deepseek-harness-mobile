@@ -3,6 +3,8 @@ import { catalogModelLabel, selectedCatalogModel } from '@/components/session-se
 import { NativeIcon } from '@/components/native-icon'
 import { NativeMenuPanel, type NativeMenuGroup, type NativeMenuNotice } from '@/components/native-menu-panel'
 import { NativeModelPicker } from '@/components/native-model-picker'
+import { NativePlanChip } from '@/components/native-plan-chip'
+import type { PlanState } from '@/components/plan-logic'
 import { reasoningEffortLabel } from '@/components/model-picker-logic'
 import {
   agentPresetLabel,
@@ -77,6 +79,8 @@ type Props = {
   /** `true` while the permission projection is missing or the session is busy. */
   permissionLocked?: boolean
   permissions?: MobilePermissionSelect
+  /** The session's `plan` projection; omission hides the plan chip. */
+  plan?: PlanState
   placeholder?: string
   running?: boolean
   sending?: boolean
@@ -114,6 +118,7 @@ export function WorkspaceComposer({
   selectionPending = false,
   permissionLocked = false,
   permissions,
+  plan,
   presets,
   placeholder = message('composer.placeholder'),
   running = false,
@@ -468,6 +473,20 @@ export function WorkspaceComposer({
                   <NativeIcon name="chevron-down-outline" size={14} color={theme.colors.inkFaint} />
                 </Pressable>
               )}
+              {hasSession ? (
+                <NativePlanChip
+                  locked={controlsDisabled}
+                  onExit={async () => {
+                    try {
+                      await onSend([{ type: 'text', text: '/plan off' }])
+                      return null
+                    } catch (reason) {
+                      return reason instanceof Error ? reason.message : String(reason)
+                    }
+                  }}
+                  plan={plan}
+                />
+              ) : null}
               {hasSession ? (
                 <Pressable
                   accessibilityRole="button"

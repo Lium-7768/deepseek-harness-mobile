@@ -257,6 +257,12 @@
     "regular": "4823b2f1a96ac0cd37f038840989fc7fb073048a28936dab71429804780b7bda",
     "medium": "1987ccf8a2e58566b9a0c54373a2cb7f698a20feaef734e48d642d80f5ca99ce"
   },
+  "plan-outline": {
+    "aspect": [1, 1],
+    "medium": "ceebaa2777c6c835f227d2ce816d3f64f9991e90c930e255d08f82c45eaec049",
+    "regular": "a5257e42213d7397d07efc35e5f88fa0a058b222504456b7633986f720f9ac20",
+    "size": 14
+  },
   "play-outline": {
     "size": 16,
     "aspect": [1, 1],
