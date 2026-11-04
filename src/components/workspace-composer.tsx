@@ -3,6 +3,8 @@ import { catalogModelLabel, selectedCatalogModel } from '@/components/session-se
 import { NativeIcon } from '@/components/native-icon'
 import { NativeMenuPanel, type NativeMenuGroup, type NativeMenuNotice } from '@/components/native-menu-panel'
 import { NativeModelPicker } from '@/components/native-model-picker'
+import { NativeInputTriggerMenu } from '@/components/native-input-trigger-menu'
+import { applyCommandPick, type CommandTrigger } from '@/components/input-trigger-logic'
 import { NativePlanChip } from '@/components/native-plan-chip'
 import type { PlanState } from '@/components/plan-logic'
 import { reasoningEffortLabel } from '@/components/model-picker-logic'
@@ -22,6 +24,7 @@ import type {
   MobileAgentPresetEntry,
   MobileImageMediaType,
   MobileSessionModelsPayload,
+  MobileCommandDescriptor,
   MobileModelSelection,
   MobilePermissionSelect,
   MobilePromptContent,
@@ -81,6 +84,8 @@ type Props = {
   permissions?: MobilePermissionSelect
   /** The session's `plan` projection; omission hides the plan chip. */
   plan?: PlanState
+  /** Slash commands the `/` trigger menu offers; omission keeps the menu shut. */
+  commands?: MobileCommandDescriptor[]
   placeholder?: string
   running?: boolean
   sending?: boolean
@@ -116,6 +121,7 @@ export function WorkspaceComposer({
   modelCatalogLoading = false,
   onRetryModels,
   selectionPending = false,
+  commands,
   permissionLocked = false,
   permissions,
   plan,
@@ -140,6 +146,10 @@ export function WorkspaceComposer({
   // One surface at a time: every trigger in the control row and dock opens the
   // same menu, so they share one open state instead of three navigation targets.
   const [openPicker, setOpenPicker] = useState<'add' | 'mode' | 'model' | 'permission' | undefined>(undefined)
+  // The `/` menu follows the caret, not just the text, so a pick replaces the
+  // exact token the user is typing.
+  const [caret, setCaret] = useState(0)
+  const [commandMenuDismissed, setCommandMenuDismissed] = useState(false)
   const [draftImages, setDraftImages] = useState<DraftImage[]>([])
   const modelTriggerRef = useRef<View>(null)
   const hasContent = text.trim() !== '' || draftImages.length > 0
@@ -398,7 +408,11 @@ export function WorkspaceComposer({
             accessibilityLabel={message('composer.inputLabel')}
             multiline
             value={text}
-            onChangeText={setText}
+            onChangeText={(value) => {
+              setText(value)
+              setCommandMenuDismissed(false)
+            }}
+            onSelectionChange={(event) => setCaret(event.nativeEvent.selection.start)}
             placeholder={placeholder}
             placeholderTextColor={theme.colors.inkFaint}
             onBlur={() => setFocused(false)}
@@ -650,6 +664,20 @@ export function WorkspaceComposer({
         rowRole="select"
         title={message('mode.selectTitle')}
       />
+      {commands === undefined || commandMenuDismissed ? null : (
+        <NativeInputTriggerMenu
+          caret={caret}
+          commands={commands}
+          onClose={() => setCommandMenuDismissed(true)}
+          onPick={(command: MobileCommandDescriptor, trigger: CommandTrigger) => {
+            const next = applyCommandPick(text, trigger, command.name)
+            setText(next.text)
+            setCaret(next.caret)
+            setCommandMenuDismissed(true)
+          }}
+          text={text}
+        />
+      )}
       <NativeModelPicker
         anchorRef={modelTriggerRef}
         disabled={controlsDisabled || !hasSession || onSelectModel === undefined}

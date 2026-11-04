@@ -90,6 +90,18 @@ export function useSessionQueries(
       return client.withSignal(signal).sessionModels(sessionId)
     },
   })
+  // The `/` trigger menu reads this; a failure leaves the menu empty rather than
+  // blocking the composer, so it keeps the query's own error state.
+  const commands = useQuery({
+    queryKey: queryKeys.sessionCommands(connection?.gatewayUrl, connection?.deviceId, sessionId),
+    enabled: ready,
+    retry: false,
+    staleTime: 60_000,
+    queryFn: ({ signal }) => {
+      if (!client || !sessionId) throw new Error(message('conversation.openFromList'))
+      return client.withSignal(signal).commands(sessionId)
+    },
+  })
   const presets = useQuery({
     queryKey: queryKeys.agentPresets(connection?.gatewayUrl, connection?.deviceId),
     enabled: client !== undefined,
@@ -98,5 +110,18 @@ export function useSessionQueries(
       return client.withSignal(signal).agentPresets()
     },
   })
-  return { goal, history, events, queue, jobs, subagents, interactions, sessionList, activeSession, models, presets }
+  return {
+    goal,
+    history,
+    events,
+    queue,
+    jobs,
+    subagents,
+    interactions,
+    sessionList,
+    activeSession,
+    models,
+    presets,
+    commands,
+  }
 }

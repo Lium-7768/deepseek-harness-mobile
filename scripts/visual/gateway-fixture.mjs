@@ -245,6 +245,14 @@ const server = createServer(async (request, response) => {
   if (path === '/v1/auth') data = { deviceId: 'visual-review', accessToken: 'synthetic-local-token' }
   else if (path === '/v1/sessions/list') data = list
   else if (path === '/v1/test/commands') data = { commands: fixtureCommands }
+  else if (/\/v1\/sessions\/[^/]+\/commands$/.test(path))
+    data = {
+      items: [
+        { description: 'Show or leave plan mode', name: 'plan' },
+        { description: 'Switch the access preset', input: { hint: 'preset', kind: 'text' }, name: 'permission' },
+        { description: 'Compact the conversation context', name: 'compact' },
+      ],
+    }
   else if (path === '/v1/schedules/catalog') data = { items: schedules }
   else if (/\/v1\/schedules\/[^/]+\/(pause|resume|delete)$/.test(path)) {
     const task = schedules.find((item) => item.id === path.split('/')[3])

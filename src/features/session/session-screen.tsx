@@ -115,6 +115,7 @@ export default function SessionScreen(): React.JSX.Element {
     activeSession,
     models,
     presets,
+    commands,
   } = useSessionQueries(client, connection, sessionId)
   const sessionTitle = sessionDisplayTitle(activeSession)
   const { branch, send, updateQueue, cancel, goalMutation, createGoalMutation, interruptSubagent } = useSessionActions(
@@ -604,6 +605,7 @@ export default function SessionScreen(): React.JSX.Element {
                 placeholder={message('conversation.composerPlaceholder')}
                 onSend={(content) => send.mutateAsync(content).then(() => undefined)}
                 onCancel={() => cancel.mutate()}
+                commands={commands.data}
                 permissions={readPermissionSelect(history.data?.projections?.values.permissions)}
                 plan={plan}
                 sessionId={sessionId}

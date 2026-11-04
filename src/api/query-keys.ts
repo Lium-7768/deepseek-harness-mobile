@@ -17,6 +17,7 @@ export const queryKeys = {
   sessionInteractions: key('session-interactions'),
   sessionSubagents: key('session-subagents'),
   sessionModels: key('session-models'),
+  sessionCommands: key('session-commands'),
   sessionGoal: key('session-goal'),
   agentPresets: key('agent-presets'),
   agentPreset: key('mobile-agent-preset'),

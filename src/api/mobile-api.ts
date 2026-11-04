@@ -3,6 +3,7 @@ import { isGoalRef, isGoalView } from '@/api/goal-payload'
 import type {
   MobileAgentPresetDetail,
   MobileAgentPresetListPayload,
+  MobileCommandDescriptor,
   MobileConnection,
   MobileFeedbackDeleteResult,
   MobileFeedbackListResult,
@@ -339,6 +340,14 @@ export class MobileApi {
   /** Lists direct desktop-owned subagent sessions without activating either agent. */
   subagents(sessionId: string): Promise<MobileSubagentCatalogPayload> {
     return this.#post<MobileSubagentCatalogPayload>(`/v1/sessions/${encodeURIComponent(sessionId)}/subagents`, {})
+  }
+
+  /** Reads the slash commands the desktop publishes for one session. */
+  async commands(sessionId: string): Promise<MobileCommandDescriptor[]> {
+    const result = await this.#post<unknown>(`/v1/sessions/${encodeURIComponent(sessionId)}/commands`, {})
+    if (!isRecord(result) || !Array.isArray(result.items) || !result.items.every(isCommandDescriptor))
+      throw createError('protocol', message('errors.responseInvalid'))
+    return result.items
   }
 
   /** Reads a direct child transcript through the desktop subagent authority. */
@@ -731,6 +740,17 @@ function containsChinese(value: string): boolean {
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return value !== null && typeof value === 'object' && !Array.isArray(value)
+}
+
+/** One slash command the Host advertises; only `name` is required to send it. */
+function isCommandDescriptor(value: unknown): value is MobileCommandDescriptor {
+  return (
+    isRecord(value) &&
+    typeof value.name === 'string' &&
+    value.name.trim() !== '' &&
+    value.name.startsWith('/') === false &&
+    typeof value.description === 'string'
+  )
 }
 
 function isScheduleEntry(value: unknown): value is import('@/types/mobile').MobileScheduleEntry {

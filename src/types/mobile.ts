@@ -437,3 +437,11 @@ export interface MobileScheduleEntry {
   target: { kind: 'session' | 'new_once'; sessionId: string } | { kind: 'new' }
   executionActive?: boolean
 }
+
+/** One slash command the desktop advertises for a session. */
+export interface MobileCommandDescriptor {
+  /** Lowercase command name without the leading slash. */
+  name: string
+  /** One-line summary the discovery menu prints. */
+  description: string
+}
