@@ -157,7 +157,8 @@ const makeStyles = (theme: AppTheme) =>
       maxWidth: 640,
       flexShrink: 1,
       backgroundColor: theme.colors.surfaceRaised,
-      borderRadius: theme.radius.md,
+      // `stat-dialog .panel` / `ContextMeter .panel`: the sheet surface is r16.
+      borderRadius: theme.radius.lg,
     },
-    clippedContent: { flexShrink: 1, borderRadius: theme.radius.md, overflow: 'hidden' },
+    clippedContent: { flexShrink: 1, borderRadius: theme.radius.lg, overflow: 'hidden' },
   })

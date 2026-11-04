@@ -46,24 +46,24 @@ export const makeSessionDrawerStyles = (theme: AppTheme) =>
       justifyContent: 'center',
       width: 28,
     },
+    // `SidebarRoot.module.css .newSession`: one 14/500 line in a 38-tall bar,
+    // 8px 12px, radius 12, on the elevated fill with a 0.5px l3 stroke. The
+    // native control keeps the drawn 38; hitSlop carries the touch target.
     newSession: {
       alignItems: 'center',
       backgroundColor: theme.colors.surface,
       borderColor: theme.colors.border,
       borderRadius: theme.radius.md,
-      borderWidth: 1,
+      borderWidth: StyleSheet.hairlineWidth,
       flexDirection: 'row',
       gap: 8,
       justifyContent: 'center',
-      minHeight: theme.touch.minTarget,
+      minHeight: 38,
       marginBottom: 8,
       marginHorizontal: 12,
       paddingHorizontal: 12,
       paddingVertical: 8,
     },
-    // `SidebarRoot.module.css .newSession`: one 14/500 line in a 38-tall bar,
-    // white on `bg-base`, 8px 12px, radius 12. The row keeps a 40pt floor so the
-    // platform touch target holds while the drawn control matches.
     newSessionText: { color: theme.colors.ink, flexShrink: 1, fontSize: 14, fontWeight: '500', lineHeight: 22 },
     newSessionTextDisabled: {
       color: theme.colors.inkMuted,
@@ -110,14 +110,16 @@ export const makeSessionDrawerStyles = (theme: AppTheme) =>
     // `zZw0qq_list`: rows inset 8px on both sides, which is the 264pt column
     // the `SidebarRoot` sidebar paints inside its 280pt frame.
     list: { flexGrow: 1, paddingBottom: 8, paddingLeft: 8, paddingRight: 8 },
-    // `Rows.module.css .projectRow`: 34 tall, radius 12, 8px inline padding, and a
-    // 16pt leading slot. The margin keeps the Web's 2px inset from the column edge.
+    // `Rows.module.css .projectRow / .sessionRow`: 32 tall on the Web with radius
+    // 12 and 8px inline padding. The native row takes a 36 floor: a literal 32
+    // leaves too little room for the enlarged-text setting, and the two extra
+    // points cost less than the row's touch tolerance would.
     folder: {
       alignItems: 'center',
       borderRadius: theme.radius.md,
       flexDirection: 'row',
       gap: 6,
-      minHeight: 44,
+      minHeight: 36,
       paddingLeft: 9,
       paddingRight: 8,
     },
@@ -138,7 +140,7 @@ export const makeSessionDrawerStyles = (theme: AppTheme) =>
       alignItems: 'center',
       borderRadius: theme.radius.md,
       flexDirection: 'row',
-      minHeight: 44,
+      minHeight: 36,
       paddingLeft: 9,
       paddingRight: 8,
     },

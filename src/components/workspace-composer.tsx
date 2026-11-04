@@ -361,8 +361,8 @@ export function WorkspaceComposer({
 
   return (
     <View style={s.wrap}>
-      {header}
-      <View style={s.stack}>
+      {header === undefined ? null : <View style={s.constrained}>{header}</View>}
+      <View style={[s.stack, s.constrained]}>
         <View style={[s.card, focused && s.cardFocused]}>
           {draftImages.length > 0 ? (
             <View
@@ -401,9 +401,11 @@ export function WorkspaceComposer({
             style={[
               s.input,
               {
-                minHeight: variant === 'hero' ? Math.max(60, layout.inputMinHeight) : layout.inputMinHeight,
+                // `InputBar .hero .input`: the hero keeps a two-line floor
+                // (2 x 24 line + 4pt = 52); the docked card collapses to content.
+                minHeight: variant === 'hero' ? Math.max(52, layout.inputMinHeight) : layout.inputMinHeight,
                 height: Math.max(
-                  variant === 'hero' ? Math.max(60, layout.inputMinHeight) : layout.inputMinHeight,
+                  variant === 'hero' ? Math.max(52, layout.inputMinHeight) : layout.inputMinHeight,
                   Math.min(inputHeight, height * 0.3, 336),
                 ),
               },
@@ -659,6 +661,9 @@ const makeStyles = (theme: AppTheme) =>
     // `wqMmtW_root`: the card and the dock share one column with 6px between,
     // 16px side clearance and 4px below.
     wrap: { backgroundColor: theme.colors.canvas, paddingBottom: 4, paddingHorizontal: theme.spacing.lg },
+    // `--dsh-composer-card-max-width` caps the column at the chat width plus 32
+    // (clamp 680..920 + 32 = 952); a phone never reaches it, a tablet would.
+    constrained: { alignSelf: 'center', maxWidth: 952, width: '100%' },
     stack: { flexDirection: 'column', gap: 6 },
     footer: { flexDirection: 'column' },
     // `ComposerAttachments .rail`: `2px 10px 0` with a -6 bottom pull, so the
@@ -703,13 +708,16 @@ const makeStyles = (theme: AppTheme) =>
     // Native text focus strengthens the existing hairline without changing geometry.
     cardFocused: { borderColor: theme.colors.ghostActiveBorder },
     // `wqMmtW_input`: 16/24, `4px 8px 0 14px`, a 36pt docked floor.
+    // `InputBar .input`: `4px 8px 0 14px` — the right pad is 8, and the draft's
+    // scrollport owns the extra 4px of trailing room on the Web.
     input: {
       color: theme.colors.ink,
       fontSize: 16,
       lineHeight: 24,
       minHeight: 36,
       paddingBottom: 0,
-      paddingHorizontal: 14,
+      paddingLeft: 14,
+      paddingRight: 8,
       paddingTop: 4,
     },
     // Desktop compact row: gap 12, `2px 8px 6px`; touch insets extend beyond 28pt controls.

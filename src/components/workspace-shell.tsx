@@ -110,14 +110,16 @@ const makeStyles = (theme: AppTheme) =>
     safe: { flex: 1, backgroundColor: theme.colors.background },
     root: { flex: 1 },
     header: { borderBottomColor: theme.colors.border, borderBottomWidth: StyleSheet.hairlineWidth },
-    // `ConversationRoot.module.css .header` pads 10px 28px 0 20px; the phone
-    // adds the status-bar inset above it and keeps the desktop's 30px row.
+    // `ConversationRoot.module.css .header` pads `10px 28px 0 20px`; the phone
+    // adds the status-bar inset above it. The desktop title row is 30 tall in a
+    // 40 header; the native row keeps a 44 floor so the trailing control holds
+    // its touch target.
     headerTop: {
       alignItems: 'center',
       flexDirection: 'row',
       minHeight: theme.chrome.headerHeight,
       paddingLeft: 20,
-      paddingRight: 16,
+      paddingRight: 28,
       paddingVertical: 0,
     },
     // The desktop's header icon button is 28pt square with the small radius
