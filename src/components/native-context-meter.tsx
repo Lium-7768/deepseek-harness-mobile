@@ -46,6 +46,7 @@ export function NativeContextMeter({ panel }: { panel: ContextMeterPanel | undef
         accessibilityLabel={format('session.contextUsed', { percent: panel.percent })}
         accessibilityRole="button"
         accessibilityState={{ expanded: open }}
+        hitSlop={{ top: 11, bottom: 11 }}
         onPress={() => setOpen((current) => !current)}
         style={({ pressed }) => [s.trigger, open && s.triggerOpen, pressed && s.pressed]}
       >
@@ -91,16 +92,17 @@ export function NativeContextMeter({ panel }: { panel: ContextMeterPanel | undef
 
 const makeStyles = (theme: AppTheme) =>
   StyleSheet.create({
-    // `ContextMeter .trigger`: a 24-radius chip on `1px 8px` with a 6px gap.
+    // `ContextMeter .trigger`: an r8 chip on `1px 8px` with a 6px gap. The 20
+    // line plus the 1px block pad is the whole 22; the 44pt touch target comes
+    // from hitSlop, not the box.
     trigger: {
       alignItems: 'center',
-      borderRadius: 24,
+      borderRadius: theme.radius.sm,
       flexDirection: 'row',
       flexShrink: 0,
       gap: 6,
       paddingHorizontal: 8,
-      paddingVertical: 6,
-      minHeight: 36,
+      paddingVertical: 1,
     },
     triggerOpen: { backgroundColor: theme.colors.floatingHover },
     text: textStyle(theme, 'body', 'tertiary'),

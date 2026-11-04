@@ -40,6 +40,7 @@ export function NativeStatisticsPill({
         accessibilityRole="button"
         accessibilityState={{ expanded: interactive && open }}
         disabled={!interactive}
+        hitSlop={{ top: 11, bottom: 11 }}
         onPress={() => setOpen((current) => !current)}
         style={({ pressed }) => [s.pill, open && s.pillOpen, pressed && interactive && s.pressed]}
       >
@@ -77,7 +78,8 @@ export function NativeStatisticsPill({
 const makeStyles = (theme: AppTheme) =>
   StyleSheet.create({
     // `StatsPills .pill`: 22-tall chip on `1px 8px`, r8, 6px between the glyph
-    // and its readings, tertiary 12/20 text.
+    // and its readings, tertiary 12/20 text. The 20 line plus the 1px block pad
+    // is the whole 22; the 44pt touch target comes from hitSlop, not the box.
     pill: {
       alignItems: 'center',
       borderRadius: theme.radius.sm,
@@ -86,8 +88,7 @@ const makeStyles = (theme: AppTheme) =>
       gap: 6,
       minWidth: 0,
       paddingHorizontal: 8,
-      paddingVertical: 6,
-      minHeight: 36,
+      paddingVertical: 1,
     },
     // `button.pill[aria-expanded='true']`: the hover fill and secondary tone.
     pillOpen: { backgroundColor: theme.colors.floatingHover },

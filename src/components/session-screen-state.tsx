@@ -76,9 +76,11 @@ export function ConnectionStatus({ status }: { status: string }): React.JSX.Elem
  * Renders the composer dock that `InputBar.dock` prints below the card.
  *
  * The statistics pills and the context meter share one centred row 12px apart.
+ * The row always renders: `InputBar .root:not(.hero) > .dock` reserves its height
+ * so the composer does not resize when the projections land.
  *
  * @param props - Visible events, durable projections, and the meter reading.
- * @returns The dock row, or `null` when neither side has anything to print.
+ * @returns The dock row, empty until a reading exists.
  */
 export function SessionDock({
   items,
@@ -86,11 +88,10 @@ export function SessionDock({
 }: {
   items: SharedEventItem[]
   projectionValues: Record<string, unknown> | undefined
-}): React.JSX.Element | null {
+}): React.JSX.Element {
   const s = useThemedStyles(makeSessionStyles)
   const pills = sessionStatisticsPills(projectionValues, items)
   const meter = contextMeterPanel(projectionValues)
-  if (pills.length === 0 && meter === undefined) return null
   return (
     <View style={s.dock}>
       {pills.map((pill) => (

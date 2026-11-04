@@ -103,12 +103,15 @@ export const makeSessionStyles = (theme: AppTheme) =>
     // `InputBar.dock`: one centred row 12px apart with 4px of top pad holding the
     // statistics pills and the context meter. It never wraps: a reading that
     // runs out of width ellipsizes, as `StatsPills .label` does on the Web.
+    // `min-height: 22` reserves the readings' row, so the composer keeps one
+    // height whether or not the projections have landed yet.
     dock: {
       alignItems: 'center',
       flexDirection: 'row',
       gap: 12,
       justifyContent: 'center',
       maxWidth: '100%',
+      minHeight: 22,
       paddingTop: 4,
     },
     status: { alignItems: 'center', flexDirection: 'row', gap: 5 },
