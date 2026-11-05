@@ -37,6 +37,8 @@ The full component diagram is in [ARCHITECTURE.md](./ARCHITECTURE.md).
 
 **Requirements:** Node 22, pnpm, Xcode for iOS development, and a running desktop app with Mobile Gateway enabled.
 
+The desktop gateway must be `dsh-phone-access >= 0.1.9`. That release follows the Desktop 0.2.2-rc.1 wire: the control stream carries projection-only baselines with `changes[]` frames, `subagents/interruptByParent` became `interruptByUser`, and the `subagents/list` Remote is gone. Pairing this client with 0.1.8 makes the sub-agent roster fail, and queue and job snapshots stay empty because no Desktop release ever sent them on the control stream.
+
 ```bash
 pnpm install
 pnpm start

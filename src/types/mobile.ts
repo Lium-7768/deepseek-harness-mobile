@@ -161,7 +161,6 @@ export type MobileSubagentEntry =
       id: string
       mode: 'one-shot' | 'continuable'
       activity: 'running' | 'inactive'
-      hasChildren: boolean
       label?: string
     }
   | { kind: 'diagnostic'; id: string; reason: 'corrupt' | 'unsupported' | 'unavailable' }
