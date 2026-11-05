@@ -31,4 +31,7 @@ export const activity = {
   subagentOneShot: '一次性',
   /** `{name}` and `{reason}` describe an unusable child agent. */
   subagentDiagnostic: '子 Agent {name} 当前不可用（{reason}）。',
+  subagentReasonCorrupt: '记录损坏',
+  subagentReasonUnsupported: '类型不受支持',
+  subagentReasonUnavailable: '无法读取',
 } as const

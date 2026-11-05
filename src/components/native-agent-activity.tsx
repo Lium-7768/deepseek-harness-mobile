@@ -6,6 +6,14 @@ import type { MobileJobView, MobileSubagentEntry } from '@/types/mobile'
 import { Pressable, StyleSheet, Text, View } from 'react-native'
 
 type MobileChildSubagentEntry = Extract<MobileSubagentEntry, { kind: 'child' }>
+type MobileDiagnosticReason = Extract<MobileSubagentEntry, { kind: 'diagnostic' }>['reason']
+
+/** Maps the Host's diagnostic token onto the localized reason the row prints. */
+function diagnosticReason(reason: MobileDiagnosticReason): string {
+  if (reason === 'corrupt') return message('activity.subagentReasonCorrupt')
+  if (reason === 'unsupported') return message('activity.subagentReasonUnsupported')
+  return message('activity.subagentReasonUnavailable')
+}
 type MobileContinuableSubagentEntry = MobileChildSubagentEntry & { mode: 'continuable' }
 
 /** Displays the same host-owned job summary and direct-child catalog used by the desktop Web header. */
@@ -83,7 +91,7 @@ export function NativeAgentActivity({
           ))}
           {diagnostics.map((entry) => (
             <Text key={entry.id} style={styles.diagnostic}>
-              {format('activity.subagentDiagnostic', { name: entry.id, reason: entry.reason })}
+              {format('activity.subagentDiagnostic', { name: entry.id, reason: diagnosticReason(entry.reason) })}
             </Text>
           ))}
         </View>
