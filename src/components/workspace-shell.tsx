@@ -1,6 +1,7 @@
 import { NativeIcon } from '@/components/native-icon'
-import { workspaceHeaderMinHeight } from '@/components/workspace-shell-logic'
+import { shouldShowOfflineBar, workspaceHeaderMinHeight } from '@/components/workspace-shell-logic'
 import { t as message } from '@/locale'
+import { useConnectionStore } from '@/state/connection'
 import { useMobileSyncStore } from '@/state/mobile-sync'
 import type { AppTheme } from '@/theme'
 import { useAppTheme, useMotionEasing, useThemedStyles } from '@/theme/hooks'
@@ -122,7 +123,8 @@ function OfflineBanner(): React.JSX.Element | null {
   const s = useThemedStyles(makeStyles)
   const theme = useAppTheme()
   const status = useMobileSyncStore((state) => state.status)
-  if (status !== 'disconnected') return null
+  const connection = useConnectionStore((state) => state.connection)
+  if (!shouldShowOfflineBar({ hasConnection: connection !== undefined, status })) return null
   return (
     <Pressable
       accessibilityRole="button"

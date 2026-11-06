@@ -18,6 +18,8 @@ web-build/
 # Native build products
 ios/Pods/
 ios/build/
+ios/build-sim/
+ios/build*/
 ios/*.xcworkspace/
 android/.gradle/
 android/app/build/
