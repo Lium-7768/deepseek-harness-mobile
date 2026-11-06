@@ -29,6 +29,7 @@ import {
   READER_SCROLL_TAIL_MS,
   SEND_FOLLOW_WINDOW_MS,
   isNearLatestMessage,
+  restoredOffsetAfterPrepend,
   shouldFollowContentGrowth,
   shouldReleaseFollowOnScroll,
   shouldShowReturnToLatest,
@@ -95,6 +96,10 @@ export default function SessionScreen(): React.JSX.Element {
   // prompt row and the first reply chunk land in separate commits, so a stale
   // offset measured in between would otherwise release the follow latch.
   const sendFollowUntil = useRef(0)
+  /** Last measured content height and offset, used to anchor a history prepend. */
+  const listMetrics = useRef({ contentHeight: 0, offsetY: 0 })
+  /** Set by `loadOlder` so the next content growth restores the reader's offset. */
+  const pendingPrependAnchor = useRef<{ contentHeight: number; offsetY: number } | null>(null)
   const [showReturnToLatest, setShowReturnToLatest] = useState(false)
   const [olderItems, setOlderItems] = useState<SharedEventItem[]>([])
   const [olderHasMore, setOlderHasMore] = useState<boolean | undefined>()
@@ -143,8 +148,14 @@ export default function SessionScreen(): React.JSX.Element {
       return client.sessionHistory(sessionId, { beforeSeq, maxMessages: 200 })
     },
     onSuccess: (page) => {
+      // Prepend anchors the reader: newer rows above the viewport add height without
+      // moving what is being read, so the offset has to grow by the same amount. The
+      // list's own `maintainVisibleContentPosition` is gone because its latch also
+      // fights the jump to the newest message.
+      const before = listMetrics.current
       setOlderItems((current) => mergeEventItems(page.items, current))
       setOlderHasMore(page.hasMore ?? false)
+      pendingPrependAnchor.current = before
     },
     onError: (error) =>
       Alert.alert(
@@ -476,9 +487,10 @@ export default function SessionScreen(): React.JSX.Element {
                   maxToRenderPerBatch={10}
                   updateCellsBatchingPeriod={40}
                   windowSize={11}
-                  // The list owns its own arrival: rows keep their measured height while
-                  // the first jump settles, so a re-render cannot reset the offset.
-                  maintainVisibleContentPosition={{ minIndexForVisible: 0 }}
+                  // No `maintainVisibleContentPosition`: its latch anchors the first visible
+                  // row across every content change, including the jump to the newest message,
+                  // and the two pull in opposite directions. History prepends restore their own
+                  // offset instead (see `loadOlder`).
                   renderItem={renderItem}
                   contentContainerStyle={s.list}
                   keyboardDismissMode="on-drag"
@@ -529,11 +541,25 @@ export default function SessionScreen(): React.JSX.Element {
                       <Text style={s.empty}>{message('conversation.noMessages')}</Text>
                     )
                   }
-                  onContentSizeChange={() => {
+                  onContentSizeChange={(_width: number, height: number) => {
                     // A long conversation keeps mounting rows after the first jump, and a
                     // streaming reply grows on every chunk, so the follow is decided per
                     // content change rather than once per open. The reader's own drag is
                     // what releases it; a programmatic jump cannot.
+                    const anchor = pendingPrependAnchor.current
+                    if (anchor !== null) {
+                      pendingPrependAnchor.current = null
+                      initialLatestPositionPending.current = false
+                      listRef.current?.scrollToOffset({
+                        animated: false,
+                        offset: restoredOffsetAfterPrepend({
+                          previousContentHeight: anchor.contentHeight,
+                          previousOffset: anchor.offsetY,
+                          nextContentHeight: height,
+                        }),
+                      })
+                      return
+                    }
                     const sendFollowWindowOpen = Date.now() < sendFollowUntil.current
                     const follow = shouldFollowContentGrowth({
                       hasMessages: messages.length > 0,
@@ -553,6 +579,12 @@ export default function SessionScreen(): React.JSX.Element {
                     if (readerScrolling.current) settleReaderScroll(event)
                   }}
                   onScroll={(event: NativeSyntheticEvent<NativeScrollEvent>) => {
+                    // Every measurement feeds the prepend anchor, including the ones taken
+                    // before initial positioning finishes; only the follow latch is gated.
+                    listMetrics.current = {
+                      contentHeight: event.nativeEvent.contentSize.height,
+                      offsetY: event.nativeEvent.contentOffset.y,
+                    }
                     if (!shouldTrackLatestProximity({ initialPositionPending: initialLatestPositionPending.current }))
                       return
                     applyScrollProximity(event.nativeEvent, readerScrolling.current)

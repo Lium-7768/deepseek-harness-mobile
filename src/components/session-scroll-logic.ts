@@ -62,6 +62,30 @@ export function shouldReleaseFollowOnScroll({
   return readerScrolling && !sendFollowWindowOpen
 }
 
+/**
+ * Computes the offset that keeps a reader on the same row after history is prepended.
+ *
+ * Newer rows above the viewport grow the content height without moving what the reader is
+ * looking at, so the offset has to grow by exactly that much. Anchoring the offset this way
+ * replaces `maintainVisibleContentPosition`, whose latch also fights a jump to the newest
+ * message at the bottom of the same list.
+ *
+ * @param args - The content height and offset before the prepend, and the height after it.
+ * @returns The offset to restore, never below zero.
+ */
+export function restoredOffsetAfterPrepend({
+  previousContentHeight,
+  previousOffset,
+  nextContentHeight,
+}: {
+  previousContentHeight: number
+  previousOffset: number
+  nextContentHeight: number
+}): number {
+  if (![previousContentHeight, previousOffset, nextContentHeight].every(Number.isFinite)) return 0
+  return Math.max(0, previousOffset + Math.max(0, nextContentHeight - previousContentHeight))
+}
+
 /** Reports whether a list viewport is at or close enough to the newest visible message. */
 export function isNearLatestMessage(
   contentHeight: number,

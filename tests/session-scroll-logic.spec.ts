@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   isNearLatestMessage,
+  restoredOffsetAfterPrepend,
   shouldFollowContentGrowth,
   shouldReleaseFollowOnScroll,
   shouldScrollToLatest,
@@ -76,5 +77,29 @@ describe('content-growth follow policy', () => {
 
   it('protects the latch for the whole send window even while the reader drags', () => {
     expect(shouldReleaseFollowOnScroll({ readerScrolling: true, sendFollowWindowOpen: true })).toBe(false)
+  })
+})
+
+describe('history prepend anchor', () => {
+  it('keeps the reader on the same row when older rows land above the viewport', () => {
+    // 400pt of history arrives above; the offset must grow by exactly that much.
+    expect(
+      restoredOffsetAfterPrepend({ previousContentHeight: 2_000, previousOffset: 900, nextContentHeight: 2_400 }),
+    ).toBe(1_300)
+  })
+
+  it('leaves the offset alone when the prepend adds nothing', () => {
+    expect(
+      restoredOffsetAfterPrepend({ previousContentHeight: 2_000, previousOffset: 900, nextContentHeight: 2_000 }),
+    ).toBe(900)
+  })
+
+  it('never returns a negative offset', () => {
+    expect(
+      restoredOffsetAfterPrepend({ previousContentHeight: 2_000, previousOffset: 0, nextContentHeight: 1_500 }),
+    ).toBe(0)
+    expect(
+      restoredOffsetAfterPrepend({ previousContentHeight: Number.NaN, previousOffset: 0, nextContentHeight: 1_500 }),
+    ).toBe(0)
   })
 })
