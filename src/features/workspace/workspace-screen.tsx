@@ -1,4 +1,4 @@
-import { MobileApi } from '@/api/mobile-api'
+import { MobileApi, mobileErrorMessage } from '@/api/mobile-api'
 import { queryKeys } from '@/api/query-keys'
 import { sessionEventsOptions, sessionPreviewOptions } from '@/api/session-query-options'
 import { NativeBrandMark } from '@/components/native-brand-mark'
@@ -14,6 +14,7 @@ import {
 } from '@/components/session-drawer-logic'
 import { useSessionSelections } from '@/hooks/use-session-selections'
 import { WorkspaceComposer } from '@/components/workspace-composer'
+import { ErrorNotice } from '@/components/session-screen-state'
 import { WorkspaceShell } from '@/components/workspace-shell'
 import { workspaceKeyboardVerticalOffset } from '@/components/workspace-shell-logic'
 import { format, t as message } from '@/locale'
@@ -127,6 +128,15 @@ export default function WorkspaceScreen(): React.JSX.Element {
           keyboardShouldPersistTaps="handled"
           keyboardDismissMode="on-drag"
         >
+          {sessions.isError ? (
+            // Without this the composer just sits disabled with no reason on screen.
+            <ErrorNotice
+              text={format('workspace.loadFailed', {
+                reason: mobileErrorMessage(sessions.error, message('common.retry')),
+              })}
+              onRetry={() => void sessions.refetch()}
+            />
+          ) : null}
           <View style={s.startPanel}>
             <View style={s.summary}>
               {/* `_wOI4G_root`: the hero is the surface's identity, so it stays put
