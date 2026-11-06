@@ -86,6 +86,37 @@ export function restoredOffsetAfterPrepend({
   return Math.max(0, previousOffset + Math.max(0, nextContentHeight - previousContentHeight))
 }
 
+/**
+ * Distance from the top of the list that counts as reaching for older history.
+ *
+ * One screen of runway: the request starts before the reader hits the first row, so the
+ * older messages are usually there by the time the top is visible.
+ */
+export const OLDER_HISTORY_TRIGGER_PX = 320
+
+/**
+ * Decides whether a scroll measurement should request the next older page.
+ *
+ * @param args - The current offset, whether more pages exist, whether a request is already
+ *   in flight, and whether an earlier request settled without adding rows.
+ * @returns True when one more page should be requested.
+ */
+export function shouldLoadOlderHistory({
+  offsetY,
+  hasMore,
+  loading,
+  exhausted,
+}: {
+  offsetY: number
+  hasMore: boolean
+  loading: boolean
+  exhausted: boolean
+}): boolean {
+  if (!Number.isFinite(offsetY)) return false
+  if (loading || exhausted || !hasMore) return false
+  return offsetY <= OLDER_HISTORY_TRIGGER_PX
+}
+
 /** Reports whether a list viewport is at or close enough to the newest visible message. */
 export function isNearLatestMessage(
   contentHeight: number,

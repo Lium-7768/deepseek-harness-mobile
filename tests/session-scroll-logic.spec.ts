@@ -3,6 +3,7 @@ import {
   isNearLatestMessage,
   restoredOffsetAfterPrepend,
   shouldFollowContentGrowth,
+  shouldLoadOlderHistory,
   shouldReleaseFollowOnScroll,
   shouldScrollToLatest,
   shouldShowReturnToLatest,
@@ -101,5 +102,32 @@ describe('history prepend anchor', () => {
     expect(
       restoredOffsetAfterPrepend({ previousContentHeight: Number.NaN, previousOffset: 0, nextContentHeight: 1_500 }),
     ).toBe(0)
+  })
+})
+
+describe('older-history auto load', () => {
+  it('requests the next page before the reader reaches the first row', () => {
+    expect(shouldLoadOlderHistory({ offsetY: 200, hasMore: true, loading: false, exhausted: false })).toBe(true)
+    expect(shouldLoadOlderHistory({ offsetY: 0, hasMore: true, loading: false, exhausted: false })).toBe(true)
+  })
+
+  it('does not request while the reader is still reading the middle', () => {
+    expect(shouldLoadOlderHistory({ offsetY: 900, hasMore: true, loading: false, exhausted: false })).toBe(false)
+  })
+
+  it('does not stack requests while one is in flight', () => {
+    expect(shouldLoadOlderHistory({ offsetY: 10, hasMore: true, loading: true, exhausted: false })).toBe(false)
+  })
+
+  it('stops once the host reports no more pages', () => {
+    expect(shouldLoadOlderHistory({ offsetY: 10, hasMore: false, loading: false, exhausted: false })).toBe(false)
+  })
+
+  it('stops after a page that brought no rows, even if the host still claims more', () => {
+    expect(shouldLoadOlderHistory({ offsetY: 10, hasMore: true, loading: false, exhausted: true })).toBe(false)
+  })
+
+  it('ignores a measurement that is not a finite number', () => {
+    expect(shouldLoadOlderHistory({ offsetY: Number.NaN, hasMore: true, loading: false, exhausted: false })).toBe(false)
   })
 })

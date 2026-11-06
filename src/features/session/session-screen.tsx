@@ -31,6 +31,7 @@ import {
   isNearLatestMessage,
   restoredOffsetAfterPrepend,
   shouldFollowContentGrowth,
+  shouldLoadOlderHistory,
   shouldReleaseFollowOnScroll,
   shouldShowReturnToLatest,
   shouldTrackLatestProximity,
@@ -100,6 +101,8 @@ export default function SessionScreen(): React.JSX.Element {
   const listMetrics = useRef({ contentHeight: 0, offsetY: 0 })
   /** Set by `loadOlder` so the next content growth restores the reader's offset. */
   const pendingPrependAnchor = useRef<{ contentHeight: number; offsetY: number } | null>(null)
+  /** A page that brought no rows means scrolling further cannot find more, even if the host says it has. */
+  const exhaustedOlderHistory = useRef(false)
   const [showReturnToLatest, setShowReturnToLatest] = useState(false)
   const [olderItems, setOlderItems] = useState<SharedEventItem[]>([])
   const [olderHasMore, setOlderHasMore] = useState<boolean | undefined>()
@@ -153,6 +156,7 @@ export default function SessionScreen(): React.JSX.Element {
       // list's own `maintainVisibleContentPosition` is gone because its latch also
       // fights the jump to the newest message.
       const before = listMetrics.current
+      if (page.items.length === 0) exhaustedOlderHistory.current = true
       setOlderItems((current) => mergeEventItems(page.items, current))
       setOlderHasMore(page.hasMore ?? false)
       pendingPrependAnchor.current = before
@@ -175,6 +179,7 @@ export default function SessionScreen(): React.JSX.Element {
     setShowReturnToLatest(false)
     setOlderItems([])
     setOlderHasMore(undefined)
+    exhaustedOlderHistory.current = false
   }, [sessionId])
 
   useEffect(() => {
@@ -589,6 +594,17 @@ export default function SessionScreen(): React.JSX.Element {
                       contentHeight: event.nativeEvent.contentSize.height,
                       offsetY: event.nativeEvent.contentOffset.y,
                     }
+                    // Reaching for older history should not need a second press on a button
+                    // that sits above the very rows being requested.
+                    if (
+                      shouldLoadOlderHistory({
+                        offsetY: event.nativeEvent.contentOffset.y,
+                        hasMore: olderHasMore !== false,
+                        loading: loadOlder.isPending,
+                        exhausted: exhaustedOlderHistory.current,
+                      })
+                    )
+                      void loadOlder.mutateAsync().catch(() => undefined)
                     if (!shouldTrackLatestProximity({ initialPositionPending: initialLatestPositionPending.current }))
                       return
                     applyScrollProximity(event.nativeEvent, readerScrolling.current)
