@@ -140,6 +140,7 @@ export function NativeMarkdown({
           return (
             <Text
               key={key}
+              selectable
               style={[
                 styles.heading,
                 spacing,
@@ -159,7 +160,9 @@ export function NativeMarkdown({
         if (block.kind === 'quote')
           return (
             <View key={key} style={[styles.quote, spacing]}>
-              <Text style={styles.quoteText}>{content}</Text>
+              <Text selectable style={styles.quoteText}>
+                {content}
+              </Text>
             </View>
           )
         if (block.kind === 'list')
@@ -168,7 +171,9 @@ export function NativeMarkdown({
               {(block.items ?? []).map((item, itemIndex) => (
                 <View key={`${key}-${itemIndex}`} style={styles.listRow}>
                   <Text style={styles.marker}>{item.marker}</Text>
-                  <Text style={[styles.body, styles.listBody]}>{inline(item.text, `${key}-${itemIndex}`, styles)}</Text>
+                  <Text selectable style={[styles.body, styles.listBody]}>
+                    {inline(item.text, `${key}-${itemIndex}`, styles)}
+                  </Text>
                 </View>
               ))}
             </View>
@@ -223,7 +228,7 @@ function NativeTable({ block, styles }: { block: Block; styles: ReturnType<typeo
   const cells = (row: string[], rowKey: string, heading: boolean): React.JSX.Element[] =>
     Array.from({ length: columns }, (_, column) => (
       <View key={`${rowKey}-${column}`} style={cellStyle(column)}>
-        <Text style={heading ? styles.tableHeadText : styles.tableText}>
+        <Text selectable style={heading ? styles.tableHeadText : styles.tableText}>
           {inline(row[column] ?? '', `${rowKey}-${column}`, styles)}
         </Text>
       </View>
