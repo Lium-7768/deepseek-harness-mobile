@@ -90,6 +90,15 @@ cells, diff paths, message action rows and drawer rows cap at 1.3; a dense one-l
 entry caps at 1.15. Prose stays uncapped so body text grows freely. Both caps live in
 `src/theme/text-scale.ts`; no other limit is applied anywhere in the client.
 
+## Screen size
+
+The client targets phones. `app.json` declares `supportsTablet: false` and locks portrait,
+because the layout is a single column: on a tablet the transcript would render as one very
+wide line and the session drawer would cover content it could otherwise sit beside. A tablet
+layout needs a permanent drawer and a centered content column with a reading width, which is
+its own change with its own verification; declaring tablet support before that ships a
+worse experience than not offering it.
+
 ## Remaining limits
 
 - The `@` file-reference trigger from `ui-input-trigger` is not implemented: it needs a file tree the gateway does not forward, and is tracked separately from the `/` command menu.
