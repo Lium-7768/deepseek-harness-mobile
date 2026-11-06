@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { conversationFlowGap, conversationRowKey } from '@/components/conversation-flow'
+import { closingAssistantSequences, conversationFlowGap, conversationRowKey } from '@/components/conversation-flow'
 import type { NativeConversationRow } from '@/components/session-conversation-logic'
 import { foldCompletedTurns, turnSpans } from '@/components/session-turn-logic'
 import { groupProcessRows } from '@/components/session-process-logic'
@@ -87,5 +87,28 @@ describe('complete conversation flow', () => {
     expect(conversationFlowGap(retry, retry)).toBe(4)
     expect(conversationFlowGap(answer, retry)).toBe(12)
     expect(conversationFlowGap({ kind: 'user', text: 'next' }, answer)).toBe(24)
+  })
+})
+
+describe('closing assistant blocks', () => {
+  it('marks only the last assistant block before each prompt', () => {
+    const rows = [
+      { kind: 'user', sourceSeq: 1 },
+      { kind: 'assistant', sourceSeq: 2 },
+      { kind: 'tool', sourceSeq: 3 },
+      { kind: 'assistant', sourceSeq: 4 },
+      { kind: 'user', sourceSeq: 5 },
+      { kind: 'assistant', sourceSeq: 6 },
+      { kind: 'assistant', sourceSeq: 7 },
+    ]
+    expect([...closingAssistantSequences(rows)].sort((a, b) => a - b)).toEqual([4, 7])
+  })
+
+  it('marks the final block of a conversation that never got a further prompt', () => {
+    expect([...closingAssistantSequences([{ kind: 'assistant', sourceSeq: 9 }])]).toEqual([9])
+  })
+
+  it('marks nothing in a conversation that only holds prompts', () => {
+    expect([...closingAssistantSequences([{ kind: 'user', sourceSeq: 1 }])]).toEqual([])
   })
 })

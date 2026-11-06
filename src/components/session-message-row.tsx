@@ -29,6 +29,7 @@ import { AccessibilityInfo, Pressable, Text, View } from 'react-native'
 
 export const MessageRow = memo(function MessageRow({
   item,
+  compact = false,
   onBranch,
   showActions = true,
   event,
@@ -39,6 +40,8 @@ export const MessageRow = memo(function MessageRow({
   /** Forks the session at this row's message; the drawer owns the same action. */
   onBranch?: (sourceSeq: number) => void
   showActions?: boolean
+  /** Mid-turn block: the copy control only, without the clock, rating and branch action. */
+  compact?: boolean
   event: Record<string, unknown> | undefined
   api: MobileApi | undefined
   sessionId: string | undefined
@@ -90,10 +93,11 @@ export const MessageRow = memo(function MessageRow({
       {showActions ? (
         <MessageActions
           alignment="assistant"
+          compact={compact}
           text={item.text}
-          time={item.time}
-          trailing={feedback}
-          {...(onBranch === undefined || item.sourceSeq === undefined
+          time={compact ? undefined : item.time}
+          trailing={compact ? undefined : feedback}
+          {...(compact || onBranch === undefined || item.sourceSeq === undefined
             ? {}
             : { onBranch: () => onBranch(item.sourceSeq as number) })}
         />
@@ -104,12 +108,15 @@ export const MessageRow = memo(function MessageRow({
 
 export function MessageActions({
   alignment,
+  compact = false,
   onBranch,
   text,
   time,
   trailing,
 }: {
   alignment: MessageActionAlignment
+  /** Renders the copy control alone; a mid-turn block does not repeat the clock or branch. */
+  compact?: boolean
   text: string
   time?: number
   /** Rating controls the Web draws between Copy and the branch action. */
@@ -157,7 +164,7 @@ export function MessageActions({
   return (
     <View style={[s.actionRow, alignment === 'user' ? s.actionRowUser : s.actionRowAssistant]}>
       {/* `.timeStart` leads a user row; `.timeEnd` follows an assistant row's icons. */}
-      {time === undefined || alignment !== 'user' ? null : (
+      {compact || time === undefined || alignment !== 'user' ? null : (
         <Text ellipsizeMode="tail" numberOfLines={1} style={[s.actionTime, s.actionTimeUser]}>
           {formatMessageTime(time)}
         </Text>
@@ -201,7 +208,7 @@ export function MessageActions({
           <NativeIcon name="branch-outline" size={16} color={theme.colors.inkTertiary} />
         </Pressable>
       )}
-      {time === undefined || alignment !== 'assistant' ? null : (
+      {compact || time === undefined || alignment !== 'assistant' ? null : (
         <Text ellipsizeMode="tail" numberOfLines={1} style={[s.actionTime, s.actionTimeEnd]}>
           {formatMessageTime(time)}
         </Text>

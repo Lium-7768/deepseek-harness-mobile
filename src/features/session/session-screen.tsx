@@ -1,5 +1,5 @@
 import { ConversationDisclosureContext } from '@/components/conversation-disclosure'
-import { conversationFlowGap, conversationRowKey } from '@/components/conversation-flow'
+import { closingAssistantSequences, conversationFlowGap, conversationRowKey } from '@/components/conversation-flow'
 import { MobileApi } from '@/api/mobile-api'
 import { NativeAgentActivity } from '@/components/native-agent-activity'
 import { NativeGoalEditor } from '@/components/native-goal-editor'
@@ -243,10 +243,16 @@ export default function SessionScreen(): React.JSX.Element {
     (seq: number | undefined) => (seq === undefined ? undefined : eventBySeqRef.current.get(seq)),
     [],
   )
+  const closingBlocks = useMemo(() => closingAssistantSequences(displayRows), [displayRows])
+  const isClosingBlock = useCallback(
+    (row: NativeConversationRow) => row.sourceSeq !== undefined && closingBlocks.has(row.sourceSeq),
+    [closingBlocks],
+  )
   const renderRow = useCallback(
     (row: NativeConversationRow) => (
       <MessageRow
         api={client}
+        compact={row.kind === 'assistant' && !isClosingBlock(row)}
         event={getEvent(row.sourceSeq)}
         item={row}
         onBranch={branchFromMessage}
@@ -254,11 +260,12 @@ export default function SessionScreen(): React.JSX.Element {
         // Deliberate departure from the desktop: `MessageIconActions` renders only in
         // `TurnTailNodeView` because a pointer can drag-select any earlier block. A phone
         // cannot, and the selection handles inside a scrolling list are hard to grab, so
-        // every assistant block carries its own copy control instead.
+        // every assistant block carries a copy control; only the closing block repeats the
+        // clock, rating and branch action.
         showActions
       />
     ),
-    [branchFromMessage, client, getEvent, sessionId],
+    [branchFromMessage, client, getEvent, isClosingBlock, sessionId],
   )
   // A step's rows sit behind one collapsed header, the way the desktop groups a
   // step instead of printing a row per call.

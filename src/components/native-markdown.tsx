@@ -526,18 +526,17 @@ const makeStyles = (theme: AppTheme) =>
     codeToggleText: { color: theme.colors.accent, fontSize: 12, fontWeight: '500' },
     // `MarkdownText.module.css .tableScroll`: the wrapper clips, and a table
     // narrower than four columns fills the column.
-    tableCard: { minWidth: 0, position: 'relative' },
-    // The copy control floats over the table's top-right corner so it costs no layout
-    // height; a table that fills the column would otherwise push every row down by it.
+    tableCard: { minWidth: 0 },
+    // The control owns a row above the grid, the way a code block owns its header: a
+    // floating corner button covered the last column's header text.
+    tableActions: { alignItems: 'center', flexDirection: 'row', gap: 6, justifyContent: 'flex-end', minHeight: 22 },
     tableCopy: {
       alignItems: 'center',
-      backgroundColor: theme.colors.surfaceRaised,
       borderRadius: theme.radius.sm,
       height: 22,
       justifyContent: 'center',
       width: 22,
     },
-    tableActions: { alignItems: 'center', flexDirection: 'row', gap: 4, position: 'absolute', right: 2, top: 2 },
     tableCopySize: { color: theme.colors.inkMuted, flexShrink: 1, fontSize: 11, lineHeight: 22 },
     tableScroll: { flexGrow: 0, maxWidth: '100%' },
     table: { flexDirection: 'column' },
