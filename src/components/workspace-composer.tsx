@@ -1,3 +1,4 @@
+import { tapFeedback } from '@/components/haptics'
 import { composerLayout } from '@/components/native-layout'
 import { catalogModelLabel, selectedCatalogModel } from '@/components/session-selection-logic'
 import { NativeIcon } from '@/components/native-icon'
@@ -167,6 +168,7 @@ export function WorkspaceComposer({
       })),
     ]
     try {
+      tapFeedback()
       await onSend(content)
       useComposerDraftStore.getState().clearSentDraft(draftKey, text)
       setDraftImages([])

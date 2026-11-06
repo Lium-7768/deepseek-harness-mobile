@@ -1,6 +1,7 @@
 import { MobileApi, MobileApiError } from '@/api/mobile-api'
 import { queryKeys } from '@/api/query-keys'
 import { isGoalView } from '@/api/goal-payload'
+import { tapFeedback, warnFeedback } from '@/components/haptics'
 import { withErrorContext } from '@/components/route-params'
 import { t as message } from '@/locale'
 import type { MobilePromptContent, SessionEventsPayload } from '@/types/mobile'
@@ -34,6 +35,7 @@ export function useSessionActions(client: MobileApi | undefined, sessionId: stri
       return client.sendMessage(sessionId, content)
     },
     onSuccess: () => {
+      tapFeedback()
       // The reader's own prompt is the one row a send must reveal: without this
       // the list stays where it was and a prompt sent from the phone is only
       // found by scrolling.
@@ -77,6 +79,7 @@ export function useSessionActions(client: MobileApi | undefined, sessionId: stri
       return client.cancelSession(sessionId)
     },
     onSuccess: () => {
+      warnFeedback()
       void queryClient.invalidateQueries({ queryKey: queryKeys.sessionEvents(sessionId) })
       void queryClient.invalidateQueries({ queryKey: queryKeys.sessionHistory(sessionId) })
     },

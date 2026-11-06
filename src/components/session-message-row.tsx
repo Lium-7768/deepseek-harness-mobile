@@ -8,6 +8,7 @@ import {
   NativeTurnMaxTokensRow,
 } from '@/components/native-conversation-status'
 import { copyTextLabel, measureCopy } from '@/components/copy-feedback'
+import { tapFeedback } from '@/components/haptics'
 import { NativeIcon } from '@/components/native-icon'
 import { NativeMarkdown } from '@/components/native-markdown'
 import { NativeMessageAttachments } from '@/components/native-message-attachments'
@@ -145,6 +146,7 @@ export function MessageActions({
     const label = copyTextLabel(size)
     try {
       await Clipboard.setStringAsync(text)
+      tapFeedback()
       setCopied(true)
       setCopyFailed(false)
       setCopySize(label)

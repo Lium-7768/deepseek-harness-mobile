@@ -1,6 +1,7 @@
 import { useConversationDisclosure } from './conversation-disclosure'
 import { conversationRowKey } from './conversation-flow'
 import { copyTextLabel, measureCopy } from '@/components/copy-feedback'
+import { tapFeedback } from '@/components/haptics'
 import { NativeDiffBlock } from '@/components/native-diff-block'
 import { MESSAGE_ACTION_HIT_SLOP } from '@/components/session-message-logic'
 import { NativeFlowRow } from '@/components/native-flow-row'
@@ -160,6 +161,7 @@ function ToolPayload({
     const label = copyTextLabel(measureCopy(text))
     try {
       await Clipboard.setStringAsync(text)
+      tapFeedback()
       setCopied(true)
       setCopyFailed(false)
       setCopySize(label)

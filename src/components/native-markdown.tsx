@@ -8,6 +8,7 @@ import {
 } from '@/components/markdown-blocks'
 import { tableToTsv } from '@/components/markdown-table-logic'
 import { copyCodeLabel, copyTableLabel, measureCopy } from '@/components/copy-feedback'
+import { tapFeedback } from '@/components/haptics'
 import { NativeIcon } from '@/components/native-icon'
 import { format, t as message } from '@/locale'
 import type { AppTheme } from '@/theme'
@@ -108,6 +109,7 @@ export function NativeMarkdown({
     try {
       if (onCopyCode) await onCopyCode(code)
       else await Clipboard.setStringAsync(code)
+      tapFeedback()
       setCopiedIndex(index)
       setCopiedSize(label)
       setCopyFailedIndex(null)
@@ -238,6 +240,7 @@ function NativeTable({ block, styles }: { block: Block; styles: ReturnType<typeo
     })
     try {
       await Clipboard.setStringAsync(tableToTsv({ header, rows }))
+      tapFeedback()
       setCopied(true)
       setFailed(false)
       setCopiedSize(label)
