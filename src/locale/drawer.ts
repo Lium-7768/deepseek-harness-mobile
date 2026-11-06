@@ -43,6 +43,8 @@ export const drawer = {
 
   archiveSession: '归档会话',
   archive: '归档',
+  /** Transient confirmation after an archive, printed with an undo. */
+  archiveDone: '已归档',
   removeWorkspace: '移除工作区',
   remove: '移除',
 

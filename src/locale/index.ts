@@ -51,6 +51,7 @@ const common = {
   close: '关闭',
   continue: '继续',
   retryAction: '重试',
+  undo: '撤销',
   reload: '重新加载',
   loading: '正在加载…',
   openDrawer: '打开会话列表',

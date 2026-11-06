@@ -10,6 +10,7 @@ import {
   moveDrawerSession,
 } from '@/components/drawer-view-logic'
 import { defaultDrawerView, useDrawerViewStore } from '@/state/drawer-view'
+import { showSnackbar } from '@/state/snackbar'
 import { NativeBrandMark } from '@/components/native-brand-mark'
 import { NativeIcon } from '@/components/native-icon'
 import { NativeListRow } from '@/components/native-list'
@@ -152,7 +153,7 @@ export function SessionDrawer(props: DrawerContentComponentProps): React.JSX.Ele
   }
   const openSession = (sessionId: string): void => {
     if (archivedSessionIds.has(sessionId)) {
-      Alert.alert(message('drawer.archived'), message('drawer.archivedNotOpenable'))
+      Alert.alert(message('drawer.archiveDone'), message('drawer.archivedNotOpenable'))
       return
     }
     clearSearch()
@@ -272,6 +273,9 @@ export function SessionDrawer(props: DrawerContentComponentProps): React.JSX.Ele
       await new MobileApi(requireConnection(connection)).archiveSession(sessionId)
       await refreshSessions()
       if (sessionId === currentSessionId) router.replace('/workspace')
+      // Archiving is reversible and easy to hit by accident, so the row's own restore
+      // path is offered for a few seconds instead of a confirmation dialog.
+      showSnackbar(message('drawer.archived'), () => void restoreSession(sessionId))
     } catch (error) {
       Alert.alert(
         message('drawer.archiveFailedTitle'),

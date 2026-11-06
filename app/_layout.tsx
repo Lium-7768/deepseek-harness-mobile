@@ -3,6 +3,7 @@ import 'react-native-gesture-handler'
 
 import { createMobileQueryClient } from '@/api/query-client'
 import { MobileSyncBridge } from '@/components/mobile-sync-bridge'
+import { NativeSnackbar } from '@/components/native-snackbar'
 import { SessionDrawer } from '@/components/session-drawer'
 import { drawerWidthForViewport } from '@/components/session-drawer-logic'
 import { StartupGate } from '@/components/startup-gate'
@@ -56,6 +57,7 @@ export default function RootLayout(): React.JSX.Element {
         <Drawer.Screen name="settings" />
         <Drawer.Screen name="schedules" />
       </Drawer>
+      <NativeSnackbar />
     </ConnectionQueries>
   )
 }
