@@ -6,6 +6,7 @@ import {
   markdownLinkTarget,
   type Block,
 } from '@/components/markdown-blocks'
+import { tableToTsv } from '@/components/markdown-table-logic'
 import { NativeIcon } from '@/components/native-icon'
 import { format, t as message } from '@/locale'
 import type { AppTheme } from '@/theme'
@@ -206,8 +207,37 @@ export function NativeMarkdown({
  * @returns The rendered table.
  */
 function NativeTable({ block, styles }: { block: Block; styles: ReturnType<typeof makeStyles> }): React.JSX.Element {
+  const theme = useAppTheme()
   const header = block.header ?? []
   const rows = block.rows ?? []
+  const [copied, setCopied] = useState(false)
+  const [failed, setFailed] = useState(false)
+  const copyTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  useEffect(
+    () => () => {
+      if (copyTimer.current !== null) clearTimeout(copyTimer.current)
+    },
+    [],
+  )
+  // One press copies the whole table: dragging cell by cell is the only alternative,
+  // and a TSV block pastes into a spreadsheet as real columns.
+  const copyTable = async (): Promise<void> => {
+    if (copied) return
+    try {
+      await Clipboard.setStringAsync(tableToTsv({ header, rows }))
+      setCopied(true)
+      setFailed(false)
+      void AccessibilityInfo.announceForAccessibility(message('markdown.tableCopied'))
+      if (copyTimer.current !== null) clearTimeout(copyTimer.current)
+      copyTimer.current = setTimeout(() => {
+        copyTimer.current = null
+        setCopied(false)
+      }, 1200)
+    } catch {
+      setFailed(true)
+      void AccessibilityInfo.announceForAccessibility(message('markdown.copyFailed'))
+    }
+  }
   const { width, fontScale } = useWindowDimensions()
   const layout = tableLayout(block)
   const { align, columns } = layout
@@ -246,12 +276,31 @@ function NativeTable({ block, styles }: { block: Block; styles: ReturnType<typeo
   // A filling table shares the column width, so its cells wrap. A scrollable one
   // needs its natural width: a horizontal scroll view hands its content unbounded
   // width, which would collapse the wrapping cells instead of dividing the row.
-  return fills ? (
+  const body = fills ? (
     table
   ) : (
     <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.tableScroll}>
       {table}
     </ScrollView>
+  )
+  return (
+    <View style={styles.tableCard}>
+      {body}
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel={copied ? message('markdown.tableCopied') : message('markdown.copyTable')}
+        accessibilityState={{ selected: copied }}
+        hitSlop={8}
+        onPress={() => void copyTable()}
+        style={styles.tableCopy}
+      >
+        <NativeIcon
+          name={copied ? 'check-outline' : 'copy-outline'}
+          size={14}
+          color={copied ? theme.colors.success : failed ? theme.colors.danger : theme.colors.inkMuted}
+        />
+      </Pressable>
+    </View>
   )
 }
 
@@ -430,6 +479,20 @@ const makeStyles = (theme: AppTheme) =>
     codeToggleText: { color: theme.colors.accent, fontSize: 12, fontWeight: '500' },
     // `MarkdownText.module.css .tableScroll`: the wrapper clips, and a table
     // narrower than four columns fills the column.
+    tableCard: { minWidth: 0, position: 'relative' },
+    // The copy control floats over the table's top-right corner so it costs no layout
+    // height; a table that fills the column would otherwise push every row down by it.
+    tableCopy: {
+      alignItems: 'center',
+      backgroundColor: theme.colors.surfaceRaised,
+      borderRadius: theme.radius.sm,
+      height: 22,
+      justifyContent: 'center',
+      position: 'absolute',
+      right: 2,
+      top: 2,
+      width: 22,
+    },
     tableScroll: { flexGrow: 0, maxWidth: '100%' },
     table: { flexDirection: 'column' },
     tableFill: { alignSelf: 'stretch' },

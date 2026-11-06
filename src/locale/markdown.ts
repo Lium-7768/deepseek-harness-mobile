@@ -17,4 +17,8 @@ export const markdown = {
   collapse: '收起',
   /** `{count}` lines hidden by the collapse. */
   expandAll: '展开全部 {count} 行',
+  copyTable: '复制表格',
+  tableCopied: '表格已复制',
+  /** `{count}` lines the collapsed code block does not show. */
+  hiddenLines: '… 还有 {count} 行',
 } as const
