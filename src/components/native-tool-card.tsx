@@ -18,6 +18,9 @@ import { MONOSPACE_FONT } from '@/theme/platform'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { AccessibilityInfo, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
 
+/** Lines a payload shows before it folds; the same fold the code block uses. */
+const PAYLOAD_COLLAPSED_LINES = 16
+
 type Variant = 'search' | 'read' | 'image' | 'bash' | 'write' | 'edit' | 'code' | 'web' | 'other'
 type ToolRow = Extract<NativeConversationRow, { kind: 'tool' }>
 type ToolCardModel = {
@@ -147,6 +150,13 @@ function ToolPayload({
   const [copied, setCopied] = useState(false)
   const [copyFailed, setCopyFailed] = useState(false)
   const [copySize, setCopySize] = useState<string | undefined>(undefined)
+  const [expanded, setExpanded] = useState(false)
+  const lineCount = useMemo(() => measureCopy(text).lines, [text])
+  const collapsible = lineCount > PAYLOAD_COLLAPSED_LINES
+  const hiddenLines = Math.max(0, lineCount - PAYLOAD_COLLAPSED_LINES)
+  // A single long line still needs a sideways drag; short lines must not capture a
+  // horizontal gesture that belongs to the conversation.
+  const tooWide = useMemo(() => text.split('\n').some((line) => line.length > 120), [text])
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null)
   useEffect(
     () => () => {
@@ -196,11 +206,42 @@ function ToolPayload({
           />
         </Pressable>
       </View>
-      <ScrollView nestedScrollEnabled style={styles.payloadScroll} showsVerticalScrollIndicator>
-        <Text selectable style={[styles.detailText, failed && styles.failedDetailText]}>
+      {/* No vertical scroll inside the payload: a nested vertical scroller steals the
+          conversation's own drag. The block folds instead, and the outer list scrolls. */}
+      <ScrollView horizontal scrollEnabled={tooWide} showsHorizontalScrollIndicator={false}>
+        <Text
+          selectable
+          numberOfLines={expanded ? undefined : PAYLOAD_COLLAPSED_LINES}
+          style={[styles.detailText, failed && styles.failedDetailText]}
+        >
           {text}
         </Text>
       </ScrollView>
+      {collapsible ? (
+        <>
+          {expanded ? null : (
+            <Text style={styles.payloadHidden}>{format('tool.hiddenLines', { count: hiddenLines })}</Text>
+          )}
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={
+              expanded ? message('markdown.collapse') : format('tool.expandPayload', { lines: lineCount })
+            }
+            hitSlop={MESSAGE_ACTION_HIT_SLOP}
+            onPress={() => setExpanded((value) => !value)}
+            style={styles.payloadToggle}
+          >
+            <Text style={styles.payloadToggleText}>
+              {expanded ? message('markdown.collapse') : format('tool.expandPayload', { lines: lineCount })}
+            </Text>
+            <NativeIcon
+              name={expanded ? 'chevron-up-outline' : 'chevron-down-outline'}
+              size={14}
+              color={theme.colors.accent}
+            />
+          </Pressable>
+        </>
+      ) : null}
     </View>
   )
 }
@@ -216,7 +257,9 @@ const makeStyles = (theme: AppTheme) =>
     payloadLabel: { color: theme.colors.inkTertiary, fontSize: 11, fontWeight: '500', lineHeight: 16 },
     payloadSize: { color: theme.colors.inkTertiary, flexShrink: 1, fontSize: 11, lineHeight: 16 },
     payloadCopy: { alignItems: 'center', height: 16, justifyContent: 'center', marginLeft: 'auto', width: 16 },
-    payloadScroll: { maxHeight: 208 },
+    payloadHidden: { color: theme.colors.inkMuted, fontSize: 11, lineHeight: 16 },
+    payloadToggle: { alignItems: 'center', alignSelf: 'flex-start', flexDirection: 'row', gap: 4 },
+    payloadToggleText: { color: theme.colors.accent, fontSize: 12, fontWeight: '500' },
     detailText: { color: theme.colors.ink, fontFamily: MONOSPACE_FONT, fontSize: 12, lineHeight: 18 },
     failedDetailText: { color: theme.colors.danger },
   })

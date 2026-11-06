@@ -30,4 +30,8 @@ export const tool = {
   stateFailed: '失败',
   /** `{tool}` is the card's own title; `{state}` is one of the state words. */
   accessibilityLabel: '{tool}工具{state}',
+  /** `{count}` lines the folded payload does not show. */
+  hiddenLines: '… 还有 {count} 行',
+  /** `{lines}` total lines the payload holds. */
+  expandPayload: '展开全部 {lines} 行',
 } as const
