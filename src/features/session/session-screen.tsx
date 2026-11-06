@@ -26,10 +26,11 @@ import { groupProcessRows, runningProcessTitle, type NativeProcessRow } from '@/
 import { ConnectionStatus, ErrorNotice, SessionDock, UnavailableState } from '@/components/session-screen-state'
 import { makeSessionStyles } from '@/components/session-screen-styles'
 import {
-  LATEST_PIN_SETTLE_MS,
   READER_SCROLL_TAIL_MS,
+  SEND_FOLLOW_WINDOW_MS,
   isNearLatestMessage,
-  shouldScrollToLatest,
+  shouldFollowContentGrowth,
+  shouldReleaseFollowOnScroll,
   shouldShowReturnToLatest,
   shouldTrackLatestProximity,
 } from '@/components/session-scroll-logic'
@@ -90,7 +91,10 @@ export default function SessionScreen(): React.JSX.Element {
   const nearLatestMessage = useRef(true)
   const readerScrolling = useRef(false)
   const readerScrollIdleTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const latestPinTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  // Set by the reader's own send, then cleared after SEND_FOLLOW_WINDOW_MS. The
+  // prompt row and the first reply chunk land in separate commits, so a stale
+  // offset measured in between would otherwise release the follow latch.
+  const sendFollowUntil = useRef(0)
   const [showReturnToLatest, setShowReturnToLatest] = useState(false)
   const [olderItems, setOlderItems] = useState<SharedEventItem[]>([])
   const [olderHasMore, setOlderHasMore] = useState<boolean | undefined>()
@@ -121,7 +125,13 @@ export default function SessionScreen(): React.JSX.Element {
   const { branch, send, updateQueue, cancel, goalMutation, createGoalMutation, interruptSubagent } = useSessionActions(
     client,
     sessionId,
-    () => pinToLatestRef.current(),
+    () => {
+      // The prompt row and the first reply chunk arrive in separate commits, so the
+      // follow window outlives this callback; content growth inside it re-pins even if
+      // an intermediate measurement reads as away-from-bottom.
+      sendFollowUntil.current = Date.now() + SEND_FOLLOW_WINDOW_MS
+      pinToLatestRef.current()
+    },
   )
   const branchFromMessage = branch.mutate
   const loadOlder = useMutation({
@@ -237,7 +247,6 @@ export default function SessionScreen(): React.JSX.Element {
   // held by the row would collapse whenever it scrolled out of view and back.
   const [openSteps, setOpenSteps] = useState<ReadonlySet<string>>(() => new Set())
   const toggleStep = useCallback((rowKey: string) => {
-    if (latestPinTimer.current) clearTimeout(latestPinTimer.current)
     initialLatestPositionPending.current = false
     setOpenSteps((current) => {
       const next = new Set(current)
@@ -311,7 +320,13 @@ export default function SessionScreen(): React.JSX.Element {
    */
   const applyScrollProximity = (event: NativeScrollEvent, releaseLatch: boolean): void => {
     if (!shouldTrackLatestProximity({ initialPositionPending: initialLatestPositionPending.current })) return
-    if (releaseLatch) {
+    // A measurement taken while the reader's own send is still landing trails the new
+    // content, so releasing the latch there would strand the reply above the viewport.
+    const mayRelease = shouldReleaseFollowOnScroll({
+      readerScrolling: releaseLatch,
+      sendFollowWindowOpen: Date.now() < sendFollowUntil.current,
+    })
+    if (mayRelease) {
       nearLatestMessage.current = isNearLatestMessage(
         event.contentSize.height,
         event.layoutMeasurement.height,
@@ -343,30 +358,23 @@ export default function SessionScreen(): React.JSX.Element {
   }
 
   /**
-   * Pins the list to the newest message and keeps the sticky latch closed.
+   * Pins the list to the newest message and keeps the follow latch closed.
    *
-   * Lazily measured rows settle after the jump, so the target length read at jump time is
-   * stale and any animation towards it stops short; the jump is instant and re-asserted
-   * once the re-measured layout stops growing.
+   * A single jump is enough on its own: `onContentSizeChange` re-pins while the reader
+   * stays at the bottom, which is what carries the list past the lazily mounted rows a
+   * long conversation adds after this call. Re-pinning from a timer instead made every
+   * late row measurement a visible jump.
    */
   function pinToLatest(): void {
     nearLatestMessage.current = true
     setShowReturnToLatest(false)
     listRef.current?.scrollToEnd({ animated: false })
-    // One re-assert only: a repeating pin turns every lazy row measurement into a
-    // visible jump, which reads as the list flickering up and down on open.
-    if (latestPinTimer.current) clearTimeout(latestPinTimer.current)
-    latestPinTimer.current = setTimeout(() => {
-      latestPinTimer.current = null
-      listRef.current?.scrollToEnd({ animated: false })
-    }, LATEST_PIN_SETTLE_MS)
   }
   pinToLatestRef.current = pinToLatest
 
   useEffect(
     () => () => {
       if (readerScrollIdleTimer.current) clearTimeout(readerScrollIdleTimer.current)
-      if (latestPinTimer.current) clearTimeout(latestPinTimer.current)
     },
     [],
   )
@@ -522,21 +530,19 @@ export default function SessionScreen(): React.JSX.Element {
                     )
                   }
                   onContentSizeChange={() => {
-                    // Content grows while the initial jump is still settling, so the
-                    // list re-pins until the laid-out length matches what it jumped to.
-                    // Pinning on every later growth would fight the reader's position
-                    // and re-trigger itself, which is the flicker this guards against.
-                    if (!initialLatestPositionPending.current) return
-                    if (
-                      !shouldScrollToLatest({
-                        hasMessages: messages.length > 0,
-                        initialPositionPending: true,
-                        nearLatest: true,
-                      })
-                    )
-                      return
-                    pinToLatest()
+                    // A long conversation keeps mounting rows after the first jump, and a
+                    // streaming reply grows on every chunk, so the follow is decided per
+                    // content change rather than once per open. The reader's own drag is
+                    // what releases it; a programmatic jump cannot.
+                    const sendFollowWindowOpen = Date.now() < sendFollowUntil.current
+                    const follow = shouldFollowContentGrowth({
+                      hasMessages: messages.length > 0,
+                      sticksToLatest: initialLatestPositionPending.current || nearLatestMessage.current,
+                      sendFollowWindowOpen,
+                    })
+                    if (!follow) return
                     initialLatestPositionPending.current = false
+                    pinToLatest()
                   }}
                   onMomentumScrollBegin={() => {
                     // Extend the reader window for a gesture's momentum tail; momentum that

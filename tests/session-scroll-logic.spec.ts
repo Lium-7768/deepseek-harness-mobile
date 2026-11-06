@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import {
   isNearLatestMessage,
+  shouldFollowContentGrowth,
+  shouldReleaseFollowOnScroll,
   shouldScrollToLatest,
   shouldShowReturnToLatest,
   shouldTrackLatestProximity,
@@ -34,5 +36,45 @@ describe('session latest-message scroll policy', () => {
 
   it('does not request a scroll for an empty conversation', () => {
     expect(shouldScrollToLatest({ hasMessages: false, initialPositionPending: true, nearLatest: true })).toBe(false)
+  })
+})
+
+describe('content-growth follow policy', () => {
+  it('follows growth once per content change while the reader stays at the bottom', () => {
+    // A long conversation mounts rows past the first jump; each growth must re-pin.
+    expect(shouldFollowContentGrowth({ hasMessages: true, sticksToLatest: true, sendFollowWindowOpen: false })).toBe(
+      true,
+    )
+    expect(shouldFollowContentGrowth({ hasMessages: true, sticksToLatest: true, sendFollowWindowOpen: false })).toBe(
+      true,
+    )
+  })
+
+  it('stops following once the reader drags away from the bottom', () => {
+    expect(shouldFollowContentGrowth({ hasMessages: true, sticksToLatest: false, sendFollowWindowOpen: false })).toBe(
+      false,
+    )
+  })
+
+  it('keeps following inside the send window even when a stale measurement reads as away', () => {
+    // The prompt row and the first reply chunk land in separate commits.
+    expect(shouldFollowContentGrowth({ hasMessages: true, sticksToLatest: false, sendFollowWindowOpen: true })).toBe(
+      true,
+    )
+  })
+
+  it('does not follow an empty conversation', () => {
+    expect(shouldFollowContentGrowth({ hasMessages: false, sticksToLatest: true, sendFollowWindowOpen: true })).toBe(
+      false,
+    )
+  })
+
+  it('only lets the reader release the latch, never a programmatic jump', () => {
+    expect(shouldReleaseFollowOnScroll({ readerScrolling: true, sendFollowWindowOpen: false })).toBe(true)
+    expect(shouldReleaseFollowOnScroll({ readerScrolling: false, sendFollowWindowOpen: false })).toBe(false)
+  })
+
+  it('protects the latch for the whole send window even while the reader drags', () => {
+    expect(shouldReleaseFollowOnScroll({ readerScrolling: true, sendFollowWindowOpen: true })).toBe(false)
   })
 })

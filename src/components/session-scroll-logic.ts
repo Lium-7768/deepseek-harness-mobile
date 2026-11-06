@@ -13,6 +13,55 @@ export const READER_SCROLL_TAIL_MS = 350
  */
 export const LATEST_PIN_SETTLE_MS = 250
 
+/**
+ * Time after the reader's own send that content growth keeps following the newest message even
+ * if a measurement briefly reads as away-from-bottom.
+ *
+ * The prompt row and the first assistant chunk land in separate commits, so the list can measure
+ * a stale offset between them. Without this window the reply opens above the viewport, which is
+ * the "I have to scroll down after every send" failure.
+ */
+export const SEND_FOLLOW_WINDOW_MS = 1_500
+
+/**
+ * Decides whether content growth should move the list to the newest message.
+ *
+ * Unlike `shouldScrollToLatest`, this is asked once per content change, not once per open: a long
+ * conversation mounts lazily beyond the first pin, so the list has to keep following while the
+ * reader stays at the bottom.
+ *
+ * @param args - Whether any message exists, whether the reader is at the bottom, and whether the
+ *   reader's own send opened a follow window.
+ * @returns True when the list should jump to the end.
+ */
+export function shouldFollowContentGrowth({
+  hasMessages,
+  sticksToLatest,
+  sendFollowWindowOpen,
+}: {
+  hasMessages: boolean
+  sticksToLatest: boolean
+  sendFollowWindowOpen: boolean
+}): boolean {
+  return hasMessages && (sticksToLatest || sendFollowWindowOpen)
+}
+
+/**
+ * Decides whether a reader's scroll measurement may release the follow latch.
+ *
+ * A programmatic jump towards growing content measures an offset that trails the new content, so
+ * only a measurement taken while the reader is actually dragging may move the latch.
+ */
+export function shouldReleaseFollowOnScroll({
+  readerScrolling,
+  sendFollowWindowOpen,
+}: {
+  readerScrolling: boolean
+  sendFollowWindowOpen: boolean
+}): boolean {
+  return readerScrolling && !sendFollowWindowOpen
+}
+
 /** Reports whether a list viewport is at or close enough to the newest visible message. */
 export function isNearLatestMessage(
   contentHeight: number,
