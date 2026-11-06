@@ -82,6 +82,14 @@ names what reached the clipboard — lines and characters for text, lines for co
 for a table — because a phone cannot show the selection it is about to copy. A table copies whole
 as TSV, which pastes into a spreadsheet as real columns.
 
+## Dynamic Type
+
+Text inside a fixed-height box carries a font cap, because an explicit `lineHeight` does not
+grow with the reader's text size and would clip the label. Chips, the context meter, table
+cells, diff paths, message action rows and drawer rows cap at 1.3; a dense one-line drawer
+entry caps at 1.15. Prose stays uncapped so body text grows freely. Both caps live in
+`src/theme/text-scale.ts`; no other limit is applied anywhere in the client.
+
 ## Remaining limits
 
 - The `@` file-reference trigger from `ui-input-trigger` is not implemented: it needs a file tree the gateway does not forward, and is tracked separately from the `/` command menu.
@@ -97,7 +105,7 @@ The add menu opens the existing goal editor, or creates an absent/completed goal
 
 ## Validation scope
 
-- Node 22.23.2; 63 test files / 381 tests pass, including desktop icon hashes, malformed Goal and schedule responses, expired confirmation feedback, Goal polling, shared-query cursor/window contracts, disconnected selection gates, schedule/Goal editor interactions, slider-card drill-down/search/selection, reload/retained geometry, reduced-motion artwork, drawer filtering/tree/manual order and search merging. TypeScript and formatting pass.
+- Node 22.23.2; 65 test files / 404 tests pass, including desktop icon hashes, malformed Goal and schedule responses, expired confirmation feedback, Goal polling, shared-query cursor/window contracts, disconnected selection gates, schedule/Goal editor interactions, slider-card drill-down/search/selection, reload/retained geometry, reduced-motion artwork, drawer filtering/tree/manual order and search merging. TypeScript and formatting pass.
 - Android arm64 native debug build and isolated review-package install pass with the navigation-bar module. iOS Pods resolve; Android/iOS JavaScript exports pass.
 - The latest model-control review also passes an unsigned arm64 iOS Simulator Release native build after `pod install`. `Podfile.lock` matches the installed Pods manifest and all 96 local Pod source paths resolve. This is not a signed device archive or App Store validation.
 - Android API/resource lint (`NewApi`, `InlinedApi`, `ResourceType`) passes with no findings. Full `lintDebug` crashes in the third-party Worklets Kotlin Gradle-script analysis (`Cannot find a KaModule for the VirtualFile`); no lint checks are disabled or baselined in the repository to hide that failure.

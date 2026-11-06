@@ -3,6 +3,7 @@ import type { ContextMeterPanel } from '@/components/session-stats-logic'
 import { format } from '@/locale'
 import type { AppTheme } from '@/theme'
 import { useAppTheme, useThemedStyles } from '@/theme/hooks'
+import { FIXED_GEOMETRY_FONT_CAP } from '@/theme/text-scale'
 import { textStyle } from '@/theme/text'
 import { useState } from 'react'
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
@@ -51,7 +52,7 @@ export function NativeContextMeter({ panel }: { panel: ContextMeterPanel | undef
         style={({ pressed }) => [s.trigger, open && s.triggerOpen, pressed && s.pressed]}
       >
         <SvgXml accessibilityElementsHidden height={14} width={14} xml={xml} />
-        <Text numberOfLines={1} style={s.text}>
+        <Text maxFontSizeMultiplier={FIXED_GEOMETRY_FONT_CAP} numberOfLines={1} style={s.text}>
           {reading}
         </Text>
       </Pressable>

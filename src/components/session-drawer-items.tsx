@@ -12,6 +12,7 @@ import { sessionDisplayTitle, sessionTimeLabel } from '@/components/session-draw
 import { makeSessionDrawerStyles } from '@/components/session-drawer-styles'
 import { format, t as message } from '@/locale'
 import { useAppTheme, useThemedStyles } from '@/theme/hooks'
+import { DENSE_ROW_FONT_CAP } from '@/theme/text-scale'
 import type { SessionSummary } from '@/types/mobile'
 import { useState } from 'react'
 import { Pressable, Text, View } from 'react-native'
@@ -135,11 +136,15 @@ export function SessionItem({
         ]}
       >
         <View style={styles.sessionStatus}>{session.running === true && !archived ? <NativeRunningRing /> : null}</View>
-        <Text numberOfLines={1} style={[styles.sessionTitle, archived && styles.archivedLabel]}>
+        <Text
+          maxFontSizeMultiplier={DENSE_ROW_FONT_CAP}
+          numberOfLines={1}
+          style={[styles.sessionTitle, archived && styles.archivedLabel]}
+        >
           {title}
         </Text>
         {blank ? null : (
-          <Text numberOfLines={1} style={styles.sessionTime}>
+          <Text maxFontSizeMultiplier={DENSE_ROW_FONT_CAP} numberOfLines={1} style={styles.sessionTime}>
             {time}
           </Text>
         )}

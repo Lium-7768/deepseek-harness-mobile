@@ -2,6 +2,7 @@ import type { ToolFileChange } from '@/components/tool-diff-logic'
 import { format } from '@/locale'
 import type { AppTheme } from '@/theme'
 import { useThemedStyles } from '@/theme/hooks'
+import { FIXED_GEOMETRY_FONT_CAP } from '@/theme/text-scale'
 import { MONOSPACE_FONT } from '@/theme/platform'
 import { StyleSheet, Text, View } from 'react-native'
 
@@ -22,7 +23,7 @@ export function NativeDiffBlock({ change }: { change: ToolFileChange }): React.J
   return (
     <View style={styles.root}>
       <View style={styles.head}>
-        <Text numberOfLines={1} selectable style={styles.path}>
+        <Text maxFontSizeMultiplier={FIXED_GEOMETRY_FONT_CAP} numberOfLines={1} selectable style={styles.path}>
           {change.path}
         </Text>
         <Text style={styles.stat}>{format('tool.diffStat', { added: change.added, removed: change.removed })}</Text>

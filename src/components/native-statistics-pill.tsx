@@ -3,6 +3,7 @@ import { NativeIcon } from '@/components/native-icon'
 import type { SessionStatisticPanel, SessionStatisticsPill } from '@/components/session-stats-logic'
 import type { AppTheme } from '@/theme'
 import { useAppTheme, useThemedStyles } from '@/theme/hooks'
+import { FIXED_GEOMETRY_FONT_CAP } from '@/theme/text-scale'
 import { textStyle } from '@/theme/text'
 import { useState } from 'react'
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
@@ -45,7 +46,7 @@ export function NativeStatisticsPill({
         style={({ pressed }) => [s.pill, open && s.pillOpen, pressed && interactive && s.pressed]}
       >
         <NativeIcon name={pill.glyph} size={14} color={theme.colors.inkTertiary} />
-        <Text numberOfLines={1} style={s.text}>
+        <Text maxFontSizeMultiplier={FIXED_GEOMETRY_FONT_CAP} numberOfLines={1} style={s.text}>
           {pill.label}
         </Text>
       </Pressable>

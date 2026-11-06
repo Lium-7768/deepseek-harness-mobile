@@ -14,6 +14,7 @@ import { format, t as message } from '@/locale'
 import type { AppTheme } from '@/theme'
 import { useAppTheme, useThemedStyles } from '@/theme/hooks'
 import { MONOSPACE_FONT } from '@/theme/platform'
+import { FIXED_GEOMETRY_FONT_CAP } from '@/theme/text-scale'
 import * as Clipboard from 'expo-clipboard'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import {
@@ -276,7 +277,11 @@ function NativeTable({ block, styles }: { block: Block; styles: ReturnType<typeo
   const cells = (row: string[], rowKey: string, heading: boolean): React.JSX.Element[] =>
     Array.from({ length: columns }, (_, column) => (
       <View key={`${rowKey}-${column}`} style={cellStyle(column)}>
-        <Text selectable style={heading ? styles.tableHeadText : styles.tableText}>
+        <Text
+          maxFontSizeMultiplier={FIXED_GEOMETRY_FONT_CAP}
+          selectable
+          style={heading ? styles.tableHeadText : styles.tableText}
+        >
           {inline(row[column] ?? '', `${rowKey}-${column}`, styles)}
         </Text>
       </View>

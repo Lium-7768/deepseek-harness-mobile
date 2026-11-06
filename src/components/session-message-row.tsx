@@ -24,6 +24,7 @@ import {
 import { makeSessionStyles } from '@/components/session-screen-styles'
 import { t as message } from '@/locale'
 import { useAppTheme, useThemedStyles } from '@/theme/hooks'
+import { FIXED_GEOMETRY_FONT_CAP } from '@/theme/text-scale'
 import * as Clipboard from 'expo-clipboard'
 import { memo, useEffect, useRef, useState } from 'react'
 import { AccessibilityInfo, Pressable, Text, View } from 'react-native'
@@ -167,7 +168,12 @@ export function MessageActions({
     <View style={[s.actionRow, alignment === 'user' ? s.actionRowUser : s.actionRowAssistant]}>
       {/* `.timeStart` leads a user row; `.timeEnd` follows an assistant row's icons. */}
       {compact || time === undefined || alignment !== 'user' ? null : (
-        <Text ellipsizeMode="tail" numberOfLines={1} style={[s.actionTime, s.actionTimeUser]}>
+        <Text
+          ellipsizeMode="tail"
+          maxFontSizeMultiplier={FIXED_GEOMETRY_FONT_CAP}
+          numberOfLines={1}
+          style={[s.actionTime, s.actionTimeUser]}
+        >
           {formatMessageTime(time)}
         </Text>
       )}
