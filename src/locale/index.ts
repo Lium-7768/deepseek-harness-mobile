@@ -13,6 +13,7 @@ import { activity } from './activity'
 import { attachment } from './attachment'
 import { composer } from './composer'
 import { connect } from './connect'
+import { copy } from './copy'
 import { conversation } from './conversation'
 import { drawer } from './drawer'
 import { errors } from './errors'
@@ -71,6 +72,7 @@ const areas = {
   feedback,
   interactions,
   log,
+  copy,
   markdown,
   mode,
   model,

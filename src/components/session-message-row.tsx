@@ -7,6 +7,7 @@ import {
   NativeTurnErrorRow,
   NativeTurnMaxTokensRow,
 } from '@/components/native-conversation-status'
+import { copyTextLabel, measureCopy } from '@/components/copy-feedback'
 import { NativeIcon } from '@/components/native-icon'
 import { NativeMarkdown } from '@/components/native-markdown'
 import { NativeMessageAttachments } from '@/components/native-message-attachments'
@@ -120,6 +121,8 @@ export function MessageActions({
   const s = useThemedStyles(makeSessionStyles)
   const [copied, setCopied] = useState(false)
   const [copyFailed, setCopyFailed] = useState(false)
+  // The phone cannot show the selection a copy takes, so the confirmation names it.
+  const [copySize, setCopySize] = useState<string | undefined>(undefined)
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   useEffect(
@@ -131,14 +134,19 @@ export function MessageActions({
 
   const copy = async (): Promise<void> => {
     if (copied) return
+    const size = measureCopy(text)
+    const label = copyTextLabel(size)
     try {
       await Clipboard.setStringAsync(text)
       setCopied(true)
       setCopyFailed(false)
+      setCopySize(label)
+      void AccessibilityInfo.announceForAccessibility(label)
       if (timer.current !== null) clearTimeout(timer.current)
       timer.current = setTimeout(() => {
         timer.current = null
         setCopied(false)
+        setCopySize(undefined)
       }, 1200)
     } catch {
       setCopyFailed(true)
@@ -158,7 +166,7 @@ export function MessageActions({
         accessibilityRole="button"
         accessibilityLabel={
           copied
-            ? message('conversation.copied')
+            ? (copySize ?? message('conversation.copied'))
             : copyFailed
               ? message('conversation.copyFailedTitle')
               : message('conversation.copyMessage')
@@ -174,6 +182,13 @@ export function MessageActions({
           color={copied ? theme.colors.success : copyFailed ? theme.colors.danger : theme.colors.inkTertiary}
         />
       </Pressable>
+      {/* The size sits beside the icon, not inside it: a width change on the button
+          itself would shift every sibling in the action row. */}
+      {copySize === undefined ? null : (
+        <Text ellipsizeMode="tail" numberOfLines={1} style={s.actionCopySize}>
+          {copySize}
+        </Text>
+      )}
       {trailing}
       {onBranch === undefined ? null : (
         <Pressable

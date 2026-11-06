@@ -7,6 +7,7 @@ import {
   type Block,
 } from '@/components/markdown-blocks'
 import { tableToTsv } from '@/components/markdown-table-logic'
+import { copyCodeLabel, copyTableLabel, measureCopy } from '@/components/copy-feedback'
 import { NativeIcon } from '@/components/native-icon'
 import { format, t as message } from '@/locale'
 import type { AppTheme } from '@/theme'
@@ -88,6 +89,8 @@ export function NativeMarkdown({
 }): React.JSX.Element {
   const styles = useThemedStyles(makeStyles)
   const [copiedIndex, setCopiedIndex] = useState<number | null>(null)
+  // The phone cannot show which lines a copy took, so the block names the count.
+  const [copiedSize, setCopiedSize] = useState<string | undefined>(undefined)
   const [copyFailedIndex, setCopyFailedIndex] = useState<number | null>(null)
   const copyTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   useEffect(
@@ -101,15 +104,19 @@ export function NativeMarkdown({
   const blocks = useMemo(() => parseBlocks(markdown), [markdown])
   const copy = async (index: number, code: string): Promise<void> => {
     if (copiedIndex === index) return
+    const label = copyCodeLabel(measureCopy(code).lines)
     try {
       if (onCopyCode) await onCopyCode(code)
       else await Clipboard.setStringAsync(code)
       setCopiedIndex(index)
+      setCopiedSize(label)
       setCopyFailedIndex(null)
+      void AccessibilityInfo.announceForAccessibility(label)
       if (copyTimer.current !== null) clearTimeout(copyTimer.current)
       copyTimer.current = setTimeout(() => {
         copyTimer.current = null
         setCopiedIndex(null)
+        setCopiedSize(undefined)
       }, 1200)
     } catch {
       setCopyFailedIndex(index)
@@ -129,6 +136,7 @@ export function NativeMarkdown({
               key={key}
               spacing={spacing.marginTop}
               copied={copied}
+              copiedSize={copied === true ? copiedSize : undefined}
               failed={failed}
               language={block.language}
               onCopy={() => void copy(index, block.text)}
@@ -212,6 +220,7 @@ function NativeTable({ block, styles }: { block: Block; styles: ReturnType<typeo
   const rows = block.rows ?? []
   const [copied, setCopied] = useState(false)
   const [failed, setFailed] = useState(false)
+  const [copiedSize, setCopiedSize] = useState<string | undefined>(undefined)
   const copyTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   useEffect(
     () => () => {
@@ -223,15 +232,21 @@ function NativeTable({ block, styles }: { block: Block; styles: ReturnType<typeo
   // and a TSV block pastes into a spreadsheet as real columns.
   const copyTable = async (): Promise<void> => {
     if (copied) return
+    const label = copyTableLabel({
+      rows: rows.length,
+      columns: Math.max(header.length, ...rows.map((row) => row.length)),
+    })
     try {
       await Clipboard.setStringAsync(tableToTsv({ header, rows }))
       setCopied(true)
       setFailed(false)
-      void AccessibilityInfo.announceForAccessibility(message('markdown.tableCopied'))
+      setCopiedSize(label)
+      void AccessibilityInfo.announceForAccessibility(label)
       if (copyTimer.current !== null) clearTimeout(copyTimer.current)
       copyTimer.current = setTimeout(() => {
         copyTimer.current = null
         setCopied(false)
+        setCopiedSize(undefined)
       }, 1200)
     } catch {
       setFailed(true)
@@ -286,26 +301,36 @@ function NativeTable({ block, styles }: { block: Block; styles: ReturnType<typeo
   return (
     <View style={styles.tableCard}>
       {body}
-      <Pressable
-        accessibilityRole="button"
-        accessibilityLabel={copied ? message('markdown.tableCopied') : message('markdown.copyTable')}
-        accessibilityState={{ selected: copied }}
-        hitSlop={8}
-        onPress={() => void copyTable()}
-        style={styles.tableCopy}
-      >
-        <NativeIcon
-          name={copied ? 'check-outline' : 'copy-outline'}
-          size={14}
-          color={copied ? theme.colors.success : failed ? theme.colors.danger : theme.colors.inkMuted}
-        />
-      </Pressable>
+      {/* The confirmation sits in the same floating corner as the control, so naming the
+          size costs the grid no height and cannot reflow a wide table. */}
+      <View style={styles.tableActions}>
+        {copiedSize === undefined ? null : (
+          <Text ellipsizeMode="tail" numberOfLines={1} style={styles.tableCopySize}>
+            {copiedSize}
+          </Text>
+        )}
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={copied ? (copiedSize ?? message('markdown.tableCopied')) : message('markdown.copyTable')}
+          accessibilityState={{ selected: copied }}
+          hitSlop={8}
+          onPress={() => void copyTable()}
+          style={styles.tableCopy}
+        >
+          <NativeIcon
+            name={copied ? 'check-outline' : 'copy-outline'}
+            size={14}
+            color={copied ? theme.colors.success : failed ? theme.colors.danger : theme.colors.inkMuted}
+          />
+        </Pressable>
+      </View>
     </View>
   )
 }
 
 function NativeCodeBlock({
   copied,
+  copiedSize,
   failed,
   spacing,
   language,
@@ -313,6 +338,8 @@ function NativeCodeBlock({
   text,
 }: {
   copied: boolean
+  /** Localized copy confirmation naming the moved line count. */
+  copiedSize?: string
   spacing: number
   failed: boolean
   language?: string
@@ -329,11 +356,16 @@ function NativeCodeBlock({
     <View style={[styles.codeCard, { marginTop: spacing }]}>
       <View style={styles.codeHeader}>
         <Text style={styles.codeLanguage}>{language || message('markdown.code')}</Text>
+        {copiedSize === undefined ? null : (
+          <Text ellipsizeMode="tail" numberOfLines={1} style={styles.copySize}>
+            {copiedSize}
+          </Text>
+        )}
         <Pressable
           accessibilityRole="button"
           accessibilityLabel={
             copied
-              ? message('markdown.copied')
+              ? (copiedSize ?? message('markdown.copied'))
               : failed
                 ? message('markdown.copyFailedTitle')
                 : message('markdown.copyCode')
@@ -463,6 +495,9 @@ const makeStyles = (theme: AppTheme) =>
       justifyContent: 'center',
       width: 24,
     },
+    // The confirmation shares the header's 24pt row, so the card height is unchanged
+    // while the size comes and goes.
+    copySize: { color: theme.colors.inkMuted, flexShrink: 1, fontSize: 11, lineHeight: 24, marginLeft: 'auto' },
     // `CodeCard.module.css .body`: 6px 22px 20px, so the last line clears the card's
     // rounded bottom instead of sitting 22px off it.
     codeBody: { paddingBottom: 16, paddingHorizontal: 16, paddingTop: 8 },
@@ -500,11 +535,10 @@ const makeStyles = (theme: AppTheme) =>
       borderRadius: theme.radius.sm,
       height: 22,
       justifyContent: 'center',
-      position: 'absolute',
-      right: 2,
-      top: 2,
       width: 22,
     },
+    tableActions: { alignItems: 'center', flexDirection: 'row', gap: 4, position: 'absolute', right: 2, top: 2 },
+    tableCopySize: { color: theme.colors.inkMuted, flexShrink: 1, fontSize: 11, lineHeight: 22 },
     tableScroll: { flexGrow: 0, maxWidth: '100%' },
     table: { flexDirection: 'column' },
     tableFill: { alignSelf: 'stretch' },

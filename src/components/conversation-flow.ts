@@ -1,5 +1,4 @@
-import type { NativeConversationRow } from './session-conversation-logic'
-import type { NativeRow, TurnSpan } from './session-turn-logic'
+import type { NativeRow } from './session-turn-logic'
 
 /** Stable keys survive older-history insertion and transient response replacement. */
 export function conversationRowKey(row: NativeRow, fallback = 0): string {
@@ -10,29 +9,6 @@ export function conversationRowKey(row: NativeRow, fallback = 0): string {
 }
 
 /** Desktop completion actions belong to the last assistant reply in a settled turn. */
-export function assistantActionSequences(
-  rows: readonly NativeConversationRow[],
-  spans: readonly TurnSpan[],
-): ReadonlySet<number> {
-  const result = new Set<number>()
-  let spanIndex = 0
-  let last: number | undefined
-  for (const row of rows) {
-    if (row.sourceSeq === undefined) continue
-    while (spanIndex < spans.length && row.sourceSeq > spans[spanIndex].endSeq) {
-      if (last !== undefined && spans[spanIndex].endSeq !== Number.MAX_SAFE_INTEGER) result.add(last)
-      last = undefined
-      spanIndex++
-    }
-    const span = spans[spanIndex]
-    if (row.kind !== 'assistant') continue
-    if (!span || row.sourceSeq < span.startSeq) result.add(row.sourceSeq)
-    else last = row.sourceSeq
-  }
-  if (last !== undefined && spans[spanIndex]?.endSeq !== Number.MAX_SAFE_INTEGER) result.add(last)
-  return result
-}
-
 /** Spacing is owned by the flow boundary, never a negative margin in a tool component. */
 export function conversationFlowGap(row: NativeRow, previous?: NativeRow): number {
   if (!previous) return 0

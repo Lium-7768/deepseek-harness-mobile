@@ -1,17 +1,21 @@
 import { useConversationDisclosure } from './conversation-disclosure'
 import { conversationRowKey } from './conversation-flow'
+import { copyTextLabel, measureCopy } from '@/components/copy-feedback'
 import { NativeDiffBlock } from '@/components/native-diff-block'
+import { MESSAGE_ACTION_HIT_SLOP } from '@/components/session-message-logic'
 import { NativeFlowRow } from '@/components/native-flow-row'
+import { NativeIcon } from '@/components/native-icon'
 import type { NativeIconName } from '@/components/native-icon'
 import { toolArgument, type NativeConversationRow } from '@/components/session-conversation-logic'
 import { toolFileChange } from '@/components/tool-diff-logic'
 import { format, t as message } from '@/locale'
 import type { SharedMessagePresentation } from '@/shared/dsh-presentation'
 import type { AppTheme } from '@/theme'
-import { useThemedStyles } from '@/theme/hooks'
+import { useAppTheme, useThemedStyles } from '@/theme/hooks'
+import * as Clipboard from 'expo-clipboard'
 import { MONOSPACE_FONT } from '@/theme/platform'
-import { useMemo } from 'react'
-import { ScrollView, StyleSheet, Text, View } from 'react-native'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { AccessibilityInfo, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
 
 type Variant = 'search' | 'read' | 'image' | 'bash' | 'write' | 'edit' | 'code' | 'web' | 'other'
 type ToolRow = Extract<NativeConversationRow, { kind: 'tool' }>
@@ -137,10 +141,59 @@ function ToolPayload({
   text: string
   failed?: boolean
 }): React.JSX.Element {
+  const theme = useAppTheme()
   const styles = useThemedStyles(makeStyles)
+  const [copied, setCopied] = useState(false)
+  const [copyFailed, setCopyFailed] = useState(false)
+  const [copySize, setCopySize] = useState<string | undefined>(undefined)
+  const timer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  useEffect(
+    () => () => {
+      if (timer.current !== null) clearTimeout(timer.current)
+    },
+    [],
+  )
+  // Long-press selection is hard to aim inside a nested scroll view, so the payload
+  // carries its own control and reports what reached the clipboard.
+  const copy = async (): Promise<void> => {
+    if (copied) return
+    const label = copyTextLabel(measureCopy(text))
+    try {
+      await Clipboard.setStringAsync(text)
+      setCopied(true)
+      setCopyFailed(false)
+      setCopySize(label)
+      void AccessibilityInfo.announceForAccessibility(`${message('copy.copiedText')} ${label}`)
+      if (timer.current !== null) clearTimeout(timer.current)
+      timer.current = setTimeout(() => {
+        timer.current = null
+        setCopied(false)
+        setCopySize(undefined)
+      }, 1200)
+    } catch {
+      setCopyFailed(true)
+    }
+  }
   return (
     <View style={styles.payload}>
-      <Text style={styles.payloadLabel}>{label}</Text>
+      <View style={styles.payloadHead}>
+        <Text style={styles.payloadLabel}>{label}</Text>
+        {copySize === undefined ? null : <Text style={styles.payloadSize}>{copySize}</Text>}
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={copied ? (copySize ?? message('copy.copiedText')) : message('copy.copyPayload')}
+          accessibilityState={{ selected: copied }}
+          hitSlop={MESSAGE_ACTION_HIT_SLOP}
+          onPress={() => void copy()}
+          style={styles.payloadCopy}
+        >
+          <NativeIcon
+            name={copied ? 'check-outline' : 'copy-outline'}
+            size={14}
+            color={copied ? theme.colors.success : copyFailed ? theme.colors.danger : theme.colors.inkTertiary}
+          />
+        </Pressable>
+      </View>
       <ScrollView nestedScrollEnabled style={styles.payloadScroll} showsVerticalScrollIndicator>
         <Text selectable style={[styles.detailText, failed && styles.failedDetailText]}>
           {text}
@@ -155,7 +208,12 @@ const makeStyles = (theme: AppTheme) =>
     root: { minWidth: 0 },
     divider: { backgroundColor: theme.colors.border, height: StyleSheet.hairlineWidth },
     payload: { gap: 4 },
+    // The label, the copy size and the control share one 16pt row so the payload
+    // header keeps its height while the confirmation appears and disappears.
+    payloadHead: { alignItems: 'center', flexDirection: 'row', gap: 6, minHeight: 16 },
     payloadLabel: { color: theme.colors.inkTertiary, fontSize: 11, fontWeight: '500', lineHeight: 16 },
+    payloadSize: { color: theme.colors.inkTertiary, flexShrink: 1, fontSize: 11, lineHeight: 16 },
+    payloadCopy: { alignItems: 'center', height: 16, justifyContent: 'center', marginLeft: 'auto', width: 16 },
     payloadScroll: { maxHeight: 208 },
     detailText: { color: theme.colors.ink, fontFamily: MONOSPACE_FONT, fontSize: 12, lineHeight: 18 },
     failedDetailText: { color: theme.colors.danger },

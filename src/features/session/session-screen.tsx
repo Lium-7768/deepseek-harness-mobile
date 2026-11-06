@@ -1,5 +1,5 @@
 import { ConversationDisclosureContext } from '@/components/conversation-disclosure'
-import { assistantActionSequences, conversationFlowGap, conversationRowKey } from '@/components/conversation-flow'
+import { conversationFlowGap, conversationRowKey } from '@/components/conversation-flow'
 import { MobileApi } from '@/api/mobile-api'
 import { NativeAgentActivity } from '@/components/native-agent-activity'
 import { NativeGoalEditor } from '@/components/native-goal-editor'
@@ -204,7 +204,6 @@ export default function SessionScreen(): React.JSX.Element {
   const messages = useMemo(() => projectNativeConversationRows(sourceItems), [sourceItems])
   const runningTurnStartedAt = useMemo(() => activeTurnStartedAt(sourceItems), [sourceItems])
   const spans = useMemo(() => turnSpans(sourceItems), [sourceItems])
-  const actionSequences = useMemo(() => assistantActionSequences(messages, spans), [messages, spans])
   // The running Turn is flat like the desktop's latest Turn: one header names
   // what the agent is doing now, and later steps continue under it.
   const liveTurnStartSeq = useMemo(() => {
@@ -252,14 +251,14 @@ export default function SessionScreen(): React.JSX.Element {
         item={row}
         onBranch={branchFromMessage}
         sessionId={sessionId}
-        // Desktop parity: `MessageIconActions` renders only in `TurnTailNodeView`, so a
-        // turn's closing assistant block owns the copy/rate/branch strip and the blocks
-        // above it do not repeat it. Mid-turn assistant text stays copyable through the
-        // selection menu, which every markdown block enables.
-        showActions={row.kind !== 'assistant' || (row.sourceSeq !== undefined && actionSequences.has(row.sourceSeq))}
+        // Deliberate departure from the desktop: `MessageIconActions` renders only in
+        // `TurnTailNodeView` because a pointer can drag-select any earlier block. A phone
+        // cannot, and the selection handles inside a scrolling list are hard to grab, so
+        // every assistant block carries its own copy control instead.
+        showActions
       />
     ),
-    [actionSequences, branchFromMessage, client, getEvent, sessionId],
+    [branchFromMessage, client, getEvent, sessionId],
   )
   // A step's rows sit behind one collapsed header, the way the desktop groups a
   // step instead of printing a row per call.

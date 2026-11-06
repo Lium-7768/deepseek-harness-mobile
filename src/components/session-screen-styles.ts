@@ -38,6 +38,9 @@ export const makeSessionStyles = (theme: AppTheme) =>
     actionTime: { color: theme.colors.inkTertiary, flexShrink: 1, fontSize: 12, lineHeight: 24, minWidth: 0 },
     actionTimeUser: { fontSize: 13, paddingRight: 12 },
     actionTimeEnd: { marginLeft: 8 },
+    // The copy confirmation names what reached the clipboard; it shares the clock's
+    // 12/24 slot so the action row keeps its height while the label comes and goes.
+    actionCopySize: { color: theme.colors.inkTertiary, flexShrink: 1, fontSize: 12, lineHeight: 24, minWidth: 0 },
     error: { color: theme.colors.danger, padding: 12 },
     errorNotice: { gap: 6, paddingHorizontal: 12 },
     unavailable: { alignItems: 'center', flex: 1, gap: 12, justifyContent: 'center', padding: 28 },
