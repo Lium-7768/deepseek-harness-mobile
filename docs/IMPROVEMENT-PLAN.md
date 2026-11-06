@@ -75,9 +75,12 @@ explicitly because `maintainVisibleContentPosition` would anchor the first visib
 same jump it has to yield to. Reaching one screen from the top requests the next older page.
 
 Every markdown block is long-press selectable — paragraphs, headings, quotes, list items, table
-cells and code — so mid-turn assistant text stays copyable even though the desktop parity rule
-puts the copy/rate/branch strip only on a turn's closing block. A table also copies whole as TSV,
-which pastes into a spreadsheet as real columns.
+cells and code — and every assistant block, tool payload, code block and table also carries its
+own copy control. This departs from the desktop, where `MessageIconActions` renders only in
+`TurnTailNodeView`: a pointer can drag-select an earlier block, a phone cannot. Each confirmation
+names what reached the clipboard — lines and characters for text, lines for code, rows and columns
+for a table — because a phone cannot show the selection it is about to copy. A table copies whole
+as TSV, which pastes into a spreadsheet as real columns.
 
 ## Remaining limits
 
@@ -94,7 +97,7 @@ The add menu opens the existing goal editor, or creates an absent/completed goal
 
 ## Validation scope
 
-- Node 22.23.2; 62 test files / 366 tests pass, including desktop icon hashes, malformed Goal and schedule responses, expired confirmation feedback, Goal polling, shared-query cursor/window contracts, disconnected selection gates, schedule/Goal editor interactions, slider-card drill-down/search/selection, reload/retained geometry, reduced-motion artwork, drawer filtering/tree/manual order and search merging. TypeScript and formatting pass.
+- Node 22.23.2; 63 test files / 381 tests pass, including desktop icon hashes, malformed Goal and schedule responses, expired confirmation feedback, Goal polling, shared-query cursor/window contracts, disconnected selection gates, schedule/Goal editor interactions, slider-card drill-down/search/selection, reload/retained geometry, reduced-motion artwork, drawer filtering/tree/manual order and search merging. TypeScript and formatting pass.
 - Android arm64 native debug build and isolated review-package install pass with the navigation-bar module. iOS Pods resolve; Android/iOS JavaScript exports pass.
 - The latest model-control review also passes an unsigned arm64 iOS Simulator Release native build after `pod install`. `Podfile.lock` matches the installed Pods manifest and all 96 local Pod source paths resolve. This is not a signed device archive or App Store validation.
 - Android API/resource lint (`NewApi`, `InlinedApi`, `ResourceType`) passes with no findings. Full `lintDebug` crashes in the third-party Worklets Kotlin Gradle-script analysis (`Cannot find a KaModule for the VirtualFile`); no lint checks are disabled or baselined in the repository to hide that failure.
