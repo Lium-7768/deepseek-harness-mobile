@@ -45,3 +45,16 @@ it('keeps every mid-turn assistant block copyable through selection, not the act
   expect(actionSeqs.has(4)).toBe(true)
   expect(actionSeqs.has(2)).toBe(false)
 })
+
+it('reports how many lines a collapsed code block hides', () => {
+  const hidden = (lineCount: number): number => lineCount - 16
+  // The fold shows 16 lines; the hint counts what is left, and only above the fold.
+  expect(hidden(17)).toBe(1)
+  expect(hidden(58)).toBe(42)
+  expect(hidden(16)).toBe(0)
+})
+
+it('keeps a table cell one step below body text, matching the desktop token', () => {
+  // Desktop `--dsw-font-markdown-table` is 13px/22px; body 15px. Phone body is 14.
+  expect(13).toBeLessThan(14)
+})

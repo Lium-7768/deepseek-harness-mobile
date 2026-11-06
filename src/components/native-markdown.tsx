@@ -358,6 +358,11 @@ function NativeCodeBlock({
           ))}
         </Text>
       </ScrollView>
+      {collapsible && !expanded ? (
+        // `numberOfLines` clips silently, so a reader would otherwise believe the block
+        // ends at the fold. The count is what the fold hides, not the total.
+        <Text style={styles.codeHiddenHint}>{format('markdown.hiddenLines', { count: lineCount - 16 })}</Text>
+      ) : null}
       {collapsible ? (
         <Pressable
           accessibilityRole="button"
@@ -476,6 +481,13 @@ const makeStyles = (theme: AppTheme) =>
       justifyContent: 'center',
       minHeight: theme.touch.minTarget,
     },
+    codeHiddenHint: {
+      color: theme.colors.inkMuted,
+      fontSize: 12,
+      lineHeight: 18,
+      paddingHorizontal: 12,
+      paddingTop: 4,
+    },
     codeToggleText: { color: theme.colors.accent, fontSize: 12, fontWeight: '500' },
     // `MarkdownText.module.css .tableScroll`: the wrapper clips, and a table
     // narrower than four columns fills the column.
@@ -515,6 +527,9 @@ const makeStyles = (theme: AppTheme) =>
     tableLeft: { alignItems: 'flex-start' },
     tableCenter: { alignItems: 'center' },
     tableRight: { alignItems: 'flex-end' },
-    tableHeadText: { color: theme.colors.ink, fontSize: 14, fontWeight: '600', lineHeight: 22 },
-    tableText: { color: theme.colors.ink, fontSize: 14, lineHeight: 22 },
+    // Desktop `MarkdownText.module.css` prints a cell with `--dsw-font-markdown-table`
+    // (500 13px/22px for `th`, 400 13px/22px for `td`), one step below the 15px body.
+    // The phone's body is 14, so the table keeps the same one-step gap at 13.
+    tableHeadText: { color: theme.colors.ink, fontSize: 13, fontWeight: '500', lineHeight: 22 },
+    tableText: { color: theme.colors.ink, fontSize: 13, lineHeight: 22 },
   })
