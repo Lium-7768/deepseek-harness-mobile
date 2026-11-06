@@ -106,6 +106,8 @@ export default function SessionScreen(): React.JSX.Element {
   const pendingPrependAnchor = useRef<{ contentHeight: number; offsetY: number } | null>(null)
   /** A page that brought no rows means scrolling further cannot find more, even if the host says it has. */
   const exhaustedOlderHistory = useRef(false)
+  /** Whether the in-flight older-page request came from the button rather than the scroll. */
+  const lastOlderRequestWasManual = useRef(false)
   const [showReturnToLatest, setShowReturnToLatest] = useState(false)
   // Message rows present when the reader left the bottom; the badge counts what came after.
   const unseenBaseline = useRef<number | undefined>(undefined)
@@ -149,7 +151,10 @@ export default function SessionScreen(): React.JSX.Element {
   )
   const branchFromMessage = branch.mutate
   const loadOlder = useMutation({
-    mutationFn: async () => {
+    // A deliberate press reports its failure; an automatic request near the top does not,
+    // because a modal for a page the reader never asked for interrupts reading.
+    mutationFn: async ({ manual = false }: { manual?: boolean } = {}) => {
+      lastOlderRequestWasManual.current = manual
       if (!client || !sessionId) throw new Error(message('conversation.openFromList'))
       const source = sourceItems
       const beforeSeq = Math.min(...source.flatMap((item) => (typeof item.seq === 'number' ? [item.seq] : [])))
@@ -167,11 +172,16 @@ export default function SessionScreen(): React.JSX.Element {
       setOlderHasMore(page.hasMore ?? false)
       pendingPrependAnchor.current = before
     },
-    onError: (error) =>
+    onError: (error) => {
+      // A failed page is also the end of the line for the automatic trigger: retrying it
+      // would reach the Host again on every scroll and surface the same alert.
+      exhaustedOlderHistory.current = true
+      if (!lastOlderRequestWasManual.current) return
       Alert.alert(
         message('conversation.loadOlderFailedTitle'),
         withErrorContext(message('conversation.historyNotLoaded'), error),
-      ),
+      )
+    },
   })
   const sendMessage = useRef(send.mutate)
   sendMessage.current = send.mutate
@@ -600,7 +610,7 @@ export default function SessionScreen(): React.JSX.Element {
                           accessibilityLabel={message('conversation.loadOlder')}
                           accessibilityState={{ busy: loadOlder.isPending }}
                           disabled={loadOlder.isPending}
-                          onPress={() => void loadOlder.mutateAsync()}
+                          onPress={() => void loadOlder.mutateAsync({ manual: true }).catch(() => undefined)}
                           style={({ pressed }) => [s.loadOlder, pressed && s.pressed]}
                         >
                           <NativeIcon name="chevron-up-outline" size={16} color={theme.colors.accentText} />
@@ -679,7 +689,7 @@ export default function SessionScreen(): React.JSX.Element {
                         exhausted: exhaustedOlderHistory.current,
                       })
                     )
-                      void loadOlder.mutateAsync().catch(() => undefined)
+                      void loadOlder.mutateAsync({ manual: false }).catch(() => undefined)
                     if (!shouldTrackLatestProximity({ initialPositionPending: initialLatestPositionPending.current }))
                       return
                     applyScrollProximity(event.nativeEvent, readerScrolling.current)

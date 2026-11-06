@@ -235,8 +235,9 @@ function NativeTable({ block, styles }: { block: Block; styles: ReturnType<typeo
   // and a TSV block pastes into a spreadsheet as real columns.
   const copyTable = async (): Promise<void> => {
     if (copied) return
+    // The count names what reached the clipboard, and the header is one of its lines.
     const label = copyTableLabel({
-      rows: rows.length,
+      rows: rows.length + 1,
       columns: Math.max(header.length, ...rows.map((row) => row.length)),
     })
     try {
@@ -308,9 +309,8 @@ function NativeTable({ block, styles }: { block: Block; styles: ReturnType<typeo
   )
   return (
     <View style={styles.tableCard}>
-      {body}
-      {/* The confirmation sits in the same floating corner as the control, so naming the
-          size costs the grid no height and cannot reflow a wide table. */}
+      {/* The control owns a row above the grid: a long table would otherwise push it past
+          the fold, and floating it over the header hid the last column's title. */}
       <View style={styles.tableActions}>
         {copiedSize === undefined ? null : (
           <Text ellipsizeMode="tail" numberOfLines={1} style={styles.tableCopySize}>
@@ -332,6 +332,7 @@ function NativeTable({ block, styles }: { block: Block; styles: ReturnType<typeo
           />
         </Pressable>
       </View>
+      {body}
     </View>
   )
 }
