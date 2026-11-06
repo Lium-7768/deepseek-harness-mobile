@@ -117,6 +117,26 @@ export function shouldLoadOlderHistory({
   return offsetY <= OLDER_HISTORY_TRIGGER_PX
 }
 
+/**
+ * Decides whether a pull at the top should refetch the conversation.
+ *
+ * The pull is a deliberate "re-read the truth" gesture, so it must not fire while an older
+ * page is already loading: the two would race for the same list and the prepend anchor
+ * would restore an offset computed against a list that changed for both reasons.
+ *
+ * @param args - Whether a refetch is already running and whether an older page is in flight.
+ * @returns True when the pull may start a refetch.
+ */
+export function shouldRefreshFromPull({
+  refreshing,
+  loadingOlder,
+}: {
+  refreshing: boolean
+  loadingOlder: boolean
+}): boolean {
+  return !refreshing && !loadingOlder
+}
+
 /** Reports whether a list viewport is at or close enough to the newest visible message. */
 export function isNearLatestMessage(
   contentHeight: number,

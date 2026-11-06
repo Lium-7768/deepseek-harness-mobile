@@ -7,7 +7,7 @@ import { contextMeterPanel, sessionStatisticPanel, sessionStatisticsPills } from
 import { t as message } from '@/locale'
 import { type SharedEventItem } from '@/shared/dsh-presentation'
 import { useAppTheme, useThemedStyles } from '@/theme/hooks'
-import { Text, View } from 'react-native'
+import { Pressable, Text, View } from 'react-native'
 
 export function ErrorNotice({ text, onRetry }: { text: string; onRetry: () => void }): React.JSX.Element {
   const s = useThemedStyles(makeSessionStyles)
@@ -44,7 +44,14 @@ export function UnavailableState({
   )
 }
 
-export function ConnectionStatus({ status }: { status: string }): React.JSX.Element {
+export function ConnectionStatus({
+  onPress,
+  status,
+}: {
+  /** Re-reads the conversation; wired only while the stream is disconnected. */
+  onPress?: () => void
+  status: string
+}): React.JSX.Element {
   const s = useThemedStyles(makeSessionStyles)
   const disconnected = status === 'disconnected'
   const label = disconnected
@@ -56,8 +63,8 @@ export function ConnectionStatus({ status }: { status: string }): React.JSX.Elem
         : status === 'waiting'
           ? message('conversation.waitingForConfirmation')
           : message('conversation.connecting')
-  return (
-    <View style={s.status}>
+  const body = (
+    <>
       <View
         style={[
           s.statusDot,
@@ -68,7 +75,22 @@ export function ConnectionStatus({ status }: { status: string }): React.JSX.Elem
       <Text maxFontSizeMultiplier={1.3} numberOfLines={1} style={s.statusText}>
         {label}
       </Text>
-    </View>
+    </>
+  )
+  // Only a disconnected pill is tappable: while the stream is healthy the re-read is
+  // available from the list's own pull, and an always-tappable status invites misreads.
+  return onPress === undefined || !disconnected ? (
+    <View style={s.status}>{body}</View>
+  ) : (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={message('conversation.reconnect')}
+      hitSlop={8}
+      onPress={onPress}
+      style={({ pressed }) => [s.status, pressed && s.pressed]}
+    >
+      {body}
+    </Pressable>
   )
 }
 

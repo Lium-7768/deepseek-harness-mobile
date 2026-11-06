@@ -4,6 +4,7 @@ import {
   restoredOffsetAfterPrepend,
   shouldFollowContentGrowth,
   shouldLoadOlderHistory,
+  shouldRefreshFromPull,
   shouldReleaseFollowOnScroll,
   shouldScrollToLatest,
   shouldShowReturnToLatest,
@@ -129,5 +130,21 @@ describe('older-history auto load', () => {
 
   it('ignores a measurement that is not a finite number', () => {
     expect(shouldLoadOlderHistory({ offsetY: Number.NaN, hasMore: true, loading: false, exhausted: false })).toBe(false)
+  })
+})
+
+describe('pull to refresh', () => {
+  it('refetches when the list is settled', () => {
+    expect(shouldRefreshFromPull({ refreshing: false, loadingOlder: false })).toBe(true)
+  })
+
+  it('does not stack a second refetch while one is running', () => {
+    expect(shouldRefreshFromPull({ refreshing: true, loadingOlder: false })).toBe(false)
+  })
+
+  it('yields to an older page already in flight', () => {
+    // Both would change the same list, and the prepend anchor would restore an offset
+    // computed against a list that moved for two reasons.
+    expect(shouldRefreshFromPull({ refreshing: false, loadingOlder: true })).toBe(false)
   })
 })

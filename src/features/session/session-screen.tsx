@@ -31,6 +31,7 @@ import {
   isNearLatestMessage,
   restoredOffsetAfterPrepend,
   shouldFollowContentGrowth,
+  shouldRefreshFromPull,
   shouldLoadOlderHistory,
   shouldReleaseFollowOnScroll,
   shouldShowReturnToLatest,
@@ -62,6 +63,7 @@ import {
   Alert,
   FlatList,
   KeyboardAvoidingView,
+  RefreshControl,
   Platform,
   Pressable,
   Text,
@@ -169,6 +171,37 @@ export default function SessionScreen(): React.JSX.Element {
   })
   const sendMessage = useRef(send.mutate)
   sendMessage.current = send.mutate
+
+  /**
+   * Re-reads the conversation after a pull, keeping the reader's offset.
+   *
+   * A dropped event leaves the transcript stale with no way to ask again; a pull is that
+   * ask. The list is never cleared, so nothing flashes while the answer arrives.
+   */
+  const [refreshing, setRefreshing] = useState(false)
+  const refreshFromPull = useCallback(async (): Promise<void> => {
+    if (!shouldRefreshFromPull({ refreshing, loadingOlder: loadOlder.isPending })) return
+    const before = listMetrics.current
+    pendingPrependAnchor.current = null
+    setRefreshing(true)
+    try {
+      await Promise.all([
+        history.refetch(),
+        events.refetch(),
+        queue.refetch(),
+        jobs.refetch(),
+        subagents.refetch(),
+        interactions.refetch(),
+      ])
+      // The transcript grew above the reader only if the refetch added older rows; the
+      // anchor keeps the reading position rather than jumping to either end.
+      pendingPrependAnchor.current = before
+    } catch {
+      // The query hooks already surface their own failure state; the pull only ends.
+    } finally {
+      setRefreshing(false)
+    }
+  }, [events, history, interactions, jobs, loadOlder.isPending, queue, refreshing, subagents])
 
   useRouteSessionSelection(sessionId)
 
@@ -437,7 +470,10 @@ export default function SessionScreen(): React.JSX.Element {
 
   return (
     <ConversationDisclosureContext.Provider value={disclosures}>
-      <WorkspaceShell title={sessionTitle} rightAction={<ConnectionStatus status={displayStatus} />}>
+      <WorkspaceShell
+        title={sessionTitle}
+        rightAction={<ConnectionStatus onPress={() => void refreshFromPull()} status={displayStatus} />}
+      >
         <KeyboardAvoidingView
           behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
           keyboardVerticalOffset={workspaceKeyboardVerticalOffset(insets.top, false)}
@@ -510,6 +546,16 @@ export default function SessionScreen(): React.JSX.Element {
                   contentContainerStyle={s.list}
                   keyboardDismissMode="on-drag"
                   keyboardShouldPersistTaps="handled"
+                  // A pull re-reads the conversation from the Host; the older-history
+                  // loader owns its own trigger and never fires from this gesture.
+                  refreshControl={
+                    <RefreshControl
+                      colors={[theme.colors.accent]}
+                      onRefresh={() => void refreshFromPull()}
+                      refreshing={refreshing}
+                      tintColor={theme.colors.accent}
+                    />
+                  }
                   showsVerticalScrollIndicator={false}
                   ListHeaderComponent={
                     <>

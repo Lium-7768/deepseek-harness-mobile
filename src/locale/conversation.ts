@@ -25,6 +25,7 @@ export const conversation = {
   loadOlder: '加载更早消息',
   loadOlderFailedTitle: '加载更早消息失败',
   backToLatest: '返回最新消息',
+  reconnect: '重新连接并刷新',
   viewPending: '查看待处理操作',
 
   // `clock.md` / `clock.ymd` from ui-chat's locale dictionary: the date prefix
