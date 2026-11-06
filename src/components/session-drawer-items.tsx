@@ -63,10 +63,10 @@ export function WorkspaceItem({
  * Renders one session row with its trailing actions.
  *
  * The Web keeps the row's time and its action cluster in separate trailing
- * cells: the time shows at rest and yields to the actions while the row is
- * hovered or its menu is open (`Rows.module.css .rowActions`). A phone has no
- * hover, so time and the overflow control stay visible; destructive actions
- * stay inside the menu. Long press opens the same menu.
+ * cells and reveals the cluster while the row is hovered or its menu is open
+ * (`Rows.module.css .rowActions`). A phone has no hover, so time and the
+ * overflow control stay visible at rest; destructive actions stay inside the
+ * menu, which the overflow control and a long press both open.
  *
  * @param props - The session, its selection state, and the row's handlers.
  * @returns The row, and its action menu while open.
