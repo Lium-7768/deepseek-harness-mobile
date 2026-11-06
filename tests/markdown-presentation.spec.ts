@@ -28,3 +28,20 @@ it('highlights declared code while preserving every character, indentation and n
   expect(tokens.some((token) => token.kind === 'comment')).toBe(true)
   expect(highlightCode(code, 'unsupported-language')).toEqual([{ text: code }])
 })
+
+it('keeps every mid-turn assistant block copyable through selection, not the action strip', async () => {
+  // Desktop parity: `MessageIconActions` lives in `TurnTailNodeView`, so only a turn's
+  // closing assistant block carries the copy button. Mid-turn text has to stay copyable
+  // another way, which is why every markdown block is selectable.
+  const { assistantActionSequences } = await import('@/components/conversation-flow')
+  const rows = [
+    { kind: 'assistant', sourceSeq: 2, text: 'first half', rowKey: 'a1' },
+    { kind: 'tool', sourceSeq: 3, rowKey: 't1' },
+    { kind: 'assistant', sourceSeq: 4, text: 'second half', rowKey: 'a2' },
+  ] as never
+  const spans = [{ startSeq: 1, endSeq: 9 }] as never
+  const actionSeqs = assistantActionSequences(rows, spans)
+  // Only the closing block owns the strip.
+  expect(actionSeqs.has(4)).toBe(true)
+  expect(actionSeqs.has(2)).toBe(false)
+})

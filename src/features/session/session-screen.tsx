@@ -247,6 +247,10 @@ export default function SessionScreen(): React.JSX.Element {
         item={row}
         onBranch={branchFromMessage}
         sessionId={sessionId}
+        // Desktop parity: `MessageIconActions` renders only in `TurnTailNodeView`, so a
+        // turn's closing assistant block owns the copy/rate/branch strip and the blocks
+        // above it do not repeat it. Mid-turn assistant text stays copyable through the
+        // selection menu, which every markdown block enables.
         showActions={row.kind !== 'assistant' || (row.sourceSeq !== undefined && actionSequences.has(row.sourceSeq))}
       />
     ),
