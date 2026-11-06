@@ -222,14 +222,14 @@ function ToolPayload({
           <Pressable
             accessibilityRole="button"
             accessibilityLabel={
-              expanded ? message('markdown.collapse') : format('tool.expandPayload', { lines: lineCount })
+              expanded ? message('tool.collapsePayload') : format('tool.expandPayload', { lines: lineCount })
             }
             hitSlop={MESSAGE_ACTION_HIT_SLOP}
             onPress={() => setExpanded((value) => !value)}
             style={styles.payloadToggle}
           >
             <Text style={styles.payloadToggleText}>
-              {expanded ? message('markdown.collapse') : format('tool.expandPayload', { lines: lineCount })}
+              {expanded ? message('tool.collapsePayload') : format('tool.expandPayload', { lines: lineCount })}
             </Text>
             <NativeIcon
               name={expanded ? 'chevron-up-outline' : 'chevron-down-outline'}

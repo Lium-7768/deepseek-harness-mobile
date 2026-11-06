@@ -8,6 +8,8 @@
 
 /** Sign-in screen copy. */
 export const connect = {
+  /** Bar shown on every screen while the event stream is down. */
+  offline: '已断开桌面连接',
   title: '连接桌面端',
   intro: '输入桌面端开启公网访问后显示的地址和密码，即可在任意网络下使用。',
   addressLabel: '桌面端地址',

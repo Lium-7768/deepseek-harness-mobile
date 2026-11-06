@@ -47,3 +47,14 @@ describe('snackbar queue', () => {
     expect(useSnackbarStore.getState().current?.undo).toBeUndefined()
   })
 })
+
+describe('snackbar queue limit', () => {
+  it('keeps only the newest waits so a stale confirmation cannot surface late', () => {
+    showSnackbar('one')
+    showSnackbar('two')
+    showSnackbar('three')
+    showSnackbar('four')
+    expect(useSnackbarStore.getState().current?.text).toBe('one')
+    expect(useSnackbarStore.getState().queued.map((entry) => entry.text)).toEqual(['three', 'four'])
+  })
+})

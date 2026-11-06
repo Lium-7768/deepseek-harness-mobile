@@ -34,4 +34,5 @@ export const tool = {
   hiddenLines: '… 还有 {count} 行',
   /** `{lines}` total lines the payload holds. */
   expandPayload: '展开全部 {lines} 行',
+  collapsePayload: '收起',
 } as const

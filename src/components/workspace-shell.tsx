@@ -1,6 +1,7 @@
 import { NativeIcon } from '@/components/native-icon'
 import { workspaceHeaderMinHeight } from '@/components/workspace-shell-logic'
 import { t as message } from '@/locale'
+import { useMobileSyncStore } from '@/state/mobile-sync'
 import type { AppTheme } from '@/theme'
 import { useAppTheme, useMotionEasing, useThemedStyles } from '@/theme/hooks'
 import { useNavigation } from 'expo-router'
@@ -98,6 +99,10 @@ export function WorkspaceShell({
           </View>
           {hasHeaderMeta ? <View style={s.metaRow}>{headerMeta}</View> : null}
         </View>
+        {/* Every screen keeps this bar, so a dropped stream is visible outside a
+            conversation too: the lists on the workspace and settings screens would
+            otherwise go stale with nothing on screen saying why. */}
+        <OfflineBanner />
         <Animated.View style={[s.content, { opacity: entrance, paddingBottom: insets.bottom }]}>
           {children}
         </Animated.View>
@@ -105,9 +110,50 @@ export function WorkspaceShell({
     </View>
   )
 }
+/**
+ * Shows a reconnect bar while the event stream is down.
+ *
+ * A reconnect is a fresh stream with fresh subscriptions, which is the same action the
+ * drawer already performs, so this bar reuses it rather than inventing a second path.
+ *
+ * @returns The bar, or nothing while the stream is healthy.
+ */
+function OfflineBanner(): React.JSX.Element | null {
+  const s = useThemedStyles(makeStyles)
+  const theme = useAppTheme()
+  const status = useMobileSyncStore((state) => state.status)
+  if (status !== 'disconnected') return null
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={message('conversation.reconnect')}
+      onPress={() => useMobileSyncStore.getState().restartStream()}
+      style={({ pressed }) => [s.offline, pressed && s.pressed]}
+    >
+      <NativeIcon name="warning-outline" size={13} color={theme.colors.warningText} />
+      <Text maxFontSizeMultiplier={1.3} numberOfLines={1} style={s.offlineText}>
+        {message('connect.offline')}
+      </Text>
+      <Text maxFontSizeMultiplier={1.3} style={s.offlineAction}>
+        {message('common.reconnect')}
+      </Text>
+    </Pressable>
+  )
+}
+
 const makeStyles = (theme: AppTheme) =>
   StyleSheet.create({
     safe: { flex: 1, backgroundColor: theme.colors.background },
+    offline: {
+      alignItems: 'center',
+      backgroundColor: theme.colors.warningSoft,
+      flexDirection: 'row',
+      gap: 6,
+      paddingHorizontal: theme.spacing.lg,
+      paddingVertical: 6,
+    },
+    offlineText: { color: theme.colors.warningText, flexShrink: 1, fontSize: 12, lineHeight: 16 },
+    offlineAction: { color: theme.colors.warningText, fontSize: 12, fontWeight: '600', marginLeft: 'auto' },
     root: { flex: 1 },
     header: { borderBottomColor: theme.colors.border, borderBottomWidth: StyleSheet.hairlineWidth },
     // `ConversationRoot.module.css .header` pads `10px 28px 0 20px`; the phone

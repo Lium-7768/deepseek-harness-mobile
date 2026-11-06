@@ -1,5 +1,6 @@
 import { MobileApi } from '@/api/mobile-api'
 import { queryKeys } from '@/api/query-keys'
+import { warnFeedback } from '@/components/haptics'
 import { NativeMenuPanel } from '@/components/native-menu-panel'
 import { DrawerViewMenu } from '@/components/drawer-view-menu'
 import { DrawerSearchInput, DrawerSearchRow } from '@/components/drawer-search'
@@ -298,7 +299,14 @@ export function SessionDrawer(props: DrawerContentComponentProps): React.JSX.Ele
   const confirmDeleteWorkspace = (workspaceId: string, title: string): void => {
     Alert.alert(message('drawer.removeWorkspace'), format('drawer.removeWorkspaceBody', { title }), [
       { text: message('common.cancel'), style: 'cancel' },
-      { text: message('drawer.remove'), style: 'destructive', onPress: () => void deleteWorkspace(workspaceId) },
+      {
+        text: message('drawer.remove'),
+        style: 'destructive',
+        onPress: () => {
+          warnFeedback()
+          void deleteWorkspace(workspaceId)
+        },
+      },
     ])
   }
   const confirmArchive = (session: SessionSummary): void => {
@@ -306,7 +314,14 @@ export function SessionDrawer(props: DrawerContentComponentProps): React.JSX.Ele
       typeof session.title === 'string' && session.title.trim() ? session.title : message('drawer.newSession')
     Alert.alert(message('drawer.archiveSession'), format('drawer.archiveSessionBody', { title }), [
       { text: message('common.cancel'), style: 'cancel' },
-      { text: message('drawer.archive'), style: 'destructive', onPress: () => void archiveSession(session.sessionId) },
+      {
+        text: message('drawer.archive'),
+        style: 'destructive',
+        onPress: () => {
+          warnFeedback()
+          void archiveSession(session.sessionId)
+        },
+      },
     ])
   }
 

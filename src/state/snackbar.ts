@@ -19,6 +19,14 @@ interface SnackbarState {
 /** Milliseconds a message stays before it yields to the next one. */
 export const SNACKBAR_VISIBLE_MS = 4000
 
+/**
+ * Messages allowed to wait behind the visible one.
+ *
+ * Rapid archive taps would otherwise queue indefinitely and a stale "已归档" would surface
+ * long after the action.
+ */
+export const SNACKBAR_QUEUE_LIMIT = 2
+
 let nextId = 1
 
 /**
@@ -35,8 +43,12 @@ export const useSnackbarStore = create<SnackbarState>((set, get) => ({
   show(message) {
     const entry: SnackbarMessage = { ...message, id: nextId++ }
     const state = get()
-    if (state.current === undefined) set({ current: entry })
-    else set({ queued: [...state.queued, entry] })
+    if (state.current === undefined) {
+      set({ current: entry })
+      return
+    }
+    // Keep the newest waits: an older confirmation is less useful than a fresh one.
+    set({ queued: [...state.queued, entry].slice(-SNACKBAR_QUEUE_LIMIT) })
   },
   dismiss(id) {
     const state = get()
