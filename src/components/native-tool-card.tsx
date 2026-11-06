@@ -154,9 +154,6 @@ function ToolPayload({
   const lineCount = useMemo(() => measureCopy(text).lines, [text])
   const collapsible = lineCount > PAYLOAD_COLLAPSED_LINES
   const hiddenLines = Math.max(0, lineCount - PAYLOAD_COLLAPSED_LINES)
-  // A single long line still needs a sideways drag; short lines must not capture a
-  // horizontal gesture that belongs to the conversation.
-  const tooWide = useMemo(() => text.split('\n').some((line) => line.length > 120), [text])
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null)
   useEffect(
     () => () => {
@@ -175,7 +172,7 @@ function ToolPayload({
       setCopied(true)
       setCopyFailed(false)
       setCopySize(label)
-      void AccessibilityInfo.announceForAccessibility(`${message('copy.copiedText')} ${label}`)
+      void AccessibilityInfo.announceForAccessibility(label)
       if (timer.current !== null) clearTimeout(timer.current)
       timer.current = setTimeout(() => {
         timer.current = null
@@ -208,7 +205,7 @@ function ToolPayload({
       </View>
       {/* No vertical scroll inside the payload: a nested vertical scroller steals the
           conversation's own drag. The block folds instead, and the outer list scrolls. */}
-      <ScrollView horizontal scrollEnabled={tooWide} showsHorizontalScrollIndicator={false}>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false}>
         <Text
           selectable
           numberOfLines={expanded ? undefined : PAYLOAD_COLLAPSED_LINES}

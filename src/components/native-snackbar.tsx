@@ -7,6 +7,12 @@ import { AccessibilityInfo, Pressable, StyleSheet, Text, View } from 'react-nati
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
 /**
+ * Height the composer card, its dock row and the safe-area inset occupy together; the
+ * message sits above them so it never covers what the reader is typing into.
+ */
+const SNACKBAR_COMPOSER_CLEARANCE = 118
+
+/**
  * Prints the current transient message above the safe-area inset.
  *
  * It sits over the content rather than pushing it, so nothing reflows while a confirmation
@@ -38,7 +44,7 @@ export function NativeSnackbar(): React.JSX.Element | null {
 
   if (current === undefined) return null
   return (
-    <View pointerEvents="box-none" style={[s.host, { bottom: insets.bottom + 76 }]}>
+    <View pointerEvents="box-none" style={[s.host, { bottom: insets.bottom + SNACKBAR_COMPOSER_CLEARANCE }]}>
       <View style={s.pill}>
         <Text maxFontSizeMultiplier={1.4} numberOfLines={2} style={s.text}>
           {current.text}

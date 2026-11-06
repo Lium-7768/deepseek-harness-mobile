@@ -197,9 +197,10 @@ export default function SessionScreen(): React.JSX.Element {
         subagents.refetch(),
         interactions.refetch(),
       ])
-      // The transcript grew above the reader only if the refetch added older rows; the
-      // anchor keeps the reading position rather than jumping to either end.
-      pendingPrependAnchor.current = before
+      // Anchor only a reader who is reading history: someone already at the bottom wants
+      // the newest rows, and restoring their old offset would park them above the end.
+      if (nearLatestMessage.current) pinToLatest()
+      else pendingPrependAnchor.current = before
     } catch {
       // The query hooks already surface their own failure state; the pull only ends.
     } finally {
@@ -217,6 +218,8 @@ export default function SessionScreen(): React.JSX.Element {
     setOlderItems([])
     setOlderHasMore(undefined)
     exhaustedOlderHistory.current = false
+    unseenBaseline.current = undefined
+    setUnseenCount(0)
   }, [sessionId])
 
   useEffect(() => {

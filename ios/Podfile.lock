@@ -43,6 +43,8 @@ PODS:
     - ExpoModulesCore
   - ExpoGlassEffect (57.0.4):
     - ExpoModulesCore
+  - ExpoHaptics (57.0.3):
+    - ExpoModulesCore
   - ExpoImagePicker (57.0.20):
     - ExpoModulesCore
   - ExpoKeepAwake (57.0.2):
@@ -2311,6 +2313,7 @@ DEPENDENCIES:
   - "ExpoFileSystem (from `../node_modules/.pnpm/expo-file-system@57.0.7_expo@57.0.31_react-native@0.86.3_@babel+core@7.29.7_@react-nati_853f3c5bd40702af6b25169ef4e7e5c9/node_modules/expo-file-system/ios/ExpoFileSystem.podspec`)"
   - "ExpoFont (from `../node_modules/.pnpm/expo-font@57.0.4_expo@57.0.31_react-native@0.86.3_@babel+core@7.29.7_@react-native+metr_ece311b18df8a9e8078616799980a150/node_modules/expo-font/ios/ExpoFont.podspec`)"
   - "ExpoGlassEffect (from `../node_modules/.pnpm/expo-glass-effect@57.0.4_expo@57.0.31_react-native@0.86.3_@babel+core@7.29.7_@react-nat_1a81812050fd08d1095f0e15537f791c/node_modules/expo-glass-effect/ios`)"
+  - "ExpoHaptics (from `../node_modules/.pnpm/expo-haptics@57.0.3_expo@57.0.31/node_modules/expo-haptics/ios`)"
   - "ExpoImagePicker (from `../node_modules/.pnpm/expo-image-picker@57.0.20_expo@57.0.31/node_modules/expo-image-picker/ios`)"
   - "ExpoKeepAwake (from `../node_modules/.pnpm/expo-keep-awake@57.0.2_expo@57.0.31_react@19.2.3/node_modules/expo-keep-awake/ios`)"
   - "ExpoLinking (from `../node_modules/.pnpm/expo-linking@57.0.13_expo@57.0.31_react-native@0.86.3_@babel+core@7.29.7_@react-native+_712ad7ed14e67b1489a22b94feb68949/node_modules/expo-linking/ios`)"
@@ -2429,6 +2432,8 @@ EXTERNAL SOURCES:
     :podspec: "../node_modules/.pnpm/expo-font@57.0.4_expo@57.0.31_react-native@0.86.3_@babel+core@7.29.7_@react-native+metr_ece311b18df8a9e8078616799980a150/node_modules/expo-font/ios/ExpoFont.podspec"
   ExpoGlassEffect:
     :path: "../node_modules/.pnpm/expo-glass-effect@57.0.4_expo@57.0.31_react-native@0.86.3_@babel+core@7.29.7_@react-nat_1a81812050fd08d1095f0e15537f791c/node_modules/expo-glass-effect/ios"
+  ExpoHaptics:
+    :path: "../node_modules/.pnpm/expo-haptics@57.0.3_expo@57.0.31/node_modules/expo-haptics/ios"
   ExpoImagePicker:
     :path: "../node_modules/.pnpm/expo-image-picker@57.0.20_expo@57.0.31/node_modules/expo-image-picker/ios"
   ExpoKeepAwake:
@@ -2632,6 +2637,7 @@ SPEC CHECKSUMS:
   ExpoFileSystem: 980be7ecc921f6ba73cdf986ff66e1ecd57b8ef7
   ExpoFont: baf9e5d472c5dd59ca6b3221677f726499452a0e
   ExpoGlassEffect: 452d3b8408009c545b43319fb048f7f8e1f0e1ab
+  ExpoHaptics: 4f26ec5ebb4cc9c5907987672ef63de77ae9df60
   ExpoImagePicker: 68f102f772bbd2a84c621bb482dd63c7008cd8cb
   ExpoKeepAwake: b9ebf2ba14c42a2b5782adab42a2168a689bfd07
   ExpoLinking: b79df6dc2410273c1135015a67da1a7400e526d5
