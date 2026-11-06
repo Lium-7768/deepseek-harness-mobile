@@ -65,6 +65,20 @@ The native client follows the desktop source in `/Users/meiyu/code/deepseek/deep
 | F21 | Done   | Both hero and session expose model-query reload inside the slider card, including failure/loading states and immediate retry serialization. Slider route changes cancel stale gestures without losing measured width.                                                                                                |
 | F22 | Done   | Removed the unused raw `modelLabel` helper. Pods were regenerated for the current pnpm virtual paths; all 96 source paths exist. README documents rerunning Pods after any dependency/peer change. The portable RNTL shim fails on unsupported RN surfaces and does not certify native layout.                       |
 
+## Conversation reading and copying
+
+A long conversation keeps following newer content after the first jump: each content change
+re-pins while the reader stays at the bottom, and the reader's own send opens a short window in
+which growth keeps following even if a measurement trails the new content. A drag away from the
+bottom releases the follow, and a programmatic jump cannot. History prepends restore the offset
+explicitly because `maintainVisibleContentPosition` would anchor the first visible row across the
+same jump it has to yield to. Reaching one screen from the top requests the next older page.
+
+Every markdown block is long-press selectable — paragraphs, headings, quotes, list items, table
+cells and code — so mid-turn assistant text stays copyable even though the desktop parity rule
+puts the copy/rate/branch strip only on a turn's closing block. A table also copies whole as TSV,
+which pastes into a spreadsheet as real columns.
+
 ## Remaining limits
 
 - The `@` file-reference trigger from `ui-input-trigger` is not implemented: it needs a file tree the gateway does not forward, and is tracked separately from the `/` command menu.
@@ -80,7 +94,7 @@ The add menu opens the existing goal editor, or creates an absent/completed goal
 
 ## Validation scope
 
-- Node 22.23.2; 60 test files / 337 tests pass, including desktop icon hashes, malformed Goal and schedule responses, expired confirmation feedback, Goal polling, shared-query cursor/window contracts, disconnected selection gates, schedule/Goal editor interactions, slider-card drill-down/search/selection, reload/retained geometry, reduced-motion artwork, drawer filtering/tree/manual order and search merging. TypeScript and formatting pass.
+- Node 22.23.2; 62 test files / 366 tests pass, including desktop icon hashes, malformed Goal and schedule responses, expired confirmation feedback, Goal polling, shared-query cursor/window contracts, disconnected selection gates, schedule/Goal editor interactions, slider-card drill-down/search/selection, reload/retained geometry, reduced-motion artwork, drawer filtering/tree/manual order and search merging. TypeScript and formatting pass.
 - Android arm64 native debug build and isolated review-package install pass with the navigation-bar module. iOS Pods resolve; Android/iOS JavaScript exports pass.
 - The latest model-control review also passes an unsigned arm64 iOS Simulator Release native build after `pod install`. `Podfile.lock` matches the installed Pods manifest and all 96 local Pod source paths resolve. This is not a signed device archive or App Store validation.
 - Android API/resource lint (`NewApi`, `InlinedApi`, `ResourceType`) passes with no findings. Full `lintDebug` crashes in the third-party Worklets Kotlin Gradle-script analysis (`Cannot find a KaModule for the VirtualFile`); no lint checks are disabled or baselined in the repository to hide that failure.
