@@ -25,6 +25,8 @@ export const conversation = {
   loadOlder: '加载更早消息',
   loadOlderFailedTitle: '加载更早消息失败',
   backToLatest: '返回最新消息',
+  /** `{count}` message rows that arrived while the reader was away from the bottom. */
+  newMessages: '{count} 条新消息',
   reconnect: '重新连接并刷新',
   viewPending: '查看待处理操作',
 

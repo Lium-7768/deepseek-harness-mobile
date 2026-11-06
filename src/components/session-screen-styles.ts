@@ -66,6 +66,19 @@ export const makeSessionStyles = (theme: AppTheme) =>
       width: 40,
       ...theme.elevation.card,
     },
+    // The badge sits on the control's top-left corner so it never covers the chevron.
+    returnToLatestBadge: {
+      alignItems: 'center',
+      backgroundColor: theme.colors.accent,
+      borderRadius: theme.radius.pill,
+      justifyContent: 'center',
+      minWidth: 18,
+      paddingHorizontal: 4,
+      position: 'absolute',
+      right: 26,
+      top: -6,
+    },
+    returnToLatestBadgeText: { color: theme.colors.onAccent, fontSize: 10, fontWeight: '600', lineHeight: 14 },
     // The desktop prints this as plain 12px secondary text, not a filled control.
     // `ChatView` prints 加载更早 as a 12/400 secondary chip on `bg-overlay`
     // (4px 12px, radius 8). The 44pt floor keeps the platform touch target.

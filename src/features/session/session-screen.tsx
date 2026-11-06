@@ -33,6 +33,7 @@ import {
   shouldFollowContentGrowth,
   shouldRefreshFromPull,
   shouldLoadOlderHistory,
+  unreadCountLabel,
   shouldReleaseFollowOnScroll,
   shouldShowReturnToLatest,
   shouldTrackLatestProximity,
@@ -106,6 +107,9 @@ export default function SessionScreen(): React.JSX.Element {
   /** A page that brought no rows means scrolling further cannot find more, even if the host says it has. */
   const exhaustedOlderHistory = useRef(false)
   const [showReturnToLatest, setShowReturnToLatest] = useState(false)
+  // Message rows present when the reader left the bottom; the badge counts what came after.
+  const unseenBaseline = useRef<number | undefined>(undefined)
+  const [unseenCount, setUnseenCount] = useState(0)
   const [olderItems, setOlderItems] = useState<SharedEventItem[]>([])
   const [olderHasMore, setOlderHasMore] = useState<boolean | undefined>()
   const [tab, setTab] = useState<WorkbenchTab>('chat')
@@ -276,6 +280,12 @@ export default function SessionScreen(): React.JSX.Element {
     (seq: number | undefined) => (seq === undefined ? undefined : eventBySeqRef.current.get(seq)),
     [],
   )
+  useEffect(() => {
+    const baseline = unseenBaseline.current
+    if (baseline === undefined) return
+    const arrived = messages.length - baseline
+    setUnseenCount(arrived > 0 ? arrived : 0)
+  }, [messages.length])
   const closingBlocks = useMemo(() => closingAssistantSequences(displayRows), [displayRows])
   const isClosingBlock = useCallback(
     (row: NativeConversationRow) => row.sourceSeq !== undefined && closingBlocks.has(row.sourceSeq),
@@ -397,6 +407,14 @@ export default function SessionScreen(): React.JSX.Element {
     setShowReturnToLatest(
       shouldShowReturnToLatest({ hasMessages: messages.length > 0, nearLatest: nearLatestMessage.current }),
     )
+    if (nearLatestMessage.current) {
+      unseenBaseline.current = undefined
+      setUnseenCount(0)
+    } else if (unseenBaseline.current === undefined) {
+      // The baseline is the row count at the moment the reader left the bottom, so the
+      // badge reports what arrived since, not the size of the whole transcript.
+      unseenBaseline.current = messages.length
+    }
   }
 
   /** Opens a window in which measurements count as the reader steering the list. */
@@ -427,6 +445,8 @@ export default function SessionScreen(): React.JSX.Element {
   function pinToLatest(): void {
     nearLatestMessage.current = true
     setShowReturnToLatest(false)
+    unseenBaseline.current = undefined
+    setUnseenCount(0)
     listRef.current?.scrollToEnd({ animated: false })
   }
   pinToLatestRef.current = pinToLatest
@@ -668,11 +688,22 @@ export default function SessionScreen(): React.JSX.Element {
                 {showReturnToLatest ? (
                   <Pressable
                     accessibilityRole="button"
-                    accessibilityLabel={message('conversation.backToLatest')}
+                    accessibilityLabel={
+                      unreadCountLabel(unseenCount) === undefined
+                        ? message('conversation.backToLatest')
+                        : `${message('conversation.backToLatest')}，${format('conversation.newMessages', { count: unreadCountLabel(unseenCount) as string })}`
+                    }
                     onPress={pinToLatest}
                     style={({ pressed }) => [s.returnToLatest, pressed && s.returnToLatestPressed]}
                   >
                     <NativeIcon name="chevron-down-outline" size={20} color={theme.colors.ink} />
+                    {unreadCountLabel(unseenCount) === undefined ? null : (
+                      <View style={s.returnToLatestBadge}>
+                        <Text maxFontSizeMultiplier={1.2} style={s.returnToLatestBadgeText}>
+                          {unreadCountLabel(unseenCount)}
+                        </Text>
+                      </View>
+                    )}
                   </Pressable>
                 ) : null}
               </View>

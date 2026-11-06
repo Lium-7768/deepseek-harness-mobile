@@ -5,6 +5,8 @@ import {
   shouldFollowContentGrowth,
   shouldLoadOlderHistory,
   shouldRefreshFromPull,
+  shouldCaptureUnreadBaseline,
+  unreadCountLabel,
   shouldReleaseFollowOnScroll,
   shouldScrollToLatest,
   shouldShowReturnToLatest,
@@ -146,5 +148,28 @@ describe('pull to refresh', () => {
     // Both would change the same list, and the prepend anchor would restore an offset
     // computed against a list that moved for two reasons.
     expect(shouldRefreshFromPull({ refreshing: false, loadingOlder: true })).toBe(false)
+  })
+})
+
+describe('unread badge', () => {
+  it('prints nothing when every row was already read', () => {
+    expect(unreadCountLabel(0)).toBeUndefined()
+    expect(unreadCountLabel(-1)).toBeUndefined()
+  })
+
+  it('counts the rows that arrived since the reader left the bottom', () => {
+    expect(unreadCountLabel(1)).toBe('1')
+    expect(unreadCountLabel(12)).toBe('12')
+  })
+
+  it('collapses a large count instead of widening the control', () => {
+    expect(unreadCountLabel(99)).toBe('99')
+    expect(unreadCountLabel(100)).toBe('99+')
+  })
+
+  it('captures a baseline only after the reader actually leaves the bottom', () => {
+    expect(shouldCaptureUnreadBaseline({ nearLatest: false, returning: false })).toBe(true)
+    expect(shouldCaptureUnreadBaseline({ nearLatest: true, returning: false })).toBe(false)
+    expect(shouldCaptureUnreadBaseline({ nearLatest: false, returning: true })).toBe(false)
   })
 })

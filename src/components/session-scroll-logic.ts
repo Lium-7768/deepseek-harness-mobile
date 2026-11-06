@@ -137,6 +137,39 @@ export function shouldRefreshFromPull({
   return !refreshing && !loadingOlder
 }
 
+/** Highest count the badge prints before it collapses to a dash. */
+export const UNREAD_COUNT_CAP = 99
+
+/**
+ * Formats the badge on the return-to-latest control.
+ *
+ * Counting message rows rather than events matters: one Turn emits dozens of events, so an
+ * event count would jump to the hundreds while two replies had arrived.
+ *
+ * @param unseen - Message rows that arrived while the reader was away from the bottom.
+ * @returns The badge text, or undefined when nothing new arrived.
+ */
+export function unreadCountLabel(unseen: number, cap = UNREAD_COUNT_CAP): string | undefined {
+  if (!Number.isFinite(unseen) || unseen <= 0) return undefined
+  return unseen > cap ? `${cap}+` : String(Math.trunc(unseen))
+}
+
+/**
+ * Decides whether the reader has left the bottom since the last reading position.
+ *
+ * @param args - Whether the reader sits at the bottom now, and whether the control is already up.
+ * @returns True when the unseen baseline should be captured.
+ */
+export function shouldCaptureUnreadBaseline({
+  nearLatest,
+  returning,
+}: {
+  nearLatest: boolean
+  returning: boolean
+}): boolean {
+  return !nearLatest && !returning
+}
+
 /** Reports whether a list viewport is at or close enough to the newest visible message. */
 export function isNearLatestMessage(
   contentHeight: number,
