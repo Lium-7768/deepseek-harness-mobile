@@ -80,7 +80,9 @@ export function NativeRetryRow({ row }: { row: RetryRow }): React.JSX.Element {
       {expanded ? (
         <View style={s.retryDetails}>
           <Text style={s.retryDetailLabel}>{message('status.retryDelay')}</Text>
-          <Text style={s.retryDetail}>{`${Math.round(row.delayMs)}ms`}</Text>
+          <Text selectable style={s.retryDetail}>
+            {`${Math.round(row.delayMs)}ms`}
+          </Text>
           <Text style={s.retryDetailLabel}>{message('status.failureReason')}</Text>
           <Text selectable style={s.retryDetail}>
             {row.failureMessage}
@@ -104,7 +106,9 @@ export function NativeTurnErrorRow({ row }: { row: TurnErrorRow }): React.JSX.El
       <View style={s.errorDot} />
       <View style={s.errorCopy}>
         <Text style={s.errorTitle}>{message('status.turnFailed')}</Text>
-        <Text style={s.errorMessage}>{row.message}</Text>
+        <Text selectable style={s.errorMessage}>
+          {row.message}
+        </Text>
         {/* The desktop projection carries no code, so the phone prints it under the
             message instead of in the row, where it was squeezed to its wrap width. */}
         {row.code ? (
@@ -142,7 +146,7 @@ export function NativeCommandRow({ row }: { row: CommandRow }): React.JSX.Elemen
         style={({ pressed }) => [s.commandHeader, pressed && s.pressed]}
       >
         <NativeIcon name="code-outline" size={14} color={theme.colors.inkMuted} />
-        <Text numberOfLines={1} style={s.commandName}>
+        <Text numberOfLines={1} selectable style={s.commandName}>
           {row.name}
         </Text>
         {row.state === 'running' ? <Text style={s.commandRunning}>{message('status.running')}</Text> : null}
@@ -201,7 +205,7 @@ export function NativeCompactionRow({ row }: { row: CompactionRow }): React.JSX.
       >
         <NativeIcon name="data-outline" size={14} color={theme.colors.inkMuted} />
         <Text style={s.compactionTitle}>{message('status.compacted')}</Text>
-        <Text numberOfLines={1} style={s.compactionSummary}>
+        <Text numberOfLines={1} selectable style={s.compactionSummary}>
           {row.summary || message('status.compactedBody')}
         </Text>
         <NativeIcon

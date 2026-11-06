@@ -22,7 +22,7 @@ export function NativeDiffBlock({ change }: { change: ToolFileChange }): React.J
   return (
     <View style={styles.root}>
       <View style={styles.head}>
-        <Text numberOfLines={1} style={styles.path}>
+        <Text numberOfLines={1} selectable style={styles.path}>
           {change.path}
         </Text>
         <Text style={styles.stat}>{format('tool.diffStat', { added: change.added, removed: change.removed })}</Text>
@@ -37,6 +37,7 @@ export function NativeDiffBlock({ change }: { change: ToolFileChange }): React.J
             ]}
           >
             <Text
+              selectable
               style={[
                 styles.text,
                 line.kind === 'added' ? styles.addedText : line.kind === 'removed' ? styles.removedText : null,

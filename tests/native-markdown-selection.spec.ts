@@ -86,3 +86,26 @@ describe('native markdown selection', () => {
     await act(async () => undefined)
   })
 })
+
+describe('tool and status content selection', () => {
+  it('keeps the collapsed flow header a control rather than a selection target', async () => {
+    // The one-line header toggles the disclosure; wrapping it in a Text selection would
+    // take the tap. The full payload below it is selectable instead.
+    const { readFileSync } = await import('node:fs')
+    const source = readFileSync(new URL('../src/components/native-flow-row.tsx', import.meta.url), 'utf8')
+    expect(source).not.toContain('selectable')
+  })
+
+  it('marks diff paths and diff lines selectable', async () => {
+    const { readFileSync } = await import('node:fs')
+    const source = readFileSync(new URL('../src/components/native-diff-block.tsx', import.meta.url), 'utf8')
+    // Path plus one selectable line renderer; the stat and truncation notes are labels.
+    expect((source.match(/selectable/g) ?? []).length).toBeGreaterThanOrEqual(2)
+  })
+
+  it('marks the failure message, retry delay, command and compaction rows selectable', async () => {
+    const { readFileSync } = await import('node:fs')
+    const source = readFileSync(new URL('../src/components/native-conversation-status.tsx', import.meta.url), 'utf8')
+    expect((source.match(/selectable/g) ?? []).length).toBeGreaterThanOrEqual(9)
+  })
+})
