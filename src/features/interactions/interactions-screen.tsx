@@ -303,6 +303,9 @@ const QuestionCard = memo(function QuestionCard({
       },
     }))
   }
+  // One optional free-text answer per question, closed until asked for: a card of
+  // three questions otherwise opened three empty multi-line fields.
+  const [customOpen, setCustomOpen] = useState<Record<string, boolean>>({})
   const toggleOption = (question: DshQuestion, label: string) => {
     const selected = draft[question.id]?.selected ?? []
     const nextSelected = question.multiSelect
@@ -364,18 +367,31 @@ const QuestionCard = memo(function QuestionCard({
               </Pressable>
             )
           })}
-          <TextInput
-            accessibilityLabel={format('interactions.customAnswer', { question: question.question })}
-            editable={!submitting}
-            multiline
-            placeholder={message('interactions.customAnswerPlaceholder')}
-            placeholderTextColor={theme.colors.inkFaint}
-            selectionColor={theme.colors.accent}
-            underlineColorAndroid="transparent"
-            style={styles.customAnswer}
-            value={draft[question.id]?.custom ?? ''}
-            onChangeText={(custom) => update(question.id, { custom })}
-          />
+          {customOpen[question.id] === true || (draft[question.id]?.custom ?? '') !== '' ? (
+            <TextInput
+              accessibilityLabel={format('interactions.customAnswer', { question: question.question })}
+              editable={!submitting}
+              multiline
+              placeholder={message('interactions.customAnswerPlaceholder')}
+              placeholderTextColor={theme.colors.inkFaint}
+              selectionColor={theme.colors.accent}
+              underlineColorAndroid="transparent"
+              style={styles.customAnswer}
+              value={draft[question.id]?.custom ?? ''}
+              onChangeText={(custom) => update(question.id, { custom })}
+            />
+          ) : (
+            <Pressable
+              android_ripple={{ borderless: false }}
+              accessibilityRole="button"
+              disabled={submitting}
+              onPress={() => setCustomOpen((current) => ({ ...current, [question.id]: true }))}
+              style={({ pressed }) => [styles.customToggle, pressed && styles.pressed]}
+            >
+              <NativeIcon name="edit-outline" size={14} color={theme.colors.accent} />
+              <Text style={styles.customToggleText}>{message('interactions.customAnswerToggle')}</Text>
+            </Pressable>
+          )}
         </View>
       ))}
       <NativeActionButton
@@ -555,6 +571,9 @@ const makeStyles = (theme: AppTheme) =>
       padding: 10,
       textAlignVertical: 'top',
     },
+    // The collapsed form of the free-text answer: one accent row, not a 74pt box.
+    customToggle: { alignItems: 'center', flexDirection: 'row', gap: 6, minHeight: 32 },
+    customToggleText: { color: theme.colors.accent, fontSize: 13, fontWeight: '500' },
     empty: {
       alignItems: 'stretch',
       backgroundColor: theme.colors.surfaceRaised,

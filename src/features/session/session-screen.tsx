@@ -431,8 +431,10 @@ export default function SessionScreen(): React.JSX.Element {
     ),
     [openSteps, renderGroupRow, toggleStep],
   )
-  // A Turn's control reveals step groups, retries, and command rows together, so
-  // the member renderer dispatches on the row rather than assuming a step.
+  // A Turn's control reveals its rows directly. A step inside it would add a
+  // second disclosure whose label repeats the first member it holds, so the
+  // members render flat: two levels in the transcript (Turn, then content), and
+  // one click to reach a tool's output.
   const renderTurnMember = useCallback(
     (row: NativeTurnMemberRow) =>
       row.kind === 'process' ? (

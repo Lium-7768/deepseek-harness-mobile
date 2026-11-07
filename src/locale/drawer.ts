@@ -87,6 +87,9 @@ export const drawer = {
   recentlyUpdated: '最近更新',
   workspaceActions: '工作区操作',
   sessionActions: '会话操作',
+  sessionActionsIdentity: '会话',
+  sessionActionsOutput: '产物',
+  sessionActionsArchive: '归档',
   /** `{title}` names the session whose action menu opens. */
   sessionActionsFor: '{title} 的操作',
   renameWorkspace: '重命名工作区',

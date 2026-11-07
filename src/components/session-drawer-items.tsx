@@ -118,24 +118,32 @@ export function SessionItem({
   // content that does not exist. Both trailing cells stay off until the first
   // prompt (`Rows.tsx`: `!row.blank` gates the time and the action cluster).
   const blank = session.blank === true
-  const actions = [
+  // Three groups, not one list of eight verbs: the row's own identity actions,
+  // what it produces, and the one destructive action last.
+  const orderedActions = [
     {
       label: message(pinned ? 'drawer.unpinSession' : 'drawer.pinSession'),
       icon: 'pin-outline' as const,
       onPress: onTogglePin,
     },
     { label: message('drawer.rename'), icon: 'edit-outline' as const, onPress: onRename },
+    { label: message('drawer.forkSession'), icon: 'branch-outline' as const, onPress: onFork },
     { label: message('log.action'), icon: 'download-outline' as const, onPress: onExport },
     { label: message('drawer.copySessionId'), icon: 'copy-outline' as const, onPress: onCopyId },
-    { label: message('drawer.forkSession'), icon: 'branch-outline' as const, onPress: onFork },
-    ...(archived
-      ? [{ label: message('drawer.restore'), icon: 'archive-outline' as const, onPress: onRestore }]
-      : [{ label: message('drawer.archiveSession'), icon: 'archive-outline' as const, onPress: onArchive }]),
     ...(onMoveUp ? [{ label: message('drawer.moveUp'), icon: 'chevron-up-outline' as const, onPress: onMoveUp }] : []),
     ...(onMoveDown
       ? [{ label: message('drawer.moveDown'), icon: 'chevron-down-outline' as const, onPress: onMoveDown }]
       : []),
   ]
+  const destructive = archived
+    ? [{ label: message('drawer.restore'), icon: 'archive-outline' as const, onPress: onRestore }]
+    : [{ label: message('drawer.archiveSession'), icon: 'archive-outline' as const, onPress: onArchive }]
+  const actions = [...orderedActions, ...destructive]
+  const groups = [
+    { options: orderedActions.slice(0, 2), title: message('drawer.sessionActionsIdentity') },
+    { options: orderedActions.slice(2), title: message('drawer.sessionActionsOutput') },
+    { options: destructive, title: message('drawer.sessionActionsArchive') },
+  ].filter((group) => group.options.length > 0)
   return (
     <>
       <Pressable
@@ -202,15 +210,14 @@ export function SessionItem({
       </Pressable>
       <NativeMenuPanel
         actionMenu
-        groups={[
-          {
-            options: actions.map((action) => ({
-              icon: action.icon,
-              label: action.label,
-              value: action.label,
-            })),
-          },
-        ]}
+        groups={groups.map((group) => ({
+          options: group.options.map((action) => ({
+            icon: action.icon,
+            label: action.label,
+            value: action.label,
+          })),
+          title: group.title,
+        }))}
         onClose={() => setMenuOpen(false)}
         onSelect={(value) => {
           const action = actions.find((candidate) => candidate.label === value)

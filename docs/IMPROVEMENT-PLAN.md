@@ -95,6 +95,11 @@ account page prints one fact per row instead of a title, value and boilerplate s
 The release line returned to the desktop's 14/22 primary label while gaining its 16px
 padding.
 
+A session row's `…` menu listed eight verbs in one run, with 归档 next to 重命名. It now reads in
+three groups — the row's identity, what it produces, and the one destructive action — and the
+interactions card asks for a free-text answer with one `其他答案` row instead of opening an empty
+74pt field for every question.
+
 A tool payload spent three rows on its own chrome — a label row, a `还有 N 行` line, and a fold
 control — and put the text in a horizontal scroller inside the vertical transcript, so a long
 line had to be dragged sideways with no cue that it could be. The label, size, fold and copy now

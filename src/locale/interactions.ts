@@ -32,6 +32,7 @@ export const interactions = {
   /** `{question}` is the question being answered freely. */
   customAnswer: '自定义回答：{question}',
   customAnswerPlaceholder: '可选：输入自定义回答',
+  customAnswerToggle: '其他答案',
 
   respond: '发送响应',
   responding: '发送中…',
