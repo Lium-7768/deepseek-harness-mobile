@@ -49,6 +49,7 @@ import {
 } from '@/components/session-turn-logic'
 import { ContextRows, TrajectoryPanel, WorkbenchTabs, type WorkbenchTab } from '@/components/session-workbench'
 import { SkeletonConversation } from '@/components/skeleton'
+import { ComposerDockChips, type ComposerDock } from '@/components/composer-dock-chips'
 import { WorkspaceComposer } from '@/components/workspace-composer'
 import { WorkspaceShell } from '@/components/workspace-shell'
 import { workspaceKeyboardVerticalOffset } from '@/components/workspace-shell-logic'
@@ -135,9 +136,13 @@ export default function SessionScreen(): React.JSX.Element {
   const [tab, setTab] = useState<WorkbenchTab>('chat')
   const [goalEditorOpen, setGoalEditorOpen] = useState(false)
   const [goalEditRequest, setGoalEditRequest] = useState(0)
+  // One dock at rest: the three cards the desktop stacks above the composer
+  // become a chip row, and a chip opens its own dock underneath.
+  const [openDock, setOpenDock] = useState<ComposerDock | undefined>(undefined)
   useEffect(() => {
     setGoalEditorOpen(false)
     setGoalEditRequest(0)
+    setOpenDock(undefined)
   }, [sessionId])
   /** Set once `pinToLatest` exists so the send callback can reach it. */
   const pinToLatestRef = useRef<() => void>(() => undefined)
@@ -573,6 +578,7 @@ export default function SessionScreen(): React.JSX.Element {
   )
   // The desktop registers this dock at order 0, ahead of the goal bar and the queue.
   const todos = todoFromProjection(history.data?.projections?.values)
+  const queuedCount = queue.data?.items.filter((item) => item.placement === 'queued').length ?? 0
   const plan = planFromProjection(history.data?.projections?.values)
   const reportedStatus = events.data?.status ?? message('conversation.connecting')
   const running = reportedStatus === 'running' || activeSession?.running === true || runningTurnStartedAt !== undefined
@@ -854,24 +860,38 @@ export default function SessionScreen(): React.JSX.Element {
                   else setGoalEditorOpen(true)
                 }}
                 header={
-                  (goal && goal.phase !== 'complete') ||
-                  todos !== undefined ||
-                  queue.data?.items.some((item) => item.placement === 'queued') ? (
+                  openDock !== undefined ||
+                  (todos !== undefined && todos.length > 0) ||
+                  (goal !== undefined && goal.phase !== 'complete') ||
+                  queuedCount > 0 ? (
                     <View style={s.composerContext}>
-                      <NativeTodoDock todos={todos} />
-                      <NativeGoalBar
+                      <ComposerDockChips
                         goal={goal}
-                        editRequest={goalEditRequest}
-                        pending={goalMutation.isPending}
-                        onMutate={(action, ref, objective) =>
-                          goalMutation.mutateAsync({ action, ref, objective }).then(() => undefined)
-                        }
+                        onToggle={(dock) => setOpenDock((current) => (current === dock ? undefined : dock))}
+                        open={openDock}
+                        queued={queuedCount}
+                        todos={todos}
                       />
-                      <NativeQueueDock
-                        items={queue.data?.items ?? []}
-                        onUpdate={(itemId, action) => updateQueue.mutateAsync({ itemId, action }).then(() => undefined)}
-                        running={status === 'running'}
-                      />
+                      {openDock === 'todo' ? <NativeTodoDock todos={todos} /> : null}
+                      {openDock === 'goal' ? (
+                        <NativeGoalBar
+                          goal={goal}
+                          editRequest={goalEditRequest}
+                          pending={goalMutation.isPending}
+                          onMutate={(action, ref, objective) =>
+                            goalMutation.mutateAsync({ action, ref, objective }).then(() => undefined)
+                          }
+                        />
+                      ) : null}
+                      {openDock === 'queue' ? (
+                        <NativeQueueDock
+                          items={queue.data?.items ?? []}
+                          onUpdate={(itemId, action) =>
+                            updateQueue.mutateAsync({ itemId, action }).then(() => undefined)
+                          }
+                          running={status === 'running'}
+                        />
+                      ) : null}
                     </View>
                   ) : undefined
                 }

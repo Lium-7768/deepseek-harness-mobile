@@ -95,6 +95,14 @@ account page prints one fact per row instead of a title, value and boilerplate s
 The release line returned to the desktop's 14/22 primary label while gaining its 16px
 padding.
 
+Above the composer the desktop stacks three cards — the task list, the goal bar and the
+queue. On a phone they took roughly a third of the transcript with their own outlines and
+elevation, so they are now one row of 28pt chips (`任务 1/3`, `进行中的目标`, `队列 2`) and a chip
+opens its own dock underneath; a blocked goal reads in the chip itself. The control row drops
+from five triggers to three: `+`, the model, and send, because the permission and mode
+selectors opened the same menus the `+` menu already lists — those rows now print the current
+value that the control row stopped naming.
+
 The drawer loses the chrome it repeated: `插件 / 自动化任务 / 设置` are one chip row instead of
 three stacked rows, the sync control takes the slot of the permanently disabled
 "desktop-only" add-workspace icon, and the footer that repeated 设置 and 同步 is gone, so each

@@ -412,7 +412,9 @@ export function WorkspaceComposer({
           ? []
           : [
               {
-                description: message('composer.menuPermissionDetail'),
+                // The row's second line states the current preset: the control row
+                // no longer repeats it, so this menu is where it is read.
+                description: `${selectedPermissionLabel} · ${message('composer.menuPermissionDetail')}`,
                 icon: 'shield-outline' as const,
                 label: message('composer.menuPermission'),
                 token: 'permission',
@@ -423,7 +425,7 @@ export function WorkspaceComposer({
           ? []
           : [
               {
-                description: message('composer.menuModeDetail'),
+                description: `${modeLabel} · ${message('composer.menuModeDetail')}`,
                 icon: 'sliders-two-outline' as const,
                 label: message('composer.menuMode'),
                 token: 'mode',
@@ -447,7 +449,6 @@ export function WorkspaceComposer({
   ].filter((group) => group.options.length > 0)
   // `PermissionSelect.module.css` hides the access label below a 460px composer
   // row, leaving the glyph and chevron; the phone card is narrower than that.
-  const compactControls = layout.compact
 
   return (
     <View style={s.wrap}>
@@ -536,44 +537,6 @@ export function WorkspaceComposer({
               <NativeIcon name="plus-outline" weight="medium" size={14} color={theme.colors.ink} />
             </Pressable>
             <View style={s.tools}>
-              {permissions === undefined ? (
-                <View
-                  accessible
-                  accessibilityRole="button"
-                  accessibilityLabel={message('composer.permissionLocked')}
-                  accessibilityState={{ disabled: true }}
-                  style={s.disabledTool}
-                >
-                  <NativeIcon name="shield-outline" size={14} color={theme.colors.inkMuted} />
-                  {compactControls ? null : (
-                    <Text style={s.toolLabel}>{message('session.permissionWorkspaceBadge')}</Text>
-                  )}
-                </View>
-              ) : (
-                <Pressable
-                  android_ripple={{ borderless: false }}
-                  accessibilityRole="button"
-                  accessibilityLabel={format('composer.selectPermission', { label: selectedPermissionLabel })}
-                  accessibilityState={{ disabled: !hasSession || controlsDisabled }}
-                  disabled={!hasSession || controlsDisabled}
-                  hitSlop={{ top: 8, bottom: 8 }}
-                  onPress={() => setOpenPicker('permission')}
-                  style={({ pressed }) => [
-                    s.tool,
-                    compactControls && s.toolFixed,
-                    controlsDisabled && s.disabledTool,
-                    pressed && s.pressed,
-                  ]}
-                >
-                  <NativeIcon name="shield-outline" size={14} color={theme.colors.inkMuted} />
-                  {compactControls ? null : (
-                    <Text numberOfLines={1} style={s.toolLabel}>
-                      {selectedPermissionLabel}
-                    </Text>
-                  )}
-                  <NativeIcon name="chevron-down-outline" size={14} color={theme.colors.inkFaint} />
-                </Pressable>
-              )}
               {hasSession ? (
                 <NativePlanChip
                   locked={controlsDisabled}
@@ -588,42 +551,6 @@ export function WorkspaceComposer({
                   plan={plan}
                 />
               ) : null}
-              {hasSession ? (
-                <Pressable
-                  android_ripple={{ borderless: false }}
-                  accessibilityRole="button"
-                  accessibilityLabel={format('composer.selectMode', { label: modeLabel })}
-                  accessibilityState={{ disabled: controlsDisabled }}
-                  disabled={controlsDisabled}
-                  hitSlop={{ top: 8, bottom: 8 }}
-                  onPress={() => setOpenPicker('mode')}
-                  style={({ pressed }) => [
-                    s.tool,
-                    compactControls && s.toolFixed,
-                    controlsDisabled && s.disabledTool,
-                    pressed && s.pressed,
-                  ]}
-                >
-                  <NativeIcon name="sliders-two-outline" size={14} color={theme.colors.inkMuted} />
-                  {compactControls ? null : (
-                    <Text numberOfLines={1} style={s.toolLabel}>
-                      {modeLabel}
-                    </Text>
-                  )}
-                  <NativeIcon name="chevron-down-outline" size={14} color={theme.colors.inkFaint} />
-                </Pressable>
-              ) : (
-                <View
-                  accessible
-                  accessibilityRole="button"
-                  accessibilityLabel={message('composer.modeNeedsSession')}
-                  accessibilityState={{ disabled: true }}
-                  style={s.disabledTool}
-                >
-                  <NativeIcon name="sliders-two-outline" size={14} color={theme.colors.inkMuted} />
-                  {compactControls ? null : <Text style={s.toolLabel}>{message('session.modeStandard')}</Text>}
-                </View>
-              )}
             </View>
             <View style={s.trailing}>
               {selectionPending ? (
@@ -938,7 +865,6 @@ const makeStyles = (theme: AppTheme) =>
     // not be the row's shrink sink: a long model name would squeeze it to the
     // glyph alone and clip the chevron. The model trigger shrinks instead
     // (`ModelSelect .triggerEffort` does the same on the Web).
-    toolFixed: { flexShrink: 0 },
     disabledTool: {
       alignItems: 'center',
       backgroundColor: 'transparent',
@@ -953,7 +879,6 @@ const makeStyles = (theme: AppTheme) =>
     },
     // Both triggers print 13/500 in label-secondary; only the model name steps
     // down to 400 and its effort value takes the caption tone.
-    toolLabel: { color: theme.colors.inkMuted, flexShrink: 1, fontSize: 13, fontWeight: '500', lineHeight: 20 },
     modelControl: {
       flexShrink: 1,
       maxWidth: 360,

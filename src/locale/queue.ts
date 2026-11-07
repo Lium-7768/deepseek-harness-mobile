@@ -9,6 +9,8 @@ export const queue = {
   summary: '{count} 条待发送消息{action}',
   /** Header form without the expand verb. */
   header: '{count} 条待发送消息',
+  /** Chip form on the composer's dock row. */
+  chip: '队列 {count}',
   expand: '，展开列表',
   collapse: '，收起列表',
 
