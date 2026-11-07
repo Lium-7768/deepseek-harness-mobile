@@ -5,7 +5,8 @@
 
 /** Conversation status copy. */
 export const status = {
-  deepDiving: 'Deep diving…',
+  /** The live "working" line under the transcript; the phone copy is Chinese throughout. */
+  deepDiving: '正在处理…',
   /** The Think disclosure's title row, as the desktop prints it. */
   think: '思考',
   viewThink: '查看思考内容',

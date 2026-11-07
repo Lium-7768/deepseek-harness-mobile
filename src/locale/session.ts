@@ -10,7 +10,6 @@
 export const session = {
   newSession: '新会话',
   untitled: '未命名会话',
-  running: '处理中',
   timeUnknown: '时间未知',
   /** Compact relative time, matching the desktop sidebar's `time.*` dictionary. */
   timeNow: '刚刚',

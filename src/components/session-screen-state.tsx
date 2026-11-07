@@ -56,13 +56,13 @@ export function ConnectionStatus({
   const disconnected = status === 'disconnected'
   const label = disconnected
     ? message('settings.disconnected')
-    : status === 'idle'
-      ? message('conversation.idle')
-      : status === 'running'
-        ? message('session.running')
-        : status === 'waiting'
-          ? message('conversation.waitingForConfirmation')
-          : message('conversation.connecting')
+    : status === 'waiting'
+      ? message('conversation.waitingForConfirmation')
+      : message('conversation.connecting')
+  // A healthy, running, or idle stream is already stated by the transcript's own
+  // live line; the header only speaks when something needs the reader (a dropped
+  // stream or a pending confirmation) and otherwise shows the dot alone.
+  const needsReader = disconnected || status === 'waiting' || status === 'connecting'
   const body = (
     <>
       <View
@@ -72,9 +72,11 @@ export function ConnectionStatus({
           (status === 'waiting' || status === 'connecting') && s.statusPending,
         ]}
       />
-      <Text maxFontSizeMultiplier={1.3} numberOfLines={1} style={s.statusText}>
-        {label}
-      </Text>
+      {needsReader ? (
+        <Text maxFontSizeMultiplier={1.3} numberOfLines={1} style={s.statusText}>
+          {label}
+        </Text>
+      ) : null}
     </>
   )
   // Only a disconnected pill is tappable: while the stream is healthy the re-read is

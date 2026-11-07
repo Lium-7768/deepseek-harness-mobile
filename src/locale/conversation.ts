@@ -12,7 +12,6 @@ export const conversation = {
   /** `{count}` pending interactions on this session. */
   pendingCount: '{count} 项操作需要处理',
   connecting: '正在连接',
-  idle: '空闲',
   waitingForConfirmation: '等待确认',
 
   /** One notice covers a failed history, event stream, or interaction read. */
