@@ -16,6 +16,8 @@ export const subagent = {
   loading: '正在加载子 Agent 历史…',
   loadFailed: '子 Agent 历史加载失败',
   noMessages: '此子 Agent 暂无可见消息。',
+  /** Says where a sub-agent's turns come from, since the phone cannot start one. */
+  noMessagesDetail: '子 Agent 的消息由父会话委派的任务产生。',
   composerPlaceholder: '向子 Agent 发送消息…',
 
   sendFailedTitle: '消息发送失败',

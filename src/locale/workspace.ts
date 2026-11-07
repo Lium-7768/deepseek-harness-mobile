@@ -5,6 +5,11 @@
 
 /** Workspace screen copy. */
 export const workspace = {
+  /** Empty catalogue: the phone can start a session, so say so instead of leaving a dead composer. */
+  noSessions: '还没有会话',
+  noSessionsDetail: '新建一个会话，或从抽屉里打开桌面端已有的对话。',
+  newSession: '新建会话',
+  newSessionFailedTitle: '无法新建会话',
   sectionTitle: '工作区',
   /** The empty new-session hero, matching the desktop's own headline. */
   heroTitle: '探索未至之境',

@@ -1,4 +1,5 @@
 import { NativeAnchoredPanel } from '@/components/native-anchored-panel'
+import { NativeEmptyState } from '@/components/native-empty-state'
 import { NativeIcon, type NativeIconName } from '@/components/native-icon'
 import {
   formatTrajectoryDuration,
@@ -128,7 +129,13 @@ export function TrajectoryPanel({
       keyExtractor={(activity) => activity.id}
       contentContainerStyle={s.panelList}
       renderItem={({ item }) => <TrajectoryActivityRow activity={item} />}
-      ListEmptyComponent={<Text style={s.empty}>{message('workbench.emptyTrajectory')}</Text>}
+      ListEmptyComponent={
+        <NativeEmptyState
+          description={message('workbench.emptyTrajectoryDetail')}
+          icon="skill-outline"
+          title={message('workbench.emptyTrajectory')}
+        />
+      }
     />
   )
 }
@@ -395,5 +402,4 @@ const makeStyles = (theme: AppTheme) =>
     contextCompact: { gap: 8, marginTop: 2, paddingHorizontal: 16, paddingTop: 12 },
     contextCompactRow: { alignItems: 'center', flexDirection: 'row', gap: 7 },
     contextCompactText: { color: theme.colors.inkMuted, flex: 1, fontSize: 13, lineHeight: 20 },
-    empty: { color: theme.colors.inkMuted, paddingVertical: 24, textAlign: 'center' },
   })

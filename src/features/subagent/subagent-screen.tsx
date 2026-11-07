@@ -1,6 +1,7 @@
 import { MobileApi } from '@/api/mobile-api'
 import { queryKeys } from '@/api/query-keys'
-import { NativeActionButton } from '@/components/native-action-button'
+import { NativeEmptyState } from '@/components/native-empty-state'
+import { ErrorNotice } from '@/components/session-screen-state'
 import { NativeIcon } from '@/components/native-icon'
 import { firstParam, withErrorContext } from '@/components/route-params'
 import { projectNativeConversationRows } from '@/components/session-conversation-logic'
@@ -137,9 +138,15 @@ export default function SubagentSessionScreen(): React.JSX.Element {
             renderItem={({ item }) => <MessageRow item={item} event={undefined} api={undefined} sessionId={childId} />}
             contentContainerStyle={styles.list}
             ListEmptyComponent={
-              <Text style={styles.empty}>
-                {history.isPending ? message('subagent.loading') : message('subagent.noMessages')}
-              </Text>
+              history.isPending ? (
+                <NativeEmptyState icon="skill-outline" title={message('subagent.loading')} />
+              ) : (
+                <NativeEmptyState
+                  description={message('subagent.noMessagesDetail')}
+                  icon="skill-outline"
+                  title={message('subagent.noMessages')}
+                />
+              )
             }
           />
           {childMode === 'continuable' ? (
@@ -158,35 +165,17 @@ export default function SubagentSessionScreen(): React.JSX.Element {
   )
 }
 
-function ErrorNotice({ text, onRetry }: { text: string; onRetry: () => void }): React.JSX.Element {
-  const styles = useThemedStyles(makeStyles)
-  return (
-    <View style={styles.errorNotice}>
-      <Text style={styles.error}>{text}</Text>
-      <NativeActionButton
-        label={message('common.reload')}
-        icon="refresh-outline"
-        variant="secondary"
-        onPress={onRetry}
-      />
-    </View>
-  )
-}
-
 function Unavailable({ text }: { text: string }): React.JSX.Element {
-  const theme = useAppTheme()
-  const styles = useThemedStyles(makeStyles)
   return (
-    <View style={styles.unavailable}>
-      <NativeIcon name="link-off" size={28} color={theme.colors.inkFaint} />
-      <Text style={styles.unavailableText}>{text}</Text>
-      <NativeActionButton
-        label={message('interactions.backToSession')}
-        icon="chevron-left-outline"
-        variant="secondary"
-        onPress={() => router.back()}
-      />
-    </View>
+    <NativeEmptyState
+      action={{
+        icon: 'chevron-left-outline',
+        label: message('interactions.backToSession'),
+        onPress: () => router.back(),
+      }}
+      icon="link-off"
+      title={text}
+    />
   )
 }
 

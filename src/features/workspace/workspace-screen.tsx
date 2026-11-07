@@ -3,6 +3,7 @@ import { queryKeys } from '@/api/query-keys'
 import { sessionEventsOptions, sessionPreviewOptions } from '@/api/session-query-options'
 import { NativeBrandMark } from '@/components/native-brand-mark'
 import { NativeIcon } from '@/components/native-icon'
+import { NativeEmptyState } from '@/components/native-empty-state'
 import { NativeMenuPanel } from '@/components/native-menu-panel'
 import { requireClient } from '@/components/route-params'
 import { agentPresetLabel, agentPresetName, readPermissionSelect } from '@/components/session-composer-logic'
@@ -104,6 +105,18 @@ export default function WorkspaceScreen(): React.JSX.Element {
     }
   }, [clearSelection, connection, selectedSession, selectedSessionId, sessions.data])
 
+  const createSession = async (): Promise<void> => {
+    if (!connection) return
+    try {
+      const created = await new MobileApi(connection).createSession()
+      await queryClient.invalidateQueries({
+        queryKey: queryKeys.sessionList(connection.gatewayUrl, connection.deviceId),
+      })
+      router.push({ pathname: '/session/[sessionId]', params: { sessionId: created.sessionId } })
+    } catch (error) {
+      Alert.alert(message('workspace.newSessionFailedTitle'), mobileErrorMessage(error, message('common.retry')))
+    }
+  }
   const send = async (content: MobilePromptContent): Promise<void> => {
     if (selectedSession === undefined || !connection) {
       Alert.alert(message('workspace.pickSession'), message('workspace.pickSessionFirst'))
@@ -137,7 +150,19 @@ export default function WorkspaceScreen(): React.JSX.Element {
               onRetry={() => void sessions.refetch()}
             />
           ) : null}
-          <View style={s.startPanel}>
+          {sessions.data !== undefined && sessions.data.items.length === 0 ? (
+            <NativeEmptyState
+              action={{
+                icon: 'new-chat-outline',
+                label: message('workspace.newSession'),
+                onPress: () => void createSession(),
+              }}
+              description={message('workspace.noSessionsDetail')}
+              icon="new-chat-outline"
+              title={message('workspace.noSessions')}
+            />
+          ) : null}
+          <View style={[s.startPanel, sessions.data?.items.length === 0 && s.hidden]}>
             <View style={s.summary}>
               {/* `_wOI4G_root`: the hero is the surface's identity, so it stays put
               whether or not a session is selected. */}
@@ -287,6 +312,7 @@ const makeStyles = (theme: AppTheme) =>
     canvas: { flex: 1 },
     startScroll: { flexGrow: 1, justifyContent: 'center', paddingVertical: 24 },
     startPanel: { alignSelf: 'center', width: '100%', maxWidth: 760, gap: 12, paddingBottom: 24 },
+    hidden: { display: 'none' },
     // `FQzohq_composerStack`: 16pt between the identity block and the composer.
     summary: { gap: 16, paddingTop: 16 },
     // The desktop's new-session hero: brand mark, 26px/500 headline, and the

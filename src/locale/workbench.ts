@@ -9,6 +9,7 @@ export const workbench = {
   pending: '待处理',
   trajectory: '轨迹',
   emptyTrajectory: '该会话尚无可展示的操作轨迹。',
+  emptyTrajectoryDetail: '工具调用、重试与上下文注入会按轮次出现在这里。',
   /** `{duration}` is already formatted. */
   elapsed: '，耗时 {duration}',
   activityRunning: '进行中',

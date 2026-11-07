@@ -93,6 +93,12 @@ in a sheet because a one-line preview in a dense list cannot be the only copy of
 A finished call that returns machine JSON no longer prints `操作完成，可在桌面端查看完整结果。`:
 one boilerplate line per call buried the calls that did return something readable.
 
+Empty and unavailable screens had four shapes and five layouts, so what a reader saw depended on
+which screen happened to be empty. One `NativeEmptyState` states what the surface is, why it is
+empty, and the next step; the workspace finally has one (with 新建会话), the automation tab tells
+a phone reader where tasks are created and offers 去连接 when it is not paired, and the sub-agent
+screen drops its private notice and empty line.
+
 Ink roles are checked, not eyeballed: `inkMuted` (readings a reader acts on) must clear 4.5:1 on
 every surface in both appearances, `inkTertiary` 3:1, and `warningText` 4.5:1 — the amber
 `warning` stays for fills and glyphs. The trajectory detail, duration, list descriptions, the

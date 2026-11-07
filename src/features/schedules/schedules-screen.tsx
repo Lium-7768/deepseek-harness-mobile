@@ -1,6 +1,7 @@
 import { MobileApi, MobileApiError } from '@/api/mobile-api'
 import { queryKeys } from '@/api/query-keys'
 import { ConfirmSheet } from '@/components/confirm-sheet'
+import { NativeEmptyState } from '@/components/native-empty-state'
 import { NativeMenuPanel } from '@/components/native-menu-panel'
 import { NativeIcon } from '@/components/native-icon'
 import { ErrorNotice } from '@/components/session-screen-state'
@@ -62,7 +63,12 @@ export default function SchedulesScreen(): React.JSX.Element {
   return (
     <WorkspaceShell title={message('schedule.title')}>
       {!client ? (
-        <Text style={s.empty}>{message('drawer.connectFirstBody')}</Text>
+        <NativeEmptyState
+          action={{ icon: 'link-outline', label: message('connect.title'), onPress: () => router.replace('/connect') }}
+          description={message('drawer.connectFirstBody')}
+          icon="link-off"
+          title={message('schedule.needsConnection')}
+        />
       ) : catalog.isPending ? (
         <ActivityIndicator color={theme.colors.inkMuted} />
       ) : catalog.isError ? (
@@ -79,7 +85,13 @@ export default function SchedulesScreen(): React.JSX.Element {
           contentContainerStyle={s.list}
           data={catalog.data.items}
           keyExtractor={(task) => task.id}
-          ListEmptyComponent={<Text style={s.empty}>{message('schedule.empty')}</Text>}
+          ListEmptyComponent={
+            <NativeEmptyState
+              description={message('schedule.emptyDetail')}
+              icon="clock-outline"
+              title={message('schedule.empty')}
+            />
+          }
           renderItem={({ item: task }) => <ScheduleCard task={task} disabled={mutation.isPending} onUpdate={update} />}
         />
       )}
@@ -203,5 +215,4 @@ const makeStyles = (theme: AppTheme) =>
     meta: { color: theme.colors.inkTertiary, fontSize: 12, lineHeight: 18 },
     rowAction: { alignItems: 'center', height: 28, justifyContent: 'center', width: 28 },
     pressed: { opacity: 0.62 },
-    empty: { color: theme.colors.inkMuted, padding: 24, fontSize: 14 },
   })

@@ -1,6 +1,9 @@
 export const schedule = {
   title: '自动化任务',
   empty: '暂无自动化任务',
+  /** Tells a phone reader where an automation can actually be created. */
+  emptyDetail: '自动化任务在桌面端或对话中创建，创建后会出现在这里。',
+  needsConnection: '先连接桌面端，才能看到自动化任务。',
   loadFailed: '自动化任务加载失败',
   unsupported: '当前桌面端未提供自动化任务目录，请更新手机访问插件后重试。',
   active: '运行中',
