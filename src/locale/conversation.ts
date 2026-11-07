@@ -15,9 +15,8 @@ export const conversation = {
   idle: '空闲',
   waitingForConfirmation: '等待确认',
 
-  historyFailed: '会话历史加载失败',
-  eventsFailed: '实时事件加载失败，正在重试',
-  interactionsFailed: '待处理操作加载失败，正在重试',
+  /** One notice covers a failed history, event stream, or interaction read. */
+  refreshFailed: '刷新会话失败',
   historyNotLoaded: '历史记录未加载',
   noMessages: '此会话暂无可见消息。',
   noMoreHistory: '当前没有可分页的历史记录。',
@@ -28,7 +27,6 @@ export const conversation = {
   /** `{count}` message rows that arrived while the reader was away from the bottom. */
   newMessages: '{count} 条新消息',
   reconnect: '重新连接并刷新',
-  viewPending: '查看待处理操作',
 
   // `clock.md` / `clock.ymd` from ui-chat's locale dictionary: the date prefix
   // the message clock grows outside today, then outside this year.

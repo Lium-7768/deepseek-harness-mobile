@@ -7,18 +7,6 @@ export const makeSessionStyles = (theme: AppTheme) =>
     canvas: { flex: 1 },
     processMembers: { gap: 4 },
     hidden: { display: 'none' },
-    action: {
-      alignItems: 'center',
-      backgroundColor: theme.colors.warningSoft,
-      borderBottomColor: theme.colors.warning,
-      borderBottomWidth: StyleSheet.hairlineWidth,
-      flexDirection: 'row',
-      gap: 7,
-      paddingHorizontal: 14,
-      paddingVertical: 9,
-    },
-    actionText: { color: theme.colors.warning, flex: 1, fontSize: 13, fontWeight: '600' },
-    // The action strip never wraps: the clock shrinks and truncates instead of
     // pushing the control out of the row.
     // `MessageIconActions.module.css .actions`: 28 tall, 8px between controls,
     // each control a 28pt square with 6px of padding inside it.

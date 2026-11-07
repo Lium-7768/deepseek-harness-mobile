@@ -635,36 +635,28 @@ export default function SessionScreen(): React.JSX.Element {
             />
           ) : (
             <>
-              <WorkbenchTabs tab={tab} onChange={setTab} />
-              {actions > 0 ? (
-                <Pressable
-                  android_ripple={{ borderless: false }}
-                  accessibilityRole="button"
-                  accessibilityLabel={message('conversation.viewPending')}
-                  onPress={() => router.push({ pathname: '/session/[sessionId]/interactions', params: { sessionId } })}
-                  style={({ pressed }) => [s.action, pressed && s.pressed]}
-                >
-                  <NativeIcon name="warning-triangle-outline" size={18} color={theme.colors.warning} />
-                  <Text style={s.actionText}>{format('conversation.pendingCount', { count: actions })}</Text>
-                  <NativeIcon name="chevron-right-outline" size={18} color={theme.colors.inkMuted} />
-                </Pressable>
-              ) : null}
-              {history.isError ? (
+              <WorkbenchTabs
+                onChange={setTab}
+                onOpenPending={() =>
+                  router.push({ pathname: '/session/[sessionId]/interactions', params: { sessionId } })
+                }
+                pending={actions}
+                tab={tab}
+              />
+              {/* One notice for the three reads a phone cannot tell apart: they fail
+                  together when the stream is down, and three identical retry rows
+                  said so three times. */}
+              {history.isError || events.isError || interactions.isError ? (
                 <ErrorNotice
-                  text={withErrorContext(message('conversation.historyFailed'), history.error)}
-                  onRetry={() => void history.refetch()}
-                />
-              ) : null}
-              {events.isError ? (
-                <ErrorNotice
-                  text={withErrorContext(message('conversation.eventsFailed'), events.error)}
-                  onRetry={() => void events.refetch()}
-                />
-              ) : null}
-              {interactions.isError ? (
-                <ErrorNotice
-                  text={withErrorContext(message('conversation.interactionsFailed'), interactions.error)}
-                  onRetry={() => void interactions.refetch()}
+                  text={withErrorContext(
+                    message('conversation.refreshFailed'),
+                    history.error ?? events.error ?? interactions.error,
+                  )}
+                  onRetry={() => {
+                    if (history.isError) void history.refetch()
+                    if (events.isError) void events.refetch()
+                    if (interactions.isError) void interactions.refetch()
+                  }}
                 />
               ) : null}
               {tab === 'trajectory' ? <TrajectoryPanel items={sourceItems} /> : null}

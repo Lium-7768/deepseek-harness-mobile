@@ -15,13 +15,30 @@ import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native'
 
 export type WorkbenchTab = 'chat' | 'trajectory'
 
+/**
+ * Renders the chat/trajectory switch and, when anything waits on the reader, the
+ * pending-actions destination in the same row.
+ *
+ * The pending count used to sit in its own warning strip under the tabs: a second
+ * horizontal band above the transcript for the one thing that most needs an
+ * answer. It rides in the tab row as a badge instead.
+ *
+ * @param props - The active tab, the switch, and how many interactions wait.
+ * @returns The tab row.
+ */
 export function WorkbenchTabs({
-  tab,
   onChange,
+  onOpenPending,
+  pending,
+  tab,
 }: {
-  tab: WorkbenchTab
   onChange: (tab: WorkbenchTab) => void
+  onOpenPending: () => void
+  /** Pending interactions; `0` hides the destination. */
+  pending: number
+  tab: WorkbenchTab
 }): React.JSX.Element {
+  const theme = useAppTheme()
   const s = useThemedStyles(makeStyles)
   return (
     <View style={s.tabs}>
@@ -31,6 +48,22 @@ export function WorkbenchTabs({
         label={message('workbench.trajectory')}
         onPress={() => onChange('trajectory')}
       />
+      {pending > 0 ? (
+        <Pressable
+          android_ripple={{ borderless: false }}
+          accessibilityLabel={format('conversation.pendingCount', { count: pending })}
+          accessibilityRole="button"
+          hitSlop={{ top: 5, bottom: 5 }}
+          onPress={onOpenPending}
+          style={s.pendingTab}
+        >
+          <NativeIcon name="warning-triangle-outline" size={13} color={theme.colors.warning} />
+          <Text style={s.pendingText}>{message('workbench.pending')}</Text>
+          <View style={s.pendingBadge}>
+            <Text style={s.pendingBadgeText}>{pending}</Text>
+          </View>
+        </Pressable>
+      ) : null}
     </View>
   )
 }
@@ -228,6 +261,25 @@ const makeStyles = (theme: AppTheme) =>
     // tone as the underline beneath it; a lighter accent tone would split the
     // label from its own indicator.
     tabTextActive: { color: theme.colors.accent },
+    // The pending destination sits at the row's trailing edge, tinted like the
+    // strip it replaced so a waiting decision keeps its warning colour.
+    pendingTab: {
+      alignItems: 'center',
+      flexDirection: 'row',
+      gap: 5,
+      marginLeft: 'auto',
+      paddingRight: theme.spacing.md,
+    },
+    pendingText: { color: theme.colors.warning, fontSize: 13, fontWeight: '600', lineHeight: 16 },
+    pendingBadge: {
+      alignItems: 'center',
+      backgroundColor: theme.colors.warningSoft,
+      borderRadius: theme.radius.pill,
+      justifyContent: 'center',
+      minWidth: 18,
+      paddingHorizontal: 5,
+    },
+    pendingBadgeText: { color: theme.colors.warning, fontSize: 11, fontWeight: '700', lineHeight: 16 },
     panelList: { gap: 8, padding: 14 },
     activityWrap: { gap: 5 },
     // The disclosed turn heading is a 24pt line box inside 28pt, leaving 4pt under

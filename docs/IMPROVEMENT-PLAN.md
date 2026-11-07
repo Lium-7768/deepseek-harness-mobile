@@ -95,6 +95,11 @@ account page prints one fact per row instead of a title, value and boilerplate s
 The release line returned to the desktop's 14/22 primary label while gaining its 16px
 padding.
 
+The session header spent two bands on the same job: a tab row, then a warning strip for pending
+interactions, then up to three retry notices when the three reads failed together. Pending now
+rides in the tab row as a badged destination, and one `刷新会话失败` notice retries whichever of
+the three reads is down.
+
 A session row's `…` menu listed eight verbs in one run, with 归档 next to 重命名. It now reads in
 three groups — the row's identity, what it produces, and the one destructive action — and the
 interactions card asks for a free-text answer with one `其他答案` row instead of opening an empty

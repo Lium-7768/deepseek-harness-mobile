@@ -5,6 +5,8 @@
 /** Workbench copy. */
 export const workbench = {
   chat: '对话',
+  /** Trailing destination naming what waits on the reader. */
+  pending: '待处理',
   trajectory: '轨迹',
   emptyTrajectory: '该会话尚无可展示的操作轨迹。',
   /** `{duration}` is already formatted. */
