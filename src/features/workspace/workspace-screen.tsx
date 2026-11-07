@@ -150,6 +150,7 @@ export default function WorkspaceScreen(): React.JSX.Element {
               onRetry={() => void sessions.refetch()}
             />
           ) : null}
+          {sessions.isPending ? <NativeEmptyState icon="refresh-outline" title={message('common.loading')} /> : null}
           {sessions.data !== undefined && sessions.data.items.length === 0 ? (
             <NativeEmptyState
               action={{
@@ -162,17 +163,19 @@ export default function WorkspaceScreen(): React.JSX.Element {
               title={message('workspace.noSessions')}
             />
           ) : null}
-          <View style={[s.startPanel, sessions.data?.items.length === 0 && s.hidden]}>
+          <View style={[s.startPanel, (sessions.isPending || sessions.data?.items.length === 0) && s.hidden]}>
             <View style={s.summary}>
-              {/* `_wOI4G_root`: the hero is the surface's identity, so it stays put
-              whether or not a session is selected. */}
-              <View style={s.hero}>
-                <NativeBrandMark size={26} />
-                <View style={s.heroLine}>
-                  <Text style={s.heroTitle}>{message('workspace.heroTitle')}</Text>
-                  <Text style={s.heroBadge}>{message('workspace.heroBadge')}</Text>
+              {/* The hero is the empty state's identity. Once a session is open the
+              surface already names it in the control below, so the 32pt brand row
+              collapses to one line and gives the space back to the draft. */}
+              {selectedSession === undefined ? (
+                <View style={s.hero}>
+                  <NativeBrandMark size={26} />
+                  <View style={s.heroLine}>
+                    <Text style={s.heroTitle}>{message('workspace.heroTitle')}</Text>
+                  </View>
                 </View>
-              </View>
+              ) : null}
               {/* `FQzohq_heroWorkspaceRow`: the workspace/session control and the mode
               control sit on one 28pt row with 8pt radius, not under a label. */}
               <View style={s.controls}>
@@ -187,13 +190,14 @@ export default function WorkspaceScreen(): React.JSX.Element {
                   onPress={() => navigation.openDrawer()}
                   style={({ pressed }) => [s.control, pressed && s.pressed]}
                 >
-                  <NativeIcon name="folder-open-outline" size={16} color={theme.colors.inkMuted} />
+                  {/* It opens the drawer, not a menu: the glyph says so and the row
+                      no longer promises a dropdown. */}
+                  <NativeIcon name="panel-left-outline" size={16} color={theme.colors.inkMuted} />
                   <Text numberOfLines={1} style={s.controlText}>
                     {selectedSession === undefined
                       ? message('workspace.pickSession')
                       : sessionDisplayTitle(selectedSession)}
                   </Text>
-                  <NativeIcon name="chevron-down-outline" size={18} color={theme.colors.inkMuted} />
                 </Pressable>
                 <ModeTrigger
                   agentPreset={selectedSession?.agentPreset}
@@ -327,16 +331,6 @@ const makeStyles = (theme: AppTheme) =>
       fontWeight: '500',
       letterSpacing: 0,
       lineHeight: 32,
-    },
-    heroBadge: {
-      backgroundColor: theme.colors.accentSoft,
-      borderRadius: theme.radius.pill,
-      color: theme.colors.accentSoftText,
-      fontSize: theme.typography.caption,
-      fontWeight: '500',
-      overflow: 'hidden',
-      paddingHorizontal: 7,
-      paddingVertical: 1,
     },
     // `FQzohq_heroWorkspaceRow`: pills, not fields, 28pt tall at 13/500.
     controls: {

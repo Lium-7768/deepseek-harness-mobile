@@ -45,7 +45,7 @@ afterEach(cleanup)
 
 describe('composer dock metrics', () => {
   it('draws the statistics chip at the desktop 22 with the touch target on hitSlop', async () => {
-    const renderer = await render(createElement(NativeStatisticsPill, { headline: '18.4k', panel: undefined, pill }))
+    const renderer = await render(createElement(NativeStatisticsPill, { panel: undefined, pill }))
     const chip = pressable(renderer, '18.4k tokens')
     expect(resolvedStyle(chip)).toMatchObject({ paddingVertical: 1 })
     expect(resolvedStyle(chip)).not.toHaveProperty('minHeight')
