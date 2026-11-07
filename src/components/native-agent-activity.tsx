@@ -53,6 +53,7 @@ export function NativeAgentActivity({
           {children.map((entry) => (
             <View key={entry.id} style={styles.subagentRow}>
               <Pressable
+                android_ripple={{ borderless: false }}
                 accessibilityRole="button"
                 accessibilityLabel={format('activity.openSubagent', { name: entry.label ?? entry.id })}
                 onPress={() => onOpenSubagent(entry)}
@@ -77,6 +78,7 @@ export function NativeAgentActivity({
               </Pressable>
               {entry.mode === 'continuable' && entry.activity === 'running' ? (
                 <Pressable
+                  android_ripple={{ borderless: false }}
                   accessibilityRole="button"
                   accessibilityLabel={format('activity.stopSubagent', { name: entry.label ?? entry.id })}
                   accessibilityState={{ busy: interruptingId === entry.id }}

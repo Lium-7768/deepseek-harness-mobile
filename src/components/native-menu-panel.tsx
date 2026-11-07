@@ -88,6 +88,7 @@ export function NativeMenuPanel({
               {group.title === undefined ? null : <Text style={s.groupTitle}>{group.title}</Text>}
               {group.options.map((option) => (
                 <Pressable
+                  android_ripple={{ borderless: false }}
                   accessibilityLabel={`${option.label}${option.selected === true ? message('common.selectedSuffix') : ''}${option.disabled === true ? message('common.disabledSuffix') : ''}`}
                   accessibilityRole={actionMenu ? 'button' : 'radio'}
                   accessibilityState={{

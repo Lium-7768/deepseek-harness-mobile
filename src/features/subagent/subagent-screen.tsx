@@ -80,6 +80,7 @@ export default function SubagentSessionScreen(): React.JSX.Element {
       showMenu={false}
       leftAction={
         <Pressable
+          android_ripple={{ borderless: false }}
           accessibilityRole="button"
           accessibilityLabel={message('interactions.backToSession')}
           hitSlop={8}
@@ -107,6 +108,7 @@ export default function SubagentSessionScreen(): React.JSX.Element {
             </Text>
             {childMode === 'continuable' ? (
               <Pressable
+                android_ripple={{ borderless: false }}
                 accessibilityRole="button"
                 accessibilityLabel={message('subagent.stopAction')}
                 accessibilityState={{ busy: interrupt.isPending }}

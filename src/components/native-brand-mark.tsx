@@ -1,5 +1,6 @@
 import { useAppTheme } from '@/theme/hooks'
-import { Image, StyleSheet } from 'react-native'
+import { Image } from 'expo-image'
+import { StyleSheet } from 'react-native'
 import whaleMark from '../../assets/whale-mark.png'
 
 /** Renders the existing DeepSeek whale mark without adding a second icon family.
@@ -11,6 +12,7 @@ export function NativeBrandMark({ size = 28 }: { size?: number }): React.JSX.Ele
   return (
     <Image
       accessibilityIgnoresInvertColors
+      contentFit="contain"
       source={whaleMark}
       style={[styles.mark, { height: size, width: size, tintColor: theme.colors.brand }]}
     />

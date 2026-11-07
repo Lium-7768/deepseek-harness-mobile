@@ -7,8 +7,16 @@
  * that are already in view (a submit button's pending state).
  */
 import { useAppTheme } from '@/theme/hooks'
-import { useEffect, useRef, useState } from 'react'
-import { AccessibilityInfo, Animated, Easing, View, type ViewStyle } from 'react-native'
+import { useEffect, useState } from 'react'
+import { AccessibilityInfo, View, type ViewStyle } from 'react-native'
+import Animated, {
+  Easing,
+  cancelAnimation,
+  useAnimatedStyle,
+  useSharedValue,
+  withRepeat,
+  withTiming,
+} from 'react-native-reanimated'
 
 /** One placeholder block. */
 export interface SkeletonBlockProps {
@@ -34,32 +42,19 @@ export interface SkeletonBlockProps {
 export function SkeletonBlock({ width = '100%', height = 14, radius, style }: SkeletonBlockProps): React.JSX.Element {
   const theme = useAppTheme()
   const reducedMotion = useReducedMotion()
-  const pulse = useRef(new Animated.Value(0.55)).current
+  const pulse = useSharedValue(0.55)
 
   useEffect(() => {
+    cancelAnimation(pulse)
     if (reducedMotion) {
-      pulse.setValue(0.8)
+      pulse.value = 0.8
       return
     }
-    const animation = Animated.loop(
-      Animated.sequence([
-        Animated.timing(pulse, {
-          toValue: 1,
-          duration: 760,
-          easing: Easing.inOut(Easing.quad),
-          useNativeDriver: true,
-        }),
-        Animated.timing(pulse, {
-          toValue: 0.55,
-          duration: 760,
-          easing: Easing.inOut(Easing.quad),
-          useNativeDriver: true,
-        }),
-      ]),
-    )
-    animation.start()
-    return () => animation.stop()
+    pulse.value = withRepeat(withTiming(1, { duration: 1520, easing: Easing.inOut(Easing.quad) }), -1, true)
+    return () => cancelAnimation(pulse)
   }, [pulse, reducedMotion])
+
+  const animatedStyle = useAnimatedStyle(() => ({ opacity: pulse.value }))
 
   return (
     <Animated.View
@@ -70,9 +65,9 @@ export function SkeletonBlock({ width = '100%', height = 14, radius, style }: Sk
           backgroundColor: theme.colors.skeleton,
           borderRadius: radius ?? theme.radius.control,
           height,
-          opacity: pulse,
           width,
         },
+        animatedStyle,
         style,
       ]}
     />

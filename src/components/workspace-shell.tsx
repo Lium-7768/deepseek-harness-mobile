@@ -6,8 +6,9 @@ import { useMobileSyncStore } from '@/state/mobile-sync'
 import type { AppTheme } from '@/theme'
 import { useAppTheme, useMotionEasing, useThemedStyles } from '@/theme/hooks'
 import { useNavigation } from 'expo-router'
-import { useEffect, useRef, type PropsWithChildren } from 'react'
-import { AccessibilityInfo, Animated, Pressable, StyleSheet, Text, View } from 'react-native'
+import { useEffect, type PropsWithChildren } from 'react'
+import { AccessibilityInfo, Pressable, StyleSheet, Text, View } from 'react-native'
+import Animated, { cancelAnimation, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
 type DrawerNavigation = { openDrawer: () => void }
@@ -59,6 +60,7 @@ export function WorkspaceShell({
   const hasHeaderMeta = headerMeta !== undefined
   const menu = showMenu ? (
     <Pressable
+      android_ripple={{ borderless: false }}
       accessibilityRole="button"
       accessibilityLabel={message('common.openDrawer')}
       onPress={() => navigation.openDrawer()}
@@ -87,6 +89,7 @@ export function WorkspaceShell({
               titleContent
             ) : (
               <Pressable
+                android_ripple={{ borderless: false }}
                 accessibilityLabel={titleAccessibilityLabel ?? title ?? 'DeepSeek Harness'}
                 accessibilityRole="button"
                 hitSlop={8}
@@ -104,9 +107,7 @@ export function WorkspaceShell({
             conversation too: the lists on the workspace and settings screens would
             otherwise go stale with nothing on screen saying why. */}
         <OfflineBanner />
-        <Animated.View style={[s.content, { opacity: entrance, paddingBottom: insets.bottom }]}>
-          {children}
-        </Animated.View>
+        <Animated.View style={[s.content, entrance, { paddingBottom: insets.bottom }]}>{children}</Animated.View>
       </View>
     </View>
   )
@@ -127,6 +128,7 @@ function OfflineBanner(): React.JSX.Element | null {
   if (!shouldShowOfflineBar({ hasConnection: connection !== undefined, status })) return null
   return (
     <Pressable
+      android_ripple={{ borderless: false }}
       accessibilityRole="button"
       accessibilityLabel={message('conversation.reconnect')}
       onPress={() => useMobileSyncStore.getState().restartStream()}
@@ -206,10 +208,10 @@ const makeStyles = (theme: AppTheme) =>
  *
  * @returns An animated opacity value for the screen container.
  */
-function useEntranceFade(): Animated.Value {
+function useEntranceFade() {
   const theme = useAppTheme()
   const easing = useMotionEasing()
-  const opacity = useRef(new Animated.Value(0)).current
+  const opacity = useSharedValue(0)
   useEffect(() => {
     let active = true
     void AccessibilityInfo.isReduceMotionEnabled()
@@ -217,20 +219,15 @@ function useEntranceFade(): Animated.Value {
       .then((reduced) => {
         if (!active) return
         if (reduced) {
-          opacity.setValue(1)
+          opacity.value = 1
           return
         }
-        Animated.timing(opacity, {
-          toValue: 1,
-          duration: theme.motion.base,
-          easing,
-          useNativeDriver: true,
-        }).start()
+        opacity.value = withTiming(1, { duration: theme.motion.base, easing })
       })
     return () => {
       active = false
-      opacity.stopAnimation()
+      cancelAnimation(opacity)
     }
   }, [opacity, easing, theme.motion.base])
-  return opacity
+  return useAnimatedStyle(() => ({ opacity: opacity.value }))
 }

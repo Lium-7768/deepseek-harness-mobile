@@ -87,6 +87,7 @@ export function NativeModelDirectory({
     <View key={fontScale} style={s.directory}>
       <View style={s.header}>
         <Pressable
+          android_ripple={{ borderless: false }}
           accessibilityRole="button"
           accessibilityLabel={message('model.backToEffort')}
           onPress={() => {
@@ -124,6 +125,7 @@ export function NativeModelDirectory({
           />
           {query ? (
             <Pressable
+              android_ripple={{ borderless: false }}
               accessibilityRole="button"
               accessibilityLabel={message('model.clearSearch')}
               onPress={() => setQuery('')}
@@ -152,6 +154,7 @@ export function NativeModelDirectory({
             <Text style={s.group}>{item.name}</Text>
           ) : (
             <Pressable
+              android_ripple={{ borderless: false }}
               accessible
               accessibilityRole="radio"
               accessibilityLabel={format('model.routeLabel', { name: item.label, provider: item.providerName })}

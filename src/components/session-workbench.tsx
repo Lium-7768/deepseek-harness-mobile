@@ -10,6 +10,7 @@ import type { SharedEventItem } from '@/shared/dsh-presentation'
 import type { AppTheme } from '@/theme'
 import { useAppTheme, useThemedStyles } from '@/theme/hooks'
 import { MONOSPACE_FONT } from '@/theme/platform'
+import { memo } from 'react'
 import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native'
 
 export type WorkbenchTab = 'chat' | 'trajectory'
@@ -38,6 +39,7 @@ function Tab({ active, label, onPress }: { active: boolean; label: string; onPre
   const s = useThemedStyles(makeStyles)
   return (
     <Pressable
+      android_ripple={{ borderless: false }}
       accessibilityRole="tab"
       accessibilityLabel={label}
       accessibilityState={{ selected: active }}
@@ -69,7 +71,11 @@ export function TrajectoryPanel({ items }: { items: SharedEventItem[] }): React.
   )
 }
 
-function TrajectoryActivityRow({ activity }: { activity: NativeTrajectoryActivity }): React.JSX.Element {
+const TrajectoryActivityRow = memo(function TrajectoryActivityRow({
+  activity,
+}: {
+  activity: NativeTrajectoryActivity
+}): React.JSX.Element {
   const theme = useAppTheme()
   const s = useThemedStyles(makeStyles)
   const stateLabel = activityStateLabel(activity)
@@ -107,7 +113,7 @@ function TrajectoryActivityRow({ activity }: { activity: NativeTrajectoryActivit
       </View>
     </View>
   )
-}
+})
 
 function activityIcon(activity: NativeTrajectoryActivity): NativeIconName {
   switch (activity.kind) {

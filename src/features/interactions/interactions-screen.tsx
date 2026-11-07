@@ -25,7 +25,7 @@ import type {
 } from '@/types/mobile'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { router, useLocalSearchParams } from 'expo-router'
-import { useState } from 'react'
+import { memo, useState } from 'react'
 import {
   ActivityIndicator,
   Alert,
@@ -109,6 +109,7 @@ export default function InteractionsScreen(): React.JSX.Element {
       showMenu={false}
       leftAction={
         <Pressable
+          android_ripple={{ borderless: false }}
           accessibilityRole="button"
           accessibilityLabel={message('interactions.backToSession')}
           hitSlop={8}
@@ -221,14 +222,22 @@ function InteractionListStateView({
   )
 }
 
-function InteractionCard({ interaction, submitting, onRespond }: InteractionCardProps): React.JSX.Element {
+const InteractionCard = memo(function InteractionCard({
+  interaction,
+  submitting,
+  onRespond,
+}: InteractionCardProps): React.JSX.Element {
   if (interaction.type === 'approval/requested') {
     return <ApprovalCard interaction={interaction} submitting={submitting} onRespond={onRespond} />
   }
   return <QuestionCard interaction={interaction} submitting={submitting} onRespond={onRespond} />
-}
+})
 
-function ApprovalCard({ interaction, submitting, onRespond }: ApprovalCardProps): React.JSX.Element {
+const ApprovalCard = memo(function ApprovalCard({
+  interaction,
+  submitting,
+  onRespond,
+}: ApprovalCardProps): React.JSX.Element {
   const styles = useThemedStyles(makeStyles)
   const { width, fontScale } = useWindowDimensions()
   const stackButtons = usesStackedFields(width, fontScale)
@@ -269,9 +278,13 @@ function ApprovalCard({ interaction, submitting, onRespond }: ApprovalCardProps)
       </View>
     </View>
   )
-}
+})
 
-function QuestionCard({ interaction, submitting, onRespond }: QuestionCardProps): React.JSX.Element {
+const QuestionCard = memo(function QuestionCard({
+  interaction,
+  submitting,
+  onRespond,
+}: QuestionCardProps): React.JSX.Element {
   const theme = useAppTheme()
   const styles = useThemedStyles(makeStyles)
   const [draft, setDraft] = useState<AnswerDraft>({})
@@ -339,6 +352,7 @@ function QuestionCard({ interaction, submitting, onRespond }: QuestionCardProps)
             })
             return (
               <Pressable
+                android_ripple={{ borderless: false }}
                 key={option.label}
                 accessibilityRole={accessibility.role}
                 accessibilityLabel={
@@ -379,7 +393,7 @@ function QuestionCard({ interaction, submitting, onRespond }: QuestionCardProps)
       />
     </View>
   )
-}
+})
 
 type PlanReview = {
   id: string
@@ -413,7 +427,7 @@ function planReviewOf(questions: DshQuestion[]): PlanReview | undefined {
   }
 }
 
-function PlanReviewCard({
+const PlanReviewCard = memo(function PlanReviewCard({
   interaction,
   review,
   submitting,
@@ -471,7 +485,7 @@ function PlanReviewCard({
       </View>
     </View>
   )
-}
+})
 
 function requireSessionId(sessionId: string | string[] | undefined): string {
   if (typeof sessionId !== 'string' || sessionId.length === 0) throw new Error(message('interactions.missingSession'))

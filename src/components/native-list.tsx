@@ -93,6 +93,7 @@ export function NativeListRow({
     )
   return (
     <Pressable
+      android_ripple={{ borderless: false }}
       accessibilityRole={accessibilityRole}
       accessibilityLabel={accessibilityLabel ?? title}
       accessibilityState={{ disabled, ...(accessibilityRole === 'radio' ? { checked: selected } : { selected }) }}

@@ -15,6 +15,7 @@ vi.mock('react-native', () => ({
   useWindowDimensions: () => ({ width: 393, height: 852, fontScale: 1 }),
   Platform: { OS: 'ios', select: (options: Record<string, unknown>) => options.ios },
 }))
+vi.mock('expo-image', () => ({ Image: 'Image' }))
 vi.mock('@/theme/hooks', async () => {
   const { themes } = await import('@/theme')
   return {

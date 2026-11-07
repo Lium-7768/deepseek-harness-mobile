@@ -10,7 +10,7 @@ import { MobileApi } from '@/api/mobile-api'
 import { projectNativeConversationRows } from '@/components/session-conversation-logic'
 import { t } from '@/locale'
 import type { SharedEventItem } from '@/shared/dsh-presentation'
-import * as FileSystem from 'expo-file-system/legacy'
+import { File, Paths } from 'expo-file-system'
 import * as Sharing from 'expo-sharing'
 import { collectSessionHistory } from './session-history'
 import { renderSessionLog, sessionLogFileName } from './session-log'
@@ -43,8 +43,10 @@ export async function shareSessionLog(
     title: session.title,
     truncated: history.truncated,
   })
-  const uri = FileSystem.cacheDirectory + sessionLogFileName(session.sessionId)
-  await FileSystem.writeAsStringAsync(uri, markdown, { encoding: FileSystem.EncodingType.UTF8 })
+  const file = new File(Paths.cache, sessionLogFileName(session.sessionId))
+  file.create({ overwrite: true })
+  file.write(markdown)
+  const uri = file.uri
   await Sharing.shareAsync(uri, { dialogTitle: t('log.dialogTitle'), mimeType: 'text/markdown' })
   return 'shared'
 }

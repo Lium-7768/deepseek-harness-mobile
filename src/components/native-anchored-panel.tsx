@@ -102,6 +102,7 @@ export function NativeAnchoredPanel({
         }}
       >
         <Pressable
+          android_ripple={{ borderless: false }}
           accessibilityLabel={message('common.close')}
           accessibilityRole="button"
           onPress={onClose}

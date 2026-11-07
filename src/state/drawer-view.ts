@@ -1,10 +1,10 @@
 import type { DrawerViewPreferences } from '@/components/drawer-view-logic'
-import * as FileSystem from 'expo-file-system/legacy'
+import { File, Paths } from 'expo-file-system'
 import { create } from 'zustand'
 
 type DrawerView = DrawerViewPreferences
 const defaultView: DrawerView = { groupBy: 'workspace', orderBy: 'updated', archivedFilter: 'default', orders: {} }
-const path = `${FileSystem.documentDirectory}drawer-view-v1.json`
+const viewFile = (): File => new File(Paths.document, 'drawer-view-v1.json')
 let saving: Promise<unknown> = Promise.resolve()
 let initializing: Promise<void> | undefined
 
@@ -18,7 +18,7 @@ export const useDrawerViewStore = create<{
   initialize() {
     return (initializing ??= (async () => {
       try {
-        const encoded: unknown = JSON.parse(await FileSystem.readAsStringAsync(path))
+        const encoded: unknown = JSON.parse(await viewFile().text())
         if (encoded === null || typeof encoded !== 'object' || Array.isArray(encoded)) return
         const views: Record<string, DrawerView> = {}
         for (const [scope, raw] of Object.entries(encoded)) {
@@ -49,7 +49,11 @@ export const useDrawerViewStore = create<{
     saving = saving
       .catch(() => undefined)
       .then(() => initialized)
-      .then(() => FileSystem.writeAsStringAsync(path, JSON.stringify(get().views)))
+      .then(() => {
+        const file = viewFile()
+        file.create({ overwrite: true })
+        file.write(JSON.stringify(get().views))
+      })
       .catch(() => undefined)
   },
 }))

@@ -39,6 +39,7 @@ export default function SettingsScreen(): React.JSX.Element {
   const leftAction =
     preset === undefined || section !== 'presets' ? undefined : (
       <Pressable
+        android_ripple={{ borderless: false }}
         accessibilityRole="button"
         accessibilityLabel={message('settings.backToSettings')}
         hitSlop={8}
@@ -89,6 +90,7 @@ function SettingsClose(): React.JSX.Element {
   const styles = useThemedStyles(makeSettingsStyles)
   return (
     <Pressable
+      android_ripple={{ borderless: false }}
       accessibilityRole="button"
       accessibilityLabel={message('settings.close')}
       hitSlop={10}
@@ -122,6 +124,7 @@ function SettingsTabs({ active, preset }: { active: SettingsSection; preset: str
           const selected = item === active
           return (
             <Pressable
+              android_ripple={{ borderless: false }}
               key={item}
               accessibilityRole="tab"
               onLayout={(event) => {

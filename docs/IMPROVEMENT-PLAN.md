@@ -122,6 +122,20 @@ that count: its `running` flags are compared against the sessions seen running b
 app left the foreground. Permission is requested at the first accepted send, which is both
 the first moment a notice could matter and the only prompt iOS offers.
 
+## Native structure
+
+The root layout is wrapped in an error boundary: one bad transcript row used to unmount
+the navigation tree and leave a white screen, now it shows a recovery that remounts in
+place. Dynamic catalogs (schedules, plugin namespaces) render through `FlatList` with
+memoized rows instead of a `ScrollView` map. Destructive confirmations (archive, remove
+workspace, delete schedule, forget connection, full access) use a bottom `ConfirmSheet`
+with the app's own typography; plain failures keep `Alert.alert`. File writes use the
+current `expo-file-system` `File`/`Paths` API, appearance is stored in AsyncStorage
+while credentials stay in SecureStore, attachment images render through `expo-image`
+with a memory-disk cache, the entrance fade and skeleton pulse run on Reanimated
+worklets, and every interactive `Pressable` carries an Android ripple (the full-screen
+drawer backdrop is the one deliberate exception).
+
 ## Dynamic Type
 
 Text inside a fixed-height box carries a font cap, because an explicit `lineHeight` does not
@@ -154,7 +168,7 @@ The add menu opens the existing goal editor, or creates an absent/completed goal
 
 ## Validation scope
 
-- Node 22.23.2; 68 test files / 424 tests pass, including desktop icon hashes, malformed Goal and schedule responses, expired confirmation feedback, Goal polling, shared-query cursor/window contracts, disconnected selection gates, schedule/Goal editor interactions, slider-card drill-down/search/selection, reload/retained geometry, reduced-motion artwork, drawer filtering/tree/manual order and search merging. TypeScript and formatting pass.
+- Node 22.23.2; 69 test files / 427 tests pass, including desktop icon hashes, malformed Goal and schedule responses, expired confirmation feedback, Goal polling, shared-query cursor/window contracts, disconnected selection gates, schedule/Goal editor interactions, slider-card drill-down/search/selection, reload/retained geometry, reduced-motion artwork, drawer filtering/tree/manual order and search merging. TypeScript and formatting pass.
 - Android arm64 native debug build and isolated review-package install pass with the navigation-bar module. iOS Pods resolve; Android/iOS JavaScript exports pass.
 - The latest model-control review also passes an unsigned arm64 iOS Simulator Release native build after `pod install`. `Podfile.lock` matches the installed Pods manifest and all 96 local Pod source paths resolve. This is not a signed device archive or App Store validation.
 - Android API/resource lint (`NewApi`, `InlinedApi`, `ResourceType`) passes with no findings. Full `lintDebug` crashes in the third-party Worklets Kotlin Gradle-script analysis (`Cannot find a KaModule for the VirtualFile`); no lint checks are disabled or baselined in the repository to hide that failure.

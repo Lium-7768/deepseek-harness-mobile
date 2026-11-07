@@ -89,6 +89,7 @@ export function PresetSettings({
         return (
           <View key={item.id} style={[styles.presetCard, item.isDefault && styles.presetCardDefault]}>
             <Pressable
+              android_ripple={{ borderless: false }}
               accessibilityRole="button"
               accessibilityLabel={format('settings.viewPreset', { name: agentPresetName(item) })}
               onPress={open}
@@ -108,10 +109,17 @@ export function PresetSettings({
             </Pressable>
             {shipped ? (
               <View style={styles.presetFoot}>
-                <Pressable accessibilityRole="button" hitSlop={4} onPress={open} style={styles.presetFootAction}>
+                <Pressable
+                  accessibilityRole="button"
+                  android_ripple={{ borderless: false }}
+                  hitSlop={4}
+                  onPress={open}
+                  style={styles.presetFootAction}
+                >
                   <Text style={styles.presetFootLabel}>{message('settings.presetExplanation')}</Text>
                 </Pressable>
                 <Pressable
+                  android_ripple={{ borderless: false }}
                   accessibilityRole="button"
                   hitSlop={4}
                   onPress={() =>
@@ -125,6 +133,7 @@ export function PresetSettings({
                   <Text style={styles.presetFootLabel}>{message('settings.presetHowToUse')}</Text>
                 </Pressable>
                 <Pressable
+                  android_ripple={{ borderless: false }}
                   accessibilityLabel={format('settings.viewPreset', { name: agentPresetName(item) })}
                   accessibilityRole="button"
                   hitSlop={4}

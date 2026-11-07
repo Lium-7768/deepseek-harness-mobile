@@ -44,6 +44,7 @@ export function NativeContextMeter({ panel }: { panel: ContextMeterPanel | undef
   return (
     <>
       <Pressable
+        android_ripple={{ borderless: false }}
         accessibilityLabel={format('session.contextUsed', { percent: panel.percent })}
         accessibilityRole="button"
         accessibilityState={{ expanded: open }}

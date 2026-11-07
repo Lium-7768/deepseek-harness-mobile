@@ -83,6 +83,7 @@ export function ConnectionStatus({
     <View style={s.status}>{body}</View>
   ) : (
     <Pressable
+      android_ripple={{ borderless: false }}
       accessibilityRole="button"
       accessibilityLabel={message('conversation.reconnect')}
       hitSlop={8}

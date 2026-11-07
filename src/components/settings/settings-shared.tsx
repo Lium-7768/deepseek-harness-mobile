@@ -72,6 +72,7 @@ export function SettingsFieldRow({
   const inactive = disabled || onPress === undefined
   return (
     <Pressable
+      android_ripple={{ borderless: false }}
       accessibilityRole={onPress === undefined ? undefined : 'button'}
       accessibilityLabel={format('settings.fieldAccessibilityLabel', { label, value })}
       accessibilityState={{ disabled: inactive }}

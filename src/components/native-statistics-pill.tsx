@@ -37,6 +37,7 @@ export function NativeStatisticsPill({
   return (
     <>
       <Pressable
+        android_ripple={{ borderless: false }}
         accessibilityLabel={pill.label}
         accessibilityRole="button"
         accessibilityState={{ expanded: interactive && open }}

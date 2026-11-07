@@ -152,6 +152,7 @@ export default function WorkspaceScreen(): React.JSX.Element {
               control sit on one 28pt row with 8pt radius, not under a label. */}
               <View style={s.controls}>
                 <Pressable
+                  android_ripple={{ borderless: false }}
                   accessibilityRole="button"
                   accessibilityLabel={
                     selectedSession === undefined
@@ -234,6 +235,7 @@ function ModeTrigger({
   return (
     <>
       <Pressable
+        android_ripple={{ borderless: false }}
         accessibilityRole="button"
         accessibilityLabel={
           sessionId === undefined

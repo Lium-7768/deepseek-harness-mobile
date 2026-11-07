@@ -6,17 +6,38 @@ import { MobileApi, MobileApiError } from '@/api/mobile-api'
 import type { MobileScheduleEntry } from '@/types/mobile'
 
 const mocks = vi.hoisted(() => ({ alert: vi.fn() }))
-vi.mock('react-native', () => ({
-  View: 'View',
-  Text: 'Text',
-  TextInput: 'TextInput',
-  Pressable: 'Pressable',
-  ScrollView: 'ScrollView',
-  ActivityIndicator: 'ActivityIndicator',
-  StyleSheet: { create: (styles: unknown) => styles, hairlineWidth: 1 },
-  Alert: { alert: mocks.alert },
-  useWindowDimensions: () => ({ width: 393, height: 852, fontScale: 1 }),
-}))
+vi.mock('react-native', async () => {
+  const { createElement } = await import('react')
+  return {
+    View: 'View',
+    Text: 'Text',
+    TextInput: 'TextInput',
+    Pressable: 'Pressable',
+    ScrollView: 'ScrollView',
+    ActivityIndicator: 'ActivityIndicator',
+    StyleSheet: { create: (styles: unknown) => styles, hairlineWidth: 1 },
+    Alert: { alert: mocks.alert },
+    useWindowDimensions: () => ({ width: 393, height: 852, fontScale: 1 }),
+    FlatList: (props: {
+      data: unknown[]
+      ListHeaderComponent?: unknown
+      ListFooterComponent?: unknown
+      ListEmptyComponent?: unknown
+      renderItem: (args: { item: unknown }) => unknown
+    }) =>
+      createElement(
+        'FlatList',
+        null,
+        props.ListHeaderComponent as never,
+        ...(props.data.length
+          ? props.data.map((item, index) =>
+              createElement('ListRow', { key: index }, props.renderItem({ item }) as never),
+            )
+          : [props.ListEmptyComponent as never]),
+        props.ListFooterComponent as never,
+      ),
+  }
+})
 vi.mock('@/theme/hooks', async () => {
   const { themes } = await import('@/theme')
   return {
@@ -27,6 +48,19 @@ vi.mock('@/theme/hooks', async () => {
 vi.mock('@/components/native-icon', () => ({ NativeIcon: 'Icon' }))
 vi.mock('@/components/native-action-button', () => ({ NativeActionButton: 'ActionButton' }))
 vi.mock('@/components/workspace-shell', () => ({ WorkspaceShell: 'Shell' }))
+vi.mock('@/components/confirm-sheet', async () => {
+  const { createElement } = await import('react')
+  return {
+    ConfirmSheet: (props: { open: boolean; confirmLabel: string; onConfirm: () => void; onCancel: () => void }) =>
+      props.open
+        ? createElement(
+            'Pressable',
+            { accessibilityLabel: props.confirmLabel, onPress: props.onConfirm },
+            createElement('Text', null, props.confirmLabel),
+          )
+        : null,
+  }
+})
 vi.mock('@/components/session-screen-state', () => ({ ErrorNotice: 'ErrorNotice' }))
 vi.mock('@/components/native-anchored-panel', async () => {
   const { createElement } = await import('react')
@@ -167,14 +201,18 @@ describe('automation screen interaction', () => {
       button('删除任务').props.onPress()
     })
     expect(update).toHaveBeenCalledTimes(2)
-    const choices = mocks.alert.mock.calls[0][2]
-    expect(choices[0].style).toBe('cancel')
-    expect(choices[1].style).toBe('destructive')
+    // The delete confirmation is the sheet now, not an Alert: pressing remove opens it,
+    // and only its confirm button reaches the API (twice, to prove the gate serializes).
+    const confirmButton = () =>
+      renderer.container.queryAll(
+        (node: { props: Record<string, unknown> }) => node.props.accessibilityLabel === '删除任务',
+      )[0]!
+    expect(confirmButton()).toBeTruthy()
     const third = deferred()
     update.mockReturnValueOnce(third.promise)
     await act(async () => {
-      choices[1].onPress()
-      choices[1].onPress()
+      confirmButton().props.onPress()
+      confirmButton().props.onPress()
     })
     expect(update).toHaveBeenCalledTimes(3)
     expect(update).toHaveBeenLastCalledWith(task('active'), 'delete')

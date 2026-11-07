@@ -48,6 +48,7 @@ export function NativeProcessGroup({ expanded, item, onToggle, renderRow }: Prop
   return (
     <View style={s.container}>
       <Pressable
+        android_ripple={{ borderless: false }}
         accessibilityLabel={expanded ? message('process.collapse') : message('process.expand')}
         accessibilityRole="button"
         accessibilityState={{ expanded }}

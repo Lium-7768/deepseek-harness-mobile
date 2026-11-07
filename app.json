@@ -37,7 +37,8 @@
           "cameraPermission": "允许 DeepSeek Harness 使用相机扫描桌面端配对二维码或拍照作为会话附件。"
         }
       ],
-      "expo-sharing"
+      "expo-sharing",
+      "expo-image"
     ],
     "experiments": {
       "typedRoutes": true

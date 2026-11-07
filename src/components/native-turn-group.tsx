@@ -35,6 +35,7 @@ export function NativeTurnGroup({ expanded, item, onToggle, renderRow }: Props):
   return (
     <View style={s.container}>
       <Pressable
+        android_ripple={{ borderless: false }}
         accessibilityLabel={open ? message('turn.collapse') : message('turn.expand')}
         accessibilityRole="button"
         accessibilityState={{ disabled: item.locked, expanded: open }}

@@ -178,6 +178,7 @@ export function MessageActions({
         </Text>
       )}
       <Pressable
+        android_ripple={{ borderless: false }}
         accessibilityRole="button"
         accessibilityLabel={
           copied
@@ -207,6 +208,7 @@ export function MessageActions({
       {trailing}
       {onBranch === undefined ? null : (
         <Pressable
+          android_ripple={{ borderless: false }}
           accessibilityRole="button"
           accessibilityLabel={message('conversation.branchFromMessage')}
           onPress={onBranch}

@@ -60,6 +60,7 @@ export function NativePlanChip({
   return (
     <View style={s.wrap}>
       <Pressable
+        android_ripple={{ borderless: false }}
         accessibilityLabel={message('plan.onLabel')}
         accessibilityRole="button"
         accessibilityState={{ disabled: locked || leaving }}

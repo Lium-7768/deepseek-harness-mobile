@@ -1,4 +1,4 @@
-import * as SecureStore from 'expo-secure-store'
+import AsyncStorage from '@react-native-async-storage/async-storage'
 import { create } from 'zustand'
 import { isAppearancePreference, type AppearancePreference } from './appearance-logic'
 export type { AppearancePreference } from './appearance-logic'
@@ -27,11 +27,11 @@ export const useAppearanceStore = create<AppearanceState>((set, get) => ({
   preference: 'system',
   async initialize(): Promise<void> {
     if (get().initialized) return
-    const encoded = await SecureStore.getItemAsync(APPEARANCE_KEY).catch(() => null)
+    const encoded = await AsyncStorage.getItem(APPEARANCE_KEY).catch(() => null)
     set({ initialized: true, preference: isAppearancePreference(encoded) ? encoded : 'system' })
   },
   async setPreference(preference: AppearancePreference): Promise<void> {
     set({ preference })
-    await SecureStore.setItemAsync(APPEARANCE_KEY, preference).catch(() => undefined)
+    await AsyncStorage.setItem(APPEARANCE_KEY, preference).catch(() => undefined)
   },
 }))

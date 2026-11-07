@@ -599,6 +599,7 @@ export default function SessionScreen(): React.JSX.Element {
               <WorkbenchTabs tab={tab} onChange={setTab} />
               {actions > 0 ? (
                 <Pressable
+                  android_ripple={{ borderless: false }}
                   accessibilityRole="button"
                   accessibilityLabel={message('conversation.viewPending')}
                   onPress={() => router.push({ pathname: '/session/[sessionId]/interactions', params: { sessionId } })}
@@ -676,6 +677,7 @@ export default function SessionScreen(): React.JSX.Element {
                       />
                       {hasMoreHistory ? (
                         <Pressable
+                          android_ripple={{ borderless: false }}
                           accessibilityRole="button"
                           accessibilityLabel={message('conversation.loadOlder')}
                           accessibilityState={{ busy: loadOlder.isPending }}
@@ -785,6 +787,7 @@ export default function SessionScreen(): React.JSX.Element {
                 />
                 {showReturnToLatest ? (
                   <Pressable
+                    android_ripple={{ borderless: false }}
                     accessibilityRole="button"
                     accessibilityLabel={
                       unreadCountLabel(unseenCount) === undefined

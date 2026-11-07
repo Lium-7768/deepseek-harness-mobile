@@ -51,6 +51,7 @@ export function NativeSnackbar(): React.JSX.Element | null {
         </Text>
         {current.undo === undefined ? null : (
           <Pressable
+            android_ripple={{ borderless: false }}
             accessibilityRole="button"
             accessibilityLabel={message('common.undo')}
             hitSlop={10}

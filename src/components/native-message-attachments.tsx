@@ -6,10 +6,11 @@ import type { AppTheme } from '@/theme'
 import { useAppTheme, useThemedStyles } from '@/theme/hooks'
 import type { MobileImageAttachmentRef } from '@/types/mobile'
 import { useQuery } from '@tanstack/react-query'
-import * as FileSystem from 'expo-file-system/legacy'
+import { File, Paths } from 'expo-file-system'
 import * as Sharing from 'expo-sharing'
 import { useMemo, useState } from 'react'
-import { ActivityIndicator, Alert, Image, Modal, Pressable, StyleSheet, Text, View } from 'react-native'
+import { Image } from 'expo-image'
+import { ActivityIndicator, Alert, Modal, Pressable, StyleSheet, Text, View } from 'react-native'
 
 type Props = {
   api: MobileApi
@@ -72,8 +73,10 @@ function NativeMessageAttachment({
       }
       const extension = extensionFor(image.data.attachment.mediaType)
       const fileName = `dsh-${safeFileStem(image.data.attachment.name ?? image.data.attachment.attachmentId)}.${extension}`
-      const uri = `${FileSystem.cacheDirectory}${fileName}`
-      await FileSystem.writeAsStringAsync(uri, image.data.data, { encoding: FileSystem.EncodingType.Base64 })
+      const file = new File(Paths.cache, fileName)
+      file.create({ overwrite: true })
+      file.write(image.data.data, { encoding: 'base64' })
+      const uri = file.uri
       await Sharing.shareAsync(uri, {
         dialogTitle: message('attachment.shareAction'),
         mimeType: image.data.attachment.mediaType,
@@ -90,6 +93,7 @@ function NativeMessageAttachment({
   return (
     <>
       <Pressable
+        android_ripple={{ borderless: false }}
         accessibilityRole="button"
         accessibilityLabel={format('attachment.open', { label })}
         accessibilityState={{ busy: image.isPending }}
@@ -100,7 +104,13 @@ function NativeMessageAttachment({
         style={({ pressed }) => [styles.thumbnailFrame, pressed && styles.pressed]}
       >
         {uri !== undefined ? (
-          <Image accessibilityLabel={label} resizeMode="cover" source={{ uri }} style={styles.thumbnail} />
+          <Image
+            accessibilityLabel={label}
+            cachePolicy="memory-disk"
+            contentFit="cover"
+            source={{ uri }}
+            style={styles.thumbnail}
+          />
         ) : image.isPending ? (
           <ActivityIndicator color={theme.colors.accent} />
         ) : (
@@ -117,6 +127,7 @@ function NativeMessageAttachment({
         <Modal animationType="fade" transparent visible={open} onRequestClose={() => setOpen(false)}>
           <View style={styles.modalBackdrop}>
             <Pressable
+              android_ripple={{ borderless: false }}
               accessibilityRole="button"
               accessibilityLabel={message('attachment.closePreview')}
               onPress={() => setOpen(false)}
@@ -124,12 +135,19 @@ function NativeMessageAttachment({
             >
               <NativeIcon name="close-outline" size={22} color={theme.colors.textOnAccent} />
             </Pressable>
-            <Image accessibilityLabel={label} resizeMode="contain" source={{ uri }} style={styles.fullImage} />
+            <Image
+              accessibilityLabel={label}
+              cachePolicy="memory-disk"
+              contentFit="contain"
+              source={{ uri }}
+              style={styles.fullImage}
+            />
             <View style={styles.previewFooter}>
               <Text numberOfLines={1} style={styles.caption}>
                 {label}
               </Text>
               <Pressable
+                android_ripple={{ borderless: false }}
                 accessibilityRole="button"
                 accessibilityLabel={message('attachment.shareAction')}
                 accessibilityState={{ busy: sharing }}

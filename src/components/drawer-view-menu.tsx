@@ -113,6 +113,7 @@ export function DrawerViewMenu(props: Props): React.JSX.Element {
               <Text style={s.title}>{group.title}</Text>
               {group.options.map((option) => (
                 <Pressable
+                  android_ripple={{ borderless: false }}
                   key={option.label}
                   accessibilityRole="radio"
                   accessibilityLabel={option.label}

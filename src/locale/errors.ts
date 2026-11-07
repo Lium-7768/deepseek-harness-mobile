@@ -22,6 +22,10 @@ export const errors = {
   notFound: '未找到请求的会话或操作。',
   desktopUnavailable: '桌面端当前不可用，请确认桌面端正在运行。',
 
+  /** Shown when a render failure is caught; the session data stays on the desktop. */
+  crashTitle: '页面出现问题',
+  crashBody: '刚才的页面无法显示。你的会话和草稿都在桌面端，不会丢失，重新加载即可继续。',
+
   qrGatewayInvalid: '二维码中的桌面网关地址无效。',
   pairingExpired: '该配对二维码已过期，请在桌面端重新生成。',
   pairingInvalid: '该配对二维码无效、已使用或已过期，请在桌面端重新生成。',

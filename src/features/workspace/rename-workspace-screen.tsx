@@ -49,6 +49,7 @@ export default function RenameWorkspaceScreen(): React.JSX.Element {
     <WorkspaceShell
       leftAction={
         <Pressable
+          android_ripple={{ borderless: false }}
           accessibilityRole="button"
           accessibilityLabel={message('rename.backToWorkspace')}
           hitSlop={8}

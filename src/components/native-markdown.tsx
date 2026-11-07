@@ -318,6 +318,7 @@ function NativeTable({ block, styles }: { block: Block; styles: ReturnType<typeo
           </Text>
         )}
         <Pressable
+          android_ripple={{ borderless: false }}
           accessibilityRole="button"
           accessibilityLabel={copied ? (copiedSize ?? message('markdown.tableCopied')) : message('markdown.copyTable')}
           accessibilityState={{ selected: copied }}
@@ -371,6 +372,7 @@ function NativeCodeBlock({
           </Text>
         )}
         <Pressable
+          android_ripple={{ borderless: false }}
           accessibilityRole="button"
           accessibilityLabel={
             copied
@@ -406,6 +408,7 @@ function NativeCodeBlock({
       ) : null}
       {collapsible ? (
         <Pressable
+          android_ripple={{ borderless: false }}
           accessibilityRole="button"
           accessibilityLabel={expanded ? message('markdown.collapseBlock') : message('markdown.expandBlock')}
           onPress={() => setExpanded((value) => !value)}

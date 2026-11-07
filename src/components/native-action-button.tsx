@@ -32,6 +32,7 @@ export function NativeActionButton({
   const glyph = disabled && variant === 'primary' ? theme.colors.inkMuted : glyphFor(variant, theme)
   return (
     <Pressable
+      android_ripple={{ borderless: false }}
       accessibilityRole="button"
       accessibilityLabel={label}
       accessibilityState={{ disabled: disabled || loading, busy: loading }}

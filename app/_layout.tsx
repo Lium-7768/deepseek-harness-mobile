@@ -2,6 +2,7 @@ import { useComposerDraftStore } from '@/state/composer-drafts'
 import 'react-native-gesture-handler'
 
 import { createMobileQueryClient } from '@/api/query-client'
+import { AppErrorBoundary } from '@/components/app-error-boundary'
 import { MobileSyncBridge } from '@/components/mobile-sync-bridge'
 import { NativeSnackbar } from '@/components/native-snackbar'
 import { SessionDrawer } from '@/components/session-drawer'
@@ -30,35 +31,37 @@ export default function RootLayout(): React.JSX.Element {
   }, [initialize])
   if (!initialized || initializationError) return <StartupGate />
   return (
-    <ConnectionQueries key={connectionScope ?? 'unpaired'}>
-      <StatusBar barStyle={theme.appearance === 'dark' ? 'light-content' : 'dark-content'} />
-      <NavigationBar style={theme.appearance === 'dark' ? 'light' : 'dark'} />
-      <MobileSyncBridge />
-      <Drawer
-        drawerContent={(props) => <SessionDrawer {...props} />}
-        screenOptions={{
-          headerShown: false,
-          drawerPosition: 'left',
-          drawerType: 'front',
-          drawerStyle: { backgroundColor: theme.colors.drawerBackground, width: drawerWidthForViewport(width) },
-          overlayColor: theme.colors.scrim,
-          drawerItemStyle: { display: 'none' },
-        }}
-      >
-        <Drawer.Screen name="index" options={{ swipeEnabled: false }} />
-        <Drawer.Screen name="workspace" />
-        <Drawer.Screen name="connect" options={{ swipeEnabled: false }} />
-        <Drawer.Screen name="connect/scan" options={{ swipeEnabled: false }} />
-        <Drawer.Screen name="session/[sessionId]" />
-        <Drawer.Screen name="session/[sessionId]/interactions" />
-        <Drawer.Screen name="session/[sessionId]/rename" options={{ swipeEnabled: false }} />
-        <Drawer.Screen name="session/[sessionId]/subagent" options={{ swipeEnabled: false }} />
-        <Drawer.Screen name="workspace/[workspaceId]/rename" options={{ swipeEnabled: false }} />
-        <Drawer.Screen name="settings" />
-        <Drawer.Screen name="schedules" />
-      </Drawer>
-      <NativeSnackbar />
-    </ConnectionQueries>
+    <AppErrorBoundary>
+      <ConnectionQueries key={connectionScope ?? 'unpaired'}>
+        <StatusBar barStyle={theme.appearance === 'dark' ? 'light-content' : 'dark-content'} />
+        <NavigationBar style={theme.appearance === 'dark' ? 'light' : 'dark'} />
+        <MobileSyncBridge />
+        <Drawer
+          drawerContent={(props) => <SessionDrawer {...props} />}
+          screenOptions={{
+            headerShown: false,
+            drawerPosition: 'left',
+            drawerType: 'front',
+            drawerStyle: { backgroundColor: theme.colors.drawerBackground, width: drawerWidthForViewport(width) },
+            overlayColor: theme.colors.scrim,
+            drawerItemStyle: { display: 'none' },
+          }}
+        >
+          <Drawer.Screen name="index" options={{ swipeEnabled: false }} />
+          <Drawer.Screen name="workspace" />
+          <Drawer.Screen name="connect" options={{ swipeEnabled: false }} />
+          <Drawer.Screen name="connect/scan" options={{ swipeEnabled: false }} />
+          <Drawer.Screen name="session/[sessionId]" />
+          <Drawer.Screen name="session/[sessionId]/interactions" />
+          <Drawer.Screen name="session/[sessionId]/rename" options={{ swipeEnabled: false }} />
+          <Drawer.Screen name="session/[sessionId]/subagent" options={{ swipeEnabled: false }} />
+          <Drawer.Screen name="workspace/[workspaceId]/rename" options={{ swipeEnabled: false }} />
+          <Drawer.Screen name="settings" />
+          <Drawer.Screen name="schedules" />
+        </Drawer>
+        <NativeSnackbar />
+      </ConnectionQueries>
+    </AppErrorBoundary>
   )
 }
 

@@ -189,6 +189,7 @@ function ToolPayload({
         <Text style={styles.payloadLabel}>{label}</Text>
         {copySize === undefined ? null : <Text style={styles.payloadSize}>{copySize}</Text>}
         <Pressable
+          android_ripple={{ borderless: false }}
           accessibilityRole="button"
           accessibilityLabel={copied ? (copySize ?? message('copy.copiedText')) : message('copy.copyPayload')}
           accessibilityState={{ selected: copied }}
@@ -220,6 +221,7 @@ function ToolPayload({
             <Text style={styles.payloadHidden}>{format('tool.hiddenLines', { count: hiddenLines })}</Text>
           )}
           <Pressable
+            android_ripple={{ borderless: false }}
             accessibilityRole="button"
             accessibilityLabel={
               expanded ? message('tool.collapsePayload') : format('tool.expandPayload', { lines: lineCount })

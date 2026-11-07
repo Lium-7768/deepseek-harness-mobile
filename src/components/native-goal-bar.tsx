@@ -97,6 +97,7 @@ export function NativeGoalBar({
           />
         ) : (
           <Pressable
+            android_ripple={{ borderless: false }}
             accessible
             accessibilityRole={blockedReason ? 'button' : undefined}
             accessibilityLabel={`${message(`activity.${state.label}`)} ${goal.objective}${blockedReason ? ` ${blockedReason}` : ''}`}
@@ -192,6 +193,7 @@ function GoalButton({
   const s = useThemedStyles(makeStyles)
   return (
     <Pressable
+      android_ripple={{ borderless: false }}
       accessibilityRole="button"
       accessibilityLabel={label}
       accessibilityState={{ disabled }}

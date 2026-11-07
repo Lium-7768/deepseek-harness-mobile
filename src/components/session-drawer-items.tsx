@@ -36,6 +36,7 @@ export function WorkspaceItem({
   const styles = useThemedStyles(makeSessionDrawerStyles)
   return (
     <Pressable
+      android_ripple={{ borderless: false }}
       accessibilityRole="button"
       accessibilityLabel={`${collapsed ? message('drawer.expand') : message('drawer.collapse')}${label}`}
       accessibilityState={{ expanded: !collapsed }}
@@ -122,6 +123,7 @@ export function SessionItem({
   return (
     <>
       <Pressable
+        android_ripple={{ borderless: false }}
         accessibilityRole="button"
         accessibilityLabel={format('drawer.openSession', { title })}
         accessibilityState={{ selected }}
@@ -151,6 +153,7 @@ export function SessionItem({
         {blank ? null : (
           <>
             <Pressable
+              android_ripple={{ borderless: false }}
               accessibilityLabel={format('drawer.sessionActionsFor', { title })}
               accessibilityRole="button"
               accessibilityState={{ expanded: menuOpen }}

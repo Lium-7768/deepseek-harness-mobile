@@ -1,6 +1,6 @@
 import { MobileApi } from '@/api/mobile-api'
 import { queryKeys } from '@/api/query-keys'
-import { warnFeedback } from '@/components/haptics'
+import { ConfirmSheet } from '@/components/confirm-sheet'
 import { NativeMenuPanel } from '@/components/native-menu-panel'
 import { DrawerViewMenu } from '@/components/drawer-view-menu'
 import { DrawerSearchInput, DrawerSearchRow } from '@/components/drawer-search'
@@ -52,6 +52,11 @@ export function SessionDrawer(props: DrawerContentComponentProps): React.JSX.Ele
   const { navigation, state } = props
   const drawerStatus = useDrawerStatus()
   const [searchOpen, setSearchOpen] = useState(false)
+  const [confirm, setConfirm] = useState<
+    | { kind: 'archive'; session: SessionSummary }
+    | { kind: 'deleteWorkspace'; title: string; workspaceId: string }
+    | undefined
+  >(undefined)
   const [search, setSearch] = useState('')
   const debouncedSearch = useDebouncedText(search.trim(), 250)
   const [optionsOpen, setOptionsOpen] = useState(false)
@@ -297,32 +302,10 @@ export function SessionDrawer(props: DrawerContentComponentProps): React.JSX.Ele
     }
   }
   const confirmDeleteWorkspace = (workspaceId: string, title: string): void => {
-    Alert.alert(message('drawer.removeWorkspace'), format('drawer.removeWorkspaceBody', { title }), [
-      { text: message('common.cancel'), style: 'cancel' },
-      {
-        text: message('drawer.remove'),
-        style: 'destructive',
-        onPress: () => {
-          warnFeedback()
-          void deleteWorkspace(workspaceId)
-        },
-      },
-    ])
+    setConfirm({ kind: 'deleteWorkspace', title, workspaceId })
   }
   const confirmArchive = (session: SessionSummary): void => {
-    const title =
-      typeof session.title === 'string' && session.title.trim() ? session.title : message('drawer.newSession')
-    Alert.alert(message('drawer.archiveSession'), format('drawer.archiveSessionBody', { title }), [
-      { text: message('common.cancel'), style: 'cancel' },
-      {
-        text: message('drawer.archive'),
-        style: 'destructive',
-        onPress: () => {
-          warnFeedback()
-          void archiveSession(session.sessionId)
-        },
-      },
-    ])
+    setConfirm({ kind: 'archive', session })
   }
 
   return (
@@ -352,6 +335,7 @@ export function SessionDrawer(props: DrawerContentComponentProps): React.JSX.Ele
                 <Text style={styles.brandTag}>HARNESS</Text>
               </View>
               <Pressable
+                android_ripple={{ borderless: false }}
                 accessibilityRole="button"
                 accessibilityLabel={message('drawer.close')}
                 hitSlop={8}
@@ -363,6 +347,7 @@ export function SessionDrawer(props: DrawerContentComponentProps): React.JSX.Ele
             </View>
 
             <Pressable
+              android_ripple={{ borderless: false }}
               accessibilityRole="button"
               accessibilityLabel={message('drawer.newSession')}
               disabled={!connection}
@@ -419,6 +404,7 @@ export function SessionDrawer(props: DrawerContentComponentProps): React.JSX.Ele
                   </Text>
                   <View style={styles.workspaceActions}>
                     <Pressable
+                      android_ripple={{ borderless: false }}
                       accessibilityRole="button"
                       accessibilityLabel={message('drawer.searchSessions')}
                       accessibilityState={{ expanded: searchOpen }}
@@ -432,6 +418,7 @@ export function SessionDrawer(props: DrawerContentComponentProps): React.JSX.Ele
                     </Pressable>
                     <View ref={optionsRef} collapsable={false}>
                       <Pressable
+                        android_ripple={{ borderless: false }}
                         accessibilityRole="button"
                         accessibilityLabel={message('drawer.viewSettings')}
                         accessibilityState={{ expanded: optionsOpen }}
@@ -589,6 +576,7 @@ export function SessionDrawer(props: DrawerContentComponentProps): React.JSX.Ele
                       </View>
                     ) : item.kind === 'overflow' ? (
                       <Pressable
+                        android_ripple={{ borderless: false }}
                         key={item.key}
                         accessibilityRole="button"
                         accessibilityLabel={
@@ -647,6 +635,7 @@ export function SessionDrawer(props: DrawerContentComponentProps): React.JSX.Ele
           </DrawerContentScrollView>
           <View style={styles.footer}>
             <Pressable
+              android_ripple={{ borderless: false }}
               accessibilityRole="button"
               accessibilityLabel={message('drawer.openSettings')}
               onPress={openSettings}
@@ -656,6 +645,7 @@ export function SessionDrawer(props: DrawerContentComponentProps): React.JSX.Ele
               <Text style={styles.footerActionText}>{message('settings.title')}</Text>
             </Pressable>
             <Pressable
+              android_ripple={{ borderless: false }}
               accessibilityLabel={message('drawer.syncSessions')}
               accessibilityRole="button"
               accessibilityState={{ busy: syncing, disabled: syncing }}
@@ -709,6 +699,30 @@ export function SessionDrawer(props: DrawerContentComponentProps): React.JSX.Ele
           />
         ) : null}
       </View>
+      <ConfirmSheet
+        open={confirm !== undefined}
+        title={confirm?.kind === 'archive' ? message('drawer.archiveSession') : message('drawer.removeWorkspace')}
+        body={
+          confirm?.kind === 'archive'
+            ? format('drawer.archiveSessionBody', {
+                title:
+                  typeof confirm.session.title === 'string' && confirm.session.title.trim()
+                    ? confirm.session.title
+                    : message('drawer.newSession'),
+              })
+            : confirm?.kind === 'deleteWorkspace'
+              ? format('drawer.removeWorkspaceBody', { title: confirm.title })
+              : ''
+        }
+        confirmLabel={confirm?.kind === 'archive' ? message('drawer.archive') : message('drawer.remove')}
+        onCancel={() => setConfirm(undefined)}
+        onConfirm={() => {
+          const pending = confirm
+          setConfirm(undefined)
+          if (pending?.kind === 'archive') void archiveSession(pending.session.sessionId)
+          else if (pending?.kind === 'deleteWorkspace') void deleteWorkspace(pending.workspaceId)
+        }}
+      />
     </SafeAreaView>
   )
 }

@@ -44,6 +44,7 @@ export function DrawerSearchInput({
         style={s.input}
       />
       <Pressable
+        android_ripple={{ borderless: false }}
         accessibilityRole="button"
         accessibilityLabel={message('drawer.clearSearch')}
         onPress={onClose}
@@ -74,6 +75,7 @@ export function DrawerSearchRow({
   const stacked = drawerWidthForViewport(width) / Math.max(1, fontScale) < 240
   return (
     <Pressable
+      android_ripple={{ borderless: false }}
       accessibilityRole="button"
       accessibilityLabel={`${title}${result.archived ? ` ${message('drawer.archived')}` : ''}`}
       accessibilityState={{ selected }}
@@ -87,6 +89,7 @@ export function DrawerSearchRow({
         </Text>
         {result.archived ? (
           <Pressable
+            android_ripple={{ borderless: false }}
             accessibilityRole="button"
             accessibilityLabel={message('drawer.restore')}
             onPress={(event) => {

@@ -168,6 +168,7 @@ function FeedbackButton({
   const styles = useThemedStyles(makeStyles)
   return (
     <Pressable
+      android_ripple={{ borderless: false }}
       accessibilityRole="button"
       accessibilityLabel={accessibilityLabel}
       accessibilityState={{ disabled, selected: active }}

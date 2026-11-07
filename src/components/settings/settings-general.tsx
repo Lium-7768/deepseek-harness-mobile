@@ -11,7 +11,7 @@ import Constants from 'expo-constants'
 import { useState } from 'react'
 import { Alert, Pressable, ScrollView, Text, View } from 'react-native'
 
-import { confirmFullAccess } from '@/components/settings/settings-connection'
+import { ConfirmSheet } from '@/components/confirm-sheet'
 import {
   APPEARANCES,
   CenteredState,
@@ -49,6 +49,7 @@ export function GeneralSettings({
   })
   const [saving, setSaving] = useState(false)
   const [picker, setPicker] = useState<SettingsPicker | undefined>(undefined)
+  const [confirmingFullAccess, setConfirmingFullAccess] = useState(false)
   const setAppearancePreference = useAppearanceStore((state) => state.setPreference)
   const writable = settings.data?.writable === true
   const presetDefault =
@@ -85,7 +86,7 @@ export function GeneralSettings({
   const choosePermission = (permission: string): void => {
     setPicker(undefined)
     if (permission === 'danger-full-access') {
-      confirmFullAccess(() => save('permission', { defaultPreset: permission }, message('settings.permissionFull')))
+      setConfirmingFullAccess(true)
       return
     }
     save('permission', { defaultPreset: permission }, message('settings.permissionWorkspace'))
@@ -96,109 +97,123 @@ export function GeneralSettings({
       ? presetDefault
       : agentPresetName(presets.data.presets.find((item) => item.id === presetDefault)!)
   return (
-    <ScrollView contentContainerStyle={styles.list}>
-      <View style={styles.header}>
-        <Text style={styles.panelTitle}>{message('settings.sectionGeneral')}</Text>
-        <Text style={styles.subtitle}>{message('settings.mobileScopeNote')}</Text>
-      </View>
-      {settings.isError ? (
-        <QueryErrorNotice
-          text={mobileErrorMessage(settings.error, message('settings.loadFailed'))}
-          onRetry={() => void settings.refetch()}
+    <>
+      <ScrollView contentContainerStyle={styles.list}>
+        <View style={styles.header}>
+          <Text style={styles.panelTitle}>{message('settings.sectionGeneral')}</Text>
+          <Text style={styles.subtitle}>{message('settings.mobileScopeNote')}</Text>
+        </View>
+        {settings.isError ? (
+          <QueryErrorNotice
+            text={mobileErrorMessage(settings.error, message('settings.loadFailed'))}
+            onRetry={() => void settings.refetch()}
+          />
+        ) : null}
+        {presets.isError ? (
+          <QueryErrorNotice
+            text={mobileErrorMessage(presets.error, message('settings.presetsLoadFailed'))}
+            onRetry={() => void presets.refetch()}
+          />
+        ) : null}
+        <SettingsFieldRow
+          label={message('settings.modeSectionTitle')}
+          description={message('settings.modeSectionDescription')}
+          disabled={!writable || saving}
+          value={modeLabel ?? message('settings.noPresetsConfigured')}
+          onPress={() =>
+            setPicker({
+              title: message('settings.modeSectionTitle'),
+              value: presetDefault,
+              options: (presets.data?.presets ?? []).map((item) => ({
+                value: item.id,
+                label: agentPresetName(item),
+                description: agentPresetDescription(item),
+                disabled: item.broken !== undefined,
+              })),
+              onSelect: chooseMode,
+            })
+          }
         />
-      ) : null}
-      {presets.isError ? (
-        <QueryErrorNotice
-          text={mobileErrorMessage(presets.error, message('settings.presetsLoadFailed'))}
-          onRetry={() => void presets.refetch()}
+        <SettingsFieldRow
+          label={message('settings.permissionSectionTitle')}
+          description={message('settings.permissionSectionDescription')}
+          disabled={!writable || saving}
+          value={permissionLabel(permissionDefault)}
+          onPress={() =>
+            setPicker({
+              title: message('settings.permissionSectionTitle'),
+              value: permissionDefault,
+              options: PERMISSION_CHOICES.map((choice) => ({ value: choice, label: permissionLabel(choice) })),
+              onSelect: choosePermission,
+            })
+          }
         />
-      ) : null}
-      <SettingsFieldRow
-        label={message('settings.modeSectionTitle')}
-        description={message('settings.modeSectionDescription')}
-        disabled={!writable || saving}
-        value={modeLabel ?? message('settings.noPresetsConfigured')}
-        onPress={() =>
-          setPicker({
-            title: message('settings.modeSectionTitle'),
-            value: presetDefault,
-            options: (presets.data?.presets ?? []).map((item) => ({
-              value: item.id,
-              label: agentPresetName(item),
-              description: agentPresetDescription(item),
-              disabled: item.broken !== undefined,
-            })),
-            onSelect: chooseMode,
-          })
-        }
+        <SettingsFieldRow
+          label={message('settings.language')}
+          description={message('settings.languageDetail')}
+          disabled
+          value={message('settings.languageValue')}
+        />
+        <SettingsFieldRow
+          label={message('settings.appearance')}
+          description={message('settings.appearanceDetail')}
+          value={themeLabel(appearance)}
+        />
+        <View style={styles.appearanceCards}>
+          {APPEARANCES.map((item) => {
+            const selected = appearance === item.id
+            return (
+              <Pressable
+                android_ripple={{ borderless: false }}
+                accessibilityRole="radio"
+                accessibilityState={{ checked: selected, disabled: saving || selected }}
+                disabled={saving || selected}
+                key={item.id}
+                onPress={() => {
+                  void setAppearancePreference(item.id)
+                  // Recorded on the desktop too, so its settings page agrees with
+                  // the phone rather than keeping a stale theme preference.
+                  if (writable) save('ui-theme', { preference: item.id }, message('settings.appearanceSaved'))
+                }}
+                style={({ pressed }) => [
+                  styles.appearanceCard,
+                  selected && styles.appearanceCardSelected,
+                  saving && styles.appearanceCardDisabled,
+                  pressed && styles.pressed,
+                ]}
+              >
+                <NativeIcon
+                  name={item.icon}
+                  color={selected ? palette.colors.ink : palette.colors.inkTertiary}
+                  size={20}
+                />
+                <Text style={styles.appearanceLabel}>{message(item.label)}</Text>
+              </Pressable>
+            )
+          })}
+        </View>
+        <ReadOnlySetting
+          title={message('settings.enterBehavior')}
+          value={message('settings.enterBehaviorValue')}
+          detail={message('settings.enterBehaviorDetail')}
+        />
+        {appVersion === undefined ? null : (
+          <Text style={styles.versionRow}>{format('settings.currentVersion', { version: appVersion })}</Text>
+        )}
+        {!writable ? <Text style={styles.notice}>{message('settings.readOnlyProvider')}</Text> : null}
+        <ChoiceSheet picker={picker} onClose={() => setPicker(undefined)} />
+      </ScrollView>
+      <ConfirmSheet
+        open={confirmingFullAccess}
+        title={message('settings.fullAccessTitle')}
+        body={message('settings.fullAccessBody')}
+        confirmLabel={message('common.continue')}
+        onCancel={() => setConfirmingFullAccess(false)}
+        onConfirm={() => {
+          setConfirmingFullAccess(false)
+          save('permission', { defaultPreset: 'danger-full-access' }, message('settings.permissionFull'))
+        }}
       />
-      <SettingsFieldRow
-        label={message('settings.permissionSectionTitle')}
-        description={message('settings.permissionSectionDescription')}
-        disabled={!writable || saving}
-        value={permissionLabel(permissionDefault)}
-        onPress={() =>
-          setPicker({
-            title: message('settings.permissionSectionTitle'),
-            value: permissionDefault,
-            options: PERMISSION_CHOICES.map((choice) => ({ value: choice, label: permissionLabel(choice) })),
-            onSelect: choosePermission,
-          })
-        }
-      />
-      <SettingsFieldRow
-        label={message('settings.language')}
-        description={message('settings.languageDetail')}
-        disabled
-        value={message('settings.languageValue')}
-      />
-      <SettingsFieldRow
-        label={message('settings.appearance')}
-        description={message('settings.appearanceDetail')}
-        value={themeLabel(appearance)}
-      />
-      <View style={styles.appearanceCards}>
-        {APPEARANCES.map((item) => {
-          const selected = appearance === item.id
-          return (
-            <Pressable
-              accessibilityRole="radio"
-              accessibilityState={{ checked: selected, disabled: saving || selected }}
-              disabled={saving || selected}
-              key={item.id}
-              onPress={() => {
-                void setAppearancePreference(item.id)
-                // Recorded on the desktop too, so its settings page agrees with
-                // the phone rather than keeping a stale theme preference.
-                if (writable) save('ui-theme', { preference: item.id }, message('settings.appearanceSaved'))
-              }}
-              style={({ pressed }) => [
-                styles.appearanceCard,
-                selected && styles.appearanceCardSelected,
-                saving && styles.appearanceCardDisabled,
-                pressed && styles.pressed,
-              ]}
-            >
-              <NativeIcon
-                name={item.icon}
-                color={selected ? palette.colors.ink : palette.colors.inkTertiary}
-                size={20}
-              />
-              <Text style={styles.appearanceLabel}>{message(item.label)}</Text>
-            </Pressable>
-          )
-        })}
-      </View>
-      <ReadOnlySetting
-        title={message('settings.enterBehavior')}
-        value={message('settings.enterBehaviorValue')}
-        detail={message('settings.enterBehaviorDetail')}
-      />
-      {appVersion === undefined ? null : (
-        <Text style={styles.versionRow}>{format('settings.currentVersion', { version: appVersion })}</Text>
-      )}
-      {!writable ? <Text style={styles.notice}>{message('settings.readOnlyProvider')}</Text> : null}
-      <ChoiceSheet picker={picker} onClose={() => setPicker(undefined)} />
-    </ScrollView>
+    </>
   )
 }

@@ -61,6 +61,7 @@ export function NativeRetryRow({ row }: { row: RetryRow }): React.JSX.Element {
   return (
     <View style={s.retry}>
       <Pressable
+        android_ripple={{ borderless: false }}
         hitSlop={8}
         accessibilityLabel={format('status.retryLabel', { attempt: row.retry })}
         accessibilityRole="button"
@@ -134,6 +135,7 @@ export function NativeCommandRow({ row }: { row: CommandRow }): React.JSX.Elemen
   return (
     <View style={s.command}>
       <Pressable
+        android_ripple={{ borderless: false }}
         hitSlop={8}
         accessibilityRole="button"
         accessibilityLabel={
@@ -196,6 +198,7 @@ export function NativeCompactionRow({ row }: { row: CompactionRow }): React.JSX.
   return (
     <View style={s.compaction}>
       <Pressable
+        android_ripple={{ borderless: false }}
         hitSlop={8}
         accessibilityRole="button"
         accessibilityLabel={message('status.viewCompaction')}

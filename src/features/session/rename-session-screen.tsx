@@ -65,6 +65,7 @@ export default function RenameSessionScreen(): React.JSX.Element {
     <WorkspaceShell
       leftAction={
         <Pressable
+          android_ripple={{ borderless: false }}
           accessibilityRole="button"
           accessibilityLabel={message('interactions.backToSession')}
           hitSlop={8}

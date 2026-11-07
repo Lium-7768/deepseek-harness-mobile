@@ -54,6 +54,7 @@ export default function ScanPairingScreen(): React.JSX.Element {
       showMenu={false}
       leftAction={
         <Pressable
+          android_ripple={{ borderless: false }}
           accessibilityRole="button"
           accessibilityLabel={message('scan.back')}
           hitSlop={8}

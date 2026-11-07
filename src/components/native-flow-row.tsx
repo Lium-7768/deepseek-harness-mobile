@@ -73,6 +73,7 @@ export function NativeFlowRow({
     <View style={s.root}>
       {interactive ? (
         <Pressable
+          android_ripple={{ borderless: false }}
           accessibilityLabel={accessibilityLabel}
           accessibilityRole="button"
           accessibilityState={{ expanded: open }}

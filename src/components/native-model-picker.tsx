@@ -114,6 +114,7 @@ export function NativeModelPicker({
       {notice ? <Text style={s.notice}>{notice}</Text> : null}
       {onRetry && hasCatalogFailure ? (
         <Pressable
+          android_ripple={{ borderless: false }}
           accessibilityRole="button"
           accessibilityLabel={message('model.retryCatalog')}
           accessibilityState={{ disabled: disabled || loading || retryPending, busy: loading || retryPending }}
@@ -165,6 +166,7 @@ export function NativeModelPicker({
           <View style={s.header}>
             <View style={s.balance} />
             <Pressable
+              android_ripple={{ borderless: false }}
               accessibilityRole="button"
               accessibilityLabel={format('model.openDirectory', { label })}
               accessibilityState={{ disabled }}
@@ -202,6 +204,7 @@ export function NativeModelPicker({
               </View>
             ) : resetEffort !== undefined && choices.some((choice) => choice.id === resetEffort) ? (
               <Pressable
+                android_ripple={{ borderless: false }}
                 accessibilityLabel={message('model.resetEffort')}
                 accessibilityRole="button"
                 accessibilityState={{ disabled: !canReset }}

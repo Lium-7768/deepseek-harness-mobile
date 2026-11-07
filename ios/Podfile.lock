@@ -47,6 +47,8 @@ PODS:
     - ExpoModulesCore
   - ExpoHaptics (57.0.3):
     - ExpoModulesCore
+  - ExpoImage (57.0.5):
+    - ExpoModulesCore
   - ExpoImageManipulator (57.0.22):
     - ExpoModulesCore
   - ExpoImagePicker (57.0.20):
@@ -2000,6 +2002,28 @@ PODS:
     - React-utils (= 0.86.3)
     - ReactNativeDependencies
   - ReactNativeDependencies (0.86.3)
+  - RNCAsyncStorage (2.2.0):
+    - hermes-engine
+    - RCTRequired
+    - RCTTypeSafety
+    - React-Core
+    - React-Core-prebuilt
+    - React-debug
+    - React-Fabric
+    - React-featureflags
+    - React-graphics
+    - React-ImageManager
+    - React-jsi
+    - React-NativeModulesApple
+    - React-RCTFabric
+    - React-renderercss
+    - React-rendererdebug
+    - React-utils
+    - ReactCodegen
+    - ReactCommon/turbomodule/bridging
+    - ReactCommon/turbomodule/core
+    - ReactNativeDependencies
+    - Yoga
   - RNCMaskedView (0.3.2):
     - hermes-engine
     - RCTRequired
@@ -2321,6 +2345,7 @@ DEPENDENCIES:
   - "ExpoFont (from `../node_modules/.pnpm/expo-font@57.0.4_expo@57.0.31_react-native@0.86.3_@babel+core@7.29.7_@react-native+metr_ece311b18df8a9e8078616799980a150/node_modules/expo-font/ios/ExpoFont.podspec`)"
   - "ExpoGlassEffect (from `../node_modules/.pnpm/expo-glass-effect@57.0.4_expo@57.0.31_react-native@0.86.3_@babel+core@7.29.7_@react-nat_1a81812050fd08d1095f0e15537f791c/node_modules/expo-glass-effect/ios`)"
   - "ExpoHaptics (from `../node_modules/.pnpm/expo-haptics@57.0.3_expo@57.0.31/node_modules/expo-haptics/ios`)"
+  - "ExpoImage (from `../node_modules/.pnpm/expo-image@57.0.5_expo@57.0.31_react-native@0.86.3_@babel+core@7.29.7_@react-native+met_1105d17ed45cfa6c96422ca04768cd58/node_modules/expo-image/ios/ExpoImage.podspec`)"
   - "ExpoImageManipulator (from `../node_modules/.pnpm/expo-image-manipulator@57.0.22_expo@57.0.31/node_modules/expo-image-manipulator/ios/ExpoImageManipulator.podspec`)"
   - "ExpoImagePicker (from `../node_modules/.pnpm/expo-image-picker@57.0.20_expo@57.0.31/node_modules/expo-image-picker/ios`)"
   - "ExpoKeepAwake (from `../node_modules/.pnpm/expo-keep-awake@57.0.2_expo@57.0.31_react@19.2.3/node_modules/expo-keep-awake/ios`)"
@@ -2412,6 +2437,7 @@ DEPENDENCIES:
   - ReactCodegen (from `build/generated/ios/ReactCodegen`)
   - "ReactCommon/turbomodule/core (from `../node_modules/.pnpm/react-native@0.86.3_@babel+core@7.29.7_@react-native+metro-config@0.86.3_@babel+core@7._dcc1ba86c4f0f476b4029bc2604f6bbc/node_modules/react-native/ReactCommon`)"
   - "ReactNativeDependencies (from `../node_modules/.pnpm/react-native@0.86.3_@babel+core@7.29.7_@react-native+metro-config@0.86.3_@babel+core@7._dcc1ba86c4f0f476b4029bc2604f6bbc/node_modules/react-native/third-party-podspecs/ReactNativeDependencies.podspec`)"
+  - "RNCAsyncStorage (from `../node_modules/.pnpm/@react-native-async-storage+async-storage@2.2.0_react-native@0.86.3_@babel+core@7.29.7__f081977eb83ef991fe3f6326acd12ffd/node_modules/@react-native-async-storage/async-storage`)"
   - "RNCMaskedView (from `../node_modules/.pnpm/@react-native-masked-view+masked-view@0.3.2_react-native@0.86.3_@babel+core@7.29.7_@rea_ce77b5b5946808457c8d6b160d017ead/node_modules/@react-native-masked-view/masked-view`)"
   - "RNGestureHandler (from `../node_modules/.pnpm/react-native-gesture-handler@2.32.0_react-native@0.86.3_@babel+core@7.29.7_@react-nativ_2da1c43a237cd5d18277f65796ac5d60/node_modules/react-native-gesture-handler`)"
   - "RNReanimated (from `../node_modules/.pnpm/react-native-reanimated@4.5.1_react-native-worklets@0.10.1_@babel+core@7.29.7_@react-na_ee9f5702c4ced316c823a90b3755dce0/node_modules/react-native-reanimated`)"
@@ -2445,6 +2471,8 @@ EXTERNAL SOURCES:
     :path: "../node_modules/.pnpm/expo-glass-effect@57.0.4_expo@57.0.31_react-native@0.86.3_@babel+core@7.29.7_@react-nat_1a81812050fd08d1095f0e15537f791c/node_modules/expo-glass-effect/ios"
   ExpoHaptics:
     :path: "../node_modules/.pnpm/expo-haptics@57.0.3_expo@57.0.31/node_modules/expo-haptics/ios"
+  ExpoImage:
+    :podspec: "../node_modules/.pnpm/expo-image@57.0.5_expo@57.0.31_react-native@0.86.3_@babel+core@7.29.7_@react-native+met_1105d17ed45cfa6c96422ca04768cd58/node_modules/expo-image/ios/ExpoImage.podspec"
   ExpoImageManipulator:
     :podspec: "../node_modules/.pnpm/expo-image-manipulator@57.0.22_expo@57.0.31/node_modules/expo-image-manipulator/ios/ExpoImageManipulator.podspec"
   ExpoImagePicker:
@@ -2626,6 +2654,8 @@ EXTERNAL SOURCES:
     :path: "../node_modules/.pnpm/react-native@0.86.3_@babel+core@7.29.7_@react-native+metro-config@0.86.3_@babel+core@7._dcc1ba86c4f0f476b4029bc2604f6bbc/node_modules/react-native/ReactCommon"
   ReactNativeDependencies:
     :podspec: "../node_modules/.pnpm/react-native@0.86.3_@babel+core@7.29.7_@react-native+metro-config@0.86.3_@babel+core@7._dcc1ba86c4f0f476b4029bc2604f6bbc/node_modules/react-native/third-party-podspecs/ReactNativeDependencies.podspec"
+  RNCAsyncStorage:
+    :path: "../node_modules/.pnpm/@react-native-async-storage+async-storage@2.2.0_react-native@0.86.3_@babel+core@7.29.7__f081977eb83ef991fe3f6326acd12ffd/node_modules/@react-native-async-storage/async-storage"
   RNCMaskedView:
     :path: "../node_modules/.pnpm/@react-native-masked-view+masked-view@0.3.2_react-native@0.86.3_@babel+core@7.29.7_@rea_ce77b5b5946808457c8d6b160d017ead/node_modules/@react-native-masked-view/masked-view"
   RNGestureHandler:
@@ -2654,6 +2684,7 @@ SPEC CHECKSUMS:
   ExpoFont: baf9e5d472c5dd59ca6b3221677f726499452a0e
   ExpoGlassEffect: 452d3b8408009c545b43319fb048f7f8e1f0e1ab
   ExpoHaptics: 4f26ec5ebb4cc9c5907987672ef63de77ae9df60
+  ExpoImage: b53ed6e35a59401a81352b66b79662c7c2b6c23b
   ExpoImageManipulator: 280b0fa5c3054b35993a7b97a13e8f692d5c09fb
   ExpoImagePicker: 68f102f772bbd2a84c621bb482dd63c7008cd8cb
   ExpoKeepAwake: b9ebf2ba14c42a2b5782adab42a2168a689bfd07
@@ -2744,6 +2775,7 @@ SPEC CHECKSUMS:
   ReactCodegen: 46092be08355797c9fd9c0f2a6276c9d26e9dfc1
   ReactCommon: 6bd9ca59389608bf7828a6351c692fa444681b87
   ReactNativeDependencies: 6738e602b46fd24aa453cd58267ec3bb8bf29d27
+  RNCAsyncStorage: 0f84413588571e74ef9cff6e3b669346e3abf9cb
   RNCMaskedView: 48989935d9665d97d87fa7e44f486b4d22cd5b9f
   RNGestureHandler: a21ad1bb32b203570440c29b7e406a342a690842
   RNReanimated: 827485ffe2842cf256cc6c7bf2f8ff50301cdde0

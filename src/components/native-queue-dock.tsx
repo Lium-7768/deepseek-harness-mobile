@@ -70,6 +70,7 @@ export function NativeQueueDock({ items, onUpdate, running }: Props): React.JSX.
     <View style={s.dock}>
       {queue.length > 1 ? (
         <Pressable
+          android_ripple={{ borderless: false }}
           accessibilityRole="button"
           accessibilityLabel={format('queue.summary', {
             count: queue.length,
@@ -180,6 +181,7 @@ function QueueAction({
   const s = useThemedStyles(makeStyles)
   return (
     <Pressable
+      android_ripple={{ borderless: false }}
       accessibilityRole="button"
       accessibilityLabel={label}
       accessibilityState={{ disabled }}

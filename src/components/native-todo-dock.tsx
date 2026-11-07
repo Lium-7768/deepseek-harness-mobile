@@ -29,6 +29,7 @@ export function NativeTodoDock({ todos }: { todos: TodoItem[] | undefined }): Re
     <View style={s.card}>
       <View style={s.body}>
         <Pressable
+          android_ripple={{ borderless: false }}
           accessibilityLabel={progress === undefined ? message('todo.title') : `${message('todo.title')} ${progress}`}
           accessibilityRole="button"
           accessibilityState={{ expanded }}

@@ -39,12 +39,12 @@ import type {
   MobilePermissionSelect,
   MobilePromptContent,
 } from '@/types/mobile'
+import { Image } from 'expo-image'
 import * as ImagePicker from 'expo-image-picker'
 import { useRef, useState } from 'react'
 import {
   ActivityIndicator,
   Alert,
-  Image,
   Pressable,
   StyleSheet,
   Text,
@@ -422,10 +422,13 @@ export function WorkspaceComposer({
                 <View key={`${image.uri}-${index}`} style={s.preview}>
                   <Image
                     accessibilityLabel={image.name ?? format('composer.attachmentImage', { index: index + 1 })}
+                    cachePolicy="memory-disk"
+                    contentFit="cover"
                     source={{ uri: image.uri }}
                     style={s.previewImage}
                   />
                   <Pressable
+                    android_ripple={{ borderless: false }}
                     accessibilityRole="button"
                     accessibilityLabel={format('composer.removeAttachment', { index: index + 1 })}
                     hitSlop={12}
@@ -476,6 +479,7 @@ export function WorkspaceComposer({
           />
           <View style={s.controlRow}>
             <Pressable
+              android_ripple={{ borderless: false }}
               accessibilityRole="button"
               accessibilityLabel={message('composer.addContent')}
               accessibilityState={{ disabled: controlsDisabled, expanded: openPicker === 'add' }}
@@ -502,6 +506,7 @@ export function WorkspaceComposer({
                 </View>
               ) : (
                 <Pressable
+                  android_ripple={{ borderless: false }}
                   accessibilityRole="button"
                   accessibilityLabel={format('composer.selectPermission', { label: selectedPermissionLabel })}
                   accessibilityState={{ disabled: !hasSession || controlsDisabled }}
@@ -540,6 +545,7 @@ export function WorkspaceComposer({
               ) : null}
               {hasSession ? (
                 <Pressable
+                  android_ripple={{ borderless: false }}
                   accessibilityRole="button"
                   accessibilityLabel={format('composer.selectMode', { label: modeLabel })}
                   accessibilityState={{ disabled: controlsDisabled }}
@@ -584,6 +590,7 @@ export function WorkspaceComposer({
               ) : null}
               {hasSession ? (
                 <Pressable
+                  android_ripple={{ borderless: false }}
                   ref={modelTriggerRef}
                   accessibilityRole="button"
                   accessibilityLabel={format('composer.selectModel', { label: selectedModelLabel })}
@@ -633,6 +640,7 @@ export function WorkspaceComposer({
               )}
               {onCancel !== undefined && action.kind === 'stop' ? (
                 <Pressable
+                  android_ripple={{ borderless: false }}
                   accessibilityRole="button"
                   accessibilityLabel={action.busy ? message('composer.stopping') : message('composer.stop')}
                   accessibilityState={{ busy: action.busy, disabled: action.disabled }}
@@ -649,6 +657,7 @@ export function WorkspaceComposer({
                 </Pressable>
               ) : (
                 <Pressable
+                  android_ripple={{ borderless: false }}
                   accessibilityRole="button"
                   accessibilityLabel={
                     offline
