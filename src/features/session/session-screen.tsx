@@ -13,7 +13,7 @@ import { NativeTodoDock } from '@/components/native-todo-dock'
 import { todoFromProjection } from '@/components/todo-logic'
 import { NativeTurnGroup } from '@/components/native-turn-group'
 import { firstParam, withErrorContext } from '@/components/route-params'
-import { readPermissionSelect } from '@/components/session-composer-logic'
+import { readPermissionSelect, streamDropped } from '@/components/session-composer-logic'
 import { planFromProjection } from '@/components/plan-logic'
 import {
   activeTurnStartedAt,
@@ -27,9 +27,11 @@ import { ConnectionStatus, ErrorNotice, SessionDock, UnavailableState } from '@/
 import { makeSessionStyles } from '@/components/session-screen-styles'
 import {
   READER_SCROLL_TAIL_MS,
+  RESTORE_WAIT_MS,
   SEND_FOLLOW_WINDOW_MS,
   isNearLatestMessage,
   restoredOffsetAfterPrepend,
+  restoredOffsetOnOpen,
   shouldFollowContentGrowth,
   shouldRefreshFromPull,
   shouldLoadOlderHistory,
@@ -51,8 +53,11 @@ import { WorkspaceShell } from '@/components/workspace-shell'
 import { workspaceKeyboardVerticalOffset } from '@/components/workspace-shell-logic'
 import { format, t as message } from '@/locale'
 import { type SharedEventItem } from '@/shared/dsh-presentation'
+import { doneFeedback } from '@/components/haptics'
+import { setFocusedSession } from '@/state/completion-notices'
 import { useConnectionStore } from '@/state/connection'
 import { useMobileSyncStore } from '@/state/mobile-sync'
+import { useReadingPositionStore } from '@/state/reading-positions'
 import { useRouteSessionSelection } from '@/state/session-selection'
 import { mergeEventItems } from '@/sync/event-items'
 import { sessionWindow } from '@/sync/session-window'
@@ -109,6 +114,14 @@ export default function SessionScreen(): React.JSX.Element {
   /** Whether the in-flight older-page request came from the button rather than the scroll. */
   const lastOlderRequestWasManual = useRef(false)
   const [showReturnToLatest, setShowReturnToLatest] = useState(false)
+  /** Set while an opened conversation is waiting for its remembered offset to apply. */
+  const pendingRestore = useRef<{ contentHeight: number; offsetY: number; rows: number } | null>(null)
+  const restoreTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const rememberPosition = useReadingPositionStore((state) => state.remember)
+  const forgetPosition = useReadingPositionStore((state) => state.forget)
+  const streamStatus = useMobileSyncStore((state) => state.status)
+  /** A paired client whose stream dropped: drafting stays open, sending does not. */
+  const offline = streamDropped({ hasConnection: connection !== undefined, status: streamStatus })
   // Message rows present when the reader left the bottom; the badge counts what came after.
   const unseenBaseline = useRef<number | undefined>(undefined)
   const [unseenCount, setUnseenCount] = useState(0)
@@ -220,6 +233,13 @@ export default function SessionScreen(): React.JSX.Element {
 
   useRouteSessionSelection(sessionId)
 
+  // A completion in the session the reader is looking at is already visible and already
+  // has its own haptic; the notice tracker only speaks for the others.
+  useEffect(() => {
+    setFocusedSession(sessionId)
+    return () => setFocusedSession(undefined)
+  }, [sessionId])
+
   useEffect(() => {
     submittedDraft.current = undefined
     initialLatestPositionPending.current = true
@@ -230,6 +250,32 @@ export default function SessionScreen(): React.JSX.Element {
     exhaustedOlderHistory.current = false
     unseenBaseline.current = undefined
     setUnseenCount(0)
+    // A conversation left mid-read reopens where it was left; a new one lands on the
+    // newest message. The remembered offset only applies once the transcript reports a
+    // height it can still address, so it waits for the first content measurement.
+    const saved = sessionId === undefined ? undefined : useReadingPositionStore.getState().positions[sessionId]
+    pendingRestore.current = saved ?? null
+    if (restoreTimer.current) clearTimeout(restoreTimer.current)
+    restoreTimer.current = null
+    if (saved !== undefined) {
+      // Reading state, not yet the viewport: the latch stays released so growth does not
+      // yank the reader down before the offset lands. A transcript that never grows back
+      // to the remembered height falls back to the newest message instead of hanging.
+      initialLatestPositionPending.current = false
+      nearLatestMessage.current = false
+      setShowReturnToLatest(true)
+      unseenBaseline.current = saved.rows
+      restoreTimer.current = setTimeout(() => {
+        restoreTimer.current = null
+        if (pendingRestore.current === null) return
+        pendingRestore.current = null
+        pinToLatestRef.current()
+      }, RESTORE_WAIT_MS)
+    }
+    return () => {
+      if (restoreTimer.current) clearTimeout(restoreTimer.current)
+      restoreTimer.current = null
+    }
   }, [sessionId])
 
   useEffect(() => {
@@ -444,6 +490,19 @@ export default function SessionScreen(): React.JSX.Element {
     readerScrollIdleTimer.current = setTimeout(() => {
       readerScrolling.current = false
       readerScrollIdleTimer.current = null
+      // The gesture has settled, so the offset now names a row rather than a frame in a
+      // moving list. This is the moment a reopen can trust.
+      if (sessionId !== undefined) {
+        if (nearLatestMessage.current) forgetPosition(sessionId)
+        else {
+          const metrics = listMetrics.current
+          rememberPosition(sessionId, {
+            contentHeight: metrics.contentHeight,
+            offsetY: metrics.offsetY,
+            rows: messages.length,
+          })
+        }
+      }
     }, READER_SCROLL_TAIL_MS)
   }
 
@@ -460,6 +519,8 @@ export default function SessionScreen(): React.JSX.Element {
     setShowReturnToLatest(false)
     unseenBaseline.current = undefined
     setUnseenCount(0)
+    pendingRestore.current = null
+    if (sessionId !== undefined) forgetPosition(sessionId)
     listRef.current?.scrollToEnd({ animated: false })
   }
   pinToLatestRef.current = pinToLatest
@@ -485,6 +546,15 @@ export default function SessionScreen(): React.JSX.Element {
   const reportedStatus = events.data?.status ?? message('conversation.connecting')
   const running = reportedStatus === 'running' || activeSession?.running === true || runningTurnStartedAt !== undefined
   const status = running ? 'running' : reportedStatus
+  // The last turn's own transition, per session: switching into an idle conversation
+  // must not buzz for a completion the reader never watched.
+  const lastRun = useRef<{ running: boolean; sessionId: string | undefined } | undefined>(undefined)
+  useEffect(() => {
+    const previous = lastRun.current
+    lastRun.current = { running, sessionId }
+    if (previous === undefined || previous.sessionId !== sessionId) return
+    if (previous.running && !running) doneFeedback()
+  }, [running, sessionId])
   const selections = useSessionSelections({
     client,
     sessionId,
@@ -640,6 +710,21 @@ export default function SessionScreen(): React.JSX.Element {
                     // streaming reply grows on every chunk, so the follow is decided per
                     // content change rather than once per open. The reader's own drag is
                     // what releases it; a programmatic jump cannot.
+                    const restore = pendingRestore.current
+                    if (restore !== null) {
+                      const offset = restoredOffsetOnOpen({ saved: restore, contentHeight: height })
+                      if (offset === undefined) {
+                        // Still shorter than the transcript that was left: wait for the rows
+                        // that restore the height, or fall back when the wait expires.
+                        return
+                      }
+                      pendingRestore.current = null
+                      if (restoreTimer.current) clearTimeout(restoreTimer.current)
+                      restoreTimer.current = null
+                      initialLatestPositionPending.current = false
+                      listRef.current?.scrollToOffset({ animated: false, offset })
+                      return
+                    }
                     const anchor = pendingPrependAnchor.current
                     if (anchor !== null) {
                       pendingPrependAnchor.current = null
@@ -765,6 +850,7 @@ export default function SessionScreen(): React.JSX.Element {
                 sessionId={sessionId}
                 cancelling={cancel.isPending}
                 disabled={!ready}
+                offline={offline}
                 sending={send.isPending}
                 running={status === 'running'}
                 modelCatalog={models.data}

@@ -13,6 +13,7 @@ vi.mock('react-native', () => ({
   StyleSheet: { create: (styles: unknown) => styles, hairlineWidth: 1 },
   Alert: { alert: mocks.alert },
   useWindowDimensions: () => ({ width: 393, height: 852, fontScale: 1 }),
+  Platform: { OS: 'ios', select: (options: Record<string, unknown>) => options.ios },
 }))
 vi.mock('@/theme/hooks', async () => {
   const { themes } = await import('@/theme')
@@ -48,6 +49,16 @@ vi.mock('@/components/native-menu-panel', async () => {
 vi.mock('@/components/native-model-picker', () => ({ NativeModelPicker: 'ModelPicker' }))
 vi.mock('@/components/native-goal-editor', () => ({ NativeGoalEditor: 'GoalEditor' }))
 vi.mock('expo-image-picker', () => ({ launchImageLibraryAsync: mocks.pick }))
+// The encoder is native; the composer only needs a prepared attachment to lay out.
+vi.mock('@/components/image-attachments', () => ({
+  prepareAttachment: async () => ({
+    bytes: 1024,
+    data: 'AAAA',
+    mediaType: 'image/jpeg',
+    name: 'shot.png',
+    uri: 'file:///shot.png',
+  }),
+}))
 import { WorkspaceComposer } from '@/components/workspace-composer'
 import { themes } from '@/theme'
 
@@ -98,7 +109,7 @@ afterEach(async () => {
 describe('composer attachments', () => {
   it('prints the rail inside the card, so the thumbnails ride the input surface', async () => {
     const renderer = await composerWithImage()
-    const rail = byLabel(renderer, '已添加 1 张图片')
+    const rail = byLabel(renderer, '已添加 1 张图片，共 1 KB')
     const card = renderer.container.queryAll((node) => {
       const style = resolvedStyle(node) as { borderRadius?: number; paddingTop?: number }
       return style.paddingTop === 8 && style.borderRadius === themes.light.radius.panel

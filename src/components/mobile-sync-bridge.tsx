@@ -1,5 +1,7 @@
+import { noteAppState, noteSessionList } from '@/state/completion-notices'
 import { useConnectionStore } from '@/state/connection'
 import { useMobileSyncStore } from '@/state/mobile-sync'
+import type { SessionListPayload } from '@/types/mobile'
 import { startMobileSync } from '@/sync/runtime'
 import { useQueryClient } from '@tanstack/react-query'
 import { router } from 'expo-router'
@@ -34,12 +36,30 @@ export function MobileSyncBridge(): null {
         },
       })
     }
+    noteAppState(AppState.currentState)
     update()
-    const subscription = AppState.addEventListener('change', update)
+    const subscription = AppState.addEventListener('change', (state) => {
+      // Recorded before the stream restarts: the resumed list is what answers which
+      // sessions finished while the app was not listening.
+      noteAppState(state)
+      update()
+    })
     return () => {
       subscription.remove()
       stop?.()
     }
   }, [connection, generation, queryClient])
+  useEffect(() => {
+    // The list is the only place a completion shows up once the stream was stopped while
+    // the app was away; every refresh feeds the tracker so the return can report it.
+    const cache = queryClient.getQueryCache()
+    return cache.subscribe((event) => {
+      if (event.type !== 'updated') return
+      const key = event.query.queryKey
+      if (key[0] !== 'session-list') return
+      const data = event.query.state.data as SessionListPayload | undefined
+      if (Array.isArray(data?.items)) noteSessionList(data.items)
+    })
+  }, [queryClient])
   return null
 }

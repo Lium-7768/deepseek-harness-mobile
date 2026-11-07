@@ -4,18 +4,35 @@ import type { MobilePermissionSelect } from '@/types/mobile'
 /** The multiline composer keeps Return available for newlines; sending is explicit. */
 export const composerInputPolicy = { returnKeyType: 'default', submitBehavior: 'newline' } as const
 
+/**
+ * Reports a paired client whose event stream dropped.
+ *
+ * The shell prints its reconnect bar from this, and the composer refuses to send from
+ * it: a prompt accepted now would start a turn nobody can watch.
+ *
+ * @param args - Whether a paired connection exists and the reported stream status.
+ * @returns True when the stream is down for a paired client.
+ */
+export function streamDropped({ hasConnection, status }: { hasConnection: boolean; status: string }): boolean {
+  return hasConnection && status === 'disconnected'
+}
+
 /** Describes which primary composer action remains available while a request settles. */
 export function composerPrimaryAction(input: {
   cancelling: boolean
   disabled: boolean
   hasText: boolean
+  /** The event stream is down: a prompt sent now would run unwatched. */
+  offline?: boolean
   running: boolean
   sending: boolean
 }): { busy: boolean; disabled: boolean; kind: 'send' | 'stop' } {
   if (input.running && !input.disabled) return { busy: input.cancelling, disabled: input.cancelling, kind: 'stop' }
   return {
     busy: input.sending,
-    disabled: input.disabled || input.cancelling || input.sending || !input.hasText,
+    // A stop still reaches the Host over HTTP when only the event stream dropped, so
+    // `offline` gates sending alone.
+    disabled: input.disabled || input.offline === true || input.cancelling || input.sending || !input.hasText,
     kind: 'send',
   }
 }

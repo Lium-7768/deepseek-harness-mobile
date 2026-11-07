@@ -82,6 +82,46 @@ names what reached the clipboard — lines and characters for text, lines for co
 for a table — because a phone cannot show the selection it is about to copy. A table copies whole
 as TSV, which pastes into a spreadsheet as real columns.
 
+## Attachments
+
+The gateway refuses a request body over 12 MB, and a phone photo reaches it as base64
+inside a JSON envelope, which inflates the bytes by a third. Four full-resolution photos
+therefore fail the send before any text is added, and the reader only sees "发送失败". The
+picker now returns files rather than base64, each image is re-encoded on the device to a
+1600-pixel long edge at JPEG 0.7, and the draft refuses what no longer fits a 9 MB budget
+that leaves room for the envelope. The rail prints the encoded total beside the
+thumbnails, so the size is answered before the send instead of after it.
+
+The limits live in `src/components/attachment-policy.ts`; `ATTACHMENT_BODY_CEILING_BYTES`
+mirrors the gateway constant and must move with it.
+
+## Sending while the stream is down
+
+A paired client whose event stream dropped prints the reconnect bar, and the composer now
+refuses to send from the same condition: a prompt accepted then would start a turn nobody
+can watch. The editor stays editable, the primary control is disabled with that reason,
+and stopping a running turn stays available because it reaches the Host over HTTP.
+
+## Reading position
+
+A conversation left mid-read reopens where it was left. The gesture's settled offset is
+remembered per session, and a reopen applies it once the transcript reports a height that
+still addresses it; a transcript that came back shorter falls back to the newest message
+after a 1.2 s wait. Returning to the bottom forgets the position, so the next open lands
+on the newest message the way a reader who never scrolled expects.
+
+## Completion notices
+
+iOS suspends a backgrounded app, and the stream only runs while the app is in the
+foreground, so a turn that ends while the phone is locked produces nothing: there is no
+push channel from the Gateway. What ships is what the platform allows — a local notice
+when a turn finishes while the reader is elsewhere in the app, an icon badge for
+completions they have not looked at, and a summary line on return naming how many
+conversations finished while the app was away. The resumed session list is the source for
+that count: its `running` flags are compared against the sessions seen running before the
+app left the foreground. Permission is requested at the first accepted send, which is both
+the first moment a notice could matter and the only prompt iOS offers.
+
 ## Dynamic Type
 
 Text inside a fixed-height box carries a font cap, because an explicit `lineHeight` does not
@@ -114,7 +154,7 @@ The add menu opens the existing goal editor, or creates an absent/completed goal
 
 ## Validation scope
 
-- Node 22.23.2; 65 test files / 404 tests pass, including desktop icon hashes, malformed Goal and schedule responses, expired confirmation feedback, Goal polling, shared-query cursor/window contracts, disconnected selection gates, schedule/Goal editor interactions, slider-card drill-down/search/selection, reload/retained geometry, reduced-motion artwork, drawer filtering/tree/manual order and search merging. TypeScript and formatting pass.
+- Node 22.23.2; 68 test files / 424 tests pass, including desktop icon hashes, malformed Goal and schedule responses, expired confirmation feedback, Goal polling, shared-query cursor/window contracts, disconnected selection gates, schedule/Goal editor interactions, slider-card drill-down/search/selection, reload/retained geometry, reduced-motion artwork, drawer filtering/tree/manual order and search merging. TypeScript and formatting pass.
 - Android arm64 native debug build and isolated review-package install pass with the navigation-bar module. iOS Pods resolve; Android/iOS JavaScript exports pass.
 - The latest model-control review also passes an unsigned arm64 iOS Simulator Release native build after `pod install`. `Podfile.lock` matches the installed Pods manifest and all 96 local Pod source paths resolve. This is not a signed device archive or App Store validation.
 - Android API/resource lint (`NewApi`, `InlinedApi`, `ResourceType`) passes with no findings. Full `lintDebug` crashes in the third-party Worklets Kotlin Gradle-script analysis (`Cannot find a KaModule for the VirtualFile`); no lint checks are disabled or baselined in the repository to hide that failure.

@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import {
   isNearLatestMessage,
   restoredOffsetAfterPrepend,
+  restoredOffsetOnOpen,
   shouldFollowContentGrowth,
   shouldLoadOlderHistory,
   shouldRefreshFromPull,
@@ -171,5 +172,23 @@ describe('unread badge', () => {
     expect(shouldCaptureUnreadBaseline({ nearLatest: false, returning: false })).toBe(true)
     expect(shouldCaptureUnreadBaseline({ nearLatest: true, returning: false })).toBe(false)
     expect(shouldCaptureUnreadBaseline({ nearLatest: false, returning: true })).toBe(false)
+  })
+
+  it('reopens a conversation at the offset it was left at', () => {
+    const saved = { contentHeight: 4000, offsetY: 1200 }
+    expect(restoredOffsetOnOpen({ saved, contentHeight: 4000 })).toBe(1200)
+    // Newer rows grew the tail; the offset still names the same message.
+    expect(restoredOffsetOnOpen({ saved, contentHeight: 5200 })).toBe(1200)
+  })
+
+  it('falls back to the newest message when the transcript came back shorter', () => {
+    expect(restoredOffsetOnOpen({ saved: { contentHeight: 4000, offsetY: 1200 }, contentHeight: 2000 })).toBeUndefined()
+    expect(restoredOffsetOnOpen({ saved: { contentHeight: 4000, offsetY: 0 }, contentHeight: 4000 })).toBeUndefined()
+    expect(restoredOffsetOnOpen({ saved: { contentHeight: 0, offsetY: 0 }, contentHeight: 0 })).toBeUndefined()
+  })
+
+  it('clamps an offset that would land past the measured content', () => {
+    expect(restoredOffsetOnOpen({ saved: { contentHeight: 4000, offsetY: 3900 }, contentHeight: 4000 })).toBe(3900)
+    expect(restoredOffsetOnOpen({ saved: { contentHeight: 4000, offsetY: 4000 }, contentHeight: 4000 })).toBe(4000)
   })
 })

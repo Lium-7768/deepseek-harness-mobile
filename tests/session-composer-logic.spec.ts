@@ -6,6 +6,7 @@ import {
   permissionDescription,
   permissionLabel,
   readPermissionSelect,
+  streamDropped,
 } from '../src/components/session-composer-logic.ts'
 
 describe('session composer projections', () => {
@@ -69,5 +70,38 @@ describe('session composer projections', () => {
     expect(agentPresetLabel(undefined)).toBe('标准模式')
     expect(agentPresetLabel('ptc')).toBe('PTC 模式')
     expect(agentPresetLabel('custom')).toBe('custom')
+  })
+
+  it('refuses a send while the stream is down, and keeps a stop reachable', () => {
+    expect(
+      composerPrimaryAction({
+        cancelling: false,
+        disabled: false,
+        hasText: true,
+        offline: true,
+        running: false,
+        sending: false,
+      }),
+    ).toEqual({ busy: false, disabled: true, kind: 'send' })
+    // Stopping still reaches the Host over HTTP, so a dropped event stream must not block it.
+    expect(
+      composerPrimaryAction({
+        cancelling: false,
+        disabled: false,
+        hasText: true,
+        offline: true,
+        running: true,
+        sending: false,
+      }),
+    ).toEqual({ busy: false, disabled: false, kind: 'stop' })
+    expect(
+      composerPrimaryAction({ cancelling: false, disabled: false, hasText: true, running: false, sending: false }),
+    ).toEqual({ busy: false, disabled: false, kind: 'send' })
+  })
+
+  it('treats only a paired client with a dropped stream as offline', () => {
+    expect(streamDropped({ hasConnection: true, status: 'disconnected' })).toBe(true)
+    expect(streamDropped({ hasConnection: true, status: 'connecting' })).toBe(false)
+    expect(streamDropped({ hasConnection: false, status: 'disconnected' })).toBe(false)
   })
 })

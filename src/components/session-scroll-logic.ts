@@ -209,3 +209,33 @@ export function shouldScrollToLatest({
 }): boolean {
   return hasMessages && (initialPositionPending || nearLatest)
 }
+
+/** How long an opened conversation waits for its remembered offset before falling back. */
+export const RESTORE_WAIT_MS = 1200
+
+/** The opened transcript must still hold at least this share of the remembered height. */
+export const RESTORE_MIN_CONTENT_RATIO = 0.95
+
+/**
+ * Resolves the offset an opened conversation should land on.
+ *
+ * A remembered position addresses the rows above it, and a conversation only grows at
+ * its tail, so the same offset still names the same message once newer rows arrive. A
+ * transcript that came back shorter lost those rows — the offset would then point into
+ * whichever messages happen to remain — so that open falls back to the newest message.
+ *
+ * @param args - The remembered position and the height the opened transcript reports.
+ * @returns The offset to apply, or undefined when the remembered position no longer fits.
+ */
+export function restoredOffsetOnOpen({
+  saved,
+  contentHeight,
+}: {
+  saved: { contentHeight: number; offsetY: number }
+  contentHeight: number
+}): number | undefined {
+  if (![saved.contentHeight, saved.offsetY, contentHeight].every(Number.isFinite)) return undefined
+  if (saved.contentHeight <= 0 || saved.offsetY <= 0) return undefined
+  if (contentHeight < saved.contentHeight * RESTORE_MIN_CONTENT_RATIO) return undefined
+  return Math.max(0, Math.min(saved.offsetY, contentHeight))
+}

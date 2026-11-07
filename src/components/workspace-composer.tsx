@@ -1,4 +1,13 @@
+import {
+  ATTACHMENT_DRAFT_BUDGET_BYTES,
+  MAX_ATTACHMENTS,
+  attachmentBytes,
+  attachmentsWithinBudget,
+  formatAttachmentBytes,
+} from '@/components/attachment-policy'
+import type { DraftImage } from '@/components/composer-types'
 import { tapFeedback } from '@/components/haptics'
+import { prepareAttachment } from '@/components/image-attachments'
 import { composerLayout } from '@/components/native-layout'
 import { catalogModelLabel, selectedCatalogModel } from '@/components/session-selection-logic'
 import { NativeIcon } from '@/components/native-icon'
@@ -21,9 +30,9 @@ import { format, t as message } from '@/locale'
 import { useComposerDraftStore } from '@/state/composer-drafts'
 import type { AppTheme } from '@/theme'
 import { useAppTheme, useThemedStyles } from '@/theme/hooks'
+import { MONOSPACE_FONT } from '@/theme/platform'
 import type {
   MobileAgentPresetEntry,
-  MobileImageMediaType,
   MobileSessionModelsPayload,
   MobileCommandDescriptor,
   MobileModelSelection,
@@ -44,19 +53,14 @@ import {
   useWindowDimensions,
 } from 'react-native'
 
-type DraftImage = {
-  data: string
-  mediaType: MobileImageMediaType
-  name?: string
-  uri: string
-}
-
 type Props = {
   variant?: 'hero' | 'docked'
   draftScope?: string
   agentPreset?: string
   cancelling?: boolean
   disabled?: boolean
+  /** The event stream is down: drafting stays open, sending does not. */
+  offline?: boolean
   /** Rendered below the card, inside the same bottom padding (the Web's `.dock`). */
   footer?: React.ReactNode
   /** Context strip docked immediately above the input card. */
@@ -108,6 +112,7 @@ export function WorkspaceComposer({
   agentPreset,
   cancelling = false,
   disabled = false,
+  offline = false,
   footer,
   header,
   model,
@@ -154,7 +159,7 @@ export function WorkspaceComposer({
   const [draftImages, setDraftImages] = useState<DraftImage[]>([])
   const modelTriggerRef = useRef<View>(null)
   const hasContent = text.trim() !== '' || draftImages.length > 0
-  const action = composerPrimaryAction({ cancelling, disabled, hasText: hasContent, running, sending })
+  const action = composerPrimaryAction({ cancelling, disabled, hasText: hasContent, offline, running, sending })
   const send = async (): Promise<void> => {
     const value = text.trim()
     if (action.kind !== 'send' || action.disabled || !hasContent) return
@@ -176,56 +181,80 @@ export function WorkspaceComposer({
       // The request owner presents the error; keeping the draft makes retry safe.
     }
   }
-  const appendImages = (assets: ImagePicker.ImagePickerAsset[]): void => {
-    const selected = assets.slice(0, 4 - draftImages.length).flatMap((asset) => {
-      if (!asset.base64) return []
-      return [
-        {
-          data: asset.base64,
-          // Both camera and library requests ask Expo for a compressed JPEG base64 payload.
-          mediaType: 'image/jpeg' as const,
+  /**
+   * Shrinks the picked files before anything reaches the draft.
+   *
+   * The picker returns full-resolution files and the gateway refuses a body over 12 MB,
+   * which four photos exceed once base64 inflates them by a third. Each image is
+   * re-encoded on the device; the ones that no longer fit the draft budget are reported
+   * instead of failing the send later.
+   */
+  const appendImages = async (assets: ImagePicker.ImagePickerAsset[]): Promise<void> => {
+    const room = MAX_ATTACHMENTS - draftImages.length
+    if (room <= 0) return
+    const prepared = await Promise.all(
+      assets.slice(0, room).map((asset) =>
+        prepareAttachment({
+          ...(asset.width === null ? {} : { width: asset.width }),
+          ...(asset.height === null ? {} : { height: asset.height }),
           ...(asset.fileName ? { name: asset.fileName } : {}),
           uri: asset.uri,
-        },
-      ]
-    })
-    if (selected.length === 0) {
+        }).catch(() => undefined),
+      ),
+    )
+    const usable = prepared.filter((image): image is DraftImage => image !== undefined)
+    if (usable.length === 0) {
       Alert.alert(message('composer.imageAddFailedTitle'), message('composer.imageAddFailedBody'))
       return
     }
-    setDraftImages((current) => [...current, ...selected].slice(0, 4))
+    const accepted: DraftImage[] = []
+    let skipped = assets.length - usable.length
+    for (const image of usable) {
+      if (attachmentsWithinBudget([...draftImages, ...accepted, image])) accepted.push(image)
+      else skipped += 1
+    }
+    if (accepted.length > 0) setDraftImages((current) => [...current, ...accepted].slice(0, MAX_ATTACHMENTS))
+    if (skipped > 0)
+      Alert.alert(
+        message('composer.imageSkippedTitle'),
+        format('composer.imageSkippedBody', {
+          count: skipped,
+          limit: formatAttachmentBytes(ATTACHMENT_DRAFT_BUDGET_BYTES),
+        }),
+      )
+    if (accepted.length > 0) tapFeedback()
   }
   const pickImage = async (): Promise<void> => {
-    if (controlsDisabled || draftImages.length >= 4) return
+    if (controlsDisabled || draftImages.length >= MAX_ATTACHMENTS) return
     try {
       const result = await ImagePicker.launchImageLibraryAsync({
         allowsMultipleSelection: true,
-        base64: true,
+        base64: false,
         mediaTypes: ['images'],
-        quality: 0.85,
-        selectionLimit: 4 - draftImages.length,
+        quality: 1,
+        selectionLimit: MAX_ATTACHMENTS - draftImages.length,
       })
-      if (!result.canceled) appendImages(result.assets)
+      if (!result.canceled) await appendImages(result.assets)
     } catch {
       Alert.alert(message('composer.photoLibraryFailedTitle'), message('composer.photoLibraryFailedBody'))
     }
   }
   const captureImage = async (): Promise<void> => {
-    if (controlsDisabled || draftImages.length >= 4) return
+    if (controlsDisabled || draftImages.length >= MAX_ATTACHMENTS) return
     try {
       const permission = await ImagePicker.requestCameraPermissionsAsync()
       if (!permission.granted) {
         Alert.alert(message('composer.cameraPermissionTitle'), message('composer.cameraPermissionBody'))
         return
       }
-      const result = await ImagePicker.launchCameraAsync({ base64: true, mediaTypes: ['images'], quality: 0.85 })
-      if (!result.canceled) appendImages(result.assets)
+      const result = await ImagePicker.launchCameraAsync({ base64: false, mediaTypes: ['images'], quality: 1 })
+      if (!result.canceled) await appendImages(result.assets)
     } catch {
       Alert.alert(message('composer.cameraFailedTitle'), message('composer.cameraFailedBody'))
     }
   }
   const chooseImageSource = (): void => {
-    if (controlsDisabled || draftImages.length >= 4) return
+    if (controlsDisabled || draftImages.length >= MAX_ATTACHMENTS) return
     Alert.alert(message('composer.addImage'), message('composer.addImageDetail'), [
       { text: message('composer.takePhoto'), onPress: () => void captureImage() },
       { text: message('composer.choosePhoto'), onPress: () => void pickImage() },
@@ -383,7 +412,10 @@ export function WorkspaceComposer({
         <View style={[s.card, focused && s.cardFocused]}>
           {draftImages.length > 0 ? (
             <View
-              accessibilityLabel={format('composer.imagesAdded', { count: draftImages.length })}
+              accessibilityLabel={format('composer.imagesAdded', {
+                count: draftImages.length,
+                size: formatAttachmentBytes(attachmentBytes(draftImages)),
+              })}
               style={s.previewRow}
             >
               {draftImages.map((image, index) => (
@@ -404,6 +436,9 @@ export function WorkspaceComposer({
                   </Pressable>
                 </View>
               ))}
+              <Text maxFontSizeMultiplier={1.3} style={s.previewSize}>
+                {formatAttachmentBytes(attachmentBytes(draftImages))}
+              </Text>
             </View>
           ) : null}
           <TextInput
@@ -415,7 +450,7 @@ export function WorkspaceComposer({
               setCommandMenuDismissed(false)
             }}
             onSelectionChange={(event) => setCaret(event.nativeEvent.selection.start)}
-            placeholder={placeholder}
+            placeholder={offline && text === '' ? message('composer.offlinePlaceholder') : placeholder}
             placeholderTextColor={theme.colors.inkFaint}
             onBlur={() => setFocused(false)}
             onFocus={() => setFocused(true)}
@@ -615,7 +650,13 @@ export function WorkspaceComposer({
               ) : (
                 <Pressable
                   accessibilityRole="button"
-                  accessibilityLabel={action.busy ? message('composer.sending') : message('composer.send')}
+                  accessibilityLabel={
+                    offline
+                      ? message('composer.offlineSendLabel')
+                      : action.busy
+                        ? message('composer.sending')
+                        : message('composer.send')
+                  }
                   accessibilityState={{ busy: action.busy, disabled: action.disabled }}
                   disabled={action.disabled}
                   hitSlop={5}
@@ -718,6 +759,15 @@ const makeStyles = (theme: AppTheme) =>
     // `ComposerAttachments .rail`: `2px 10px 0` with a -6 bottom pull, so the
     // thumbnails sit closer to the draft than the card's own 12px gap.
     previewRow: { flexDirection: 'row', gap: 10, marginBottom: -6, paddingHorizontal: 10, paddingTop: 2 },
+    // The encoded size sits at the end of the rail, level with the thumbnails' baseline:
+    // it answers the only question a phone can raise about an attachment before sending.
+    previewSize: {
+      alignSelf: 'center',
+      color: theme.colors.inkFaint,
+      fontFamily: MONOSPACE_FONT,
+      fontSize: 11,
+      lineHeight: 16,
+    },
     // `AttachmentRail .item` / `.thumbnail`: 64 square on r20.
     preview: { height: 64, position: 'relative', width: 64 },
     previewImage: {

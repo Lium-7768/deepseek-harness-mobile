@@ -1,4 +1,6 @@
 PODS:
+  - EXApplication (57.0.3):
+    - ExpoModulesCore
   - EXConstants (57.0.22):
     - ExpoModulesCore
   - Expo (57.0.31):
@@ -45,6 +47,8 @@ PODS:
     - ExpoModulesCore
   - ExpoHaptics (57.0.3):
     - ExpoModulesCore
+  - ExpoImageManipulator (57.0.22):
+    - ExpoModulesCore
   - ExpoImagePicker (57.0.20):
     - ExpoModulesCore
   - ExpoKeepAwake (57.0.2):
@@ -88,6 +92,8 @@ PODS:
     - ExpoModulesJSI
     - ExpoModulesWorklets
     - RNWorklets
+  - ExpoNotifications (57.0.25):
+    - ExpoModulesCore
   - ExpoRouter (57.0.29):
     - ExpoModulesCore
     - RNScreens
@@ -2303,6 +2309,7 @@ PODS:
   - Yoga (0.0.0)
 
 DEPENDENCIES:
+  - "EXApplication (from `../node_modules/.pnpm/expo-application@57.0.3_expo@57.0.31/node_modules/expo-application/ios`)"
   - "EXConstants (from `../node_modules/.pnpm/expo-constants@57.0.22_expo@57.0.31_react-native@0.86.3_@babel+core@7.29.7_@react-nativ_f51fbd028477087903ab4fbb0b8782fb/node_modules/expo-constants/ios`)"
   - "Expo (from `../node_modules/.pnpm/expo@57.0.31_@babel+core@7.29.7_@expo+dom-webview@57.0.1_@expo+metro-runtime@57.0.17_ex_b3c700b6513bf403cf634b68bc1c5bfb/node_modules/expo`)"
   - "ExpoAsset (from `../node_modules/.pnpm/expo-asset@57.0.20_expo@57.0.31_react-native@0.86.3_@babel+core@7.29.7_@react-native+me_707076dbcc63b51487948cc58f1a953b/node_modules/expo-asset/ios`)"
@@ -2314,6 +2321,7 @@ DEPENDENCIES:
   - "ExpoFont (from `../node_modules/.pnpm/expo-font@57.0.4_expo@57.0.31_react-native@0.86.3_@babel+core@7.29.7_@react-native+metr_ece311b18df8a9e8078616799980a150/node_modules/expo-font/ios/ExpoFont.podspec`)"
   - "ExpoGlassEffect (from `../node_modules/.pnpm/expo-glass-effect@57.0.4_expo@57.0.31_react-native@0.86.3_@babel+core@7.29.7_@react-nat_1a81812050fd08d1095f0e15537f791c/node_modules/expo-glass-effect/ios`)"
   - "ExpoHaptics (from `../node_modules/.pnpm/expo-haptics@57.0.3_expo@57.0.31/node_modules/expo-haptics/ios`)"
+  - "ExpoImageManipulator (from `../node_modules/.pnpm/expo-image-manipulator@57.0.22_expo@57.0.31/node_modules/expo-image-manipulator/ios/ExpoImageManipulator.podspec`)"
   - "ExpoImagePicker (from `../node_modules/.pnpm/expo-image-picker@57.0.20_expo@57.0.31/node_modules/expo-image-picker/ios`)"
   - "ExpoKeepAwake (from `../node_modules/.pnpm/expo-keep-awake@57.0.2_expo@57.0.31_react@19.2.3/node_modules/expo-keep-awake/ios`)"
   - "ExpoLinking (from `../node_modules/.pnpm/expo-linking@57.0.13_expo@57.0.31_react-native@0.86.3_@babel+core@7.29.7_@react-native+_712ad7ed14e67b1489a22b94feb68949/node_modules/expo-linking/ios`)"
@@ -2322,6 +2330,7 @@ DEPENDENCIES:
   - "ExpoModulesJSI (from `../node_modules/.pnpm/expo-modules-jsi@57.1.3_patch_hash=0ce5fa066f0b7e21ca4c54a038d2d7d5ec8ba1cf44175e1f9b46_32ae0d954b3d84303a95fd719c7a7476/node_modules/expo-modules-jsi/apple`)"
   - "ExpoModulesWorklets (from `../node_modules/.pnpm/expo-modules-core@57.0.24_react-native-worklets@0.10.1_@babel+core@7.29.7_@react-native_896a787e890eb3adc81748ab1eb77bdf/node_modules/expo-modules-core/ExpoModulesWorklets.podspec`)"
   - "ExpoModulesWorkletsAdapter (from `../node_modules/.pnpm/expo-modules-core@57.0.24_react-native-worklets@0.10.1_@babel+core@7.29.7_@react-native_896a787e890eb3adc81748ab1eb77bdf/node_modules/expo-modules-core`)"
+  - "ExpoNotifications (from `../node_modules/.pnpm/expo-notifications@57.0.25_expo@57.0.31_react-native@0.86.3_@babel+core@7.29.7_@react-n_b6a9c83846157e489b3a7b96da72977d/node_modules/expo-notifications/ios`)"
   - "ExpoRouter (from `../node_modules/.pnpm/expo-router@57.0.29_0adf8c1bedeb414083204269da4cfbbe/node_modules/expo-router/ios`)"
   - "ExpoSecureStore (from `../node_modules/.pnpm/expo-secure-store@57.0.4_expo@57.0.31/node_modules/expo-secure-store/ios`)"
   - "ExpoSharing (from `../node_modules/.pnpm/expo-sharing@57.0.24_expo@57.0.31_react-native@0.86.3_@babel+core@7.29.7_@react-native+_9cb33eddb031eae3dea0b672f42f30a8/node_modules/expo-sharing/ios`)"
@@ -2412,6 +2421,8 @@ DEPENDENCIES:
   - "Yoga (from `../node_modules/.pnpm/react-native@0.86.3_@babel+core@7.29.7_@react-native+metro-config@0.86.3_@babel+core@7._dcc1ba86c4f0f476b4029bc2604f6bbc/node_modules/react-native/ReactCommon/yoga`)"
 
 EXTERNAL SOURCES:
+  EXApplication:
+    :path: "../node_modules/.pnpm/expo-application@57.0.3_expo@57.0.31/node_modules/expo-application/ios"
   EXConstants:
     :path: "../node_modules/.pnpm/expo-constants@57.0.22_expo@57.0.31_react-native@0.86.3_@babel+core@7.29.7_@react-nativ_f51fbd028477087903ab4fbb0b8782fb/node_modules/expo-constants/ios"
   Expo:
@@ -2434,6 +2445,8 @@ EXTERNAL SOURCES:
     :path: "../node_modules/.pnpm/expo-glass-effect@57.0.4_expo@57.0.31_react-native@0.86.3_@babel+core@7.29.7_@react-nat_1a81812050fd08d1095f0e15537f791c/node_modules/expo-glass-effect/ios"
   ExpoHaptics:
     :path: "../node_modules/.pnpm/expo-haptics@57.0.3_expo@57.0.31/node_modules/expo-haptics/ios"
+  ExpoImageManipulator:
+    :podspec: "../node_modules/.pnpm/expo-image-manipulator@57.0.22_expo@57.0.31/node_modules/expo-image-manipulator/ios/ExpoImageManipulator.podspec"
   ExpoImagePicker:
     :path: "../node_modules/.pnpm/expo-image-picker@57.0.20_expo@57.0.31/node_modules/expo-image-picker/ios"
   ExpoKeepAwake:
@@ -2450,6 +2463,8 @@ EXTERNAL SOURCES:
     :podspec: "../node_modules/.pnpm/expo-modules-core@57.0.24_react-native-worklets@0.10.1_@babel+core@7.29.7_@react-native_896a787e890eb3adc81748ab1eb77bdf/node_modules/expo-modules-core/ExpoModulesWorklets.podspec"
   ExpoModulesWorkletsAdapter:
     :path: "../node_modules/.pnpm/expo-modules-core@57.0.24_react-native-worklets@0.10.1_@babel+core@7.29.7_@react-native_896a787e890eb3adc81748ab1eb77bdf/node_modules/expo-modules-core"
+  ExpoNotifications:
+    :path: "../node_modules/.pnpm/expo-notifications@57.0.25_expo@57.0.31_react-native@0.86.3_@babel+core@7.29.7_@react-n_b6a9c83846157e489b3a7b96da72977d/node_modules/expo-notifications/ios"
   ExpoRouter:
     :path: "../node_modules/.pnpm/expo-router@57.0.29_0adf8c1bedeb414083204269da4cfbbe/node_modules/expo-router/ios"
   ExpoSecureStore:
@@ -2627,6 +2642,7 @@ EXTERNAL SOURCES:
     :path: "../node_modules/.pnpm/react-native@0.86.3_@babel+core@7.29.7_@react-native+metro-config@0.86.3_@babel+core@7._dcc1ba86c4f0f476b4029bc2604f6bbc/node_modules/react-native/ReactCommon/yoga"
 
 SPEC CHECKSUMS:
+  EXApplication: b442efdb7459bb32cb6bd716b0b6aed3a5959cc8
   EXConstants: 64d0320a4fb0c99f866315808f26316c096ccb63
   Expo: a4399e4f26e6b23d5379f5de1297c6a7b8bd809f
   ExpoAsset: d57cecb4eb5be68088591fcfe3ae82de34d27405
@@ -2638,6 +2654,7 @@ SPEC CHECKSUMS:
   ExpoFont: baf9e5d472c5dd59ca6b3221677f726499452a0e
   ExpoGlassEffect: 452d3b8408009c545b43319fb048f7f8e1f0e1ab
   ExpoHaptics: 4f26ec5ebb4cc9c5907987672ef63de77ae9df60
+  ExpoImageManipulator: 280b0fa5c3054b35993a7b97a13e8f692d5c09fb
   ExpoImagePicker: 68f102f772bbd2a84c621bb482dd63c7008cd8cb
   ExpoKeepAwake: b9ebf2ba14c42a2b5782adab42a2168a689bfd07
   ExpoLinking: b79df6dc2410273c1135015a67da1a7400e526d5
@@ -2646,6 +2663,7 @@ SPEC CHECKSUMS:
   ExpoModulesJSI: 4fa4b1d360fd0a53e19cbdb5b244f6ecdd73c79c
   ExpoModulesWorklets: 60286ff7df5831f442cc993fa102ca4eaed7e65d
   ExpoModulesWorkletsAdapter: d76106f3b8802d433d6dd727c8ac6543492a3155
+  ExpoNotifications: 6c33d3f9246a14a98c43f60d4346bb188d40df97
   ExpoRouter: 2caea06638922fe6c206cb7195749f77bfda29c0
   ExpoSecureStore: c704911d323d1d62ecf6b81bf3afa58eecedd80c
   ExpoSharing: 79c7c06d8444b0741660848c3830edf3ecb568cc

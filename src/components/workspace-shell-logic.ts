@@ -1,3 +1,4 @@
+import { streamDropped } from './session-composer-logic'
 import { mobileTheme } from '../theme'
 
 /** Returns the minimum shell header height for the requested metadata rows.
@@ -29,5 +30,5 @@ export function workspaceKeyboardVerticalOffset(topInset: number, hasHeaderMeta:
  * @returns True when the bar belongs on screen.
  */
 export function shouldShowOfflineBar({ hasConnection, status }: { hasConnection: boolean; status: string }): boolean {
-  return hasConnection && status === 'disconnected'
+  return streamDropped({ hasConnection, status })
 }

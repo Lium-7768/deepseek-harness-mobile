@@ -42,3 +42,18 @@ export function warnFeedback(): void {
     .then((engine) => engine.notificationAsync(engine.NotificationFeedbackType.Warning))
     .catch(() => undefined)
 }
+
+/**
+ * Announces that something the reader was waiting for finished.
+ *
+ * A turn runs for minutes on a phone that is often in a hand rather than on screen;
+ * the success pattern is the one cue that reaches the holder without a look.
+ *
+ * @returns Nothing; a failure inside the engine is swallowed.
+ */
+export function doneFeedback(): void {
+  if (!hapticsSupported()) return
+  void import('expo-haptics')
+    .then((engine) => engine.notificationAsync(engine.NotificationFeedbackType.Success))
+    .catch(() => undefined)
+}

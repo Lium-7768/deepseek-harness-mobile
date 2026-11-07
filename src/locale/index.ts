@@ -11,6 +11,7 @@
  */
 import { activity } from './activity'
 import { attachment } from './attachment'
+import { completion } from './completion'
 import { composer } from './composer'
 import { connect } from './connect'
 import { copy } from './copy'
@@ -66,6 +67,7 @@ const areas = {
   activity,
   attachment,
   common,
+  completion,
   composer,
   connect,
   conversation,

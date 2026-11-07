@@ -1,4 +1,5 @@
 import { queryKeys } from '@/api/query-keys'
+import { noteSessionRunning } from '@/state/completion-notices'
 import type { MobileStreamEvent, SessionEventItem, SessionEventsPayload } from '@/types/mobile'
 import type { QueryClient } from '@tanstack/react-query'
 import { sessionWindow } from './session-window'
@@ -30,8 +31,10 @@ export function applyMobileStreamEvent(queryClient: QueryClient, event: MobileSt
         void queryClient.invalidateQueries({ queryKey: queryKeys.sessionInteractions(sessionId) })
       return
     case 'host/session-status':
-      if (sessionId !== undefined && typeof event.payload.running === 'boolean')
+      if (sessionId !== undefined && typeof event.payload.running === 'boolean') {
         updateSessionStatus(queryClient, sessionId, event.payload.running)
+        noteSessionRunning(sessionId, event.payload.running)
+      }
       return
     case 'host/session-added':
     case 'host/session-removed':

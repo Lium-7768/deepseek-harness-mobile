@@ -2,6 +2,7 @@ import { MobileApi, MobileApiError } from '@/api/mobile-api'
 import { queryKeys } from '@/api/query-keys'
 import { isGoalView } from '@/api/goal-payload'
 import { tapFeedback, warnFeedback } from '@/components/haptics'
+import { requestCompletionPermission } from '@/state/completion-notices'
 import { withErrorContext } from '@/components/route-params'
 import { t as message } from '@/locale'
 import type { MobilePromptContent, SessionEventsPayload } from '@/types/mobile'
@@ -36,6 +37,9 @@ export function useSessionActions(client: MobileApi | undefined, sessionId: stri
     },
     onSuccess: () => {
       tapFeedback()
+      // The first accepted send is the first moment a completion notice could matter,
+      // and the only moment iOS offers the permission prompt without an explanation gap.
+      void requestCompletionPermission()
       // The reader's own prompt is the one row a send must reveal: without this
       // the list stays where it was and a prompt sent from the phone is only
       // found by scrolling.

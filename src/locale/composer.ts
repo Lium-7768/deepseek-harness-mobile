@@ -19,7 +19,7 @@ export const composer = {
   addContent: '添加图片或选择操作',
   menuAddSection: '添加',
   menuFile: '文件',
-  menuFileDetail: '图片附件，发送前压缩',
+  menuFileDetail: '图片附件，最长边缩放到 1600 像素后上传',
   menuCommandSection: '指令',
   menuGoal: '目标',
   menuGoalDetail: '设置或查看长期任务目标',
@@ -30,11 +30,14 @@ export const composer = {
   menuModel: '模型',
   menuModelDetail: '选择本会话使用的模型',
   addImage: '添加图片',
-  addImageDetail: '拍照和照片库中的图片都会在上传前压缩。',
+  addImageDetail: '图片会在本机缩到最长边 1600 像素再上传。',
   takePhoto: '拍照',
   choosePhoto: '从照片库选择',
-  /** `{count}` draft images currently attached. */
-  imagesAdded: '已添加 {count} 张图片',
+  /** `{count}` draft images currently attached; `{size}` is their encoded total. */
+  imagesAdded: '已添加 {count} 张图片，共 {size}',
+  imageSkippedTitle: '部分图片未添加',
+  /** `{count}` skipped images and the `{limit}` the draft may carry in total. */
+  imageSkippedBody: '有 {count} 张图片超出单条消息的附件上限（共 {limit}），已跳过。可以少选几张再发。',
   /** `{index}` is 1-based, matching the remove button's label. */
   attachmentImage: '附件图片 {index}',
   removeAttachment: '移除附件图片 {index}',
@@ -49,6 +52,10 @@ export const composer = {
 
   send: '发送消息',
   sending: '正在发送消息',
+  /** Stands in for the placeholder while the stream is down and nothing is drafted. */
+  offlinePlaceholder: '连接已断开，恢复后可发送',
+  /** Names the disabled send control while the stream is down. */
+  offlineSendLabel: '连接已断开，无法发送',
   stop: '停止当前任务',
   stopping: '正在停止当前任务',
 
