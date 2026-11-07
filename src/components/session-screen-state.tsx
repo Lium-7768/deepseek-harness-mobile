@@ -121,9 +121,6 @@ export function SessionDock({
     <View style={s.dock}>
       {pills.map((pill) => (
         <NativeStatisticsPill
-          // The panel headline repeats the pill's first reading, as the Web's
-          // `.titleValue` repeats the section's headline figure.
-          headline={pill.label.split(' · ')[0] ?? pill.label}
           key={pill.label}
           panel={sessionStatisticPanel(pill.kind, projectionValues, items)}
           pill={pill}

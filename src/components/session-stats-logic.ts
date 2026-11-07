@@ -19,6 +19,8 @@ export interface SessionStatisticRow {
 /** A click-open panel: the Web's `.panel` heading plus its detail rows. */
 export interface SessionStatisticPanel {
   title: string
+  /** The figure the rows add up to, printed opposite the heading. */
+  headline: string
   rows: SessionStatisticRow[]
 }
 
@@ -175,7 +177,13 @@ export function sessionStatisticPanel(
       })
     }
     if (rows.length === 0) return undefined
-    return { rows, title: format('session.statsDialogTitle', {}) }
+    // The panel's headline is what its rows total: the chip's counts describe a
+    // different question than the durations below them.
+    return {
+      headline: formatStatisticsDuration(stats.llmMs + stats.toolMs),
+      rows,
+      title: format('session.statsDialogTitle', {}),
+    }
   }
   const usage = readTokenUsage(projectionValues?.tokenUsage)
   if (usage === undefined) return undefined
@@ -201,7 +209,11 @@ export function sessionStatisticPanel(
     label: format('session.statsOutputLabel', {}),
     value: format('session.statsTokens', { count: formatExactStatisticsTokens(usage.outputTokens) }),
   })
-  return { rows, title: format('session.statsUsageTitle', {}) }
+  return {
+    headline: format('session.statsTokens', { count: formatStatisticsTokens(input + usage.outputTokens) }),
+    rows,
+    title: format('session.statsUsageTitle', {}),
+  }
 }
 
 /**

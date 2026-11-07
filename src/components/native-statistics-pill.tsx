@@ -5,7 +5,7 @@ import type { AppTheme } from '@/theme'
 import { useAppTheme, useThemedStyles } from '@/theme/hooks'
 import { FIXED_GEOMETRY_FONT_CAP } from '@/theme/text-scale'
 import { textStyle } from '@/theme/text'
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
 
 /**
@@ -20,12 +20,9 @@ import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
  * @returns The pill, and its panel while open.
  */
 export function NativeStatisticsPill({
-  headline,
   panel,
   pill,
 }: {
-  /** Headline figure printed opposite the panel's section name. */
-  headline: string
   /** Panel content, or `undefined` when the pill has no detail to show. */
   panel: SessionStatisticPanel | undefined
   pill: SessionStatisticsPill
@@ -33,10 +30,12 @@ export function NativeStatisticsPill({
   const theme = useAppTheme()
   const s = useThemedStyles(makeStyles)
   const [open, setOpen] = useState(false)
+  const anchorRef = useRef<View>(null)
   const interactive = panel !== undefined
   return (
     <>
       <Pressable
+        ref={anchorRef}
         android_ripple={{ borderless: false }}
         accessibilityLabel={pill.label}
         accessibilityRole="button"
@@ -51,7 +50,10 @@ export function NativeStatisticsPill({
           {pill.label}
         </Text>
       </Pressable>
-      <NativeAnchoredPanel onClose={() => setOpen(false)} open={interactive && open}>
+      {/* Anchored above its own chip: the reading being explained sits in the dock,
+          so a full-height sheet with a scrim was more surface than the two rows it
+          holds. */}
+      <NativeAnchoredPanel anchorRef={anchorRef} onClose={() => setOpen(false)} open={interactive && open}>
         {panel === undefined ? null : (
           <ScrollView contentContainerStyle={s.panel} style={s.scroll}>
             <View style={s.title}>
@@ -59,7 +61,7 @@ export function NativeStatisticsPill({
                 <NativeIcon name={pill.glyph} size={14} color={theme.colors.ink} />
                 <Text style={s.titleText}>{panel.title}</Text>
               </View>
-              <Text style={s.titleValue}>{headline}</Text>
+              <Text style={s.titleValue}>{panel.headline}</Text>
             </View>
             <View style={s.titleRule} />
             <View style={s.details}>
