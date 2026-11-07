@@ -104,19 +104,46 @@ export function NativeAgentActivity({
   )
 }
 
+/**
+ * Names one job state in the reader's language.
+ *
+ * @param status - The Host's wire token.
+ * @returns The localized label, falling back to the token for a state this client
+ * does not know.
+ */
+function jobStatusLabel(status: string): string {
+  switch (status) {
+    case 'running':
+      return message('activity.jobRunning')
+    case 'stopping':
+      return message('activity.jobStopping')
+    case 'completed':
+    case 'done':
+      return message('activity.jobCompleted')
+    case 'failed':
+      return message('activity.jobFailed')
+    case 'pending':
+    case 'queued':
+      return message('activity.jobPending')
+    default:
+      return status
+  }
+}
+
 function JobRow({ job }: { job: MobileJobView }): React.JSX.Element {
   const styles = useThemedStyles(makeStyles)
   const theme = useAppTheme()
   const [open, setOpen] = useState(false)
   const live = job.status === 'running' || job.status === 'stopping'
   const title = job.label || job.kind
+  const status = jobStatusLabel(job.status)
   // The card above the transcript can only spare a line each, so the row opens the
   // job's own record: a phone has no second place to read a background task.
   return (
     <>
       <Pressable
         android_ripple={{ borderless: false }}
-        accessibilityLabel={`${title} ${job.status}`}
+        accessibilityLabel={`${title} ${status}`}
         accessibilityRole="button"
         accessibilityState={{ expanded: open }}
         onPress={() => setOpen((current) => !current)}
@@ -128,7 +155,7 @@ function JobRow({ job }: { job: MobileJobView }): React.JSX.Element {
             {title}
           </Text>
           <Text numberOfLines={2} style={styles.jobMeta}>
-            {job.detail ?? job.status}
+            {job.detail ?? status}
           </Text>
         </View>
         <NativeIcon name="chevron-right-outline" size={14} color={theme.colors.inkMuted} />
@@ -136,9 +163,7 @@ function JobRow({ job }: { job: MobileJobView }): React.JSX.Element {
       <NativeAnchoredPanel onClose={() => setOpen(false)} open={open}>
         <View style={styles.jobDetail}>
           <Text style={styles.jobDetailTitle}>{title}</Text>
-          <Text style={styles.jobDetailMeta}>
-            {format('activity.jobStatus', { kind: job.kind, status: job.status })}
-          </Text>
+          <Text style={styles.jobDetailMeta}>{format('activity.jobStatus', { kind: job.kind, status })}</Text>
           {job.detail === undefined ? null : (
             <Text selectable style={styles.jobDetailBody}>
               {job.detail}

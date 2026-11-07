@@ -13,6 +13,12 @@ export const activity = {
   goalActions: '目标操作',
   /** `{kind}` and `{status}` describe one background job. */
   jobStatus: '{kind} · {status}',
+  // Job states come from the Host as wire tokens; a phone never prints them raw.
+  jobRunning: '运行中',
+  jobStopping: '正在停止',
+  jobCompleted: '已完成',
+  jobFailed: '已失败',
+  jobPending: '等待中',
   /** Asks before the one goal verb that cannot be undone. */
   clearGoalBody: '清除后这个目标会停止，已写下的目标内容不会保留。',
   editGoal: '编辑目标',
