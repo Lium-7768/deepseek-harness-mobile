@@ -55,22 +55,27 @@ export function ConnectionSettings({
               </Text>
             </View>
           </View>
-          <Text style={styles.label}>{message('settings.gateway')}</Text>
-          <Text selectable style={styles.value}>
-            {connection?.gatewayUrl ?? message('settings.disconnected')}
-          </Text>
-          <Text style={styles.label}>{message('settings.deviceId')}</Text>
-          <Text
-            accessibilityLabel={
-              connection
-                ? format('settings.deviceIdValue', { deviceId: connection.deviceId })
-                : message('settings.deviceIdNone')
-            }
-            selectable
-            style={styles.value}
-          >
-            {connection ? compactDeviceId(connection.deviceId) : message('settings.disconnected')}
-          </Text>
+          <View style={styles.connectionField}>
+            <Text style={styles.label}>{message('settings.gateway')}</Text>
+            <Text numberOfLines={1} selectable style={styles.value}>
+              {connection?.gatewayUrl ?? message('settings.disconnected')}
+            </Text>
+          </View>
+          <View style={styles.connectionField}>
+            <Text style={styles.label}>{message('settings.deviceId')}</Text>
+            <Text
+              accessibilityLabel={
+                connection
+                  ? format('settings.deviceIdValue', { deviceId: connection.deviceId })
+                  : message('settings.deviceIdNone')
+              }
+              numberOfLines={1}
+              selectable
+              style={styles.value}
+            >
+              {connection ? compactDeviceId(connection.deviceId) : message('settings.disconnected')}
+            </Text>
+          </View>
           {connection ? (
             <NativeActionButton
               label={message('settings.forgetAction')}

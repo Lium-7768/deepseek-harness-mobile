@@ -1,7 +1,7 @@
 import { MobileApi, mobileErrorMessage } from '@/api/mobile-api'
 import { queryKeys } from '@/api/query-keys'
-import { formatAccountBalance, walletSummary } from '@/components/settings/account-logic'
-import { ReadOnlySetting, QueryErrorNotice } from '@/components/settings/settings-shared'
+import { walletSummary } from '@/components/settings/account-logic'
+import { QueryErrorNotice, SettingsValueRow } from '@/components/settings/settings-shared'
 import { makeSettingsStyles } from '@/components/settings/settings-styles'
 import { t as message } from '@/locale'
 import { useConnectionStore } from '@/state/connection'
@@ -44,10 +44,7 @@ export function AccountSettings({
   })
   return (
     <ScrollView contentContainerStyle={styles.list}>
-      <View style={styles.header}>
-        <Text style={styles.panelTitle}>{message('settings.sectionAccount')}</Text>
-        <Text style={styles.subtitle}>{message('settings.accountReadOnly')}</Text>
-      </View>
+      <Text style={styles.subtitle}>{message('settings.accountReadOnly')}</Text>
       {profile.isError ? (
         <QueryErrorNotice
           onRetry={() => void profile.refetch()}
@@ -55,29 +52,21 @@ export function AccountSettings({
         />
       ) : null}
       {profile.data === null ? (
-        <View style={styles.section}>
-          <Text style={styles.subtitle}>{message('settings.accountSignedOut')}</Text>
-        </View>
+        <Text style={styles.subtitle}>{message('settings.accountSignedOut')}</Text>
       ) : profile.data === undefined ? (
-        <View style={styles.section}>
-          <Text style={styles.subtitle}>{message('common.loading')}</Text>
-        </View>
+        <Text style={styles.subtitle}>{message('common.loading')}</Text>
       ) : (
-        <>
-          <View style={styles.section}>
-            <AccountProfileRows profile={profile.data} />
-          </View>
-          <View style={styles.section}>
-            {balance.isError ? (
-              <QueryErrorNotice
-                onRetry={() => void balance.refetch()}
-                text={mobileErrorMessage(balance.error, message('settings.loadFailed'))}
-              />
-            ) : (
-              <AccountBalanceRows balance={balance.data} />
-            )}
-          </View>
-        </>
+        <View>
+          <AccountProfileRows profile={profile.data} />
+          {balance.isError ? (
+            <QueryErrorNotice
+              onRetry={() => void balance.refetch()}
+              text={mobileErrorMessage(balance.error, message('settings.loadFailed'))}
+            />
+          ) : (
+            <AccountBalanceRows balance={balance.data} />
+          )}
+        </View>
       )}
     </ScrollView>
   )
@@ -90,25 +79,14 @@ export function AccountSettings({
  * @returns One read-only row per known field, or a placeholder when it is masked.
  */
 function AccountProfileRows({ profile }: { profile: MobileAccountProfile }): React.JSX.Element {
-  const styles = useThemedStyles(makeSettingsStyles)
   const name = profile.name ?? message('settings.accountNameMissing')
   const contact = profile.contact ?? message('settings.accountContactMissing')
   return (
     <>
-      <ReadOnlySetting
-        detail={message('settings.accountNameDetail')}
-        title={message('settings.accountName')}
-        value={name}
-      />
-      <ReadOnlySetting
-        detail={message('settings.accountContactDetail')}
-        title={message('settings.accountContact')}
-        value={contact}
-      />
+      <SettingsValueRow label={message('settings.accountName')} value={name} />
+      <SettingsValueRow label={message('settings.accountContact')} value={contact} />
       {profile.avatarUrl === null ? null : (
-        <Text numberOfLines={1} style={styles.subtitle}>
-          {message('settings.accountAvatarPresent')}
-        </Text>
+        <SettingsValueRow label={message('settings.accountAvatar')} value={message('settings.accountSynced')} />
       )}
     </>
   )
@@ -118,7 +96,7 @@ function AccountProfileRows({ profile }: { profile: MobileAccountProfile }): Rea
  * Prints the wallet balances.
  *
  * @param props - The wallets the desktop published, or undefined while loading.
- * @returns One read-only row per currency, plus the combined reading.
+ * @returns One row for the combined reading and one per bonus currency.
  */
 function AccountBalanceRows({ balance }: { balance: MobileAccountBalance | null | undefined }): React.JSX.Element {
   const styles = useThemedStyles(makeSettingsStyles)
@@ -128,23 +106,11 @@ function AccountBalanceRows({ balance }: { balance: MobileAccountBalance | null 
   const bonus = walletSummary(balance.bonusWallets)
   return (
     <>
-      <ReadOnlySetting
-        detail={message('settings.accountBalanceDetail')}
-        title={message('settings.accountBalance')}
+      <SettingsValueRow
+        label={message('settings.accountBalance')}
         value={summary ?? message('settings.accountBalanceEmpty')}
       />
-      {bonus === undefined ? null : (
-        <ReadOnlySetting
-          detail={message('settings.accountBonusDetail')}
-          title={message('settings.accountBonus')}
-          value={bonus}
-        />
-      )}
-      {balance.wallets.map((wallet) => (
-        <Text key={wallet.currency} style={styles.subtitle}>
-          {`${wallet.currency} ${formatAccountBalance(wallet.balance, wallet.currency)}`}
-        </Text>
-      ))}
+      {bonus === undefined ? null : <SettingsValueRow label={message('settings.accountBonus')} value={bonus} />}
     </>
   )
 }

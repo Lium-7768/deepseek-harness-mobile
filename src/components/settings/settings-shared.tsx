@@ -128,6 +128,28 @@ export function ChoiceSheet({
   )
 }
 
+/**
+ * One read-only fact: its name at the left edge and its value at the right.
+ *
+ * A phone row that carries a supporting sentence per fact spends three lines on
+ * what fits in one; where the sentence explained who owns the field, the page's
+ * own note already says it.
+ *
+ * @param label - the fact's name.
+ * @param value - its current value.
+ */
+export function SettingsValueRow({ label, value }: { label: string; value: string }): React.JSX.Element {
+  const styles = useThemedStyles(makeSettingsStyles)
+  return (
+    <View style={styles.field}>
+      <Text style={styles.fieldLabel}>{label}</Text>
+      <Text numberOfLines={2} style={styles.fieldValue}>
+        {value}
+      </Text>
+    </View>
+  )
+}
+
 export function OptionSection({
   title,
   description,

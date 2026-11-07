@@ -5,11 +5,12 @@ import { agentPresetDescription, agentPresetName, isShippedPreset } from '@/comp
 import { format, t as message } from '@/locale'
 import { useConnectionStore } from '@/state/connection'
 import { useAppTheme, useThemedStyles } from '@/theme/hooks'
+import { NativeActionButton } from '@/components/native-action-button'
+import { presetGuideIntro } from '@/components/settings/settings-labels'
 import { useQuery } from '@tanstack/react-query'
 import { router } from 'expo-router'
 import { Alert, Pressable, ScrollView, Text, View } from 'react-native'
 
-import { presetGuideIntro } from '@/components/settings/settings-labels'
 import { CenteredState, ErrorState, ReadOnlySetting } from '@/components/settings/settings-shared'
 import { makeSettingsStyles } from '@/components/settings/settings-styles'
 
@@ -64,6 +65,14 @@ export function PresetSettings({
             {detail.data?.content ?? message('settings.presetEmpty')}
           </Text>
         )}
+        {rosterRow === undefined || !isShippedPreset(rosterRow) ? null : (
+          <NativeActionButton
+            icon="code-outline"
+            label={message('settings.presetHowToUse')}
+            onPress={() => Alert.alert(message('settings.presetHowToUse'), presetGuideIntro(rosterRow) ?? '')}
+            variant="secondary"
+          />
+        )}
         <ReadOnlySetting
           title={message('settings.editPreset')}
           value={message('settings.desktopOnly')}
@@ -74,27 +83,22 @@ export function PresetSettings({
   }
   return (
     <ScrollView contentContainerStyle={styles.list}>
-      <View style={styles.header}>
-        <Text style={styles.panelTitle}>{message('settings.sectionPresets')}</Text>
-        <Text style={styles.subtitle}>{message('settings.presetsIntro')}</Text>
-      </View>
-      {presets.data?.presets.some(isShippedPreset) === true ? (
-        <Text style={styles.groupTitle}>{message('settings.presetsBuiltInGroup')}</Text>
-      ) : null}
+      <Text style={styles.subtitle}>{message('settings.presetsIntro')}</Text>
       {presets.data?.presets.map((item) => {
         const open = (): void => {
           router.push({ pathname: '/settings', params: { section: 'presets', preset: item.id } })
         }
         const shipped = isShippedPreset(item)
         return (
-          <View key={item.id} style={[styles.presetCard, item.isDefault && styles.presetCardDefault]}>
-            <Pressable
-              android_ripple={{ borderless: false }}
-              accessibilityRole="button"
-              accessibilityLabel={format('settings.viewPreset', { name: agentPresetName(item) })}
-              onPress={open}
-              style={({ pressed }) => [styles.presetMain, pressed && styles.pressed]}
-            >
+          <Pressable
+            android_ripple={{ borderless: false }}
+            accessibilityLabel={format('settings.viewPreset', { name: agentPresetName(item) })}
+            accessibilityRole="button"
+            key={item.id}
+            onPress={open}
+            style={({ pressed }) => [styles.presetRow, pressed && styles.pressed]}
+          >
+            <View style={styles.presetRowText}>
               <View style={styles.presetHead}>
                 <Text style={styles.presetName}>{agentPresetName(item)}</Text>
                 {item.isDefault ? (
@@ -102,49 +106,13 @@ export function PresetSettings({
                 ) : shipped ? (
                   <Text style={styles.presetTag}>{message('settings.shippedTag')}</Text>
                 ) : null}
-                <View style={styles.presetHeadFiller} />
-                <Text style={styles.presetId}>{item.id}</Text>
               </View>
-              <Text style={styles.presetBody}>{agentPresetDescription(item)}</Text>
-            </Pressable>
-            {shipped ? (
-              <View style={styles.presetFoot}>
-                <Pressable
-                  accessibilityRole="button"
-                  android_ripple={{ borderless: false }}
-                  hitSlop={4}
-                  onPress={open}
-                  style={styles.presetFootAction}
-                >
-                  <Text style={styles.presetFootLabel}>{message('settings.presetExplanation')}</Text>
-                </Pressable>
-                <Pressable
-                  android_ripple={{ borderless: false }}
-                  accessibilityRole="button"
-                  hitSlop={4}
-                  onPress={() =>
-                    Alert.alert(
-                      message('settings.presetHowToUse'),
-                      presetGuideIntro(item) ?? agentPresetDescription(item),
-                    )
-                  }
-                  style={styles.presetFootAction}
-                >
-                  <Text style={styles.presetFootLabel}>{message('settings.presetHowToUse')}</Text>
-                </Pressable>
-                <Pressable
-                  android_ripple={{ borderless: false }}
-                  accessibilityLabel={format('settings.viewPreset', { name: agentPresetName(item) })}
-                  accessibilityRole="button"
-                  hitSlop={4}
-                  onPress={open}
-                  style={styles.presetFootIcon}
-                >
-                  <NativeIcon name="chevron-right-outline" size={16} color={theme.colors.inkTertiary} />
-                </Pressable>
-              </View>
-            ) : null}
-          </View>
+              <Text numberOfLines={2} style={styles.presetBody}>
+                {agentPresetDescription(item)}
+              </Text>
+            </View>
+            <NativeIcon name="chevron-right-outline" size={16} color={theme.colors.inkTertiary} />
+          </Pressable>
         )
       })}
       {presets.data?.presets.length === 0 ? <Text style={styles.muted}>{message('settings.noPresets')}</Text> : null}

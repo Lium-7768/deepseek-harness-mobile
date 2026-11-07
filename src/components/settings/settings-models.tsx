@@ -1,21 +1,19 @@
 import { MobileApi, mobileErrorMessage } from '@/api/mobile-api'
 import { queryKeys } from '@/api/query-keys'
-import {
-  NativeModelSelectionGroup,
-  nativeModelSelectionKey,
-  type NativeModelSelection,
-} from '@/components/native-model-selection'
+import { nativeModelSelectionKey, type NativeModelSelection } from '@/components/native-model-selection'
+import { ModelChoiceSheet } from '@/components/settings/model-choice-sheet'
+import { catalogModelLabel } from '@/components/session-selection-logic'
 import { format, t as message } from '@/locale'
 import { useConnectionStore } from '@/state/connection'
 import { useThemedStyles } from '@/theme/hooks'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useState } from 'react'
-import { Alert, ScrollView, Text, View } from 'react-native'
+import { Alert, ScrollView, Text } from 'react-native'
 
 import {
   CenteredState,
   QueryErrorNotice,
-  ReadOnlySetting,
+  SettingsFieldRow,
   namespace,
   readModelSelection,
 } from '@/components/settings/settings-shared'
@@ -38,6 +36,7 @@ export function ModelSettings({
     queryFn: ({ signal }) => client.withSignal(signal).settingsDescribe(),
   })
   const [submitting, setSubmitting] = useState<string | undefined>(undefined)
+  const [pickerOpen, setPickerOpen] = useState(false)
   const descriptor = namespace(settings.data, 'agent-default-model')
   const selection = readModelSelection(descriptor?.value)
   const writable = settings.data?.writable === true && descriptor !== undefined
@@ -68,12 +67,9 @@ export function ModelSettings({
       .finally(() => setSubmitting(undefined))
   }
   if (models.isPending || settings.isPending) return <CenteredState text={message('settings.loadingModels')} />
+  const groups = models.data?.groups ?? []
   return (
     <ScrollView contentContainerStyle={styles.list}>
-      <View style={styles.header}>
-        <Text style={styles.panelTitle}>{message('settings.sectionModels')}</Text>
-        <Text style={styles.subtitleLarge}>{message('settings.modelScopeNote')}</Text>
-      </View>
       {models.isError ? (
         <QueryErrorNotice
           text={mobileErrorMessage(models.error, message('settings.modelsLoadFailed'))}
@@ -86,28 +82,34 @@ export function ModelSettings({
           onRetry={() => void settings.refetch()}
         />
       ) : null}
-      <Text style={styles.selectionHint}>{message('settings.defaultModel')}</Text>
-      {models.data?.groups.map((group) => (
-        <NativeModelSelectionGroup
-          key={group.id}
-          disabled={!writable || submitting !== undefined}
-          group={group}
-          onSelect={chooseDefaultModel}
-          selection={selection}
-          submittingKey={submitting}
-        />
-      ))}
-      {models.data?.groups.length === 0 ? <Text style={styles.muted}>{message('settings.noModels')}</Text> : null}
+      <SettingsFieldRow
+        description={message('settings.modelScopeNote')}
+        disabled={!writable || models.isError}
+        label={message('settings.defaultModel')}
+        onPress={
+          writable
+            ? () => {
+                setPickerOpen(true)
+              }
+            : undefined
+        }
+        value={selection === undefined ? message('settings.noModels') : catalogModelLabel(groups, selection)}
+      />
+      {groups.length === 0 && !models.isError ? <Text style={styles.muted}>{message('settings.noModels')}</Text> : null}
       {models.data?.failures.map((failure) => (
         <Text key={failure.id} style={styles.warning}>
           {format('settings.modelDirectoryUnavailable', { name: failure.name })}
         </Text>
       ))}
       {!writable ? <Text style={styles.notice}>{message('settings.modelManagedByDesktop')}</Text> : null}
-      <ReadOnlySetting
-        title={message('settings.providers')}
-        value={message('settings.desktopOnly')}
-        detail={message('settings.providersDetail')}
+      <ModelChoiceSheet
+        groups={groups}
+        loading={models.isFetching}
+        onClose={() => setPickerOpen(false)}
+        onSelect={chooseDefaultModel}
+        open={pickerOpen}
+        selection={selection}
+        submitting={submitting}
       />
     </ScrollView>
   )

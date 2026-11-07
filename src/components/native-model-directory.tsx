@@ -39,6 +39,7 @@ export function NativeModelDirectory({
   status,
   onBack,
   onSelect,
+  showDetail = true,
 }: {
   groups: MobileModelProviderGroup[]
   selection?: Choice
@@ -47,6 +48,11 @@ export function NativeModelDirectory({
   status: React.ReactNode
   onBack(): void
   onSelect(choice: Choice): void
+  /**
+   * Whether a row prints its description or address prefix. A settings sheet
+   * lists routings to pick one; the composer's picker explains the model first.
+   */
+  showDetail?: boolean
 }): React.JSX.Element {
   const s = useThemedStyles(makeStyles)
   const theme = useAppTheme()
@@ -176,7 +182,7 @@ export function NativeModelDirectory({
                 <Text numberOfLines={2} style={s.name}>
                   {item.label}
                 </Text>
-                {item.detail ? (
+                {showDetail && item.detail ? (
                   <Text numberOfLines={2} style={s.detail}>
                     {item.detail}
                   </Text>

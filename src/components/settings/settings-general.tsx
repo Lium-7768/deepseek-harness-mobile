@@ -99,10 +99,9 @@ export function GeneralSettings({
   return (
     <>
       <ScrollView contentContainerStyle={styles.list}>
-        <View style={styles.header}>
-          <Text style={styles.panelTitle}>{message('settings.sectionGeneral')}</Text>
-          <Text style={styles.subtitle}>{message('settings.mobileScopeNote')}</Text>
-        </View>
+        {/* The section bar already names this page; the top line states only
+            what the phone may change. */}
+        <Text style={styles.subtitle}>{message('settings.mobileScopeNote')}</Text>
         {settings.isError ? (
           <QueryErrorNotice
             text={mobileErrorMessage(settings.error, message('settings.loadFailed'))}

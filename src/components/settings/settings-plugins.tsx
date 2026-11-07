@@ -9,7 +9,7 @@ import { memo, useState } from 'react'
 import { FlatList, Text, TextInput, View } from 'react-native'
 
 import { pluginLabel } from '@/components/settings/settings-labels'
-import { CenteredState, ErrorState, ReadOnlySetting } from '@/components/settings/settings-shared'
+import { CenteredState, ErrorState } from '@/components/settings/settings-shared'
 import { makeSettingsStyles } from '@/components/settings/settings-styles'
 
 export function PluginSettings({
@@ -50,10 +50,7 @@ export function PluginSettings({
       keyExtractor={(item) => item.ns}
       ListHeaderComponent={
         <>
-          <View style={styles.pluginHeader}>
-            <Text style={styles.panelTitleWide}>{message('settings.sectionPlugins')}</Text>
-            <Text style={styles.pluginIntro}>{message('settings.pluginsReadOnlyNote')}</Text>
-          </View>
+          <Text style={styles.pluginIntro}>{message('settings.pluginsReadOnlyNote')}</Text>
           <View style={styles.pluginSearch}>
             <NativeIcon name="search-outline" size={14} color={theme.colors.inkTertiary} />
             <TextInput
@@ -66,10 +63,6 @@ export function PluginSettings({
               value={query}
             />
           </View>
-          <View style={styles.pluginGroup}>
-            <Text style={styles.pluginGroupTitle}>{message('settings.namespacesTitle')}</Text>
-            <Text style={styles.pluginGroupSub}>{message('settings.namespacesDescription')}</Text>
-          </View>
         </>
       }
       ListEmptyComponent={
@@ -77,38 +70,29 @@ export function PluginSettings({
           {message(namespaces.length === 0 ? 'settings.noPlugins' : 'settings.noPluginMatches')}
         </Text>
       }
-      ListFooterComponent={
-        <ReadOnlySetting
-          title={message('settings.pluginManagement')}
-          value={message('settings.desktopOnly')}
-          detail={message('settings.pluginManagementDetail')}
-        />
-      }
-      renderItem={({ item }) => <PluginCard item={item} />}
+      renderItem={({ item }) => <PluginRow item={item} />}
     />
   )
 }
 
-const PluginCard = memo(function PluginCard({ item }: { item: { ns: string; applies?: string } }): React.JSX.Element {
+const PluginRow = memo(function PluginRow({ item }: { item: { ns: string; applies?: string } }): React.JSX.Element {
   const styles = useThemedStyles(makeSettingsStyles)
   const label = pluginLabel(item.ns)
   return (
-    <View style={styles.pluginCard}>
-      <View style={styles.pluginCardHead}>
-        <Text numberOfLines={1} style={styles.pluginCardTitle}>
+    <View style={styles.pluginRow}>
+      <View style={styles.pluginRowText}>
+        <Text numberOfLines={1} style={styles.pluginRowLabel}>
           {label}
         </Text>
-        <Text style={styles.pluginCardTag}>
-          {item.applies === 'restart' ? message('settings.effectRestart') : message('settings.effectLive')}
-        </Text>
-      </View>
-      {label === item.ns ? null : (
-        <View style={styles.pluginCardMeta}>
-          <Text numberOfLines={1} style={styles.pluginCardIdentity}>
+        {label === item.ns ? null : (
+          <Text numberOfLines={1} style={styles.pluginRowIdentity}>
             {item.ns}
           </Text>
-        </View>
-      )}
+        )}
+      </View>
+      <Text style={styles.pluginCardTag}>
+        {item.applies === 'restart' ? message('settings.effectRestart') : message('settings.effectLive')}
+      </Text>
     </View>
   )
 })

@@ -11,7 +11,6 @@ export const makeSettingsStyles = (theme: AppTheme) =>
     header: { gap: 4, marginBottom: theme.spacing.sm },
     subtitle: { color: theme.colors.inkTertiary, fontSize: 13, lineHeight: 20 },
     // The Web's models page prints its intro at 14/400 on a 22px line.
-    subtitleLarge: { color: theme.colors.inkTertiary, fontSize: 14, lineHeight: 22 },
     // 22px title line, 20px glyph: 1px of lead puts the glyph on the title's centre.
     // The desktop's preset row carries the default marker as an inverted pill, the
     // shipped marker as an outlined one, and the raw id right-aligned as code.
@@ -40,14 +39,18 @@ export const makeSettingsStyles = (theme: AppTheme) =>
       paddingVertical: 1,
     },
 
-    presetId: {
-      maxWidth: '100%',
-      flexShrink: 1,
-      color: theme.colors.inkTertiary,
-      fontSize: 11,
-      lineHeight: 21,
-      marginLeft: 'auto',
+    // One preset is one hairlined row: name, its shipped/default tag, a
+    // two-line summary, and a chevron into the descriptor. The card, its raw id
+    // line, and its three footer controls repeated what the row already says.
+    presetRow: {
+      alignItems: 'center',
+      borderBottomColor: theme.colors.borderHairline,
+      borderBottomWidth: StyleSheet.hairlineWidth,
+      flexDirection: 'row',
+      gap: theme.spacing.md,
+      paddingVertical: 12,
     },
+    presetRowText: { flex: 1, gap: 2, minWidth: 0 },
     section: {
       backgroundColor: theme.colors.surface,
       borderColor: theme.colors.border,
@@ -56,18 +59,11 @@ export const makeSettingsStyles = (theme: AppTheme) =>
       gap: 8,
       padding: 14,
     },
-    // Web 内置插件 page: 16pt gutters, heading/intro block then a 12pt gap to
-    // the catalog; each plugin is a 20-radius card with a 14/500 title, a state
-    // tag, and a mono identity chip (`k8jdEW_card`).
+    // Web 内置插件 page at phone width: 16pt gutters, the intro line, then the
+    // search field; each namespace is one hairlined row, not a card — the card
+    // per entry spent 52pt naming what a single line already says.
     pluginList: { gap: 12, paddingBottom: theme.spacing.xxl, paddingHorizontal: 16, paddingTop: 12 },
-    pluginHeader: { gap: 12 },
     pluginIntro: { color: theme.colors.inkTertiary, fontSize: 13, lineHeight: 18 },
-    pluginGroup: { gap: 10 },
-    // `k8jdEW_groupTitle`: 14/400 ink, no tracking, on its 22px line.
-    pluginGroupTitle: { color: theme.colors.ink, fontSize: 14, lineHeight: 22 },
-    // `k8jdEW_groupSub`: 12/18 tertiary directly under the group title row.
-    pluginGroupSub: { color: theme.colors.inkTertiary, fontSize: 12, lineHeight: 18, marginTop: -6 },
-    pluginCards: { gap: 10 },
     // `k8jdEW_search`: 36 tall, 12 radius, hairline `border-l4` outline on the
     // layer-1 fill, glyph 12 in from the edge, 13px input starting at 36.
     pluginSearch: {
@@ -90,22 +86,17 @@ export const makeSettingsStyles = (theme: AppTheme) =>
       paddingVertical: 8,
       paddingHorizontal: 0,
     },
-    // `k8jdEW_card` + `cardContent`: radius 20, hairline outline, 12px 14px,
-    // 2pt gap between the title row and the meta chip.
-    pluginCard: {
-      backgroundColor: theme.colors.settingsCardFill,
-      borderColor: theme.colors.settingsCardStroke,
-      borderRadius: theme.radius.xl,
-      borderWidth: 0.5,
-      gap: 2,
-      // `cardContent { min-height: 52px }`: a card with neither description nor
-      // identity chip keeps the two-line height of one that has both.
-      minHeight: 52,
-      paddingHorizontal: 14,
+    pluginRow: {
+      alignItems: 'center',
+      borderBottomColor: theme.colors.borderHairline,
+      borderBottomWidth: StyleSheet.hairlineWidth,
+      flexDirection: 'row',
+      gap: theme.spacing.md,
       paddingVertical: 12,
     },
-    pluginCardHead: { alignItems: 'center', flexDirection: 'row', gap: 12 },
-    pluginCardTitle: { color: theme.colors.ink, flex: 1, fontSize: 14, fontWeight: '500', lineHeight: 20 },
+    pluginRowText: { flex: 1, gap: 2, minWidth: 0 },
+    pluginRowLabel: { color: theme.colors.ink, fontSize: 14, fontWeight: '500', lineHeight: 20 },
+    pluginRowIdentity: { color: theme.colors.inkTertiary, fontFamily: MONOSPACE_FONT, fontSize: 12, lineHeight: 18 },
     // `_tag_brmue_4`: 11/17 on `surfaceMuted`, 1px 8px padding, pill radius.
     pluginCardTag: {
       backgroundColor: theme.colors.surfaceMuted,
@@ -118,59 +109,13 @@ export const makeSettingsStyles = (theme: AppTheme) =>
       paddingHorizontal: 8,
       paddingVertical: 1,
     },
-    // `cardMeta`: 6pt above the chip; `cardIdentity` is 12/18 mono on a 4-radius
-    // `surfaceMuted` fill with 1px 6px padding.
-    pluginCardMeta: { paddingTop: 6 },
-    pluginCardIdentity: {
-      alignSelf: 'flex-start',
-      backgroundColor: theme.colors.surfaceMuted,
-      borderRadius: 4,
-      color: theme.colors.inkMuted,
-      fontFamily: MONOSPACE_FONT,
-      fontSize: 12,
-      lineHeight: 18,
-      overflow: 'hidden',
-      paddingHorizontal: 6,
-      paddingVertical: 1,
-    },
     // Panel heading: the Web's models and presets pages print 16/500 on a 24px
     // line, the plugins page 18/600 (`T4WTQq_heading`).
-    panelTitle: { color: theme.colors.ink, fontSize: 16, fontWeight: '500', lineHeight: 24 },
-    panelTitleWide: { color: theme.colors.ink, fontSize: 18, fontWeight: '600', lineHeight: 26 },
     sectionTitle: { color: theme.colors.ink, fontSize: 20, fontWeight: '600', lineHeight: 28 },
     // `XzvN5G_card`: radius 20, hairline `settings-card-stroke` outline on the
     // card fill, the main block padded 14/16/12 and the footer under a divider.
-    presetCard: {
-      backgroundColor: theme.colors.settingsCardFill,
-      borderColor: theme.colors.settingsCardStroke,
-      borderRadius: theme.radius.xl,
-      borderWidth: 0.5,
-      overflow: 'hidden',
-    },
-    presetCardDefault: { backgroundColor: theme.colors.surfaceMuted },
     // `cardMain`: 14px 16px 12px, 12pt between the head row and the body.
-    presetMain: { gap: 12, paddingBottom: 12, paddingHorizontal: 16, paddingTop: 14 },
     // `cardFoot`: 6px 10px under a hairline, 36pt ghost actions, 28pt icon.
-    presetFoot: {
-      alignItems: 'center',
-      borderTopColor: theme.colors.border,
-      borderTopWidth: 0.5,
-      flexDirection: 'row',
-      gap: 4,
-      paddingHorizontal: 10,
-      paddingVertical: 6,
-    },
-    presetFootAction: { justifyContent: 'center', minHeight: 36, paddingHorizontal: 6 },
-    presetFootLabel: { color: theme.colors.inkTertiary, fontSize: 12, lineHeight: 22 },
-    presetFootIcon: {
-      alignItems: 'center',
-      borderRadius: theme.radius.sm,
-      height: 28,
-      justifyContent: 'center',
-      marginLeft: 'auto',
-      width: 28,
-    },
-    presetHeadFiller: { flex: 1 },
     presetName: { color: theme.colors.ink, fontSize: 15, fontWeight: '600', lineHeight: 21 },
     presetBody: { color: theme.colors.inkMuted, fontSize: 13, lineHeight: 20 },
     readOnlyBlock: {
@@ -187,25 +132,7 @@ export const makeSettingsStyles = (theme: AppTheme) =>
     },
     readOnlyTitle: { color: theme.colors.ink, flexShrink: 1, fontSize: theme.typography.body, fontWeight: '400' },
     readOnlyDetail: { color: theme.colors.inkTertiary, fontSize: 12, lineHeight: 18 },
-    optionRow: {
-      alignItems: 'center',
-      borderColor: theme.colors.border,
-      borderRadius: 9,
-      borderWidth: 1,
-      flexDirection: 'row',
-      gap: 10,
-      justifyContent: 'space-between',
-      padding: 11,
-    },
     optionSelected: { backgroundColor: theme.colors.surfaceActive, borderColor: theme.colors.accent },
-    optionDisabled: { opacity: 0.5 },
-    selectionHint: {
-      color: theme.colors.inkMuted,
-      fontSize: theme.typography.caption,
-      fontWeight: '500',
-      lineHeight: 18,
-      marginHorizontal: theme.spacing.sm,
-    },
     // `AgentPresetSection.module.css .groupHead`: 12/600, tertiary, uppercase
     // with .06em tracking. Chinese has no case, so only the tracking carries.
     groupTitle: {
@@ -229,7 +156,7 @@ export const makeSettingsStyles = (theme: AppTheme) =>
       borderColor: theme.colors.border,
       borderRadius: theme.radius.control,
       borderWidth: StyleSheet.hairlineWidth,
-      gap: theme.spacing.sm,
+      gap: theme.spacing.md,
       padding: theme.spacing.md,
     },
     cardTitle: { color: theme.colors.ink, fontSize: 16, fontWeight: '600', lineHeight: 24 },
@@ -239,7 +166,10 @@ export const makeSettingsStyles = (theme: AppTheme) =>
     dotDisconnected: { backgroundColor: theme.colors.inkFaint },
     connectedText: { color: theme.colors.successText, fontSize: 11, fontWeight: '500', lineHeight: 16 },
     disconnectedText: { color: theme.colors.inkMuted },
-    label: { color: theme.colors.inkMuted, fontSize: 13, fontWeight: '400', lineHeight: 18, marginTop: 7 },
+    // One fact per pair: a 12/18 tertiary name over its value, 2pt apart, so the
+    // eye reads two groups instead of four sibling lines.
+    connectionField: { gap: 2 },
+    label: { color: theme.colors.inkTertiary, fontSize: 12, lineHeight: 18 },
     value: { color: theme.colors.ink, fontSize: 13, lineHeight: 18 },
     // Web mobile: title 16/500, close glyph at the trailing edge, section bar
     // directly beneath it with the selected tab on a muted fill.
@@ -276,7 +206,8 @@ export const makeSettingsStyles = (theme: AppTheme) =>
     fieldTextStacked: { flex: 0 },
     selectStacked: { alignSelf: 'flex-start', maxWidth: '100%', minHeight: 44, paddingVertical: 6 },
     fieldText: { flex: 1, gap: theme.spacing.xs, minWidth: 0 },
-    fieldLabel: { color: theme.colors.ink, fontSize: 14, lineHeight: 22 },
+    fieldLabel: { color: theme.colors.ink, flexShrink: 0, fontSize: 14, lineHeight: 22 },
+    fieldValue: { color: theme.colors.inkMuted, flexShrink: 1, fontSize: 14, lineHeight: 22, textAlign: 'right' },
     fieldDescription: { color: theme.colors.inkTertiary, fontSize: 12, lineHeight: 18 },
     // `CurrentVersionRow.module.css .row`: 16px 0 on the primary label at 14/22.
     versionRow: { color: theme.colors.ink, fontSize: 14, lineHeight: 22, paddingVertical: 16 },
@@ -321,7 +252,6 @@ export const makeSettingsStyles = (theme: AppTheme) =>
     selectText: { color: theme.colors.ink, flexShrink: 1, fontSize: 14, fontWeight: '400', lineHeight: 22 },
     actionButton: { marginTop: 10, width: '100%' },
     muted: { color: theme.colors.inkTertiary, fontSize: 13 },
-    active: { color: theme.colors.successText, fontSize: 12, fontWeight: '700' },
     warning: { color: theme.colors.warningText, fontSize: 12 },
     notice: {
       backgroundColor: theme.colors.warningSoft,

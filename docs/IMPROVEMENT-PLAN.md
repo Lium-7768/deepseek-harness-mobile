@@ -82,6 +82,19 @@ names what reached the clipboard — lines and characters for text, lines for co
 for a table — because a phone cannot show the selection it is about to copy. A table copies whole
 as TSV, which pastes into a spreadsheet as real columns.
 
+## Settings density
+
+A settings page is read at arm's length on a 402pt screen, so each tab now carries one
+level: the section bar names the page and the page prints only what the phone may change.
+The model tab used to expand every provider catalog inline — dozens of routings, each a
+card — for a page that offers one choice; it is now one row showing the current default,
+and the choice happens in a searchable sheet that reuses the composer's directory. Plugin
+namespaces lost their per-entry cards for hairlined rows, presets lost their three footer
+controls (the row opens the descriptor, which now carries the how-to guide), and the
+account page prints one fact per row instead of a title, value and boilerplate sentence.
+The release line returned to the desktop's 14/22 primary label while gaining its 16px
+padding.
+
 ## Attachments
 
 The gateway refuses a request body over 12 MB, and a phone photo reaches it as base64
