@@ -74,6 +74,8 @@ export interface SessionListPayload {
   items: SessionSummary[]
   workspaces: MobileWorkspace[]
   archivedSessionIds: string[]
+  /** Sessions the desktop pinned; they lead their section in the drawer. */
+  pinnedSessionIds?: string[]
 }
 
 /** Lightweight desktop running-session snapshot used only to establish live event subscriptions. */

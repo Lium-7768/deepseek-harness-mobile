@@ -76,6 +76,10 @@ export function WorkspaceItem({
 export function SessionItem({
   onArchive,
   onRestore,
+  pinned = false,
+  onTogglePin,
+  onCopyId,
+  subagentsRunning = 0,
   onMoveUp,
   onMoveDown,
   archived = false,
@@ -88,6 +92,12 @@ export function SessionItem({
 }: {
   onArchive: () => void
   onRestore: () => void
+  /** The session is pinned on the desktop; pinned rows lead their section. */
+  pinned?: boolean
+  onTogglePin: () => void
+  onCopyId: () => void
+  /** Running sub-agents under this session, from the list's sub-agent catalog. */
+  subagentsRunning?: number
   onMoveUp?: () => void
   onMoveDown?: () => void
   archived?: boolean
@@ -109,8 +119,14 @@ export function SessionItem({
   // prompt (`Rows.tsx`: `!row.blank` gates the time and the action cluster).
   const blank = session.blank === true
   const actions = [
+    {
+      label: message(pinned ? 'drawer.unpinSession' : 'drawer.pinSession'),
+      icon: 'pin-outline' as const,
+      onPress: onTogglePin,
+    },
     { label: message('drawer.rename'), icon: 'edit-outline' as const, onPress: onRename },
     { label: message('log.action'), icon: 'download-outline' as const, onPress: onExport },
+    { label: message('drawer.copySessionId'), icon: 'copy-outline' as const, onPress: onCopyId },
     { label: message('drawer.forkSession'), icon: 'branch-outline' as const, onPress: onFork },
     ...(archived
       ? [{ label: message('drawer.restore'), icon: 'archive-outline' as const, onPress: onRestore }]
@@ -137,7 +153,15 @@ export function SessionItem({
           pressed && styles.rowPressed,
         ]}
       >
-        <View style={styles.sessionStatus}>{session.running === true && !archived ? <NativeRunningRing /> : null}</View>
+        <View style={styles.sessionStatus}>
+          {session.running === true && !archived ? (
+            <NativeRunningRing />
+          ) : pinned ? (
+            <View accessible accessibilityLabel={message('drawer.pinned')}>
+              <NativeIcon name="pin-outline" size={12} color={theme.colors.inkMuted} />
+            </View>
+          ) : null}
+        </View>
         <Text
           maxFontSizeMultiplier={DENSE_ROW_FONT_CAP}
           numberOfLines={1}
@@ -145,6 +169,16 @@ export function SessionItem({
         >
           {title}
         </Text>
+        {subagentsRunning > 0 && !archived ? (
+          <View
+            accessibilityLabel={format('drawer.subagentsRunning', { count: subagentsRunning })}
+            style={styles.subagentBadge}
+          >
+            <Text maxFontSizeMultiplier={DENSE_ROW_FONT_CAP} style={styles.subagentBadgeText}>
+              {subagentsRunning}
+            </Text>
+          </View>
+        ) : null}
         {blank ? null : (
           <Text maxFontSizeMultiplier={DENSE_ROW_FONT_CAP} numberOfLines={1} style={styles.sessionTime}>
             {time}

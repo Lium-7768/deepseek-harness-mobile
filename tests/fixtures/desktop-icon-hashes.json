@@ -257,6 +257,12 @@
     "regular": "4823b2f1a96ac0cd37f038840989fc7fb073048a28936dab71429804780b7bda",
     "medium": "1987ccf8a2e58566b9a0c54373a2cb7f698a20feaef734e48d642d80f5ca99ce"
   },
+  "pin-outline": {
+    "size": 16,
+    "aspect": [1, 1],
+    "regular": "3c4451475b12ae2996ab4f460734a6a2aed49c5581ac82c67c5fd56b44293b3d",
+    "medium": "25224c0bc8dfa726b49b66931f42b55d38a9fec67a8a9480994744f46ea3836d"
+  },
   "plan-outline": {
     "aspect": [1, 1],
     "medium": "ceebaa2777c6c835f227d2ce816d3f64f9991e90c930e255d08f82c45eaec049",

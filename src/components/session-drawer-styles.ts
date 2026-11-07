@@ -158,6 +158,16 @@ export const makeSessionDrawerStyles = (theme: AppTheme) =>
     sessionStatus: { alignItems: 'center', flexShrink: 0, height: 20, justifyContent: 'center', width: 16 },
     sessionTitle: { color: theme.colors.ink, flex: 1, fontSize: 14, lineHeight: 20, marginLeft: 4, marginRight: 6 },
     // `.rowResting`: the relative time in the caption tier at the row's right.
+    // A count of running sub-agents, small enough to sit between the title and the clock.
+    subagentBadge: {
+      alignItems: 'center',
+      backgroundColor: theme.colors.interactiveHover,
+      borderRadius: theme.radius.pill,
+      justifyContent: 'center',
+      minWidth: 16,
+      paddingHorizontal: 4,
+    },
+    subagentBadgeText: { color: theme.colors.inkMuted, fontSize: 10, lineHeight: 14 },
     sessionTime: {
       ...textStyle(theme, 'label', 'tertiary'),
       fontSize: 10,

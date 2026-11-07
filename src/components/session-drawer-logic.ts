@@ -54,10 +54,25 @@ export function drawerWidthForViewport(viewportWidth: number): number {
 }
 
 /** Sorts session summaries without mutating the gateway response. */
-export function sortSessions(items: readonly SessionSummary[], order: SessionOrder): SessionSummary[] {
+export function sortSessions(
+  items: readonly SessionSummary[],
+  order: SessionOrder,
+  pinned?: ReadonlySet<string>,
+): SessionSummary[] {
   const result = [...items]
+  // The desktop leads each section with its pinned Sessions; a stable sort keeps the
+  // chosen order inside both halves.
+  if (pinned !== undefined && pinned.size > 0) result.sort((a, b) => leadingRank(a, pinned) - leadingRank(b, pinned))
   if (order === 'manual') return result
-  return result.sort((a, b) => sessionUpdatedAt(b) - sessionUpdatedAt(a))
+  if (pinned === undefined || pinned.size === 0) return result.sort((a, b) => sessionUpdatedAt(b) - sessionUpdatedAt(a))
+  return result.sort(
+    (a, b) => leadingRank(a, pinned) - leadingRank(b, pinned) || sessionUpdatedAt(b) - sessionUpdatedAt(a),
+  )
+}
+
+/** Pinned rows lead their section. */
+function leadingRank(session: SessionSummary, pinned: ReadonlySet<string>): number {
+  return pinned.has(session.sessionId) ? 0 : 1
 }
 
 /** Resolves only an explicitly selected session; it never falls back to list order. */
@@ -265,4 +280,39 @@ export function workspaceLabel(workspace: MobileWorkspace): string {
 
 function twoDigits(value: number): string {
   return value.toString().padStart(2, '0')
+}
+
+/**
+ * Counts the sub-agents each listed session currently has running.
+ *
+ * The roster lives in the `subagentCatalog` projection, which names child sessions
+ * without their liveness; the list itself is what reports which of those children are
+ * running. A session whose catalog the client never received simply has no count.
+ *
+ * @param items - Session list rows, each possibly carrying its projections.
+ * @returns Running sub-agent counts keyed by parent session id, omitting zeroes.
+ */
+export function runningSubagentCounts(items: readonly SessionSummary[]): Map<string, number> {
+  const running = new Set(items.filter((item) => item.running === true).map((item) => item.sessionId))
+  const counts = new Map<string, number>()
+  for (const item of items) {
+    const projections = item.projections
+    const values =
+      projections !== null && typeof projections === 'object' && !Array.isArray(projections)
+        ? (projections as Record<string, unknown>).values
+        : undefined
+    const catalog =
+      values !== null && typeof values === 'object' && !Array.isArray(values)
+        ? (values as Record<string, unknown>).subagentCatalog
+        : undefined
+    if (!Array.isArray(catalog)) continue
+    let count = 0
+    for (const raw of catalog) {
+      if (raw === null || typeof raw !== 'object' || Array.isArray(raw)) continue
+      const id = (raw as Record<string, unknown>).id
+      if (typeof id === 'string' && running.has(id)) count += 1
+    }
+    if (count > 0) counts.set(item.sessionId, count)
+  }
+  return counts
 }

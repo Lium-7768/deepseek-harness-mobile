@@ -535,6 +535,11 @@ export class MobileApi {
     return this.#post(`/v1/sessions/${encodeURIComponent(sessionId)}/cancel`, {})
   }
 
+  /** Pins or unpins one session; the Host answers with the complete pinned set. */
+  pinSession(sessionId: string, pinned: boolean): Promise<unknown> {
+    return this.#post(`/v1/sessions/${encodeURIComponent(sessionId)}/${pinned ? 'pin' : 'unpin'}`, {})
+  }
+
   /** Reads redacted settings namespaces supported by the desktop runtime. */
   settingsDescribe(): Promise<MobileSettingsPayload> {
     return this.#post<MobileSettingsPayload>('/v1/settings/describe', {})

@@ -145,10 +145,11 @@ export function drawerViewRows(
   currentSessionId: string | undefined,
   collapsed: ReadonlySet<string>,
   expanded: ReadonlySet<string>,
+  pinned?: ReadonlySet<string>,
 ) {
   const { groupBy, orderBy } = view
   const sessions = filterArchivedSessions(items, archived, view.archivedFilter)
-  const ordered = sortSessions(sessions, orderBy)
+  const ordered = sortSessions(sessions, orderBy, pinned)
   const rankBySaved = (account: string, members: readonly string[]): Map<string, number> =>
     new Map(reconcileDrawerOrder(view.orders[account] ?? [], members).map((id, index) => [id, index]))
   const compare =
@@ -171,7 +172,10 @@ export function drawerViewRows(
       sessionIds:
         orderBy === 'updated'
           ? ordered.filter((item) => workspace.sessionIds.includes(item.sessionId)).map((item) => item.sessionId)
-          : reconcileDrawerOrder(view.orders[workspace.workspaceId] ?? workspace.sessionIds, workspace.sessionIds),
+          : leadPinned(
+              reconcileDrawerOrder(view.orders[workspace.workspaceId] ?? workspace.sessionIds, workspace.sessionIds),
+              pinned,
+            ),
     }),
   )
   const ungrouped = ordered.filter((item) => workspaceForSession(workspaces, item.sessionId) === undefined)
@@ -258,4 +262,10 @@ export function moveDrawerSession(
   order[from] = order[to]
   order[to] = held
   return { ...view.orders, [account]: order }
+}
+
+/** Moves pinned ids to the front without disturbing the order inside either half. */
+function leadPinned(ids: readonly string[], pinned: ReadonlySet<string> | undefined): string[] {
+  if (pinned === undefined || pinned.size === 0) return [...ids]
+  return [...ids].sort((a, b) => (pinned.has(a) ? 0 : 1) - (pinned.has(b) ? 0 : 1))
 }

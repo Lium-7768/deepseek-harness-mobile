@@ -1,6 +1,7 @@
 import { MobileApi } from '@/api/mobile-api'
 import { queryKeys } from '@/api/query-keys'
 import { ConfirmSheet } from '@/components/confirm-sheet'
+import { tapFeedback } from '@/components/haptics'
 import { NativeMenuPanel } from '@/components/native-menu-panel'
 import { DrawerViewMenu } from '@/components/drawer-view-menu'
 import { DrawerSearchInput, DrawerSearchRow } from '@/components/drawer-search'
@@ -16,7 +17,7 @@ import { NativeBrandMark } from '@/components/native-brand-mark'
 import { NativeIcon } from '@/components/native-icon'
 import { NativeListRow } from '@/components/native-list'
 import { SessionItem, WorkspaceItem } from '@/components/session-drawer-items'
-import { sessionDisplayTitle, sessionIdFromRoute } from '@/components/session-drawer-logic'
+import { runningSubagentCounts, sessionDisplayTitle, sessionIdFromRoute } from '@/components/session-drawer-logic'
 import { makeSessionDrawerStyles } from '@/components/session-drawer-styles'
 import { shareSessionLog } from '@/export/session-log-share'
 import { format, t as message } from '@/locale'
@@ -26,6 +27,7 @@ import { useSessionSelectionStore } from '@/state/session-selection'
 import { useAppTheme, useThemedStyles } from '@/theme/hooks'
 import type { SessionSummary } from '@/types/mobile'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
+import * as Clipboard from 'expo-clipboard'
 import { router } from 'expo-router'
 import { DrawerContentScrollView, useDrawerStatus, type DrawerContentComponentProps } from 'expo-router/drawer'
 import { useEffect, useMemo, useRef, useState } from 'react'
@@ -118,7 +120,9 @@ export function SessionDrawer(props: DrawerContentComponentProps): React.JSX.Ele
     () => new Set(query.data?.archivedSessionIds ?? []),
     [query.data?.archivedSessionIds],
   )
+  const pinnedSessionIds = useMemo(() => new Set(query.data?.pinnedSessionIds ?? []), [query.data?.pinnedSessionIds])
   const allSessions = query.data?.items ?? []
+  const runningSubagents = useMemo(() => runningSubagentCounts(allSessions), [allSessions])
   const workspaces = query.data?.workspaces ?? []
   const searchActive = search.trim().length > 0
   const remoteCurrent = debouncedSearch === search.trim()
@@ -139,6 +143,7 @@ export function SessionDrawer(props: DrawerContentComponentProps): React.JSX.Ele
     currentSessionId,
     collapsedWorkspaceKeys,
     expandedWorkspaceSessionKeys,
+    pinnedSessionIds,
   )
   const pickOrder = (next: 'manual' | 'updated'): void => {
     updateView(scope, {
@@ -306,6 +311,24 @@ export function SessionDrawer(props: DrawerContentComponentProps): React.JSX.Ele
   }
   const confirmArchive = (session: SessionSummary): void => {
     setConfirm({ kind: 'archive', session })
+  }
+  const togglePin = async (session: SessionSummary): Promise<void> => {
+    const wasPinned = pinnedSessionIds.has(session.sessionId)
+    try {
+      await new MobileApi(requireConnection(connection)).pinSession(session.sessionId, !wasPinned)
+      await refreshSessions()
+      showSnackbar(message(wasPinned ? 'drawer.unpinned' : 'drawer.pinned'))
+    } catch (error) {
+      Alert.alert(
+        message(wasPinned ? 'drawer.unpinFailed' : 'drawer.pinFailed'),
+        error instanceof Error ? error.message : message('common.retry'),
+      )
+    }
+  }
+  const copySessionId = async (session: SessionSummary): Promise<void> => {
+    await Clipboard.setStringAsync(session.sessionId)
+    tapFeedback()
+    showSnackbar(message('drawer.sessionIdCopied'))
   }
 
   return (
@@ -607,6 +630,10 @@ export function SessionDrawer(props: DrawerContentComponentProps): React.JSX.Ele
                       <View key={item.key} style={{ marginLeft: item.depth * 12 }}>
                         <SessionItem
                           archived={archivedSessionIds.has(item.session.sessionId)}
+                          pinned={pinnedSessionIds.has(item.session.sessionId)}
+                          onTogglePin={() => void togglePin(item.session)}
+                          onCopyId={() => void copySessionId(item.session)}
+                          subagentsRunning={runningSubagents.get(item.session.sessionId) ?? 0}
                           onRestore={() => void restoreSession(item.session.sessionId)}
                           onMoveUp={orderBy === 'manual' ? () => moveSession(item.session.sessionId, -1) : undefined}
                           onMoveDown={orderBy === 'manual' ? () => moveSession(item.session.sessionId, 1) : undefined}

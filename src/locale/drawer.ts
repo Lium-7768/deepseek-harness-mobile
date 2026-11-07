@@ -41,6 +41,16 @@ export const drawer = {
   collapse: '收起',
   expand: '展开',
 
+  pinSession: '置顶会话',
+  unpinSession: '取消置顶',
+  pinned: '已置顶',
+  unpinned: '已取消置顶',
+  pinFailed: '置顶失败',
+  unpinFailed: '取消置顶失败',
+  copySessionId: '复制 Session ID',
+  sessionIdCopied: 'Session ID 已复制',
+  /** `{count}` running sub-agents under one session row. */
+  subagentsRunning: '{count} 个子智能体运行中',
   archiveSession: '归档会话',
   archive: '归档',
   /** Transient confirmation after an archive, printed with an undo. */
