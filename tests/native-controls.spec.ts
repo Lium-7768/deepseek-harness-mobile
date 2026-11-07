@@ -62,6 +62,32 @@ vi.mock('@/components/confirm-sheet', async () => {
   }
 })
 vi.mock('@/components/session-screen-state', () => ({ ErrorNotice: 'ErrorNotice' }))
+vi.mock('@/components/native-menu-panel', async () => {
+  const { createElement } = await import('react')
+  type Option = { label: string; value: string }
+  return {
+    NativeMenuPanel: (props: { open: boolean; groups: { options: Option[] }[]; onSelect?: (value: string) => void }) =>
+      props.open
+        ? createElement(
+            'Menu',
+            null,
+            props.groups
+              .flatMap((group) => group.options)
+              .map((option) =>
+                createElement(
+                  'MenuRow',
+                  {
+                    accessibilityLabel: option.label,
+                    key: option.value,
+                    onPress: () => props.onSelect?.(option.value),
+                  },
+                  createElement('Text', null, option.label),
+                ),
+              ),
+          )
+        : null,
+  }
+})
 vi.mock('@/components/native-anchored-panel', async () => {
   const { createElement } = await import('react')
   return { NativeAnchoredPanel: (props: { open: boolean }) => (props.open ? createElement('Panel', props) : null) }
@@ -128,6 +154,12 @@ const task = (status: 'active' | 'paused'): MobileScheduleEntry => ({
   target: { kind: 'new' },
 })
 const buttons = () => renderer.container.queryAll((node) => node.type === 'ActionButton')
+/** A task row's `…` control; its label names the task it belongs to. */
+const rowAction = (title: string) =>
+  renderer.container.queryAll((node) => node.props.accessibilityLabel === `${title} 的操作`)[0]!
+/** One row inside the open action menu. */
+const menuRow = (label: string) =>
+  renderer.container.queryAll((node) => node.type === 'MenuRow' && node.props.accessibilityLabel === label)[0]!
 const button = (label: string) => buttons().find((node) => node.props.label === label)!
 
 describe('automation screen interaction', () => {
@@ -142,9 +174,14 @@ describe('automation screen interaction', () => {
         kind === 'schedule-not-found' ? '该任务已被桌面端删除，请刷新任务列表。' : '任务已被修改，请刷新后重试。'
       vi.spyOn(MobileApi.prototype, 'updateSchedule').mockRejectedValue(new MobileApiError(kind, copy))
       await mount(createElement(QueryClientProvider, { client: cache }, createElement(SchedulesScreen)))
-      await settle(() => buttons().length > 0)
-      await fireEvent.press(button('暂停任务'))
-      await settle(() => schedules.mock.calls.length === 2 && buttons().length === 0)
+      await settle(() => rowAction('active') !== undefined)
+      await act(async () => {
+        rowAction('active').props.onPress()
+      })
+      await act(async () => {
+        menuRow('暂停任务').props.onPress()
+      })
+      await settle(() => schedules.mock.calls.length === 2 && rowAction('active') === undefined)
       expect(mocks.alert).toHaveBeenCalledWith('任务操作失败', copy)
     },
   )
@@ -173,36 +210,48 @@ describe('automation screen interaction', () => {
     const first = deferred()
     update.mockReturnValueOnce(first.promise)
     await mount(createElement(QueryClientProvider, { client: cache }, createElement(SchedulesScreen)))
-    await settle(() => buttons().length === 4)
+    await settle(() => rowAction('active') !== undefined && rowAction('paused') !== undefined)
     await act(async () => {
-      button('暂停任务').props.onPress()
-      button('恢复任务').props.onPress()
+      rowAction('active').props.onPress()
+    })
+    // The same row fires twice before the pending state re-renders, so the gate —
+    // not the disabled prop — is what serializes the two calls.
+    const pause = menuRow('暂停任务')
+    await act(async () => {
+      pause.props.onPress()
+      pause.props.onPress()
     })
     expect(update).toHaveBeenCalledTimes(1)
     expect(update).toHaveBeenLastCalledWith(task('active'), 'pause')
-    await settle(() => buttons().every((node) => node.props.disabled))
+    await settle(() => rowAction('paused').props.disabled === true)
     await act(async () => {
       first.reject(new Error('failed'))
     })
-    await settle(() => !button('恢复任务').props.disabled)
+    await settle(() => rowAction('paused').props.disabled === false)
     expect(mocks.alert).toHaveBeenCalledWith('任务操作失败', 'failed')
     const second = deferred()
     update.mockReturnValueOnce(second.promise)
     await act(async () => {
-      button('恢复任务').props.onPress()
+      rowAction('paused').props.onPress()
+    })
+    await act(async () => {
+      menuRow('恢复任务').props.onPress()
     })
     expect(update).toHaveBeenLastCalledWith(task('paused'), 'resume')
     await act(async () => {
       second.resolve()
     })
-    await settle(() => !button('删除任务').props.disabled)
+    await settle(() => rowAction('active').props.disabled === false)
     mocks.alert.mockClear()
     await act(async () => {
-      button('删除任务').props.onPress()
+      rowAction('active').props.onPress()
+    })
+    await act(async () => {
+      menuRow('删除任务').props.onPress()
     })
     expect(update).toHaveBeenCalledTimes(2)
-    // The delete confirmation is the sheet now, not an Alert: pressing remove opens it,
-    // and only its confirm button reaches the API (twice, to prove the gate serializes).
+    // The delete confirmation is the sheet, not an Alert: the menu row opens it and
+    // only its confirm button reaches the API (twice, to prove the gate serializes).
     const confirmButton = () =>
       renderer.container.queryAll(
         (node: { props: Record<string, unknown> }) => node.props.accessibilityLabel === '删除任务',
@@ -219,7 +268,7 @@ describe('automation screen interaction', () => {
     await act(async () => {
       third.resolve()
     })
-    await settle(() => !button('删除任务').props.disabled)
+    await settle(() => rowAction('active').props.disabled === false)
   })
 })
 

@@ -95,6 +95,10 @@ account page prints one fact per row instead of a title, value and boilerplate s
 The release line returned to the desktop's 14/22 primary label while gaining its 16px
 padding.
 
+An automation card carried three full-width buttons for one task. The card now reads as a row —
+title, state, two lines of prompt, next run — and its verbs live behind the same `…` menu the
+session rows use.
+
 The session header spent two bands on the same job: a tab row, then a warning strip for pending
 interactions, then up to three retry notices when the three reads failed together. Pending now
 rides in the tab row as a badged destination, and one `刷新会话失败` notice retries whichever of

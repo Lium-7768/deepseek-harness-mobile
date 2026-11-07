@@ -14,5 +14,7 @@ export const schedule = {
   failed: '任务操作失败',
   conflict: '任务已被修改，请刷新后重试。',
   notFound: '该任务已被桌面端删除，请刷新任务列表。',
+  /** `{title}` names the task whose action menu opens. */
+  actionsFor: '{title} 的操作',
   openSession: '打开目标会话',
 } as const
