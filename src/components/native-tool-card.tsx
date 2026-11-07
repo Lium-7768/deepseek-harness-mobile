@@ -305,7 +305,9 @@ const makeStyles = (theme: AppTheme) =>
     payload: { gap: 4 },
     // The label, the copy size and the control share one 16pt row so the payload
     // header keeps its height while the confirmation appears and disappears.
-    payloadHead: { alignItems: 'center', flexDirection: 'row', gap: 6, minHeight: 16 },
+    // A 28pt header row leaves the 16pt copy and fold controls at 44 once their
+    // 8pt hit slop is counted; at 16 they were 32 and hard to hit in a long list.
+    payloadHead: { alignItems: 'center', flexDirection: 'row', gap: 6, minHeight: 28 },
     payloadLabel: { color: theme.colors.inkTertiary, fontSize: 11, fontWeight: '500', lineHeight: 16 },
     payloadSize: { color: theme.colors.inkTertiary, flexShrink: 1, fontSize: 11, lineHeight: 16 },
     // The fold control moves into the header row, so a payload spends one row on

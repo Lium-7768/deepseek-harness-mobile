@@ -152,7 +152,7 @@ const ScheduleCard = memo(function ScheduleCard({
           accessibilityRole="button"
           accessibilityState={{ disabled, expanded: menuOpen }}
           disabled={disabled}
-          hitSlop={6}
+          hitSlop={8}
           onPress={() => setMenuOpen((current) => !current)}
           style={({ pressed }) => [s.rowAction, pressed && s.pressed]}
         >

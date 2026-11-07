@@ -65,7 +65,7 @@ export function ComposerDockChips({
             accessibilityLabel={chip.label}
             accessibilityRole="button"
             accessibilityState={{ expanded: active }}
-            hitSlop={{ top: 6, bottom: 6 }}
+            hitSlop={{ top: 8, bottom: 8 }}
             key={chip.dock}
             onPress={() => onToggle(chip.dock)}
             style={({ pressed }) => [s.chip, active && s.chipActive, pressed && s.pressed]}

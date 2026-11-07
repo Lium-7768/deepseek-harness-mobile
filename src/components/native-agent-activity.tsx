@@ -1,8 +1,10 @@
+import { NativeAnchoredPanel } from '@/components/native-anchored-panel'
 import { NativeIcon } from '@/components/native-icon'
 import { format, t as message } from '@/locale'
 import type { AppTheme } from '@/theme'
 import { useAppTheme, useThemedStyles } from '@/theme/hooks'
 import type { MobileJobView, MobileSubagentEntry } from '@/types/mobile'
+import { useState } from 'react'
 import { Pressable, StyleSheet, Text, View } from 'react-native'
 
 type MobileChildSubagentEntry = Extract<MobileSubagentEntry, { kind: 'child' }>
@@ -104,19 +106,47 @@ export function NativeAgentActivity({
 
 function JobRow({ job }: { job: MobileJobView }): React.JSX.Element {
   const styles = useThemedStyles(makeStyles)
+  const theme = useAppTheme()
+  const [open, setOpen] = useState(false)
   const live = job.status === 'running' || job.status === 'stopping'
+  const title = job.label || job.kind
+  // The card above the transcript can only spare a line each, so the row opens the
+  // job's own record: a phone has no second place to read a background task.
   return (
-    <View style={styles.jobRow}>
-      <View style={[styles.dot, live ? styles.dotLive : styles.dotIdle]} />
-      <View style={styles.jobCopy}>
-        <Text numberOfLines={1} style={styles.jobLabel}>
-          {job.label || job.kind}
-        </Text>
-        <Text numberOfLines={1} style={styles.jobMeta}>
-          {job.detail ?? job.status}
-        </Text>
-      </View>
-    </View>
+    <>
+      <Pressable
+        android_ripple={{ borderless: false }}
+        accessibilityLabel={`${title} ${job.status}`}
+        accessibilityRole="button"
+        accessibilityState={{ expanded: open }}
+        onPress={() => setOpen((current) => !current)}
+        style={({ pressed }) => [styles.jobRow, pressed && styles.pressed]}
+      >
+        <View style={[styles.dot, live ? styles.dotLive : styles.dotIdle]} />
+        <View style={styles.jobCopy}>
+          <Text numberOfLines={1} style={styles.jobLabel}>
+            {title}
+          </Text>
+          <Text numberOfLines={2} style={styles.jobMeta}>
+            {job.detail ?? job.status}
+          </Text>
+        </View>
+        <NativeIcon name="chevron-right-outline" size={14} color={theme.colors.inkMuted} />
+      </Pressable>
+      <NativeAnchoredPanel onClose={() => setOpen(false)} open={open}>
+        <View style={styles.jobDetail}>
+          <Text style={styles.jobDetailTitle}>{title}</Text>
+          <Text style={styles.jobDetailMeta}>
+            {format('activity.jobStatus', { kind: job.kind, status: job.status })}
+          </Text>
+          {job.detail === undefined ? null : (
+            <Text selectable style={styles.jobDetailBody}>
+              {job.detail}
+            </Text>
+          )}
+        </View>
+      </NativeAnchoredPanel>
+    </>
   )
 }
 
@@ -151,5 +181,9 @@ const makeStyles = (theme: AppTheme) =>
       width: theme.touch.iconButton,
     },
     diagnostic: { color: theme.colors.warningText, fontSize: 13, lineHeight: 20 },
+    jobDetail: { gap: 6, padding: 16 },
+    jobDetailTitle: { color: theme.colors.ink, fontSize: 15, fontWeight: '600', lineHeight: 22 },
+    jobDetailMeta: { color: theme.colors.inkMuted, fontSize: 12, lineHeight: 18 },
+    jobDetailBody: { color: theme.colors.inkMuted, fontSize: 13, lineHeight: 20 },
     pressed: { opacity: 0.62 },
   })

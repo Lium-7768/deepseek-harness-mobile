@@ -56,7 +56,7 @@ export function WorkbenchTabs({
           android_ripple={{ borderless: false }}
           accessibilityLabel={format('conversation.pendingCount', { count: pending })}
           accessibilityRole="button"
-          hitSlop={{ top: 5, bottom: 5 }}
+          hitSlop={{ top: 13, bottom: 13 }}
           onPress={onOpenPending}
           style={s.pendingTab}
         >
