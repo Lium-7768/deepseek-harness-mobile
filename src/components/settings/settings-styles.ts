@@ -5,8 +5,10 @@ import { StyleSheet } from 'react-native'
 export const makeSettingsStyles = (theme: AppTheme) =>
   StyleSheet.create({
     back: { alignItems: 'center', height: 36, justifyContent: 'center', width: 36 },
-    list: { gap: theme.spacing.sm, padding: theme.spacing.lg, paddingBottom: theme.spacing.xl },
-    header: { gap: 4, marginBottom: theme.spacing.xs },
+    // `SettingsRoot.module.css .options` at phone width: 16px sides, 24px under
+    // the column, no top padding — the section bar's own 14px carries the gap.
+    list: { gap: theme.spacing.sm, paddingBottom: theme.spacing.xl, paddingHorizontal: 16 },
+    header: { gap: 4, marginBottom: theme.spacing.sm },
     subtitle: { color: theme.colors.inkTertiary, fontSize: 13, lineHeight: 20 },
     // The Web's models page prints its intro at 14/400 on a 22px line.
     subtitleLarge: { color: theme.colors.inkTertiary, fontSize: 14, lineHeight: 22 },
@@ -203,7 +205,6 @@ export const makeSettingsStyles = (theme: AppTheme) =>
       fontWeight: '500',
       lineHeight: 18,
       marginHorizontal: theme.spacing.sm,
-      marginBottom: -theme.spacing.xs,
     },
     // `AgentPresetSection.module.css .groupHead`: 12/600, tertiary, uppercase
     // with .06em tracking. Chinese has no case, so only the tracking carries.
@@ -243,8 +244,9 @@ export const makeSettingsStyles = (theme: AppTheme) =>
     // Web mobile: title 16/500, close glyph at the trailing edge, section bar
     // directly beneath it with the selected tab on a muted fill.
     close: { alignItems: 'center', height: 32, justifyContent: 'center', width: 32 },
-    tabs: { backgroundColor: theme.colors.background, paddingBottom: 4 },
-    tabsContent: { gap: 4, paddingHorizontal: 12 },
+    // `navList` at phone width: 12px above, 14px under, 16px at the ends.
+    tabs: { backgroundColor: theme.colors.background, paddingBottom: 14, paddingTop: 12 },
+    tabsContent: { gap: 4, paddingHorizontal: 16 },
     // `SettingsRoot.module.css .navCell`: 0 14px, gap 8, radius 12, 40 tall.
     tab: {
       alignItems: 'center',
@@ -268,21 +270,27 @@ export const makeSettingsStyles = (theme: AppTheme) =>
       flexDirection: 'row',
       gap: theme.spacing.md,
       justifyContent: 'space-between',
-      minHeight: 56,
-      paddingVertical: 12,
+      paddingVertical: 16,
     },
     fieldStacked: { flexDirection: 'column', alignItems: 'stretch', gap: 10 },
     fieldTextStacked: { flex: 0 },
     selectStacked: { alignSelf: 'flex-start', maxWidth: '100%', minHeight: 44, paddingVertical: 6 },
-    fieldText: { flex: 1, gap: 2, minWidth: 0 },
+    fieldText: { flex: 1, gap: theme.spacing.xs, minWidth: 0 },
     fieldLabel: { color: theme.colors.ink, fontSize: 14, lineHeight: 22 },
     fieldDescription: { color: theme.colors.inkTertiary, fontSize: 12, lineHeight: 18 },
-    // `Section.module.css .currentVersion`: the desktop prints this release line at 12/18 tertiary under General's controls.
-    versionRow: { color: theme.colors.inkTertiary, fontSize: 12, lineHeight: 18 },
-    // `AppearanceRow.module.css .themeCube`: 68 tall, radius 20, 12px 6px,
-    // gap 4, selected on `bg-overlay`.
+    // `CurrentVersionRow.module.css .row`: 16px 0 on the primary label at 14/22.
+    versionRow: { color: theme.colors.ink, fontSize: 14, lineHeight: 22, paddingVertical: 16 },
+    // `AppearanceRow.module.css .group`: title, then the cube row 8 below it,
+    // 16/0 padding and one hairline under both.
+    appearanceGroup: {
+      borderBottomColor: theme.colors.borderHairline,
+      borderBottomWidth: StyleSheet.hairlineWidth,
+      gap: theme.spacing.sm,
+      paddingVertical: 16,
+    },
+    // `themeCube` at phone width: 12px 6px, so the cube stands 58 tall.
     appearanceCardDisabled: { opacity: 0.5 },
-    appearanceCards: { flexDirection: 'row', gap: 8, paddingVertical: 12 },
+    appearanceCards: { flexDirection: 'row', gap: 8 },
     appearanceCard: {
       alignItems: 'center',
       borderColor: theme.colors.border,
@@ -291,9 +299,9 @@ export const makeSettingsStyles = (theme: AppTheme) =>
       flex: 1,
       gap: 4,
       justifyContent: 'center',
-      minHeight: 68,
-      paddingVertical: 12,
+      minHeight: 58,
       paddingHorizontal: 6,
+      paddingVertical: 12,
     },
     appearanceCardSelected: { backgroundColor: theme.colors.surfaceMuted, borderColor: theme.colors.borderStrong },
     appearanceLabel: { textAlign: 'center', flexShrink: 1, color: theme.colors.ink, fontSize: 14, lineHeight: 22 },

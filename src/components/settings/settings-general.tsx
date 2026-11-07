@@ -24,7 +24,6 @@ import {
   permissionLabel,
   readRecord,
   readString,
-  themeLabel,
   type SettingsPicker,
 } from '@/components/settings/settings-shared'
 import { makeSettingsStyles } from '@/components/settings/settings-styles'
@@ -116,104 +115,109 @@ export function GeneralSettings({
             onRetry={() => void presets.refetch()}
           />
         ) : null}
-        <SettingsFieldRow
-          label={message('settings.modeSectionTitle')}
-          description={message('settings.modeSectionDescription')}
-          disabled={!writable || saving}
-          value={modeLabel ?? message('settings.noPresetsConfigured')}
-          onPress={() =>
-            setPicker({
-              title: message('settings.modeSectionTitle'),
-              value: presetDefault,
-              options: (presets.data?.presets ?? []).map((item) => ({
-                value: item.id,
-                label: agentPresetName(item),
-                description: agentPresetDescription(item),
-                disabled: item.broken !== undefined,
-              })),
-              onSelect: chooseMode,
-            })
-          }
-        />
-        <SettingsFieldRow
-          label={message('settings.permissionSectionTitle')}
-          description={message('settings.permissionSectionDescription')}
-          disabled={!writable || saving}
-          value={permissionLabel(permissionDefault)}
-          onPress={() =>
-            setPicker({
-              title: message('settings.permissionSectionTitle'),
-              value: permissionDefault,
-              options: PERMISSION_CHOICES.map((choice) => ({ value: choice, label: permissionLabel(choice) })),
-              onSelect: choosePermission,
-            })
-          }
-        />
-        <SettingsFieldRow
-          label={message('settings.language')}
-          description={message('settings.languageDetail')}
-          disabled
-          value={message('settings.languageValue')}
-        />
-        <SettingsFieldRow
-          label={message('settings.appearance')}
-          description={message('settings.appearanceDetail')}
-          value={themeLabel(appearance)}
-        />
-        <View style={styles.appearanceCards}>
-          {APPEARANCES.map((item) => {
-            const selected = appearance === item.id
-            return (
-              <Pressable
-                android_ripple={{ borderless: false }}
-                accessibilityRole="radio"
-                accessibilityState={{ checked: selected, disabled: saving || selected }}
-                disabled={saving || selected}
-                key={item.id}
-                onPress={() => {
-                  void setAppearancePreference(item.id)
-                  // Recorded on the desktop too, so its settings page agrees with
-                  // the phone rather than keeping a stale theme preference.
-                  if (writable) save('ui-theme', { preference: item.id }, message('settings.appearanceSaved'))
-                }}
-                style={({ pressed }) => [
-                  styles.appearanceCard,
-                  selected && styles.appearanceCardSelected,
-                  saving && styles.appearanceCardDisabled,
-                  pressed && styles.pressed,
-                ]}
-              >
-                <NativeIcon
-                  name={item.icon}
-                  color={selected ? palette.colors.ink : palette.colors.inkTertiary}
-                  size={20}
-                />
-                <Text style={styles.appearanceLabel}>{message(item.label)}</Text>
-              </Pressable>
-            )
-          })}
+        {/* One list: the desktop's rows hold a 16px rhythm and their own
+            hairline, so the column adds no gap between them. */}
+        <View>
+          <SettingsFieldRow
+            label={message('settings.modeSectionTitle')}
+            description={message('settings.modeSectionDescription')}
+            disabled={!writable || saving}
+            value={modeLabel ?? message('settings.noPresetsConfigured')}
+            onPress={() =>
+              setPicker({
+                title: message('settings.modeSectionTitle'),
+                value: presetDefault,
+                options: (presets.data?.presets ?? []).map((item) => ({
+                  value: item.id,
+                  label: agentPresetName(item),
+                  description: agentPresetDescription(item),
+                  disabled: item.broken !== undefined,
+                })),
+                onSelect: chooseMode,
+              })
+            }
+          />
+          <SettingsFieldRow
+            label={message('settings.permissionSectionTitle')}
+            description={message('settings.permissionSectionDescription')}
+            disabled={!writable || saving}
+            value={permissionLabel(permissionDefault)}
+            onPress={() =>
+              setPicker({
+                title: message('settings.permissionSectionTitle'),
+                value: permissionDefault,
+                options: PERMISSION_CHOICES.map((choice) => ({ value: choice, label: permissionLabel(choice) })),
+                onSelect: choosePermission,
+              })
+            }
+          />
+          <SettingsFieldRow
+            label={message('settings.language')}
+            description={message('settings.languageDetail')}
+            disabled
+            value={message('settings.languageValue')}
+          />
+          <View style={styles.appearanceGroup}>
+            <View style={styles.fieldText}>
+              <Text style={styles.fieldLabel}>{message('settings.appearance')}</Text>
+              <Text style={styles.fieldDescription}>{message('settings.appearanceDetail')}</Text>
+            </View>
+            <View style={styles.appearanceCards}>
+              {APPEARANCES.map((item) => {
+                const selected = appearance === item.id
+                return (
+                  <Pressable
+                    android_ripple={{ borderless: false }}
+                    accessibilityRole="radio"
+                    accessibilityState={{ checked: selected, disabled: saving || selected }}
+                    disabled={saving || selected}
+                    key={item.id}
+                    onPress={() => {
+                      void setAppearancePreference(item.id)
+                      // Recorded on the desktop too, so its settings page agrees with
+                      // the phone rather than keeping a stale theme preference.
+                      if (writable) save('ui-theme', { preference: item.id }, message('settings.appearanceSaved'))
+                    }}
+                    style={({ pressed }) => [
+                      styles.appearanceCard,
+                      selected && styles.appearanceCardSelected,
+                      saving && styles.appearanceCardDisabled,
+                      pressed && styles.pressed,
+                    ]}
+                  >
+                    <NativeIcon
+                      name={item.icon}
+                      color={selected ? palette.colors.ink : palette.colors.inkTertiary}
+                      size={20}
+                    />
+                    <Text style={styles.appearanceLabel}>{message(item.label)}</Text>
+                  </Pressable>
+                )
+              })}
+            </View>
+          </View>
+          <SettingsFieldRow
+            label={message('settings.enterBehavior')}
+            description={message('settings.enterBehaviorDetail')}
+            disabled={!writable || saving}
+            value={message(busyEnter === 'steer' ? 'settings.enterBehaviorSteer' : 'settings.enterBehaviorQueue')}
+            onPress={() =>
+              setPicker({
+                title: message('settings.enterBehavior'),
+                value: busyEnter,
+                options: [
+                  { value: 'queue', label: message('settings.enterBehaviorQueue') },
+                  { value: 'steer', label: message('settings.enterBehaviorSteer') },
+                ],
+                onSelect: (choice) =>
+                  save('ui-conversation', { busyEnter: choice }, message('settings.enterBehaviorSaved')),
+              })
+            }
+          />
+          {appVersion === undefined ? null : (
+            <Text style={styles.versionRow}>{format('settings.currentVersion', { version: appVersion })}</Text>
+          )}
         </View>
-        <SettingsFieldRow
-          label={message('settings.enterBehavior')}
-          description={message('settings.enterBehaviorDetail')}
-          disabled={!writable || saving}
-          value={message(busyEnter === 'steer' ? 'settings.enterBehaviorSteer' : 'settings.enterBehaviorQueue')}
-          onPress={() =>
-            setPicker({
-              title: message('settings.enterBehavior'),
-              value: busyEnter,
-              options: [
-                { value: 'queue', label: message('settings.enterBehaviorQueue') },
-                { value: 'steer', label: message('settings.enterBehaviorSteer') },
-              ],
-              onSelect: (choice) =>
-                save('ui-conversation', { busyEnter: choice }, message('settings.enterBehaviorSaved')),
-            })
-          }
-        />
-        {appVersion === undefined ? null : (
-          <Text style={styles.versionRow}>{format('settings.currentVersion', { version: appVersion })}</Text>
-        )}
         {!writable ? <Text style={styles.notice}>{message('settings.readOnlyProvider')}</Text> : null}
         <ChoiceSheet picker={picker} onClose={() => setPicker(undefined)} />
       </ScrollView>
