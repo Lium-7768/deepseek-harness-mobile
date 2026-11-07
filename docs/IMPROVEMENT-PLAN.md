@@ -93,6 +93,13 @@ in a sheet because a one-line preview in a dense list cannot be the only copy of
 A finished call that returns machine JSON no longer prints `操作完成，可在桌面端查看完整结果。`:
 one boilerplate line per call buried the calls that did return something readable.
 
+The first screen a reader ever sees printed its own title three times — the shell, a 26px heading,
+and the intro sentence — and offered the QR path through a second full-width button. The hero now
+states what the two fields are for, and the QR path is one ghost row.
+
+The header also stopped repeating the running state the transcript's live line prints, and that
+line's only English string became Chinese.
+
 Above the composer, the goal bar carried three icon verbs beside its status line, and editing it
 turned the 36pt bar into a 180pt column with a second multi-line field against the composer's own.
 The bar is a status line plus `⋯` now; edit opens the same sheet that creates a goal, and clearing

@@ -10,7 +10,7 @@ import type { AppTheme } from '@/theme'
 import { useAppTheme, useThemedStyles } from '@/theme/hooks'
 import { router } from 'expo-router'
 import { useEffect, useRef, useState } from 'react'
-import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native'
+import { KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
 export default function ConnectScreen(): React.JSX.Element {
@@ -57,9 +57,10 @@ export default function ConnectScreen(): React.JSX.Element {
           keyboardDismissMode="on-drag"
           keyboardShouldPersistTaps="handled"
         >
+          {/* The shell already titles this screen `连接桌面端`; the hero states what
+              the two fields are for instead of repeating it at 26px. */}
           <View style={styles.hero}>
-            <NativeBrandMark size={44} />
-            <Text style={styles.heading}>{message('connect.title')}</Text>
+            <NativeBrandMark size={36} />
             <Text style={styles.copy}>{message('connect.intro')}</Text>
           </View>
           <View style={styles.form}>
@@ -91,14 +92,17 @@ export default function ConnectScreen(): React.JSX.Element {
               onPress={() => void connect()}
               style={styles.connectButton}
             />
-            <Text style={styles.manualLabel}>{message('connect.scanHint')}</Text>
-            <NativeActionButton
-              label={message('connect.scanAction')}
-              icon="link-outline"
+            {/* One ghost row for the other way in: a second full-width button spent
+                as much room as the primary action it competes with. */}
+            <Pressable
+              accessibilityRole="button"
+              android_ripple={{ borderless: false }}
               onPress={() => router.push('/connect/scan')}
-              variant="secondary"
-              style={styles.connectButton}
-            />
+              style={({ pressed }) => [styles.scanRow, pressed && styles.pressed]}
+            >
+              <NativeIcon name="apps-add-outline" size={16} color={theme.colors.accent} />
+              <Text style={styles.scanText}>{message('connect.scanAction')}</Text>
+            </Pressable>
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
@@ -151,8 +155,7 @@ const makeStyles = (theme: AppTheme) =>
       paddingHorizontal: theme.spacing.xl,
       paddingVertical: theme.spacing.xxl,
     },
-    hero: { gap: 12, marginBottom: 28 },
-    heading: { color: theme.colors.ink, fontSize: 26, lineHeight: 34, fontWeight: '600' },
+    hero: { gap: 12, marginBottom: 20 },
     eyebrow: {
       // Blue is reserved for links, selection, and info; a label uses the muted
       // foreground so it does not compete with the primary action.
@@ -162,9 +165,11 @@ const makeStyles = (theme: AppTheme) =>
       letterSpacing: 1.3,
       lineHeight: 16,
     },
-    copy: { color: theme.colors.inkTertiary, fontSize: theme.typography.bodyLarge, lineHeight: 22 },
+    copy: { color: theme.colors.inkMuted, fontSize: 14, lineHeight: 22 },
     form: { gap: theme.spacing.lg },
-    manualLabel: { color: theme.colors.inkTertiary, fontSize: theme.typography.caption, lineHeight: 18 },
+    scanRow: { alignItems: 'center', alignSelf: 'center', flexDirection: 'row', gap: 6, minHeight: 44 },
+    scanText: { color: theme.colors.accent, fontSize: 14, lineHeight: 22 },
+    pressed: { opacity: 0.62 },
     field: { gap: theme.spacing.xs },
     label: { color: theme.colors.inkMuted, fontSize: theme.typography.caption, fontWeight: '500', lineHeight: 18 },
     input: {

@@ -17,7 +17,6 @@ export const connect = {
   passwordLabel: '访问密码',
   passwordPlaceholder: '桌面端「手机访问」页显示的密码',
   submit: '连接',
-  scanHint: '桌面上同时显示了配对二维码时，也可以扫码连接。',
   scanAction: '扫描配对二维码',
   failed: '连接桌面端失败，请检查地址和密码。',
 } as const
