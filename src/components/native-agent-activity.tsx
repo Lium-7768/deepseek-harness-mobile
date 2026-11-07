@@ -116,7 +116,6 @@ function JobRow({ job }: { job: MobileJobView }): React.JSX.Element {
           {job.detail ?? job.status}
         </Text>
       </View>
-      <Text style={styles.jobKind}>{job.kind}</Text>
     </View>
   )
 }
@@ -140,7 +139,6 @@ const makeStyles = (theme: AppTheme) =>
     jobCopy: { flex: 1, gap: 1 },
     jobLabel: { color: theme.colors.ink, fontSize: 13, fontWeight: '500', lineHeight: 20 },
     jobMeta: { color: theme.colors.inkTertiary, fontSize: 12, lineHeight: 18 },
-    jobKind: { color: theme.colors.inkTertiary, fontSize: 11, lineHeight: 16 },
     subagentRow: { alignItems: 'center', flexDirection: 'row', gap: 4 },
     subagentMain: { alignItems: 'center', flex: 1, flexDirection: 'row', gap: 8, minHeight: theme.touch.minTarget },
     subagentCopy: { flex: 1, gap: 1 },

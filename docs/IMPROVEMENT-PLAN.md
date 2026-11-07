@@ -95,6 +95,14 @@ account page prints one fact per row instead of a title, value and boilerplate s
 The release line returned to the desktop's 14/22 primary label while gaining its 16px
 padding.
 
+The drawer loses the chrome it repeated: `插件 / 自动化任务 / 设置` are one chip row instead of
+three stacked rows, the sync control takes the slot of the permanently disabled
+"desktop-only" add-workspace icon, and the footer that repeated 设置 and 同步 is gone, so each
+destination appears once and the session list gains ~110pt. The transcript's injected-context
+bookkeeping is one line (`上下文注入 · name 等 N 个`) instead of one line per source, the
+interactions page drops the heading that restated its own title and the desktop's approval id,
+and a job row no longer prints its kind twice.
+
 ## Attachments
 
 The gateway refuses a request body over 12 MB, and a phone photo reaches it as base64

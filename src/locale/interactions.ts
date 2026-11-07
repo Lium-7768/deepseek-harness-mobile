@@ -7,7 +7,6 @@
 export const interactions = {
   title: '待处理操作',
   backToSession: '返回会话',
-  heading: '处理待办操作',
   intro: '以下请求来自已配对的桌面端 DSH 运行时。请查看详情后再响应。',
 
   notConnected: '尚未连接桌面端',
@@ -40,7 +39,6 @@ export const interactions = {
   respondFailedBody: '无法发送响应',
 
   /** `{id}` is the desktop approval identifier. */
-  requestId: '请求 {id}',
 
   planReview: '计划审阅',
   discuss: '讨论',

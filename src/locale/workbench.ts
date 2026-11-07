@@ -16,4 +16,6 @@ export const workbench = {
   turn: '第 {turn} 轮',
   /** `{name}` is the injected context's name. */
   contextInjection: '上下文注入 · {name}',
+  /** `{name}` is the first injected source; `{count}` the number of them. */
+  contextInjectionMore: '上下文注入 · {name} 等 {count} 个',
 } as const

@@ -14,7 +14,25 @@ export const makeSessionDrawerStyles = (theme: AppTheme) =>
     drawerSafe: { backgroundColor: theme.colors.drawerBackground, flex: 1 },
     drawerScroll: { flex: 1, backgroundColor: theme.colors.drawerBackground },
     drawerChrome: { flex: 1 },
-    navEntries: { marginHorizontal: 4, marginVertical: 8 },
+    // The three sidebar entries become one compact row: stacked 44pt rows spent
+    // 140pt of a drawer that has sessions to show.
+    navEntries: {
+      flexDirection: 'row',
+      gap: 6,
+      justifyContent: 'space-between',
+      marginHorizontal: 4,
+      marginVertical: 8,
+    },
+    navChip: {
+      alignItems: 'center',
+      borderRadius: theme.radius.md,
+      flexDirection: 'row',
+      gap: 6,
+      justifyContent: 'center',
+      minHeight: 40,
+      paddingHorizontal: 8,
+    },
+    navChipLabel: { color: theme.colors.ink, flexShrink: 1, fontSize: 13, lineHeight: 20 },
     drawerHeader: { paddingHorizontal: 8, paddingTop: 4 },
     drawerContent: { flexGrow: 1, paddingBottom: 12, paddingTop: theme.spacing.xs },
     brandRow: {

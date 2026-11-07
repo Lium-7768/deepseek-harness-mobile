@@ -156,16 +156,22 @@ export function ContextRows({ items }: { items: SharedEventItem[] }): React.JSX.
   const s = useThemedStyles(makeStyles)
   const names = Array.from(new Set(items.flatMap((item) => contextName(item.event))))
   if (!names.length) return null
+  // One line, not one per source: this is bookkeeping above the transcript, and
+  // a session that injected three files would otherwise push the first message
+  // a third of a screen further down.
+  const first = names[0] ?? ''
+  const label =
+    names.length === 1
+      ? format('workbench.contextInjection', { name: first })
+      : format('workbench.contextInjectionMore', { count: names.length, name: first })
   return (
     <View style={s.contextCompact}>
-      {names.map((name) => (
-        <View key={name} style={s.contextCompactRow}>
-          <NativeIcon name="deliver-doc" size={15} color={theme.colors.inkMuted} />
-          <Text numberOfLines={1} style={s.contextCompactText}>
-            {format('workbench.contextInjection', { name })}
-          </Text>
-        </View>
-      ))}
+      <View style={s.contextCompactRow}>
+        <NativeIcon name="deliver-doc" size={15} color={theme.colors.inkMuted} />
+        <Text numberOfLines={1} style={s.contextCompactText}>
+          {label}
+        </Text>
+      </View>
     </View>
   )
 }

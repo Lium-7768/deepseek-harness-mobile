@@ -146,12 +146,6 @@ export default function InteractionsScreen(): React.JSX.Element {
               tintColor={theme.colors.accent}
             />
           }
-          ListHeaderComponent={
-            <View style={styles.intro}>
-              <Text style={styles.title}>{message('interactions.heading')}</Text>
-              <Text style={styles.description}>{message('interactions.intro')}</Text>
-            </View>
-          }
           ListEmptyComponent={<InteractionListStateView query={interactions} state={listState} />}
         />
       </KeyboardAvoidingView>
@@ -217,6 +211,7 @@ function InteractionListStateView({
   return (
     <View style={styles.empty}>
       <Text style={styles.emptyTitle}>{message('interactions.empty')}</Text>
+      <Text style={styles.emptyText}>{message('interactions.intro')}</Text>
       <Text style={styles.emptyText}>{message('interactions.emptyBody')}</Text>
     </View>
   )
@@ -258,7 +253,6 @@ const ApprovalCard = memo(function ApprovalCard({
       <Text style={styles.kicker}>{message('interactions.permissionRequest')}</Text>
       <Text style={styles.cardTitle}>{payload.toolName}</Text>
       <Text style={styles.body}>{reason}</Text>
-      <Text style={styles.metadata}>{format('interactions.requestId', { id: payload.approvalId })}</Text>
       <View style={[styles.buttonRow, stackButtons && styles.buttonRowStacked]}>
         <NativeActionButton
           label={message('interactions.deny')}
@@ -496,15 +490,12 @@ const makeStyles = (theme: AppTheme) =>
   StyleSheet.create({
     container: { flex: 1 },
     listContent: { flexGrow: 1, gap: 12, padding: 16, paddingBottom: 28 },
-    intro: { gap: 8 },
     headerAction: {
       alignItems: 'center',
       height: theme.touch.iconButton,
       justifyContent: 'center',
       width: theme.touch.iconButton,
     },
-    title: { color: theme.colors.ink, fontSize: 26, fontWeight: '500', lineHeight: 32 },
-    description: { color: theme.colors.inkTertiary, lineHeight: 22 },
     error: { color: theme.colors.danger },
     card: {
       ...theme.elevation.card,
@@ -524,7 +515,6 @@ const makeStyles = (theme: AppTheme) =>
     },
     cardTitle: { color: theme.colors.ink, fontSize: 16, fontWeight: '600', lineHeight: 24 },
     body: { color: theme.colors.inkMuted, lineHeight: 22 },
-    metadata: { color: theme.colors.inkTertiary, fontSize: 12, lineHeight: 18 },
     buttonRowStacked: { flexDirection: 'column' },
     approvalButtonStacked: { flex: 0, width: '100%' },
     buttonRow: { flexDirection: 'row', gap: 8, marginTop: 4 },

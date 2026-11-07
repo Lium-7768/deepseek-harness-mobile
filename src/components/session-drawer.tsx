@@ -2,7 +2,6 @@ import { MobileApi } from '@/api/mobile-api'
 import { queryKeys } from '@/api/query-keys'
 import { ConfirmSheet } from '@/components/confirm-sheet'
 import { tapFeedback, warnFeedback } from '@/components/haptics'
-import { NativeMenuPanel } from '@/components/native-menu-panel'
 import { DrawerViewMenu } from '@/components/drawer-view-menu'
 import { DrawerSearchInput, DrawerSearchRow } from '@/components/drawer-search'
 import {
@@ -62,7 +61,6 @@ export function SessionDrawer(props: DrawerContentComponentProps): React.JSX.Ele
   const [search, setSearch] = useState('')
   const debouncedSearch = useDebouncedText(search.trim(), 250)
   const [optionsOpen, setOptionsOpen] = useState(false)
-  const [moreOpen, setMoreOpen] = useState(false)
 
   const frameRef = useRef<View>(null)
   const optionsRef = useRef<View>(null)
@@ -424,30 +422,23 @@ export function SessionDrawer(props: DrawerContentComponentProps): React.JSX.Ele
             </Pressable>
 
             <View style={styles.navEntries}>
-              <NativeListRow
-                title={message('drawer.plugins')}
-                accessibilityRole="button"
+              <DrawerNavChip
+                icon="plugin-pinwheel-outline"
+                label={message('drawer.plugins')}
                 onPress={() => {
                   closeDrawer()
                   router.push({ pathname: '/settings', params: { section: 'plugins' } })
                 }}
-                left={<NativeIcon name="plugin-pinwheel-outline" size={18} color={theme.colors.ink} />}
               />
-              <NativeListRow
-                title={message('drawer.automations')}
-                accessibilityRole="button"
+              <DrawerNavChip
+                icon="clock-outline"
+                label={message('drawer.automations')}
                 onPress={() => {
                   closeDrawer()
                   router.push('/schedules')
                 }}
-                left={<NativeIcon name="clock-outline" size={18} color={theme.colors.ink} />}
               />
-              <NativeListRow
-                title={message('drawer.more')}
-                accessibilityRole="button"
-                onPress={() => setMoreOpen(true)}
-                left={<NativeIcon name="apps-add-outline" size={18} color={theme.colors.ink} />}
-              />
+              <DrawerNavChip icon="settings-outline" label={message('settings.title')} onPress={openSettings} />
             </View>
             <View style={styles.workspaceHeader}>
               {searchOpen ? (
@@ -498,14 +489,21 @@ export function SessionDrawer(props: DrawerContentComponentProps): React.JSX.Ele
                         <NativeIcon name="sliders-two-outline" size={16} color={theme.colors.inkMuted} />
                       </Pressable>
                     </View>
-                    <View
-                      accessible
-                      accessibilityLabel={message('drawer.addWorkspaceDesktopOnly')}
-                      accessibilityState={{ disabled: true }}
-                      style={[styles.actionIcon, styles.disabledAction]}
+                    <Pressable
+                      android_ripple={{ borderless: false }}
+                      accessibilityLabel={message('drawer.syncSessions')}
+                      accessibilityRole="button"
+                      accessibilityState={{ busy: syncing, disabled: syncing }}
+                      disabled={syncing}
+                      onPress={() => void syncSessions()}
+                      style={({ pressed }) => [styles.actionIcon, pressed && styles.pressed]}
                     >
-                      <NativeIcon name="project-add-outline" size={16} color={theme.colors.inkFaint} />
-                    </View>
+                      {syncing ? (
+                        <ActivityIndicator color={theme.colors.inkMuted} size="small" />
+                      ) : (
+                        <NativeIcon name="refresh-outline" size={16} color={theme.colors.inkMuted} />
+                      )}
+                    </Pressable>
                   </View>
                 </>
               )}
@@ -692,58 +690,7 @@ export function SessionDrawer(props: DrawerContentComponentProps): React.JSX.Ele
               </View>
             </View>
           </DrawerContentScrollView>
-          <View style={styles.footer}>
-            <Pressable
-              android_ripple={{ borderless: false }}
-              accessibilityRole="button"
-              accessibilityLabel={message('drawer.openSettings')}
-              onPress={openSettings}
-              style={({ pressed }) => [styles.footerAction, pressed && styles.pressed]}
-            >
-              <NativeIcon name="settings-outline" size={14} color={theme.colors.ink} />
-              <Text style={styles.footerActionText}>{message('settings.title')}</Text>
-            </Pressable>
-            <Pressable
-              android_ripple={{ borderless: false }}
-              accessibilityLabel={message('drawer.syncSessions')}
-              accessibilityRole="button"
-              accessibilityState={{ busy: syncing, disabled: syncing }}
-              disabled={syncing}
-              onPress={() => void syncSessions()}
-              style={({ pressed }) => [styles.footerSync, syncing && styles.footerSyncBusy, pressed && styles.pressed]}
-            >
-              {syncing ? (
-                <ActivityIndicator color={theme.colors.ink} size="small" />
-              ) : (
-                <NativeIcon name="refresh-outline" size={16} color={theme.colors.ink} />
-              )}
-            </Pressable>
-          </View>
         </KeyboardAvoidingView>
-        <NativeMenuPanel
-          open={moreOpen}
-          onClose={() => setMoreOpen(false)}
-          actionMenu
-          title={message('drawer.more')}
-          groups={[
-            {
-              options: [
-                { value: 'settings', label: message('settings.title'), icon: 'settings-outline' },
-                { value: 'connection', label: message('settings.sectionConnection'), icon: 'link-outline' },
-                { value: 'sync', label: message('drawer.syncSessions'), icon: 'refresh-outline', disabled: syncing },
-              ],
-            },
-          ]}
-          onSelect={(value) => {
-            if (value === 'sync') void syncSessions()
-            else {
-              closeDrawer()
-              router.push(
-                value === 'connection' ? { pathname: '/settings', params: { section: 'connection' } } : '/settings',
-              )
-            }
-          }}
-        />
         {optionsOpen ? (
           <DrawerViewMenu
             anchorBottom={anchorBottom}
@@ -796,6 +743,39 @@ export function SessionDrawer(props: DrawerContentComponentProps): React.JSX.Ele
         }}
       />
     </SafeAreaView>
+  )
+}
+
+/**
+ * One sidebar destination as a compact chip.
+ *
+ * @param props - The glyph, the label, and where it navigates.
+ * @returns The chip.
+ */
+function DrawerNavChip({
+  icon,
+  label,
+  onPress,
+}: {
+  icon: 'plugin-pinwheel-outline' | 'clock-outline' | 'settings-outline'
+  label: string
+  onPress: () => void
+}): React.JSX.Element {
+  const theme = useAppTheme()
+  const styles = useThemedStyles(makeSessionDrawerStyles)
+  return (
+    <Pressable
+      android_ripple={{ borderless: false }}
+      accessibilityLabel={label}
+      accessibilityRole="button"
+      onPress={onPress}
+      style={({ pressed }) => [styles.navChip, pressed && styles.pressed]}
+    >
+      <NativeIcon name={icon} size={16} color={theme.colors.ink} />
+      <Text numberOfLines={1} style={styles.navChipLabel}>
+        {label}
+      </Text>
+    </Pressable>
   )
 }
 
