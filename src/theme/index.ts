@@ -75,7 +75,7 @@ const shape = {
   touch: { iconButton: 44, compactIconButton: 36, controlHeight: 40, minTarget: 44 },
   // The desktop's motion tokens (ui-theme/src/styles/base.css:15-17). The easing
   // stays control points here because this module must not import react-native;
-  // `useMotionEasing` in ./hooks turns them into an RN easing function.
+  // Reanimated builds its worklet easing from these control points (`ENTRANCE_EASING`).
   motion: {
     fast: 100,
     base: 200,

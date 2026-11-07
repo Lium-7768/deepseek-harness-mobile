@@ -7,9 +7,9 @@ import { resolveAppearance } from '@/state/appearance-logic'
  * runtime into a Node test process.
  */
 import { useAppearanceStore } from '@/state/appearance'
-import { useEffect, useMemo } from 'react'
-import { Easing, useColorScheme } from 'react-native'
-import { mobileTheme, themes, type AppTheme, type Appearance } from './index'
+import { useEffect } from 'react'
+import { useColorScheme } from 'react-native'
+import { themes, type AppTheme, type Appearance } from './index'
 
 /**
  * Resolve the appearance a screen must render in.
@@ -75,16 +75,3 @@ export function useThemedStyles<T>(factory: (theme: AppTheme) => T): T {
 
 /** Style sheets already built, keyed by factory then appearance. */
 const sheetCache = new WeakMap<(theme: AppTheme) => unknown, Map<Appearance, unknown>>()
-
-/**
- * The desktop's easing curve as an RN easing function.
- *
- * `cubic-bezier(0.4, 0, 0.2, 1)` is the value behind `--ds-ease-in-out`; it lives
- * as control points in the token module so logic tests can read it without
- * loading react-native.
- *
- * @returns An easing function for `Animated.timing`.
- */
-export function useMotionEasing(): (value: number) => number {
-  return useMemo(() => Easing.bezier(...mobileTheme.motion.bezier), [])
-}

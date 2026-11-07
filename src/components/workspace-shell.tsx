@@ -4,11 +4,17 @@ import { t as message } from '@/locale'
 import { useConnectionStore } from '@/state/connection'
 import { useMobileSyncStore } from '@/state/mobile-sync'
 import type { AppTheme } from '@/theme'
-import { useAppTheme, useMotionEasing, useThemedStyles } from '@/theme/hooks'
+import { useAppTheme, useThemedStyles } from '@/theme/hooks'
 import { useNavigation } from 'expo-router'
 import { useEffect, type PropsWithChildren } from 'react'
 import { AccessibilityInfo, Pressable, StyleSheet, Text, View } from 'react-native'
-import Animated, { cancelAnimation, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated'
+import Animated, {
+  Easing,
+  cancelAnimation,
+  useAnimatedStyle,
+  useSharedValue,
+  withTiming,
+} from 'react-native-reanimated'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
 type DrawerNavigation = { openDrawer: () => void }
@@ -201,6 +207,9 @@ const makeStyles = (theme: AppTheme) =>
     pressed: { opacity: 0.58 },
   })
 
+/** `cubic-bezier(0.4, 0, 0.2, 1)`, the desktop `--ds-ease-in-out`, as a UI-thread worklet. */
+const ENTRANCE_EASING = Easing.bezier(0.4, 0, 0.2, 1)
+
 /**
  * Fade a screen in on mount so a route change reads as a transition rather than
  * a hard cut. The platform's reduced-motion setting skips the fade and shows
@@ -210,7 +219,6 @@ const makeStyles = (theme: AppTheme) =>
  */
 function useEntranceFade() {
   const theme = useAppTheme()
-  const easing = useMotionEasing()
   const opacity = useSharedValue(0)
   useEffect(() => {
     let active = true
@@ -222,12 +230,15 @@ function useEntranceFade() {
           opacity.value = 1
           return
         }
-        opacity.value = withTiming(1, { duration: theme.motion.base, easing })
+        // Reanimated evaluates its easing on the UI thread, so it has to be one of its
+        // own worklet easings: the RN `Animated` bezier is a plain JS function and
+        // throws "Tried to synchronously call a Remote Function" in a Release build.
+        opacity.value = withTiming(1, { duration: theme.motion.base, easing: ENTRANCE_EASING })
       })
     return () => {
       active = false
       cancelAnimation(opacity)
     }
-  }, [opacity, easing, theme.motion.base])
+  }, [opacity, theme.motion.base])
   return useAnimatedStyle(() => ({ opacity: opacity.value }))
 }
