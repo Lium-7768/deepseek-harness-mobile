@@ -10,6 +10,9 @@ export const activity = {
   goalBlocked: '受阻的目标',
   pauseGoal: '暂停目标',
   resumeGoal: '恢复目标',
+  goalActions: '目标操作',
+  /** Asks before the one goal verb that cannot be undone. */
+  clearGoalBody: '清除后这个目标会停止，已写下的目标内容不会保留。',
   editGoal: '编辑目标',
   clearGoal: '清除目标',
   goalLabel: '目标内容',

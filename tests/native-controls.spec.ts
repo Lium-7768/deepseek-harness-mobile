@@ -361,24 +361,46 @@ describe('blocked Goal presentation', () => {
 })
 
 describe('Goal edit requests', () => {
-  it('opens the latest desktop objective and preserves an unsaved draft until the next explicit edit request', async () => {
+  it('opens the shared editor prefilled with the latest objective and saves it back', async () => {
     const onMutate = vi.fn().mockResolvedValue(undefined)
     const original = { id: 'goal', revision: 1, objective: 'Original desktop objective', phase: 'paused' as const }
     const props = { goal: original, pending: false, onMutate, editRequest: 0 }
     await mount(createElement(NativeGoalBar, props))
     const changed = { ...original, revision: 2, objective: 'Updated on desktop' }
     await renderer.rerender(createElement(NativeGoalBar, { ...props, goal: changed }))
+    // Editing opens the same sheet that creates a goal, prefilled with the current
+    // objective: the bar no longer turns into an inline text field.
     await renderer.rerender(createElement(NativeGoalBar, { ...props, goal: changed, editRequest: 1 }))
-    expect(renderer.getByLabelText('目标内容').props.value).toBe(changed.objective)
-    await fireEvent.changeText(renderer.getByLabelText('目标内容'), 'My unsaved draft')
-    const newest = { ...changed, revision: 3, objective: 'Updated again on desktop' }
-    await renderer.rerender(createElement(NativeGoalBar, { ...props, goal: newest, editRequest: 1 }))
-    expect(renderer.getByLabelText('目标内容').props.value).toBe('My unsaved draft')
-    await fireEvent.press(renderer.getByLabelText('取消编辑'))
-    await renderer.rerender(createElement(NativeGoalBar, { ...props, goal: newest, editRequest: 2 }))
-    expect(renderer.getByLabelText('目标内容').props.value).toBe(newest.objective)
-    await fireEvent.press(renderer.getByLabelText('保存目标'))
-    expect(onMutate).toHaveBeenCalledExactlyOnceWith('edit', { id: 'goal', revision: 3 }, newest.objective)
+    const input = () => renderer.container.queryAll((node) => node.type === 'TextInput')[0]!
+    expect(input().props.value).toBe(changed.objective)
+    await act(async () => {
+      input().props.onChangeText('My unsaved draft')
+    })
+    await act(async () => {
+      button('保存目标').props.onPress()
+    })
+    expect(onMutate).toHaveBeenCalledExactlyOnceWith('edit', { id: 'goal', revision: 2 }, 'My unsaved draft')
+  })
+
+  it('asks before clearing a goal that cannot be recovered', async () => {
+    const onMutate = vi.fn().mockResolvedValue(undefined)
+    const goal = { id: 'goal', revision: 1, objective: 'Review the dock', phase: 'active' as const }
+    await mount(createElement(NativeGoalBar, { goal, pending: false, onMutate }))
+    await act(async () => {
+      renderer.container.queryAll((node) => node.props.accessibilityLabel === '目标操作')[0]!.props.onPress()
+    })
+    await act(async () => {
+      menuRow('清除目标').props.onPress()
+    })
+    expect(onMutate).not.toHaveBeenCalled()
+    const confirm = () =>
+      renderer.container.queryAll(
+        (node: { props: Record<string, unknown> }) => node.props.accessibilityLabel === '清除目标',
+      )[0]!
+    await act(async () => {
+      confirm().props.onPress()
+    })
+    expect(onMutate).toHaveBeenCalledWith('clear', { id: 'goal', revision: 1 }, undefined)
   })
 })
 

@@ -93,6 +93,15 @@ in a sheet because a one-line preview in a dense list cannot be the only copy of
 A finished call that returns machine JSON no longer prints `操作完成，可在桌面端查看完整结果。`:
 one boilerplate line per call buried the calls that did return something readable.
 
+Above the composer, the goal bar carried three icon verbs beside its status line, and editing it
+turned the 36pt bar into a 180pt column with a second multi-line field against the composer's own.
+The bar is a status line plus `⋯` now; edit opens the same sheet that creates a goal, and clearing
+— the one verb that cannot be undone — asks first.
+
+The queued-turn dock is bounded at 180pt like the task dock, so six queued turns scroll inside it
+instead of pushing the transcript off the screen, and both docks open upward with the same
+disclosure chevron.
+
 Empty and unavailable screens had four shapes and five layouts, so what a reader saw depended on
 which screen happened to be empty. One `NativeEmptyState` states what the surface is, why it is
 empty, and the next step; the workspace finally has one (with 新建会话), the automation tab tells

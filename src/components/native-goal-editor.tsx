@@ -8,13 +8,19 @@ import { StyleSheet, Text, TextInput, View } from 'react-native'
 
 /** A native entry to the desktop's goals/create action; never inserts a fake local Goal. */
 export function NativeGoalEditor({
+  initial,
   open,
   pending,
+  title,
   onClose,
   onCreate,
 }: {
+  /** Prefilled objective; an edit reuses this sheet instead of an inline field. */
+  initial?: string
   open: boolean
   pending: boolean
+  /** Sheet heading; defaults to the create wording. */
+  title?: string
   onClose(): void
   onCreate(objective: string): Promise<void>
 }): React.JSX.Element | null {
@@ -28,8 +34,8 @@ export function NativeGoalEditor({
     if (!pending && !submitting.current) onClose()
   }
   useEffect(() => {
-    if (open) setDraft('')
-  }, [open])
+    if (open) setDraft(initial ?? '')
+  }, [initial, open])
   const save = async (): Promise<void> => {
     if (!open || pending || submitting.current || draft.trim() === '') return
     submitting.current = true
@@ -47,7 +53,7 @@ export function NativeGoalEditor({
   return (
     <NativeAnchoredPanel open={open} onClose={close}>
       <View style={s.content}>
-        <Text style={s.title}>{message('activity.createGoal')}</Text>
+        <Text style={s.title}>{title ?? message('activity.createGoal')}</Text>
         <TextInput
           autoFocus
           multiline

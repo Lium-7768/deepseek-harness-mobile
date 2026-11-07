@@ -4,7 +4,7 @@ import type { AppTheme } from '@/theme'
 import { useAppTheme, useThemedStyles } from '@/theme/hooks'
 import type { MobilePromptContent, MobileQueueItem } from '@/types/mobile'
 import { useEffect, useMemo, useState } from 'react'
-import { Alert, Pressable, StyleSheet, Text, TextInput, View } from 'react-native'
+import { Alert, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native'
 
 type Props = {
   items: readonly MobileQueueItem[]
@@ -84,83 +84,89 @@ export function NativeQueueDock({ items, onUpdate, running }: Props): React.JSX.
         >
           <NativeIcon name="new-chat-outline" size={15} color={theme.colors.inkMuted} />
           <Text style={s.headerText}>{format('queue.header', { count: queue.length })}</Text>
+          {/* Same disclosure as the task dock: a dock opens upward, so the
+              collapsed control points up and the open one points back down. */}
           <NativeIcon
-            name={expanded ? 'chevron-up-outline' : 'chevron-down-outline'}
+            name={expanded ? 'chevron-down-outline' : 'chevron-up-outline'}
             size={17}
             color={theme.colors.inkMuted}
           />
         </Pressable>
       ) : null}
       {listVisible ? (
-        <View style={s.list}>
-          {queue.map((item) => {
-            const text = editableText(item)
-            const isEditing = editing?.id === item.id
-            const busy = busyId !== undefined
-            return (
-              <View key={item.id} style={s.row}>
-                {queue.length === 1 ? (
-                  <NativeIcon name="new-chat-outline" size={15} color={theme.colors.inkMuted} />
-                ) : null}
-                {isEditing ? (
-                  <TextInput
-                    accessibilityLabel={message('queue.edit')}
-                    autoFocus
-                    multiline
-                    onChangeText={(value) => setEditing({ id: item.id, text: value })}
-                    style={s.editor}
-                    value={editing.text}
-                  />
-                ) : (
-                  <Text numberOfLines={2} style={s.preview}>
-                    {queuePreview(item)}
-                  </Text>
-                )}
-                <View style={s.actions}>
+        // Bounded like the task dock: six queued turns would otherwise push the
+        // transcript and the input card off a phone screen.
+        <ScrollView style={s.scroll}>
+          <View style={s.list}>
+            {queue.map((item) => {
+              const text = editableText(item)
+              const isEditing = editing?.id === item.id
+              const busy = busyId !== undefined
+              return (
+                <View key={item.id} style={s.row}>
+                  {queue.length === 1 ? (
+                    <NativeIcon name="new-chat-outline" size={15} color={theme.colors.inkMuted} />
+                  ) : null}
                   {isEditing ? (
-                    <>
-                      <QueueAction
-                        disabled={busy || editing.text.trim() === ''}
-                        label={message('queue.save')}
-                        icon="check-outline"
-                        onPress={() => void save()}
-                      />
-                      <QueueAction
-                        disabled={busy}
-                        label={message('queue.cancelEdit')}
-                        icon="close-outline"
-                        onPress={() => setEditing(undefined)}
-                      />
-                    </>
+                    <TextInput
+                      accessibilityLabel={message('queue.edit')}
+                      autoFocus
+                      multiline
+                      onChangeText={(value) => setEditing({ id: item.id, text: value })}
+                      style={s.editor}
+                      value={editing.text}
+                    />
                   ) : (
-                    <>
-                      <QueueAction
-                        disabled={busy || text === undefined}
-                        label={text === undefined ? message('queue.cannotEditWithAttachment') : message('queue.edit')}
-                        icon="edit-outline"
-                        onPress={() => {
-                          if (text !== undefined) setEditing({ id: item.id, text })
-                        }}
-                      />
-                      <QueueAction
-                        disabled={busy}
-                        label={message('queue.remove')}
-                        icon="close-outline"
-                        onPress={() => void apply(item.id, { kind: 'remove' }, message('queue.cannotRemove'))}
-                      />
-                      <QueueAction
-                        disabled={busy || !running}
-                        label={running ? message('queue.steer') : message('queue.steerUnavailable')}
-                        icon="paper-plane-outline"
-                        onPress={() => void apply(item.id, { kind: 'steer' }, message('queue.cannotSteer'))}
-                      />
-                    </>
+                    <Text numberOfLines={2} style={s.preview}>
+                      {queuePreview(item)}
+                    </Text>
                   )}
+                  <View style={s.actions}>
+                    {isEditing ? (
+                      <>
+                        <QueueAction
+                          disabled={busy || editing.text.trim() === ''}
+                          label={message('queue.save')}
+                          icon="check-outline"
+                          onPress={() => void save()}
+                        />
+                        <QueueAction
+                          disabled={busy}
+                          label={message('queue.cancelEdit')}
+                          icon="close-outline"
+                          onPress={() => setEditing(undefined)}
+                        />
+                      </>
+                    ) : (
+                      <>
+                        <QueueAction
+                          disabled={busy || text === undefined}
+                          label={text === undefined ? message('queue.cannotEditWithAttachment') : message('queue.edit')}
+                          icon="edit-outline"
+                          onPress={() => {
+                            if (text !== undefined) setEditing({ id: item.id, text })
+                          }}
+                        />
+                        <QueueAction
+                          disabled={busy}
+                          label={message('queue.remove')}
+                          icon="close-outline"
+                          onPress={() => void apply(item.id, { kind: 'remove' }, message('queue.cannotRemove'))}
+                        />
+                        <QueueAction
+                          disabled={busy || !running}
+                          label={running ? message('queue.steer') : message('queue.steerUnavailable')}
+                          icon="paper-plane-outline"
+                          onPress={() => void apply(item.id, { kind: 'steer' }, message('queue.cannotSteer'))}
+                        />
+                      </>
+                    )}
+                  </View>
                 </View>
-              </View>
-            )
-          })}
-        </View>
+              )
+            })}
+          </View>
+        </ScrollView>
       ) : null}
     </View>
   )
@@ -231,7 +237,8 @@ const makeStyles = (theme: AppTheme) =>
     // `QueueDock .header`: gap 10 in a 36-tall row. The collapsed header is the
     // only control here, so it carries hitSlop for its own touch target.
     header: { alignItems: 'center', flexDirection: 'row', gap: 10, minHeight: 36 },
-    headerText: { color: theme.colors.inkTertiary, flex: 1, fontSize: 13, fontWeight: '500', lineHeight: 20 },
+    headerText: { color: theme.colors.inkMuted, flex: 1, fontSize: 13, fontWeight: '500', lineHeight: 20 },
+    scroll: { maxHeight: 180 },
     list: { gap: 4 },
     // A queued row keeps the desktop's 36 too; its action buttons reach 44
     // through hitSlop rather than by inflating the row.

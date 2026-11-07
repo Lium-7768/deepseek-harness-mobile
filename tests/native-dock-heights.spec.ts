@@ -7,6 +7,8 @@ vi.mock('react-native', () => ({
   Text: 'Text',
   TextInput: 'TextInput',
   Pressable: 'Pressable',
+  ScrollView: 'ScrollView',
+  ActivityIndicator: 'ActivityIndicator',
   StyleSheet: { create: (styles: unknown) => styles, hairlineWidth: 1 },
   useWindowDimensions: () => ({ fontScale: 1, height: 852, width: 393 }),
 }))
@@ -18,6 +20,9 @@ vi.mock('@/theme/hooks', async () => {
   }
 })
 vi.mock('@/components/native-icon', () => ({ NativeIcon: 'Icon' }))
+vi.mock('@/components/native-menu-panel', () => ({ NativeMenuPanel: 'MenuPanel' }))
+vi.mock('@/components/native-goal-editor', () => ({ NativeGoalEditor: 'GoalEditor' }))
+vi.mock('@/components/confirm-sheet', () => ({ ConfirmSheet: 'ConfirmSheet' }))
 import { NativeGoalBar } from '@/components/native-goal-bar'
 import { NativeQueueDock } from '@/components/native-queue-dock'
 import { themes } from '@/theme'
