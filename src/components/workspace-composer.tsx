@@ -41,6 +41,7 @@ import type {
   MobilePermissionSelect,
   MobilePromptContent,
   MobileReferencePayload,
+  MobileSkillDescriptor,
 } from '@/types/mobile'
 import { Image } from 'expo-image'
 import * as ImagePicker from 'expo-image-picker'
@@ -96,6 +97,8 @@ type Props = {
   plan?: PlanState
   /** Slash commands the `/` trigger menu offers; omission keeps the menu shut. */
   commands?: MobileCommandDescriptor[]
+  /** User-invocable skills the `/` trigger menu offers beside the commands. */
+  skills?: MobileSkillDescriptor[]
   /** Resolves `@` candidates for one query; omission keeps the mention menu shut. */
   lookupReferences?: (query: string, signal: AbortSignal) => Promise<MobileReferencePayload>
   placeholder?: string
@@ -136,6 +139,7 @@ export function WorkspaceComposer({
   onRetryModels,
   selectionPending = false,
   commands,
+  skills,
   lookupReferences,
   permissionLocked = false,
   permissions,
@@ -763,9 +767,10 @@ export function WorkspaceComposer({
         <NativeInputTriggerMenu
           caret={caret}
           commands={commands}
+          skills={skills}
           onClose={() => setCommandMenuDismissed(true)}
-          onPick={(command: MobileCommandDescriptor, trigger: CommandTrigger) => {
-            const next = applyCommandPick(text, trigger, command.name)
+          onPick={(picked, trigger: CommandTrigger) => {
+            const next = applyCommandPick(text, trigger, picked.name)
             setText(next.text)
             setCaret(next.caret)
             setCommandMenuDismissed(true)

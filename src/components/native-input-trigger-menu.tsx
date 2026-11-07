@@ -1,21 +1,27 @@
-import { NativeMenuPanel } from '@/components/native-menu-panel'
-import { commandTrigger, rankCommands, type CommandTrigger } from '@/components/input-trigger-logic'
+import { NativeMenuPanel, type NativeMenuGroup } from '@/components/native-menu-panel'
+import { commandTrigger, rankSlashSources, type CommandTrigger } from '@/components/input-trigger-logic'
 import { t as message } from '@/locale'
-import type { MobileCommandDescriptor } from '@/types/mobile'
+import type { MobileCommandDescriptor, MobileSkillDescriptor } from '@/types/mobile'
+
+/** What a `/` pick inserts: the name, whichever source offered it. */
+export interface SlashPick {
+  name: string
+}
 
 /**
- * Renders the `/` command menu over the composer.
+ * Renders the `/` menu over the composer.
  *
- * The Web opens `conversation.input.overlay` once a slash begins a token. The
- * native surface reuses the shared menu panel, so the row typography, the
- * monospace slash token, and the dismissal behaviour match every other composer
- * menu; only the candidate list is new.
+ * The Web opens `conversation.input.overlay` once a slash begins a token and
+ * fills it from two sources: the Host's commands and its user-invocable skills.
+ * The phone keeps one menu and one pick result — `/name ` — because the Host
+ * decides what a leading `/name` line means when the prompt arrives.
  *
- * @param props - The draft, the caret that drives detection, and the pick handler.
+ * @param props - The draft, the caret that drives detection, both candidate lists, and the pick handler.
  * @returns The menu, or `null` while no trigger is open or nothing matches.
  */
 export function NativeInputTriggerMenu({
   commands,
+  skills,
   text,
   caret,
   onClose,
@@ -23,39 +29,57 @@ export function NativeInputTriggerMenu({
 }: {
   /** Host commands, or undefined until the catalog loads. */
   commands: MobileCommandDescriptor[] | undefined
+  /** User-invocable skills, or undefined until the catalog loads. */
+  skills?: MobileSkillDescriptor[]
   /** The whole draft. */
   text: string
   /** Selection start from the input's own selection event. */
   caret: number
   onClose: () => void
-  /** Receives the chosen command and the trigger span it replaces. */
-  onPick: (command: MobileCommandDescriptor, trigger: CommandTrigger) => void
+  /** Receives the chosen name and the trigger span it replaces. */
+  onPick: (picked: SlashPick, trigger: CommandTrigger) => void
 }): React.JSX.Element | null {
   const trigger = commandTrigger(text, caret)
   if (trigger === undefined) return null
-  const matches = rankCommands(commands ?? [], trigger.query)
-  if (matches.length === 0) return null
+  const ranked = rankSlashSources(commands ?? [], skills ?? [], trigger.query)
+  const matches = ranked.commands
+  const skillMatches = ranked.skills
+  if (matches.length === 0 && skillMatches.length === 0) return null
+  const groups: NativeMenuGroup[] = [
+    {
+      options: matches.map((command) => ({
+        description: command.description,
+        label: command.name,
+        token: `/${command.name}`,
+        value: command.name,
+      })),
+      title: message('composer.menuCommandSection'),
+    },
+    {
+      options: skillMatches.map((skill) => ({
+        description: skill.modelInvocable
+          ? skill.description
+          : `${message('composer.skillUserOnly')} · ${skill.description}`,
+        label: skill.name,
+        token: `/${skill.name}`,
+        value: `skill:${skill.name}`,
+      })),
+      title: message('composer.menuSkillSection'),
+    },
+  ].filter((group) => group.options.length > 0)
   return (
     <NativeMenuPanel
       actionMenu
-      groups={[
-        {
-          options: matches.map((command) => ({
-            description: command.description,
-            label: command.name,
-            token: `/${command.name}`,
-            value: command.name,
-          })),
-          title: message('composer.menuCommandSection'),
-        },
-      ]}
+      groups={groups}
       onClose={onClose}
       onSelect={(value) => {
-        const picked = matches.find((command) => command.name === value)
-        if (picked !== undefined) onPick(picked, trigger)
+        const name = value.startsWith('skill:') ? value.slice('skill:'.length) : value
+        const picked =
+          matches.find((command) => command.name === name) ?? skillMatches.find((skill) => skill.name === name)
+        if (picked !== undefined) onPick({ name: picked.name }, trigger)
       }}
       open
-      title={message('composer.menuCommandSection')}
+      title={message('composer.menuSlashSection')}
     />
   )
 }

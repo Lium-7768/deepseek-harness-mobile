@@ -29,6 +29,7 @@ import type {
   MobileSessionModelsPayload,
   MobileSessionSearchPayload,
   MobileSessionSubscriptionPayload,
+  MobileSkillDescriptor,
   MobileSettingsMutatePayload,
   MobileSettingsNamespaceView,
   MobileSettingsPayload,
@@ -374,6 +375,14 @@ export class MobileApi {
     if (!isRecord(result) || !Array.isArray(result.items) || !result.items.every(isCommandDescriptor))
       throw createError('protocol', message('errors.responseInvalid'))
     return result.items
+  }
+
+  /** Reads the user-invocable skills the desktop publishes for one session. */
+  async sessionSkills(sessionId: string): Promise<MobileSkillDescriptor[]> {
+    const result = await this.#post<unknown>(`/v1/sessions/${encodeURIComponent(sessionId)}/skills`, {})
+    if (!isRecord(result) || !Array.isArray(result.skills) || !result.skills.every(isSkillDescriptor))
+      throw createError('protocol', message('errors.responseInvalid'))
+    return result.skills
   }
 
   /** Reads the workspace paths and other Sessions the `@` menu can complete for one query. */
@@ -823,6 +832,17 @@ function isAccountProfile(value: unknown): value is {
 }
 
 /** One slash command the Host advertises; only `name` is required to send it. */
+function isSkillDescriptor(value: unknown): value is MobileSkillDescriptor {
+  return (
+    isRecord(value) &&
+    typeof value.name === 'string' &&
+    value.name.trim() !== '' &&
+    value.name.startsWith('/') === false &&
+    typeof value.description === 'string' &&
+    typeof value.modelInvocable === 'boolean'
+  )
+}
+
 function isReferenceFile(value: unknown): value is MobileReferenceFileCandidate {
   return (
     isRecord(value) &&

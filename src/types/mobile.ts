@@ -447,6 +447,16 @@ export interface MobileCommandDescriptor {
   description: string
 }
 
+/** One user-invocable skill the `/` menu offers beside its commands. */
+export interface MobileSkillDescriptor {
+  /** Skill name, inserted as `/name`. */
+  name: string
+  /** One-line summary the menu prints. */
+  description: string
+  /** Whether the model may also invoke this skill on its own. */
+  modelInvocable: boolean
+}
+
 /** One workspace path the `@` menu can complete. */
 export interface MobileReferenceFileCandidate {
   /** User-facing path accepted by prompts and filesystem tools. */

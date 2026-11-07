@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { applyCommandPick, commandTrigger, rankCommands } from '@/components/input-trigger-logic'
-import type { MobileCommandDescriptor } from '@/types/mobile'
+import { applyCommandPick, commandTrigger, rankCommands, rankSlashSources } from '@/components/input-trigger-logic'
+import type { MobileCommandDescriptor, MobileSkillDescriptor } from '@/types/mobile'
 
 const commands: MobileCommandDescriptor[] = [
   { description: 'Show or leave plan mode', name: 'plan' },
@@ -61,5 +61,25 @@ describe('picking a command', () => {
       caret: 12,
       text: 'hello /plan  world',
     })
+  })
+})
+
+describe('slash menu sources', () => {
+  const skills: MobileSkillDescriptor[] = [
+    { description: 'Audit a pull request', modelInvocable: false, name: 'code-review' },
+    { description: 'Compress the context', modelInvocable: true, name: 'compact' },
+    { description: 'Research a topic', modelInvocable: true, name: 'deep-research' },
+  ]
+
+  it('ranks commands and skills separately', () => {
+    const ranked = rankSlashSources(commands, skills, 'co')
+    expect(ranked.commands.map((command) => command.name)).toEqual(['compact'])
+    expect(ranked.skills.map((skill) => skill.name)).toEqual(['code-review'])
+  })
+
+  it('drops a skill whose name is also a command', () => {
+    // `compact` exists in both sources; the Host resolves that line as the command.
+    const ranked = rankSlashSources(commands, skills, '')
+    expect(ranked.skills.map((skill) => skill.name)).toEqual(['code-review', 'deep-research'])
   })
 })

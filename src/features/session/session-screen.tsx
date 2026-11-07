@@ -154,6 +154,7 @@ export default function SessionScreen(): React.JSX.Element {
     models,
     presets,
     commands,
+    skills,
     settings,
   } = useSessionQueries(client, connection, sessionId)
   // The composer delivers a draft into a running Turn the same way the desktop does;
@@ -878,6 +879,7 @@ export default function SessionScreen(): React.JSX.Element {
                 onSend={(content) => send.mutateAsync(content).then(() => undefined)}
                 onCancel={() => cancel.mutate()}
                 commands={commands.data}
+                skills={skills.data}
                 lookupReferences={
                   client === undefined || sessionId === undefined
                     ? undefined

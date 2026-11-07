@@ -102,6 +102,18 @@ export function useSessionQueries(
       return client.withSignal(signal).commands(sessionId)
     },
   })
+  // The `/` menu prints these beside the commands; a failure leaves the menu's
+  // command group intact rather than blocking the composer.
+  const skills = useQuery({
+    queryKey: queryKeys.sessionSkills(connection?.gatewayUrl, connection?.deviceId, sessionId),
+    enabled: ready,
+    retry: false,
+    staleTime: 60_000,
+    queryFn: ({ signal }) => {
+      if (!client || !sessionId) throw new Error(message('conversation.openFromList'))
+      return client.withSignal(signal).sessionSkills(sessionId)
+    },
+  })
   const presets = useQuery({
     queryKey: queryKeys.agentPresets(connection?.gatewayUrl, connection?.deviceId),
     enabled: client !== undefined,
@@ -134,5 +146,6 @@ export function useSessionQueries(
     models,
     presets,
     commands,
+    skills,
   }
 }

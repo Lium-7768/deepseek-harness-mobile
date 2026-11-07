@@ -1,5 +1,3 @@
-import type { MobileCommandDescriptor } from '@/types/mobile'
-
 /** A live `/` trigger: the command token being typed at the caret. */
 export interface CommandTrigger {
   kind: 'command'
@@ -58,15 +56,40 @@ export function applyCommandPick(text: string, trigger: CommandTrigger, name: st
  * @param query - The text after the slash.
  * @returns The matching commands, best first.
  */
-export function rankCommands(commands: readonly MobileCommandDescriptor[], query: string): MobileCommandDescriptor[] {
+export function rankCommands<T extends { name: string }>(commands: readonly T[], query: string): T[] {
   const needle = query.trim().toLowerCase()
   if (needle === '') return [...commands]
-  const prefix: MobileCommandDescriptor[] = []
-  const contains: MobileCommandDescriptor[] = []
+  const prefix: T[] = []
+  const contains: T[] = []
   for (const command of commands) {
     const name = command.name.toLowerCase()
     if (name.startsWith(needle)) prefix.push(command)
     else if (name.includes(needle)) contains.push(command)
   }
   return [...prefix, ...contains]
+}
+
+/**
+ * Rank both `/` sources into the two groups the menu prints.
+ *
+ * The Host resolves a leading `/name` line by its own adjudication, and a name
+ * that is both a command and a skill resolves to the command. A skill sharing a
+ * command's name is therefore dropped: offering it would promise text the Host
+ * reads as something else.
+ *
+ * @param commands - The Host's advertised commands.
+ * @param skills - The Session's user-invocable skills.
+ * @param query - The text after the slash.
+ * @returns The matching commands and skills, best first in each group.
+ */
+export function rankSlashSources<Command extends { name: string }, Skill extends { name: string }>(
+  commands: readonly Command[],
+  skills: readonly Skill[],
+  query: string,
+): { commands: Command[]; skills: Skill[] } {
+  const commandNames = new Set(commands.map((command) => command.name))
+  return {
+    commands: rankCommands(commands, query),
+    skills: rankCommands(skills, query).filter((skill) => !commandNames.has(skill.name)),
+  }
 }

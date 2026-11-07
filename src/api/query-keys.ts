@@ -18,6 +18,7 @@ export const queryKeys = {
   sessionSubagents: key('session-subagents'),
   sessionModels: key('session-models'),
   sessionCommands: key('session-commands'),
+  sessionSkills: key('session-skills'),
   accountProfile: key('account-profile'),
   accountBalance: key('account-balance'),
   sessionGoal: key('session-goal'),
