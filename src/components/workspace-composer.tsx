@@ -761,7 +761,7 @@ const makeStyles = (theme: AppTheme) =>
     // it answers the only question a phone can raise about an attachment before sending.
     previewSize: {
       alignSelf: 'center',
-      color: theme.colors.inkFaint,
+      color: theme.colors.inkMuted,
       fontFamily: MONOSPACE_FONT,
       fontSize: 11,
       lineHeight: 16,
@@ -885,7 +885,7 @@ const makeStyles = (theme: AppTheme) =>
     },
     modelText: { color: theme.colors.inkMuted, flexShrink: 1, fontSize: 13, fontWeight: '400', lineHeight: 20 },
     // `.triggerEffort` shrinks 1000× so it ellipsizes away before the name does.
-    effortText: { color: theme.colors.inkFaint, flexShrink: 1000, fontSize: 13, lineHeight: 20, minWidth: 0 },
+    effortText: { color: theme.colors.inkMuted, flexShrink: 1000, fontSize: 13, lineHeight: 20, minWidth: 0 },
     // `wqMmtW_primary`: a 34pt circle on the info fill, lifted 2px against the row.
     send: {
       alignItems: 'center',

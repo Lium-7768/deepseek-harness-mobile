@@ -150,7 +150,7 @@ const makeStyles = (theme: AppTheme) =>
     // `Menu.module.css` item: 13/400 on a 20px line in label-primary; the
     // supporting line under it is 12/400 on 16 in label-caption.
     title: { color: theme.colors.ink, fontSize: 13, fontWeight: '400', lineHeight: 20 },
-    description: { color: theme.colors.inkFaint, fontSize: 12, lineHeight: 16 },
+    description: { color: theme.colors.inkMuted, fontSize: 12, lineHeight: 16 },
     trailing: { alignItems: 'center', justifyContent: 'center', marginLeft: theme.spacing.sm },
     trailingMultiline: { marginTop: 2 },
     // `Menu.module.css` marks the chosen row with the hover fill (`selectedFill`),

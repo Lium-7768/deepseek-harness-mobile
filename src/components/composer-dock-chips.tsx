@@ -100,6 +100,6 @@ const makeStyles = (theme: AppTheme) =>
     },
     chipActive: { backgroundColor: theme.colors.interactiveHover },
     label: { color: theme.colors.inkMuted, flexShrink: 1, fontSize: 12, lineHeight: 18 },
-    labelWarning: { color: theme.colors.warning },
+    labelWarning: { color: theme.colors.warningText },
     pressed: { opacity: 0.62 },
   })

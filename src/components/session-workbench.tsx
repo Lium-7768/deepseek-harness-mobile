@@ -148,6 +148,9 @@ const TrajectoryActivityRow = memo(function TrajectoryActivityRow({
       ? ''
       : format('workbench.elapsed', { duration: formatTrajectoryDuration(activity.durationMs) })
   const preview = trajectoryDetailPreview(activity.detail)
+  // A machine-readable result prints no preview line, but the reader can still
+  // open it: the row is pressable whenever there is any complete text behind it.
+  const openable = activity.raw !== undefined || activity.detail !== undefined
   // A one-line preview in a dense list must not be the only copy of the detail:
   // the row opens the whole text, which is what a reader comes to the ledger for.
   const body = (
@@ -178,7 +181,7 @@ const TrajectoryActivityRow = memo(function TrajectoryActivityRow({
       {activity.showTurn === true && activity.turn !== undefined ? (
         <Text style={s.turnLabel}>{format('workbench.turn', { turn: activity.turn })}</Text>
       ) : null}
-      {activity.detail === undefined ? (
+      {!openable ? (
         <View accessibilityLabel={`${activity.title}${stateLabel}${durationLabel}`}>{body}</View>
       ) : (
         <Pressable
@@ -192,7 +195,7 @@ const TrajectoryActivityRow = memo(function TrajectoryActivityRow({
           {body}
         </Pressable>
       )}
-      {activity.detail === undefined ? null : (
+      {!openable ? null : (
         <NativeAnchoredPanel onClose={() => setOpen(false)} open={open}>
           <View style={s.detailHeader}>
             <NativeIcon name={activityIcon(activity)} size={14} color={activityColor(activity, theme)} />
@@ -203,7 +206,7 @@ const TrajectoryActivityRow = memo(function TrajectoryActivityRow({
           </View>
           <ScrollView style={s.detailScroll}>
             <Text selectable style={s.detailText}>
-              {activity.detail}
+              {activity.raw ?? activity.detail}
             </Text>
           </ScrollView>
         </NativeAnchoredPanel>
@@ -328,7 +331,7 @@ const makeStyles = (theme: AppTheme) =>
       marginLeft: 'auto',
       paddingRight: theme.spacing.md,
     },
-    pendingText: { color: theme.colors.warning, fontSize: 13, fontWeight: '600', lineHeight: 16 },
+    pendingText: { color: theme.colors.warningText, fontSize: 13, fontWeight: '600', lineHeight: 16 },
     pendingBadge: {
       alignItems: 'center',
       backgroundColor: theme.colors.warningSoft,
@@ -337,7 +340,7 @@ const makeStyles = (theme: AppTheme) =>
       minWidth: 18,
       paddingHorizontal: 5,
     },
-    pendingBadgeText: { color: theme.colors.warning, fontSize: 11, fontWeight: '700', lineHeight: 16 },
+    pendingBadgeText: { color: theme.colors.warningText, fontSize: 11, fontWeight: '700', lineHeight: 16 },
     panelList: { gap: 8, padding: 14 },
     activityWrap: { gap: 5 },
     // The disclosed turn heading is a 24pt line box inside 28pt, leaving 4pt under
@@ -383,12 +386,14 @@ const makeStyles = (theme: AppTheme) =>
     traceLabel: { color: theme.colors.ink, fontSize: 14, lineHeight: 22 },
     // `Trajectory.module.css` prints each cell as one truncated mono line at
     // 12/18 in `label-tertiary`; the row grows no taller than that.
-    traceDetail: { color: theme.colors.inkTertiary, fontFamily: MONOSPACE_FONT, fontSize: 12, lineHeight: 18 },
+    // Detail and duration are readings, not decoration: 12px tertiary is 3.7:1 in
+    // the light appearance, so both take the muted ink that measures 5.8:1.
+    traceDetail: { color: theme.colors.inkMuted, fontFamily: MONOSPACE_FONT, fontSize: 12, lineHeight: 18 },
     state: { color: theme.colors.inkTertiary, fontSize: 11, fontWeight: '500', lineHeight: 16 },
     stateFailed: { color: theme.colors.danger },
-    duration: { color: theme.colors.inkTertiary, fontSize: 11, lineHeight: 16 },
+    duration: { color: theme.colors.inkMuted, fontSize: 11, lineHeight: 16 },
     contextCompact: { gap: 8, marginTop: 2, paddingHorizontal: 16, paddingTop: 12 },
     contextCompactRow: { alignItems: 'center', flexDirection: 'row', gap: 7 },
-    contextCompactText: { color: theme.colors.inkTertiary, flex: 1, fontSize: 13, lineHeight: 20 },
+    contextCompactText: { color: theme.colors.inkMuted, flex: 1, fontSize: 13, lineHeight: 20 },
     empty: { color: theme.colors.inkMuted, paddingVertical: 24, textAlign: 'center' },
   })

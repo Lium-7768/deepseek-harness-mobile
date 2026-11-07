@@ -93,6 +93,12 @@ in a sheet because a one-line preview in a dense list cannot be the only copy of
 A finished call that returns machine JSON no longer prints `操作完成，可在桌面端查看完整结果。`:
 one boilerplate line per call buried the calls that did return something readable.
 
+Ink roles are checked, not eyeballed: `inkMuted` (readings a reader acts on) must clear 4.5:1 on
+every surface in both appearances, `inkTertiary` 3:1, and `warningText` 4.5:1 — the amber
+`warning` stays for fills and glyphs. The trajectory detail, duration, list descriptions, the
+attachment size, the effort label, and the header status moved from tertiary/faint to muted,
+and the dark appearance's faint tone lifted to 5.2:1 because the list prints 12px labels in it.
+
 Switching tabs no longer resets the reader: the transcript keeps its position (the latch used
 to re-pin on every return), the ledger restores the offset it was scrolled to, the statistics
 dock stays under both tabs so the composer keeps one height, and a send returns to the

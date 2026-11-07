@@ -76,3 +76,67 @@ describe('projected desktop aliases', () => {
     expect(darkTheme.colors.onBrand).toBe('rgb(21, 21, 23)')
   })
 })
+
+/** WCAG relative luminance of one `rgb(r, g, b)` token. */
+function luminance(value: string): number {
+  const [r, g, b] = /rgb\((\d+), (\d+), (\d+)\)/
+    .exec(value)!
+    .slice(1, 4)
+    .map((part) => {
+      const channel = Number(part) / 255
+      return channel <= 0.03928 ? channel / 12.92 : ((channel + 0.055) / 1.055) ** 2.4
+    })
+  return 0.2126 * r! + 0.7152 * g! + 0.0722 * b!
+}
+
+/** WCAG contrast ratio between two opaque colours. */
+function contrast(a: string, b: string): number {
+  const [light, dark] = [luminance(a), luminance(b)].sort((left, right) => right - left)
+  return (light! + 0.05) / (dark! + 0.05)
+}
+
+// Ink roles are chosen by what they carry, not by how they look: `inkMuted` prints
+// readings a reader has to act on, `inkTertiary` secondary labels, and `inkFaint` is
+// a placeholder tone. These floors are what keeps a 12px label legible outdoors.
+describe('reading contrast', () => {
+  const surfaces = ['canvas', 'surface', 'surfaceRaised'] as const
+
+  it('keeps muted ink at body-reading contrast on every surface', () => {
+    for (const theme of [mobileTheme, darkTheme]) {
+      for (const surface of surfaces) {
+        expect(
+          contrast(theme.colors.inkMuted, theme.colors[surface]),
+          `${theme.appearance}.inkMuted on ${surface}`,
+        ).toBeGreaterThanOrEqual(4.5)
+      }
+    }
+  })
+
+  it('keeps tertiary ink above the large-text floor on every surface', () => {
+    for (const theme of [mobileTheme, darkTheme]) {
+      for (const surface of surfaces) {
+        expect(
+          contrast(theme.colors.inkTertiary, theme.colors[surface]),
+          `${theme.appearance}.inkTertiary on ${surface}`,
+        ).toBeGreaterThanOrEqual(3)
+      }
+    }
+  })
+
+  it('keeps warning copy readable where it replaces the amber fill', () => {
+    for (const theme of [mobileTheme, darkTheme]) {
+      for (const surface of surfaces) {
+        expect(
+          contrast(theme.colors.warningText, theme.colors[surface]),
+          `${theme.appearance}.warningText on ${surface}`,
+        ).toBeGreaterThanOrEqual(4.5)
+      }
+    }
+  })
+
+  it('keeps the dark appearance faint ink usable for a small label', () => {
+    // The light appearance keeps its faint tone for placeholders only; the dark
+    // list prints 12px labels in it, so it has to clear the text floor there.
+    expect(contrast(darkTheme.colors.inkFaint, darkTheme.colors.surfaceRaised)).toBeGreaterThanOrEqual(4.5)
+  })
+})

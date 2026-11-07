@@ -122,6 +122,6 @@ export const makeSessionStyles = (theme: AppTheme) =>
     statusDot: { backgroundColor: theme.colors.success, borderRadius: 4, height: 7, width: 7 },
     statusPending: { backgroundColor: theme.colors.warning },
     statusOffline: { backgroundColor: theme.colors.inkFaint },
-    statusText: { color: theme.colors.inkTertiary, fontSize: 11, lineHeight: 16 },
+    statusText: { color: theme.colors.inkMuted, fontSize: 11, lineHeight: 16 },
     pressed: { opacity: 0.62 },
   })

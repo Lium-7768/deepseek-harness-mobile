@@ -150,6 +150,6 @@ const makeStyles = (theme: AppTheme) =>
       justifyContent: 'center',
       width: theme.touch.iconButton,
     },
-    diagnostic: { color: theme.colors.warning, fontSize: 13, lineHeight: 20 },
+    diagnostic: { color: theme.colors.warningText, fontSize: 13, lineHeight: 20 },
     pressed: { opacity: 0.62 },
   })

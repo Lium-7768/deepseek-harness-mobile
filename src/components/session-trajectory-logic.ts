@@ -11,6 +11,8 @@ export type NativeTrajectoryActivity = {
   kind: NativeTrajectoryActivityKind
   title: string
   detail?: string
+  /** Complete result text the row opens; the detail line may be a trimmed preview. */
+  raw?: string
   state?: NativeTrajectoryActivityState
   toolName?: string
   turn?: number
@@ -83,11 +85,17 @@ export function projectNativeTrajectoryActivities(items: readonly SharedEventIte
       if (knownTool !== undefined) {
         const current = activities[knownTool.index]
         if (current !== undefined) {
+          const settled = toolResultDetail(result.output, result.failed)
           activities[knownTool.index] = {
             ...current,
             state: result.failed ? 'failed' : 'completed',
             title: toolActivityTitle(current.toolName ?? message('trajectory.tool')),
-            ...textDetail(toolResultDetail(result.output, result.failed)),
+            // The call's own line is present-tense ("正在运行命令。"); once the call
+            // settles with nothing readable, printing it beside 已完成 contradicts
+            // the state, so the row keeps only its title and duration. The complete
+            // output stays reachable through `raw`.
+            detail: settled,
+            ...rawField(result.output),
             ...(time === undefined || knownTool.startedAt === undefined
               ? {}
               : { durationMs: Math.max(0, time - knownTool.startedAt) }),
@@ -101,6 +109,7 @@ export function projectNativeTrajectoryActivities(items: readonly SharedEventIte
         state: result.failed ? 'failed' : 'completed',
         title: message('trajectory.executeAction'),
         ...textDetail(toolResultDetail(result.output, result.failed)),
+        ...rawField(result.output),
         ...turnField(turn),
       })
       continue
@@ -227,6 +236,17 @@ function toolCallDetail(toolName: string, data: EventRecord): string {
  * @param failed - Whether the call reported an error.
  * @returns The readable text, or undefined when there is nothing to add.
  */
+/**
+ * Carries a result's complete text for the detail sheet, when it has one.
+ *
+ * @param output - Raw tool output.
+ * @returns The property to merge, or an empty object when there is nothing to open.
+ */
+function rawField(output: string | undefined): Pick<NativeTrajectoryActivity, 'raw'> | Record<string, never> {
+  const text = output?.trim()
+  return text === undefined || text === '' ? {} : { raw: text }
+}
+
 function toolResultDetail(output: string | undefined, failed: boolean): string | undefined {
   const readable = output === undefined || isTechnicalText(output) ? undefined : previewText(output)
   if (readable !== undefined) return readable

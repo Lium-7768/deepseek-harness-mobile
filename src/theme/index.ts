@@ -391,7 +391,9 @@ const darkColors: ThemeColors = {
   ink: 'rgb(249, 250, 251)',
   inkMuted: 'rgb(207, 211, 214)',
   inkTertiary: 'rgb(173, 178, 184)',
-  inkFaint: 'rgb(129, 133, 140)',
+  // Lifted from the light appearance's placeholder grey: on the raised dark surface
+  // it measured 3.8:1, below the 4.5:1 a 12px label needs.
+  inkFaint: 'rgb(154, 159, 165)',
   border: 'rgba(255, 255, 255, 0.16)',
   borderStrong: 'rgba(255, 255, 255, 0.2)',
   borderHairline: 'rgba(255, 255, 255, 0.06)',

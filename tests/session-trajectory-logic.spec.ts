@@ -117,6 +117,8 @@ describe('native trajectory activity projection', () => {
     // call buried the rows that actually carried a result.
     expect(activities).toEqual([expect.objectContaining({ kind: 'tool', title: '执行操作', state: 'completed' })])
     expect(activities[0]?.detail).toBeUndefined()
+    // The complete output still travels, so the row can open it.
+    expect(activities[0]?.raw).toBe('{"status":"ok","trace":"internal"}')
   })
 
   it('formats operation durations the way the Web trajectory prints them', () => {
