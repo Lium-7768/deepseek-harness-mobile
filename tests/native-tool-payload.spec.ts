@@ -52,10 +52,12 @@ describe('tool payload fold', () => {
     await act(async () => undefined)
   })
 
-  it('folds a long output and names how many lines stay hidden', async () => {
+  it('folds a long output and names the whole payload in the fold control', async () => {
     const output = Array.from({ length: 20 }, (_, index) => `line ${index + 1}`).join('\n')
     const renderer = await render(createElement(NativeToolCard, { row: row(output) }))
-    expect(texts(renderer).join(' ')).toContain('还有 4 行')
+    // The header row carries the count: a second line naming the hidden tail would
+    // cost every tool call another 16pt.
+    expect(texts(renderer).join(' ')).not.toContain('还有')
     const expand = buttons(renderer).find((node) => String(node.props.accessibilityLabel).includes('展开全部'))
     expect(String(expand?.props.accessibilityLabel)).toContain('20')
     await act(async () => undefined)
@@ -68,16 +70,17 @@ describe('tool payload fold', () => {
     await act(async () => {
       fireEvent.press(expand)
     })
-    expect(texts(renderer).join(' ')).not.toContain('还有 4 行')
+    expect(texts(renderer).join(' ')).not.toContain('展开全部')
     expect(buttons(renderer).some((node) => String(node.props.accessibilityLabel).includes('收起'))).toBe(true)
   })
 
-  it('never renders a vertical payload scroller', async () => {
+  it('wraps a payload instead of scrolling it on either axis', async () => {
     const output = Array.from({ length: 40 }, (_, index) => `line ${index + 1}`).join('\n')
     const renderer = await render(createElement(NativeToolCard, { row: row(output) }))
     const scrollers = renderer.container.queryAll((node) => node.type === 'ScrollView')
-    // Horizontal only: a vertical one would steal the conversation's own drag.
-    expect(scrollers.every((node) => node.props.horizontal === true)).toBe(true)
+    // A nested scroller steals the conversation's drag on one axis and hides the
+    // long lines the other axis was added for; the payload folds instead.
+    expect(scrollers).toHaveLength(0)
     await act(async () => undefined)
   })
 })

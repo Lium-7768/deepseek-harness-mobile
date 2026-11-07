@@ -1,183 +1,79 @@
-import { NativeIcon, type NativeIconName } from '@/components/native-icon'
-import { drawerMenuGeometry, type ArchivedFilter, type DrawerGrouping } from '@/components/drawer-view-logic'
+import { NativeMenuPanel } from '@/components/native-menu-panel'
+import type { ArchivedFilter, DrawerGrouping } from '@/components/drawer-view-logic'
 import type { SessionOrder } from '@/components/session-drawer-logic'
 import { t as message } from '@/locale'
-import type { AppTheme } from '@/theme'
-import { useThemedStyles, useAppTheme } from '@/theme/hooks'
-import { BackHandler, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
-import { useEffect } from 'react'
 
-type Props = {
-  anchorBottom: number
-  frameHeight: number
-  groupBy: DrawerGrouping
-  orderBy: SessionOrder
+/**
+ * Renders the drawer's view options as a bottom sheet.
+ *
+ * The desktop anchors this menu to its trigger button; on a phone the anchored
+ * card had to measure the available height, then scroll its own eight radio rows
+ * inside whatever that left. The shared sheet states the three groups and their
+ * choices at full width, and the list behind it stays visible.
+ *
+ * @param props - The three current values and the picks they accept.
+ * @returns The sheet.
+ */
+export function DrawerViewMenu({
+  archivedFilter,
+  groupBy,
+  onClose,
+  onFilterPick,
+  onGroupPick,
+  onOrderPick,
+  orderBy,
+}: {
   archivedFilter: ArchivedFilter
+  groupBy: DrawerGrouping
   onClose(): void
+  onFilterPick(value: ArchivedFilter): void
   onGroupPick(value: DrawerGrouping): void
   onOrderPick(value: SessionOrder): void
-  onFilterPick(value: ArchivedFilter): void
-}
-
-/** Desktop ViewOptionsMenu: one anchored card, three sections, and no extra close toolbar. */
-export function DrawerViewMenu(props: Props): React.JSX.Element {
-  const s = useThemedStyles(makeStyles)
-  const theme = useAppTheme()
-  useEffect(() => {
-    const subscription = BackHandler.addEventListener('hardwareBackPress', () => {
-      props.onClose()
-      return true
-    })
-    return () => subscription.remove()
-  }, [props.onClose])
-  const groups: {
-    title: string
-    options: { label: string; icon: NativeIconName; selected: boolean; pick(): void }[]
-  }[] = [
-    {
-      title: message('drawer.groupBy'),
-      options: [
-        {
-          label: message('drawer.groupByWorkspace'),
-          icon: 'folder-close',
-          selected: props.groupBy === 'workspace',
-          pick: () => props.onGroupPick('workspace'),
-        },
-        {
-          label: message('drawer.groupByWorkspaceTree'),
-          icon: 'workspace-tree-outline',
-          selected: props.groupBy === 'workspace-tree',
-          pick: () => props.onGroupPick('workspace-tree'),
-        },
-        {
-          label: message('drawer.singleList'),
-          icon: 'flat-list-outline',
-          selected: props.groupBy === 'flat',
-          pick: () => props.onGroupPick('flat'),
-        },
-      ],
-    },
-    {
-      title: message('drawer.sortBy'),
-      options: [
-        {
-          label: message('drawer.manualOrder'),
-          icon: 'chevrons-up-down-outline',
-          selected: props.orderBy === 'manual',
-          pick: () => props.onOrderPick('manual'),
-        },
-        {
-          label: message('drawer.recentlyUpdated'),
-          icon: 'clock-outline',
-          selected: props.orderBy === 'updated',
-          pick: () => props.onOrderPick('updated'),
-        },
-      ],
-    },
-    {
-      title: message('drawer.filterSessions'),
-      options: [
-        {
-          label: message('drawer.hideArchived'),
-          icon: 'archive-off-outline',
-          selected: props.archivedFilter === 'default',
-          pick: () => props.onFilterPick('default'),
-        },
-        {
-          label: message('drawer.showArchived'),
-          icon: 'queue-outline',
-          selected: props.archivedFilter === 'show',
-          pick: () => props.onFilterPick('show'),
-        },
-        {
-          label: message('drawer.onlyArchived'),
-          icon: 'archive-check-outline',
-          selected: props.archivedFilter === 'only',
-          pick: () => props.onFilterPick('only'),
-        },
-      ],
-    },
-  ]
+  orderBy: SessionOrder
+}): React.JSX.Element {
   return (
-    <View style={s.overlay}>
-      <Pressable accessible={false} onPress={props.onClose} style={StyleSheet.absoluteFill} />
-      <View
-        accessibilityViewIsModal
-        onAccessibilityEscape={props.onClose}
-        style={[s.card, drawerMenuGeometry(props.frameHeight, props.anchorBottom)]}
-      >
-        <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={s.content}>
-          {groups.map((group, index) => (
-            <View key={group.title}>
-              {index > 0 ? <View style={s.separator} /> : null}
-              <Text style={s.title}>{group.title}</Text>
-              {group.options.map((option) => (
-                <Pressable
-                  android_ripple={{ borderless: false }}
-                  key={option.label}
-                  accessibilityRole="radio"
-                  accessibilityLabel={option.label}
-                  accessibilityState={{ checked: option.selected }}
-                  onPress={() => {
-                    option.pick()
-                    props.onClose()
-                  }}
-                  style={({ pressed }) => [s.row, pressed && s.pressed]}
-                >
-                  <NativeIcon name={option.icon} size={16} color={theme.colors.ink} />
-                  <Text style={s.label}>{option.label}</Text>
-                  <View style={s.check}>
-                    {option.selected ? <NativeIcon name="check-outline" size={16} color={theme.colors.ink} /> : null}
-                  </View>
-                </Pressable>
-              ))}
-            </View>
-          ))}
-        </ScrollView>
-      </View>
-    </View>
+    <NativeMenuPanel
+      groups={[
+        {
+          options: [
+            { label: message('drawer.groupByWorkspace'), selected: groupBy === 'workspace', value: 'group:workspace' },
+            {
+              label: message('drawer.groupByWorkspaceTree'),
+              selected: groupBy === 'workspace-tree',
+              value: 'group:workspace-tree',
+            },
+            { label: message('drawer.singleList'), selected: groupBy === 'flat', value: 'group:flat' },
+          ],
+          title: message('drawer.groupBy'),
+        },
+        {
+          options: [
+            { label: message('drawer.manualOrder'), selected: orderBy === 'manual', value: 'order:manual' },
+            { label: message('drawer.recentlyUpdated'), selected: orderBy === 'updated', value: 'order:updated' },
+          ],
+          title: message('drawer.sortBy'),
+        },
+        {
+          options: [
+            { label: message('drawer.hideArchived'), selected: archivedFilter === 'default', value: 'filter:default' },
+            { label: message('drawer.showArchived'), selected: archivedFilter === 'show', value: 'filter:show' },
+            { label: message('drawer.onlyArchived'), selected: archivedFilter === 'only', value: 'filter:only' },
+          ],
+          title: message('drawer.filterSessions'),
+        },
+      ]}
+      onClose={onClose}
+      onSelect={(value) => {
+        const [section, choice] = value.split(':')
+        if (choice === undefined) return
+        if (section === 'group') onGroupPick(choice as DrawerGrouping)
+        else if (section === 'order') onOrderPick(choice as SessionOrder)
+        else onFilterPick(choice as ArchivedFilter)
+        onClose()
+      }}
+      open
+      rowRole="select"
+      title={message('drawer.viewSettings')}
+    />
   )
 }
-
-const makeStyles = (theme: AppTheme) =>
-  StyleSheet.create({
-    overlay: { position: 'absolute', top: 0, bottom: 0, left: 0, right: 0, zIndex: 100, elevation: 20 },
-    card: {
-      position: 'absolute',
-      right: 8,
-      width: '92%',
-      maxWidth: 280,
-      ...theme.elevation.sheet,
-      backgroundColor: theme.colors.surfaceRaised,
-      borderRadius: theme.radius.md,
-      borderWidth: StyleSheet.hairlineWidth,
-      borderColor: theme.colors.borderHairline,
-    },
-    content: { padding: 6 },
-    separator: {
-      height: StyleSheet.hairlineWidth,
-      backgroundColor: theme.colors.border,
-      marginHorizontal: 8,
-      marginVertical: 6,
-    },
-    title: {
-      color: theme.colors.inkTertiary,
-      fontSize: 12,
-      lineHeight: 18,
-      paddingHorizontal: 8,
-      paddingTop: 4,
-      paddingBottom: 2,
-    },
-    row: {
-      minHeight: 44,
-      paddingHorizontal: 8,
-      paddingVertical: 7,
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 8,
-      borderRadius: theme.radius.control,
-    },
-    label: { color: theme.colors.ink, fontSize: 14, lineHeight: 22, flex: 1 },
-    check: { width: 16 },
-    pressed: { backgroundColor: theme.colors.interactiveHover },
-  })

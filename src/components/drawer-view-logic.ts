@@ -123,12 +123,6 @@ export function reconcileDrawerOrder(saved: readonly string[], members: readonly
   return [...new Set([...saved.filter((id) => allowed.has(id)), ...members])]
 }
 
-/** Keep the floating menu in the same drawer-local coordinates as its measured trigger. */
-export function drawerMenuGeometry(frameHeight: number, anchorBottom: number): { top: number; maxHeight: number } {
-  const top = Math.min(Math.max(8, anchorBottom + 4), Math.max(8, frameHeight - 180))
-  return { top, maxHeight: Math.max(0, frameHeight - top - 12) }
-}
-
 export type DrawerViewPreferences = {
   groupBy: DrawerGrouping
   orderBy: SessionOrder

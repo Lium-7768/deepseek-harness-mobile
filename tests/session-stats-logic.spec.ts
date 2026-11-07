@@ -5,6 +5,7 @@ import {
   formatStatisticsTokens,
   formatStatisticsTokensPerSecond,
   sessionContextPercent,
+  sessionStatisticPanel,
   sessionStatisticsLine,
   sessionStatisticsPills,
 } from '../src/components/session-stats-logic.ts'
@@ -51,14 +52,47 @@ describe('session statistics logic', () => {
       },
       [],
     )
+    // The chips state one reading each; the throughput and the cache hit live in
+    // the panels, which is where a reader goes for them.
     expect(pills).toEqual([
-      { glyph: 'gauge-outline', kind: 'time', label: '41 轮 79 步 · 147 tok/s' },
-      { glyph: 'database-outline', kind: 'usage', label: '3.5M tok · 缓存命中 94%' },
+      { glyph: 'gauge-outline', kind: 'time', label: '41 轮 79 步' },
+      { glyph: 'database-outline', kind: 'usage', label: '3.5M tok' },
     ])
+    const time = sessionStatisticPanel(
+      'time',
+      {
+        sessionStats: {
+          turns: 41,
+          steps: 79,
+          llmMs: 379_000,
+          toolMs: 12_200,
+          ttftMs: 266_500,
+          ttftSteps: 41,
+          decodeMs: 528_000,
+          decodeTokens: 77_616,
+        },
+      },
+      [],
+    )
+    expect(time?.rows.map((row) => `${row.label} ${row.value}`)).toContain('输出速度（TPS） 147 tok/s')
+    const usage = sessionStatisticPanel(
+      'usage',
+      {
+        tokenUsage: {
+          uncachedInputTokens: 192_000,
+          cacheReadTokens: 3_000_000,
+          cacheWriteTokens: 8_000,
+          outputTokens: 250_000,
+        },
+      },
+      [],
+    )
+    expect(usage?.rows[0]).toEqual({ label: '缓存命中', value: '94%' })
   })
 
   it('renders a high-precision projection without exposing a floating-point tail', () => {
-    const line = sessionStatisticsLine(
+    const panel = sessionStatisticPanel(
+      'time',
       {
         sessionStats: {
           turns: 17,
@@ -73,8 +107,9 @@ describe('session statistics logic', () => {
       },
       [],
     )
-    expect(line).toContain('132 tok/s')
-    expect(line).not.toContain('132.0146174218317')
+    const speed = panel?.rows.find((row) => row.value.endsWith('tok/s'))?.value ?? ''
+    expect(speed).toContain('132 tok/s')
+    expect(speed).not.toContain('132.0146174218317')
   })
 
   it('keeps the zero-throughput statistic when desktop has a decode duration', () => {
@@ -93,7 +128,24 @@ describe('session statistics logic', () => {
       },
       [],
     )
-    expect(pills).toEqual([{ glyph: 'gauge-outline', kind: 'time', label: '1 轮 1 步 · 0 tok/s' }])
+    expect(pills).toEqual([{ glyph: 'gauge-outline', kind: 'time', label: '1 轮 1 步' }])
+    const panel = sessionStatisticPanel(
+      'time',
+      {
+        sessionStats: {
+          turns: 1,
+          steps: 1,
+          llmMs: 0,
+          toolMs: 0,
+          ttftMs: 0,
+          ttftSteps: 0,
+          decodeMs: 1_000,
+          decodeTokens: 0,
+        },
+      },
+      [],
+    )
+    expect(panel?.rows.map((row) => row.value)).toContain('0 tok/s')
   })
 
   it('falls back to durable completion events but omits unavailable timing and usage', () => {

@@ -19,7 +19,7 @@ import { useAppTheme, useThemedStyles } from '@/theme/hooks'
 import * as Clipboard from 'expo-clipboard'
 import { MONOSPACE_FONT } from '@/theme/platform'
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { AccessibilityInfo, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
+import { AccessibilityInfo, Pressable, StyleSheet, Text, View } from 'react-native'
 
 /** Lines a payload shows before it folds; the same fold the code block uses. */
 const PAYLOAD_COLLAPSED_LINES = 16
@@ -157,7 +157,6 @@ function ToolPayload({
   const [expanded, setExpanded] = useState(false)
   const lineCount = useMemo(() => measureCopy(text).lines, [text])
   const collapsible = lineCount > PAYLOAD_COLLAPSED_LINES
-  const hiddenLines = Math.max(0, lineCount - PAYLOAD_COLLAPSED_LINES)
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null)
   useEffect(
     () => () => {
@@ -243,62 +242,58 @@ function ToolPayload({
       <View style={styles.payloadHead}>
         <Text style={styles.payloadLabel}>{label}</Text>
         {copySize === undefined ? null : <Text style={styles.payloadSize}>{copySize}</Text>}
-        <Pressable
-          android_ripple={{ borderless: false }}
-          accessibilityRole="button"
-          accessibilityLabel={copied ? (copySize ?? message('copy.copiedText')) : message('copy.copyPayload')}
-          accessibilityHint={message('copy.jsonOptionsHint')}
-          delayLongPress={350}
-          onLongPress={() => void openCopyMenu()}
-          accessibilityState={{ selected: copied }}
-          hitSlop={MESSAGE_ACTION_HIT_SLOP}
-          onPress={() => void copy()}
-          style={styles.payloadCopy}
-        >
-          <NativeIcon
-            name={copied ? 'check-outline' : 'copy-outline'}
-            size={14}
-            color={copied ? theme.colors.success : copyFailed ? theme.colors.danger : theme.colors.inkTertiary}
-          />
-        </Pressable>
-      </View>
-      {/* No vertical scroll inside the payload: a nested vertical scroller steals the
-          conversation's own drag. The block folds instead, and the outer list scrolls. */}
-      <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-        <Text
-          selectable
-          numberOfLines={expanded ? undefined : PAYLOAD_COLLAPSED_LINES}
-          style={[styles.detailText, failed && styles.failedDetailText]}
-        >
-          {text}
-        </Text>
-      </ScrollView>
-      {collapsible ? (
-        <>
-          {expanded ? null : (
-            <Text style={styles.payloadHidden}>{format('tool.hiddenLines', { count: hiddenLines })}</Text>
-          )}
+        <View style={styles.payloadActions}>
+          {collapsible ? (
+            <Pressable
+              android_ripple={{ borderless: false }}
+              accessibilityRole="button"
+              accessibilityLabel={
+                expanded ? message('tool.collapsePayload') : format('tool.expandPayload', { lines: lineCount })
+              }
+              hitSlop={MESSAGE_ACTION_HIT_SLOP}
+              onPress={() => setExpanded((value) => !value)}
+              style={({ pressed }) => [styles.payloadFold, pressed && styles.payloadFoldPressed]}
+            >
+              <Text style={styles.payloadFoldText}>
+                {expanded ? message('tool.collapsePayload') : format('tool.expandPayload', { lines: lineCount })}
+              </Text>
+              <NativeIcon
+                name={expanded ? 'chevron-up-outline' : 'chevron-down-outline'}
+                size={12}
+                color={theme.colors.accent}
+              />
+            </Pressable>
+          ) : null}
           <Pressable
             android_ripple={{ borderless: false }}
             accessibilityRole="button"
-            accessibilityLabel={
-              expanded ? message('tool.collapsePayload') : format('tool.expandPayload', { lines: lineCount })
-            }
+            accessibilityLabel={copied ? (copySize ?? message('copy.copiedText')) : message('copy.copyPayload')}
+            accessibilityHint={message('copy.jsonOptionsHint')}
+            delayLongPress={350}
+            onLongPress={() => void openCopyMenu()}
+            accessibilityState={{ selected: copied }}
             hitSlop={MESSAGE_ACTION_HIT_SLOP}
-            onPress={() => setExpanded((value) => !value)}
-            style={styles.payloadToggle}
+            onPress={() => void copy()}
+            style={styles.payloadCopy}
           >
-            <Text style={styles.payloadToggleText}>
-              {expanded ? message('tool.collapsePayload') : format('tool.expandPayload', { lines: lineCount })}
-            </Text>
             <NativeIcon
-              name={expanded ? 'chevron-up-outline' : 'chevron-down-outline'}
+              name={copied ? 'check-outline' : 'copy-outline'}
               size={14}
-              color={theme.colors.accent}
+              color={copied ? theme.colors.success : copyFailed ? theme.colors.danger : theme.colors.inkTertiary}
             />
           </Pressable>
-        </>
-      ) : null}
+        </View>
+      </View>
+      {/* The payload wraps instead of scrolling sideways: a horizontal scroller
+          inside a vertical list fights every drag and hides the long lines it was
+          added for. A folded payload ends at the same line the count names. */}
+      <Text
+        selectable
+        numberOfLines={expanded ? undefined : PAYLOAD_COLLAPSED_LINES}
+        style={[styles.detailText, failed && styles.failedDetailText]}
+      >
+        {text}
+      </Text>
     </View>
   )
 }
@@ -313,10 +308,13 @@ const makeStyles = (theme: AppTheme) =>
     payloadHead: { alignItems: 'center', flexDirection: 'row', gap: 6, minHeight: 16 },
     payloadLabel: { color: theme.colors.inkTertiary, fontSize: 11, fontWeight: '500', lineHeight: 16 },
     payloadSize: { color: theme.colors.inkTertiary, flexShrink: 1, fontSize: 11, lineHeight: 16 },
-    payloadCopy: { alignItems: 'center', height: 16, justifyContent: 'center', marginLeft: 'auto', width: 16 },
-    payloadHidden: { color: theme.colors.inkMuted, fontSize: 11, lineHeight: 16 },
-    payloadToggle: { alignItems: 'center', alignSelf: 'flex-start', flexDirection: 'row', gap: 4 },
-    payloadToggleText: { color: theme.colors.accent, fontSize: 12, fontWeight: '500' },
+    // The fold control moves into the header row, so a payload spends one row on
+    // its label, its size, its fold and its copy instead of three.
+    payloadActions: { alignItems: 'center', flexDirection: 'row', gap: 10, marginLeft: 'auto' },
+    payloadFold: { alignItems: 'center', flexDirection: 'row', gap: 2 },
+    payloadFoldPressed: { opacity: 0.62 },
+    payloadFoldText: { color: theme.colors.accent, fontSize: 12, fontWeight: '500', lineHeight: 16 },
+    payloadCopy: { alignItems: 'center', height: 16, justifyContent: 'center', width: 16 },
     detailText: { color: theme.colors.ink, fontFamily: MONOSPACE_FONT, fontSize: 12, lineHeight: 18 },
     failedDetailText: { color: theme.colors.danger },
   })

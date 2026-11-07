@@ -62,10 +62,6 @@ export function SessionDrawer(props: DrawerContentComponentProps): React.JSX.Ele
   const debouncedSearch = useDebouncedText(search.trim(), 250)
   const [optionsOpen, setOptionsOpen] = useState(false)
 
-  const frameRef = useRef<View>(null)
-  const optionsRef = useRef<View>(null)
-  const [frameHeight, setFrameHeight] = useState(0)
-  const [anchorBottom, setAnchorBottom] = useState(0)
   const [collapsedWorkspaceKeys, setCollapsedWorkspaceKeys] = useState<Set<string>>(() => new Set())
   const [expandedWorkspaceSessionKeys, setExpandedWorkspaceSessionKeys] = useState<Set<string>>(() => new Set())
   const [expandedWorkspaceId, setExpandedWorkspaceId] = useState<string | undefined>()
@@ -363,14 +359,7 @@ export function SessionDrawer(props: DrawerContentComponentProps): React.JSX.Ele
 
   return (
     <SafeAreaView edges={['top', 'left', 'bottom']} style={styles.drawerSafe}>
-      <View
-        ref={frameRef}
-        style={styles.drawerFrame}
-        onLayout={(event) => {
-          setFrameHeight(event.nativeEvent.layout.height)
-          setOptionsOpen(false)
-        }}
-      >
+      <View style={styles.drawerFrame}>
         <KeyboardAvoidingView
           behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
           keyboardVerticalOffset={insets.top}
@@ -462,33 +451,23 @@ export function SessionDrawer(props: DrawerContentComponentProps): React.JSX.Ele
                     >
                       <NativeIcon name="search-outline" size={16} color={theme.colors.inkMuted} />
                     </Pressable>
-                    <View ref={optionsRef} collapsable={false}>
-                      <Pressable
-                        android_ripple={{ borderless: false }}
-                        accessibilityRole="button"
-                        accessibilityLabel={message('drawer.viewSettings')}
-                        accessibilityState={{ expanded: optionsOpen }}
-                        onPress={() => {
-                          if (optionsOpen) {
-                            setOptionsOpen(false)
-                            return
-                          }
-                          Keyboard.dismiss()
-                          if (frameRef.current)
-                            optionsRef.current?.measureLayout(frameRef.current, (_x, y, _w, h) => {
-                              setAnchorBottom(y + h)
-                              setOptionsOpen(true)
-                            })
-                        }}
-                        style={({ pressed }) => [
-                          styles.actionIcon,
-                          optionsOpen && styles.selected,
-                          pressed && styles.pressed,
-                        ]}
-                      >
-                        <NativeIcon name="sliders-two-outline" size={16} color={theme.colors.inkMuted} />
-                      </Pressable>
-                    </View>
+                    <Pressable
+                      android_ripple={{ borderless: false }}
+                      accessibilityRole="button"
+                      accessibilityLabel={message('drawer.viewSettings')}
+                      accessibilityState={{ expanded: optionsOpen }}
+                      onPress={() => {
+                        Keyboard.dismiss()
+                        setOptionsOpen((current) => !current)
+                      }}
+                      style={({ pressed }) => [
+                        styles.actionIcon,
+                        optionsOpen && styles.selected,
+                        pressed && styles.pressed,
+                      ]}
+                    >
+                      <NativeIcon name="sliders-two-outline" size={16} color={theme.colors.inkMuted} />
+                    </Pressable>
                     <Pressable
                       android_ripple={{ borderless: false }}
                       accessibilityLabel={message('drawer.syncSessions')}
@@ -693,8 +672,6 @@ export function SessionDrawer(props: DrawerContentComponentProps): React.JSX.Ele
         </KeyboardAvoidingView>
         {optionsOpen ? (
           <DrawerViewMenu
-            anchorBottom={anchorBottom}
-            frameHeight={frameHeight}
             groupBy={groupBy}
             orderBy={orderBy}
             archivedFilter={archivedFilter}

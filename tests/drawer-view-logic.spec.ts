@@ -3,7 +3,6 @@ import {
   drawerViewRows,
   initialDrawerOrders,
   moveDrawerSession,
-  drawerMenuGeometry,
   drawerSearchResults,
   filterArchivedSessions,
   reconcileDrawerOrder,
@@ -108,11 +107,6 @@ describe('desktop drawer view and search behavior', () => {
       'session:two',
       'session:one',
     ])
-  })
-
-  it('clamps the anchored menu inside short drawer frames so its content can scroll', () => {
-    expect(drawerMenuGeometry(700, 180)).toEqual({ top: 184, maxHeight: 504 })
-    expect(drawerMenuGeometry(300, 270)).toEqual({ top: 120, maxHeight: 168 })
   })
 
   it('switches grouping and ordering, and hides descendants when their parent tree folder collapses', () => {

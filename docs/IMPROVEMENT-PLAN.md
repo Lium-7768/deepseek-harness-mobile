@@ -95,6 +95,16 @@ account page prints one fact per row instead of a title, value and boilerplate s
 The release line returned to the desktop's 14/22 primary label while gaining its 16px
 padding.
 
+A tool payload spent three rows on its own chrome — a label row, a `还有 N 行` line, and a fold
+control — and put the text in a horizontal scroller inside the vertical transcript, so a long
+line had to be dragged sideways with no cue that it could be. The label, size, fold and copy now
+share one header row, and the payload wraps and folds instead of scrolling either way.
+
+The dock statistics lose their second readings: `82 轮 5617 步` and `1740M tok` state the counts,
+while throughput and cache hit wait in the panels they already filled. The drawer's view options
+become a bottom sheet with three titled groups, replacing the anchored card that measured the
+drawer, clamped itself, and scrolled eight radio rows inside the result.
+
 Above the composer the desktop stacks three cards — the task list, the goal bar and the
 queue. On a phone they took roughly a third of the transcript with their own outlines and
 elevation, so they are now one row of 28pt chips (`任务 1/3`, `进行中的目标`, `队列 2`) and a chip

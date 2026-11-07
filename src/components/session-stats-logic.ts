@@ -116,20 +116,23 @@ export function sessionStatisticsPills(
   const usage = readTokenUsage(projectionValues?.tokenUsage)
   const groups: SessionStatisticsPill[] = []
   if (stats.steps > 0) {
-    const readings = [format('session.statsCounts', { turns: stats.turns, steps: stats.steps })]
-    if (stats.decodeMs > 0) {
-      readings.push(`${formatStatisticsTokensPerSecond(stats.decodeTokens / (stats.decodeMs / 1_000))} tok/s`)
-    }
-    groups.push({ glyph: 'gauge-outline', kind: 'time', label: readings.join(' · ') })
+    // The chip states the counts only: the decode speed already sits in its own
+    // panel, and a second reading pushed the chip into the context meter's room.
+    groups.push({
+      glyph: 'gauge-outline',
+      kind: 'time',
+      label: format('session.statsCounts', { turns: stats.turns, steps: stats.steps }),
+    })
   }
   if (usage !== undefined) {
     const input = usage.uncachedInputTokens + usage.cacheReadTokens + usage.cacheWriteTokens
     const total = input + usage.outputTokens
     if (total > 0) {
-      const readings = [format('session.statsTokens', { count: formatStatisticsTokens(total) })]
-      const cacheHit = formatStatisticsCacheHit(usage.cacheReadTokens, input)
-      if (cacheHit !== undefined) readings.push(format('session.statsCacheHit', { percent: cacheHit }))
-      groups.push({ glyph: 'database-outline', kind: 'usage', label: readings.join(' · ') })
+      groups.push({
+        glyph: 'database-outline',
+        kind: 'usage',
+        label: format('session.statsTokens', { count: formatStatisticsTokens(total) }),
+      })
     }
   }
   return groups
