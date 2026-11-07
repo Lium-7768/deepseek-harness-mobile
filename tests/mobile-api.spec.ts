@@ -364,6 +364,65 @@ describe('MobileApi safe search and attachment reads', () => {
   })
 })
 
+describe('MobileApi @ reference candidates', () => {
+  it('posts the query to the session reference route and keeps both candidate lists', async () => {
+    const calls: Array<{ body: unknown; path: string }> = []
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockImplementation((url: string, init: RequestInit) => {
+        calls.push({ body: JSON.parse(String(init.body)), path: new URL(url).pathname })
+        return Promise.resolve(
+          jsonResponse(
+            {
+              contractVersion: 1,
+              data: {
+                files: [{ kind: 'directory', path: 'src' }],
+                sessions: [
+                  {
+                    createdAt: 1,
+                    label: '旧会话',
+                    mention: '@[旧会话](dsh-session:s1)',
+                    sameWorkspace: false,
+                    sessionId: 's1',
+                  },
+                ],
+              },
+            },
+            200,
+          ),
+        )
+      }),
+    )
+    const api = new MobileApi(connection)
+    await expect(api.sessionReferences('session/1', 'sr')).resolves.toEqual({
+      files: [{ kind: 'directory', path: 'src' }],
+      sessions: [
+        {
+          createdAt: 1,
+          label: '旧会话',
+          mention: '@[旧会话](dsh-session:s1)',
+          sameWorkspace: false,
+          sessionId: 's1',
+        },
+      ],
+    })
+    expect(calls).toEqual([{ body: { query: 'sr' }, path: '/v1/sessions/session%2F1/references' }])
+    vi.unstubAllGlobals()
+  })
+
+  it('rejects a candidate list that does not match the contract', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi
+        .fn()
+        .mockResolvedValue(jsonResponse({ contractVersion: 1, data: { files: [{ path: 1 }], sessions: [] } }, 200)),
+    )
+    const api = new MobileApi(connection)
+    await expect(api.sessionReferences('session-1', '')).rejects.toMatchObject({ kind: 'protocol' })
+    vi.unstubAllGlobals()
+  })
+})
+
 describe('desktop automation and archive management boundary', () => {
   it('forwards only the selected versioned schedule action and encoded restore identity', async () => {
     const calls: { path: string; body: unknown }[] = []

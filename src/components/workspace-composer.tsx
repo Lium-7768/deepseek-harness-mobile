@@ -14,7 +14,9 @@ import { NativeIcon } from '@/components/native-icon'
 import { NativeMenuPanel, type NativeMenuGroup, type NativeMenuNotice } from '@/components/native-menu-panel'
 import { NativeModelPicker } from '@/components/native-model-picker'
 import { NativeInputTriggerMenu } from '@/components/native-input-trigger-menu'
+import { NativeMentionMenu } from '@/components/native-mention-menu'
 import { applyCommandPick, type CommandTrigger } from '@/components/input-trigger-logic'
+import { pickMention } from '@/components/mention-logic'
 import { NativePlanChip } from '@/components/native-plan-chip'
 import type { PlanState } from '@/components/plan-logic'
 import { reasoningEffortLabel } from '@/components/model-picker-logic'
@@ -38,6 +40,7 @@ import type {
   MobileModelSelection,
   MobilePermissionSelect,
   MobilePromptContent,
+  MobileReferencePayload,
 } from '@/types/mobile'
 import { Image } from 'expo-image'
 import * as ImagePicker from 'expo-image-picker'
@@ -93,6 +96,8 @@ type Props = {
   plan?: PlanState
   /** Slash commands the `/` trigger menu offers; omission keeps the menu shut. */
   commands?: MobileCommandDescriptor[]
+  /** Resolves `@` candidates for one query; omission keeps the mention menu shut. */
+  lookupReferences?: (query: string, signal: AbortSignal) => Promise<MobileReferencePayload>
   placeholder?: string
   running?: boolean
   sending?: boolean
@@ -131,6 +136,7 @@ export function WorkspaceComposer({
   onRetryModels,
   selectionPending = false,
   commands,
+  lookupReferences,
   permissionLocked = false,
   permissions,
   plan,
@@ -159,6 +165,7 @@ export function WorkspaceComposer({
   // exact token the user is typing.
   const [caret, setCaret] = useState(0)
   const [commandMenuDismissed, setCommandMenuDismissed] = useState(false)
+  const [mentionMenuDismissed, setMentionMenuDismissed] = useState(false)
   const [draftImages, setDraftImages] = useState<DraftImage[]>([])
   const modelTriggerRef = useRef<View>(null)
   const hasContent = text.trim() !== '' || draftImages.length > 0
@@ -344,8 +351,15 @@ export function WorkspaceComposer({
 
   // `ui-commands`: the add menu groups what the press can insert, then the
   // commands that change how the session runs.
+  const insertMentionToken = (): void => {
+    const at = Math.max(0, Math.min(caret, text.length))
+    setText(`${text.slice(0, at)}@${text.slice(at)}`)
+    setCaret(at + 1)
+    setMentionMenuDismissed(false)
+  }
   const addActions: Record<string, () => void> = {
     file: chooseImageSource,
+    ...(lookupReferences === undefined ? {} : { mention: insertMentionToken }),
     ...(onOpenGoal === undefined ? {} : { goal: onOpenGoal }),
     ...(onSelectPermission === undefined || permissions === undefined || !hasSession
       ? {}
@@ -363,6 +377,17 @@ export function WorkspaceComposer({
           token: 'file',
           value: 'file',
         },
+        ...(lookupReferences === undefined
+          ? []
+          : [
+              {
+                description: message('composer.menuMentionDetail'),
+                icon: 'link-outline' as const,
+                label: message('composer.menuMention'),
+                token: 'mention',
+                value: 'mention',
+              },
+            ]),
       ],
       title: message('composer.menuAddSection'),
     },
@@ -466,6 +491,7 @@ export function WorkspaceComposer({
             onChangeText={(value) => {
               setText(value)
               setCommandMenuDismissed(false)
+              setMentionMenuDismissed(false)
             }}
             onSelectionChange={(event) => setCaret(event.nativeEvent.selection.start)}
             placeholder={offline && text === '' ? message('composer.offlinePlaceholder') : placeholder}
@@ -743,6 +769,20 @@ export function WorkspaceComposer({
             setText(next.text)
             setCaret(next.caret)
             setCommandMenuDismissed(true)
+          }}
+          text={text}
+        />
+      )}
+      {lookupReferences === undefined || mentionMenuDismissed ? null : (
+        <NativeMentionMenu
+          caret={caret}
+          lookup={lookupReferences}
+          onClose={() => setMentionMenuDismissed(true)}
+          onPick={(row, trigger) => {
+            const next = pickMention(text, trigger, row)
+            setText(next.text)
+            setCaret(next.caret)
+            setMentionMenuDismissed(true)
           }}
           text={text}
         />

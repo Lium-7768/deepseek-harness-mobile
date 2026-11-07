@@ -21,6 +21,8 @@ export const composer = {
   menuFile: '文件',
   menuFileDetail: '图片附件，最长边缩放到 1600 像素后上传',
   menuCommandSection: '指令',
+  menuMention: '引用',
+  menuMentionDetail: '插入 @ 引用工作区文件或其他会话',
   menuGoal: '目标',
   menuGoalDetail: '设置或查看长期任务目标',
   menuPermission: '权限',

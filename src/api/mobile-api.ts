@@ -22,6 +22,9 @@ import type {
   MobilePairingQrPayload,
   MobilePromptContent,
   MobileQueuePayload,
+  MobileReferenceFileCandidate,
+  MobileReferencePayload,
+  MobileReferenceSessionCandidate,
   MobileRunningSessionsPayload,
   MobileSessionModelsPayload,
   MobileSessionSearchPayload,
@@ -371,6 +374,20 @@ export class MobileApi {
     if (!isRecord(result) || !Array.isArray(result.items) || !result.items.every(isCommandDescriptor))
       throw createError('protocol', message('errors.responseInvalid'))
     return result.items
+  }
+
+  /** Reads the workspace paths and other Sessions the `@` menu can complete for one query. */
+  async sessionReferences(sessionId: string, query: string): Promise<MobileReferencePayload> {
+    const result = await this.#post<unknown>(`/v1/sessions/${encodeURIComponent(sessionId)}/references`, { query })
+    if (
+      !isRecord(result) ||
+      !Array.isArray(result.files) ||
+      !result.files.every(isReferenceFile) ||
+      !Array.isArray(result.sessions) ||
+      !result.sessions.every(isReferenceSession)
+    )
+      throw createError('protocol', message('errors.responseInvalid'))
+    return { files: result.files, sessions: result.sessions }
   }
 
   /** Reads a direct child transcript through the desktop subagent authority. */
@@ -806,6 +823,28 @@ function isAccountProfile(value: unknown): value is {
 }
 
 /** One slash command the Host advertises; only `name` is required to send it. */
+function isReferenceFile(value: unknown): value is MobileReferenceFileCandidate {
+  return (
+    isRecord(value) &&
+    typeof value.path === 'string' &&
+    value.path !== '' &&
+    (value.kind === 'file' || value.kind === 'directory')
+  )
+}
+
+function isReferenceSession(value: unknown): value is MobileReferenceSessionCandidate {
+  return (
+    isRecord(value) &&
+    typeof value.sessionId === 'string' &&
+    value.sessionId !== '' &&
+    typeof value.label === 'string' &&
+    typeof value.mention === 'string' &&
+    value.mention !== '' &&
+    typeof value.sameWorkspace === 'boolean' &&
+    typeof value.createdAt === 'number'
+  )
+}
+
 function isCommandDescriptor(value: unknown): value is MobileCommandDescriptor {
   return (
     isRecord(value) &&

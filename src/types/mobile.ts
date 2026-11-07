@@ -447,6 +447,34 @@ export interface MobileCommandDescriptor {
   description: string
 }
 
+/** One workspace path the `@` menu can complete. */
+export interface MobileReferenceFileCandidate {
+  /** User-facing path accepted by prompts and filesystem tools. */
+  path: string
+  /** Directories keep the menu open so the reader can descend another level. */
+  kind: 'file' | 'directory'
+}
+
+/** One other Session the `@` menu can reference. */
+export interface MobileReferenceSessionCandidate {
+  sessionId: string
+  /** Latest log-backed title, falling back to the opaque session id. */
+  label: string
+  /** Display and canonical-mention text, preferring a subagent's creation label. */
+  displayTitle?: string
+  /** Canonical `@[label](dsh-session:…)` mention the draft receives. */
+  mention: string
+  /** Whether the source Session shares this Session's workspace. */
+  sameWorkspace: boolean
+  createdAt: number
+}
+
+/** Both `@` menus' candidate lists for one query. */
+export interface MobileReferencePayload {
+  files: MobileReferenceFileCandidate[]
+  sessions: MobileReferenceSessionCandidate[]
+}
+
 /** One currency wallet on the desktop's account. */
 export interface MobileAccountWallet {
   currency: 'CNY' | 'USD'

@@ -878,6 +878,11 @@ export default function SessionScreen(): React.JSX.Element {
                 onSend={(content) => send.mutateAsync(content).then(() => undefined)}
                 onCancel={() => cancel.mutate()}
                 commands={commands.data}
+                lookupReferences={
+                  client === undefined || sessionId === undefined
+                    ? undefined
+                    : (query, signal) => client.withSignal(signal).sessionReferences(sessionId, query)
+                }
                 permissions={readPermissionSelect(history.data?.projections?.values.permissions)}
                 plan={plan}
                 sessionId={sessionId}

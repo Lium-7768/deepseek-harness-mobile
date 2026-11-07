@@ -22,6 +22,7 @@ import { feedback } from './feedback'
 import { interactions } from './interactions'
 import { log } from './log'
 import { markdown } from './markdown'
+import { mention } from './mention'
 import { mode } from './mode'
 import { model } from './model'
 import { permission } from './permission'
@@ -78,6 +79,7 @@ const areas = {
   log,
   copy,
   markdown,
+  mention,
   mode,
   model,
   permission,

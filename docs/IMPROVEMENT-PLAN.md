@@ -95,6 +95,17 @@ thumbnails, so the size is answered before the send instead of after it.
 The limits live in `src/components/attachment-policy.ts`; `ATTACHMENT_BODY_CEILING_BYTES`
 mirrors the gateway constant and must move with it.
 
+## Quoting and references
+
+The reply card's quote control copies a message into the draft as blockquote text, and the
+composer's `@` menu completes the same two sources the desktop overlays: workspace paths from
+`fileReferences/list` and other Sessions from `sessionReferenceResolver/candidates`. The phone
+asks the Gateway only after the token stops changing, because each query is a Host filesystem
+listing; the last answer wins. A picked directory keeps the token open — `@src/`, or an
+unterminated `@"my dir/` — so the rest of the path can be typed after the menu closes. Path
+formatting and trigger detection live in `src/components/mention-logic.ts`, ported from the
+Host's `file-reference/grammar` so both clients insert the same text.
+
 ## Sending while the stream is down
 
 A paired client whose event stream dropped prints the reconnect bar, and the composer now
@@ -168,7 +179,7 @@ The add menu opens the existing goal editor, or creates an absent/completed goal
 
 ## Validation scope
 
-- Node 22.23.2; 69 test files / 427 tests pass, including desktop icon hashes, malformed Goal and schedule responses, expired confirmation feedback, Goal polling, shared-query cursor/window contracts, disconnected selection gates, schedule/Goal editor interactions, slider-card drill-down/search/selection, reload/retained geometry, reduced-motion artwork, drawer filtering/tree/manual order and search merging. TypeScript and formatting pass.
+- Node 22.23.2; 72 test files / 451 tests pass, including desktop icon hashes, malformed Goal and schedule responses, expired confirmation feedback, Goal polling, shared-query cursor/window contracts, disconnected selection gates, schedule/Goal editor interactions, slider-card drill-down/search/selection, reload/retained geometry, reduced-motion artwork, drawer filtering/tree/manual order and search merging. TypeScript and formatting pass.
 - Android arm64 native debug build and isolated review-package install pass with the navigation-bar module. iOS Pods resolve; Android/iOS JavaScript exports pass.
 - The latest model-control review also passes an unsigned arm64 iOS Simulator Release native build after `pod install`. `Podfile.lock` matches the installed Pods manifest and all 96 local Pod source paths resolve. This is not a signed device archive or App Store validation.
 - Android API/resource lint (`NewApi`, `InlinedApi`, `ResourceType`) passes with no findings. Full `lintDebug` crashes in the third-party Worklets Kotlin Gradle-script analysis (`Cannot find a KaModule for the VirtualFile`); no lint checks are disabled or baselined in the repository to hide that failure.
