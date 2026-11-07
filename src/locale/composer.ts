@@ -35,6 +35,10 @@ export const composer = {
   choosePhoto: '从照片库选择',
   /** `{count}` draft images currently attached; `{size}` is their encoded total. */
   imagesAdded: '已添加 {count} 张图片，共 {size}',
+  /** `{count}` images one message may carry. */
+  imageTooMany: '一条消息最多添加 {count} 张图片。',
+  /** `{skipped}` picks beyond the cap, which is `{count}`. */
+  imageTooManyPartial: '一条消息最多添加 {count} 张图片，已忽略 {skipped} 张。',
   imageSkippedTitle: '部分图片未添加',
   /** `{count}` skipped images and the `{limit}` the draft may carry in total. */
   imageSkippedBody: '有 {count} 张图片超出单条消息的附件上限（共 {limit}），已跳过。可以少选几张再发。',

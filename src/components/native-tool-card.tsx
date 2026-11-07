@@ -1,11 +1,14 @@
 import { useConversationDisclosure } from './conversation-disclosure'
 import { conversationRowKey } from './conversation-flow'
+import { compactJson, parseJsonPayload, prettyJson } from '@/components/copy-variants'
 import { copyTextLabel, measureCopy } from '@/components/copy-feedback'
+import { NativeAnchoredPanel } from '@/components/native-anchored-panel'
 import { tapFeedback } from '@/components/haptics'
 import { NativeDiffBlock } from '@/components/native-diff-block'
 import { MESSAGE_ACTION_HIT_SLOP } from '@/components/session-message-logic'
 import { NativeFlowRow } from '@/components/native-flow-row'
 import { NativeIcon } from '@/components/native-icon'
+import { NativeListRow } from '@/components/native-list'
 import type { NativeIconName } from '@/components/native-icon'
 import { toolArgument, type NativeConversationRow } from '@/components/session-conversation-logic'
 import { toolFileChange } from '@/components/tool-diff-logic'
@@ -149,6 +152,7 @@ function ToolPayload({
   const styles = useThemedStyles(makeStyles)
   const [copied, setCopied] = useState(false)
   const [copyFailed, setCopyFailed] = useState(false)
+  const [copyMenuOpen, setCopyMenuOpen] = useState(false)
   const [copySize, setCopySize] = useState<string | undefined>(undefined)
   const [expanded, setExpanded] = useState(false)
   const lineCount = useMemo(() => measureCopy(text).lines, [text])
@@ -183,8 +187,59 @@ function ToolPayload({
       setCopyFailed(true)
     }
   }
+  /**
+   * Offers the desktop's copy variants for a payload.
+   *
+   * A pointer right-clicks a payload to pick a representation; the phone reaches the
+   * same choices from a long press, and only offers JSON when the text parses as JSON.
+   */
+  const openCopyMenu = async (): Promise<void> => {
+    const parsed = parseJsonPayload(text)
+    if (parsed === undefined) {
+      await writeClipboard(text)
+      return
+    }
+    setCopyMenuOpen(true)
+  }
+  const writeClipboard = async (value: string): Promise<void> => {
+    const label = copyTextLabel(measureCopy(value))
+    try {
+      await Clipboard.setStringAsync(value)
+      tapFeedback()
+      setCopied(true)
+      setCopyFailed(false)
+      setCopySize(label)
+      void AccessibilityInfo.announceForAccessibility(label)
+      if (timer.current !== null) clearTimeout(timer.current)
+      timer.current = setTimeout(() => {
+        timer.current = null
+        setCopied(false)
+        setCopySize(undefined)
+      }, 1200)
+    } catch {
+      setCopyFailed(true)
+    }
+  }
   return (
     <View style={styles.payload}>
+      <NativeAnchoredPanel open={copyMenuOpen} onClose={() => setCopyMenuOpen(false)}>
+        <NativeListRow
+          title={message('copy.copyJsonPretty')}
+          accessibilityRole="button"
+          onPress={() => {
+            setCopyMenuOpen(false)
+            void writeClipboard(prettyJson(parseJsonPayload(text)))
+          }}
+        />
+        <NativeListRow
+          title={message('copy.copyJsonCompact')}
+          accessibilityRole="button"
+          onPress={() => {
+            setCopyMenuOpen(false)
+            void writeClipboard(compactJson(parseJsonPayload(text)))
+          }}
+        />
+      </NativeAnchoredPanel>
       <View style={styles.payloadHead}>
         <Text style={styles.payloadLabel}>{label}</Text>
         {copySize === undefined ? null : <Text style={styles.payloadSize}>{copySize}</Text>}
@@ -192,6 +247,9 @@ function ToolPayload({
           android_ripple={{ borderless: false }}
           accessibilityRole="button"
           accessibilityLabel={copied ? (copySize ?? message('copy.copiedText')) : message('copy.copyPayload')}
+          accessibilityHint={message('copy.jsonOptionsHint')}
+          delayLongPress={350}
+          onLongPress={() => void openCopyMenu()}
           accessibilityState={{ selected: copied }}
           hitSlop={MESSAGE_ACTION_HIT_SLOP}
           onPress={() => void copy()}

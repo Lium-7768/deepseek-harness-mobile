@@ -38,6 +38,8 @@ export const conversation = {
   // `placeholder.default` from ui-conversation's locale dictionary.
   composerPlaceholder: '发消息或创建任务…',
 
+  quoteMessage: '引用这条消息',
+  quoted: '已引用到输入框',
   copyMessage: '复制消息',
   /** `MessageIconActions`: forks the session at this message. */
   branchFromMessage: '在新对话中分支',

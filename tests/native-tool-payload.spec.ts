@@ -23,6 +23,8 @@ vi.mock('@/theme/hooks', async () => {
 vi.mock('@/components/native-icon', () => ({ NativeIcon: 'Icon' }))
 vi.mock('@/components/native-flow-row', () => ({ NativeFlowRow: 'FlowRow' }))
 vi.mock('@/components/native-diff-block', () => ({ NativeDiffBlock: 'DiffBlock' }))
+vi.mock('@/components/native-anchored-panel', () => ({ NativeAnchoredPanel: 'Panel' }))
+vi.mock('@/components/native-list', () => ({ NativeListRow: 'ListRow' }))
 vi.mock('expo-clipboard', () => ({ setStringAsync: vi.fn(async () => undefined) }))
 
 import { NativeToolCard } from '@/components/native-tool-card'

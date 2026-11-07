@@ -15,5 +15,9 @@ export const copy = {
   /** `{rows}` and `{columns}` describe the table that reached the clipboard. */
   copiedTable: '已复制 {rows} 行 × {columns} 列',
   copyText: '复制这段文本',
+  /** Long-press hint on a payload's copy control, matching the desktop's right-click hint. */
+  jsonOptionsHint: '长按可选择复制为格式化或紧凑 JSON',
+  copyJsonPretty: '复制格式化 JSON',
+  copyJsonCompact: '复制紧凑 JSON',
   copyPayload: '复制内容',
 } as const

@@ -51,6 +51,15 @@ export const drawer = {
   sessionIdCopied: 'Session ID 已复制',
   /** `{count}` running sub-agents under one session row. */
   subagentsRunning: '{count} 个子智能体运行中',
+  archiveActivityTurn: '进行中的回合',
+  /** `{count}` background jobs that archiving would stop. */
+  archiveActivityJobs: '{count} 个后台任务',
+  /** `{count}` running sub-agents that archiving would stop. */
+  archiveActivitySubagents: '{count} 个运行中的子智能体',
+  archiveStopTitle: '停止并归档此会话？',
+  archiveStopBody:
+    '这个会话还有正在进行的工作。归档会先停止它们；之后可以在「全部对话」里恢复会话，但被停止的工作不会自动继续。',
+  archiveStopAction: '停止并归档',
   archiveSession: '归档会话',
   archive: '归档',
   /** Transient confirmation after an archive, printed with an undo. */

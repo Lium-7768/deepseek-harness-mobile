@@ -194,7 +194,19 @@ export function WorkspaceComposer({
    */
   const appendImages = async (assets: ImagePicker.ImagePickerAsset[]): Promise<void> => {
     const room = MAX_ATTACHMENTS - draftImages.length
-    if (room <= 0) return
+    if (room <= 0) {
+      // The desktop names the cap instead of silently ignoring the pick.
+      Alert.alert(message('composer.imageAddFailedTitle'), format('composer.imageTooMany', { count: MAX_ATTACHMENTS }))
+      return
+    }
+    if (assets.length > room)
+      Alert.alert(
+        message('composer.imageAddFailedTitle'),
+        format('composer.imageTooManyPartial', {
+          count: MAX_ATTACHMENTS,
+          skipped: assets.length - room,
+        }),
+      )
     const prepared = await Promise.all(
       assets.slice(0, room).map((asset) =>
         prepareAttachment({

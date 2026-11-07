@@ -53,6 +53,10 @@ import { WorkspaceComposer } from '@/components/workspace-composer'
 import { WorkspaceShell } from '@/components/workspace-shell'
 import { workspaceKeyboardVerticalOffset } from '@/components/workspace-shell-logic'
 import { format, t as message } from '@/locale'
+import { formatQuoteText } from '@/components/markdown-quote'
+import { useComposerDraftStore } from '@/state/composer-drafts'
+import { showSnackbar } from '@/state/snackbar'
+import { tapFeedback } from '@/components/haptics'
 import { type SharedEventItem } from '@/shared/dsh-presentation'
 import { doneFeedback } from '@/components/haptics'
 import { setFocusedSession } from '@/state/completion-notices'
@@ -359,6 +363,22 @@ export default function SessionScreen(): React.JSX.Element {
     (row: NativeConversationRow) => row.sourceSeq !== undefined && closingBlocks.has(row.sourceSeq),
     [closingBlocks],
   )
+  // The desktop quotes by selecting text in the draft editor. A phone cannot select
+  // across a scrolling list reliably, so the row offers the same Markdown blockquote
+  // and writes it into the composer draft it would have landed in anyway.
+  const quoteIntoDraft = useCallback(
+    (text: string) => {
+      if (sessionId === undefined) return
+      const quoted = formatQuoteText(text)
+      const draft = useComposerDraftStore.getState().drafts[sessionId] ?? ''
+      useComposerDraftStore
+        .getState()
+        .setDraft(sessionId, draft.trim() === '' ? `${quoted}\n\n` : `${quoted}\n\n${draft}`)
+      tapFeedback()
+      showSnackbar(message('conversation.quoted'))
+    },
+    [sessionId],
+  )
   const renderRow = useCallback(
     (row: NativeConversationRow) => (
       <MessageRow
@@ -367,6 +387,7 @@ export default function SessionScreen(): React.JSX.Element {
         event={getEvent(row.sourceSeq)}
         item={row}
         onBranch={branchFromMessage}
+        onQuote={quoteIntoDraft}
         sessionId={sessionId}
         // Deliberate departure from the desktop: `MessageIconActions` renders only in
         // `TurnTailNodeView` because a pointer can drag-select any earlier block. A phone
@@ -376,7 +397,7 @@ export default function SessionScreen(): React.JSX.Element {
         showActions
       />
     ),
-    [branchFromMessage, client, getEvent, isClosingBlock, sessionId],
+    [branchFromMessage, client, getEvent, isClosingBlock, quoteIntoDraft, sessionId],
   )
   // A step's rows sit behind one collapsed header, the way the desktop groups a
   // step instead of printing a row per call.

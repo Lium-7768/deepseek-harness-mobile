@@ -37,6 +37,7 @@ export const MessageRow = memo(function MessageRow({
   event,
   api,
   sessionId,
+  onQuote,
 }: {
   item: NativeConversationRow
   /** Forks the session at this row's message; the drawer owns the same action. */
@@ -47,6 +48,8 @@ export const MessageRow = memo(function MessageRow({
   event: Record<string, unknown> | undefined
   api: MobileApi | undefined
   sessionId: string | undefined
+  /** Copies this message into the composer as a Markdown quote. */
+  onQuote?: (text: string) => void
 }): React.JSX.Element {
   const s = useThemedStyles(makeSessionStyles)
   const attachments =
@@ -68,7 +71,12 @@ export const MessageRow = memo(function MessageRow({
           </Text>
         </View>
         {attachments}
-        <MessageActions alignment="user" text={item.text} time={item.time} />
+        <MessageActions
+          alignment="user"
+          text={item.text}
+          time={item.time}
+          {...(onQuote === undefined ? {} : { onQuote: () => onQuote(item.text) })}
+        />
       </View>
     )
   if (item.kind === 'reasoning') return <NativeReasoningRow row={item} />
@@ -102,6 +110,7 @@ export const MessageRow = memo(function MessageRow({
           {...(compact || onBranch === undefined || item.sourceSeq === undefined
             ? {}
             : { onBranch: () => onBranch(item.sourceSeq as number) })}
+          {...(onQuote === undefined ? {} : { onQuote: () => onQuote(item.text) })}
         />
       ) : null}
     </View>
@@ -112,6 +121,7 @@ export function MessageActions({
   alignment,
   compact = false,
   onBranch,
+  onQuote,
   text,
   time,
   trailing,
@@ -120,6 +130,8 @@ export function MessageActions({
   /** Renders the copy control alone; a mid-turn block does not repeat the clock or branch. */
   compact?: boolean
   text: string
+  /** Opens a reply that quotes this message; the desktop reaches the same place by selecting text. */
+  onQuote?: () => void
   time?: number
   /** Rating controls the Web draws between Copy and the branch action. */
   trailing?: React.ReactNode
@@ -204,6 +216,18 @@ export function MessageActions({
         <Text ellipsizeMode="tail" numberOfLines={1} style={s.actionCopySize}>
           {copySize}
         </Text>
+      )}
+      {onQuote === undefined ? null : (
+        <Pressable
+          android_ripple={{ borderless: false }}
+          accessibilityRole="button"
+          accessibilityLabel={message('conversation.quoteMessage')}
+          onPress={onQuote}
+          hitSlop={MESSAGE_ACTION_HIT_SLOP}
+          style={({ pressed }) => [messageActionLayout(alignment), s.actionButton, pressed && s.pressed]}
+        >
+          <NativeIcon name="chevrons-up-down-outline" size={15} color={theme.colors.inkTertiary} />
+        </Pressable>
       )}
       {trailing}
       {onBranch === undefined ? null : (

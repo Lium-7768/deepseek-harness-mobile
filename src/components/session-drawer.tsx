@@ -1,7 +1,7 @@
 import { MobileApi } from '@/api/mobile-api'
 import { queryKeys } from '@/api/query-keys'
 import { ConfirmSheet } from '@/components/confirm-sheet'
-import { tapFeedback } from '@/components/haptics'
+import { tapFeedback, warnFeedback } from '@/components/haptics'
 import { NativeMenuPanel } from '@/components/native-menu-panel'
 import { DrawerViewMenu } from '@/components/drawer-view-menu'
 import { DrawerSearchInput, DrawerSearchRow } from '@/components/drawer-search'
@@ -55,7 +55,7 @@ export function SessionDrawer(props: DrawerContentComponentProps): React.JSX.Ele
   const drawerStatus = useDrawerStatus()
   const [searchOpen, setSearchOpen] = useState(false)
   const [confirm, setConfirm] = useState<
-    | { kind: 'archive'; session: SessionSummary }
+    | { kind: 'archive'; session: SessionSummary; activity?: readonly string[] }
     | { kind: 'deleteWorkspace'; title: string; workspaceId: string }
     | undefined
   >(undefined)
@@ -279,9 +279,13 @@ export function SessionDrawer(props: DrawerContentComponentProps): React.JSX.Ele
       restoring.current.delete(sessionId)
     }
   }
-  const archiveSession = async (sessionId: string): Promise<void> => {
+  const archiveSession = async (sessionId: string, stopFirst = false): Promise<void> => {
     try {
-      await new MobileApi(requireConnection(connection)).archiveSession(sessionId)
+      const api = new MobileApi(requireConnection(connection))
+      // Archiving leaves running work without a visible owner, so the confirmed path
+      // stops it first; the stopped work does not resume when the session is restored.
+      if (stopFirst) await api.cancelSession(sessionId).catch(() => undefined)
+      await api.archiveSession(sessionId)
       await refreshSessions()
       if (sessionId === currentSessionId) router.replace('/workspace')
       // Archiving is reversible and easy to hit by accident, so the row's own restore
@@ -309,8 +313,36 @@ export function SessionDrawer(props: DrawerContentComponentProps): React.JSX.Ele
   const confirmDeleteWorkspace = (workspaceId: string, title: string): void => {
     setConfirm({ kind: 'deleteWorkspace', title, workspaceId })
   }
-  const confirmArchive = (session: SessionSummary): void => {
-    setConfirm({ kind: 'archive', session })
+  /**
+   * Confirms an archive that would also stop work the reader can still lose.
+   *
+   * The desktop names what its Stop-and-archive path will end; the phone reads the same
+   * two rosters before confirming, and a session with nothing running keeps the plain
+   * archive plus its undo, which is the reversible path.
+   */
+  const confirmArchive = async (session: SessionSummary): Promise<void> => {
+    if (session.running !== true) {
+      setConfirm({ kind: 'archive', session })
+      return
+    }
+    const api = new MobileApi(requireConnection(connection))
+    const activity: string[] = [message('drawer.archiveActivityTurn')]
+    try {
+      const [jobs, subagents] = await Promise.all([
+        api.sessionJobs(session.sessionId),
+        api.subagents(session.sessionId),
+      ])
+      const runningJobs = jobs.items.filter((job) => job.status === 'running').length
+      if (runningJobs > 0) activity.push(format('drawer.archiveActivityJobs', { count: runningJobs }))
+      const runningAgents = subagents.entries.filter(
+        (entry) => entry.kind === 'child' && entry.activity === 'running',
+      ).length
+      if (runningAgents > 0) activity.push(format('drawer.archiveActivitySubagents', { count: runningAgents }))
+    } catch {
+      // The roster is an explanation, not a prerequisite: an unreadable roster still
+      // lets the reader stop and archive the turn it definitely has.
+    }
+    setConfirm({ kind: 'archive', session, activity })
   }
   const togglePin = async (session: SessionSummary): Promise<void> => {
     const wasPinned = pinnedSessionIds.has(session.sessionId)
@@ -637,7 +669,7 @@ export function SessionDrawer(props: DrawerContentComponentProps): React.JSX.Ele
                           onRestore={() => void restoreSession(item.session.sessionId)}
                           onMoveUp={orderBy === 'manual' ? () => moveSession(item.session.sessionId, -1) : undefined}
                           onMoveDown={orderBy === 'manual' ? () => moveSession(item.session.sessionId, 1) : undefined}
-                          onArchive={() => confirmArchive(item.session)}
+                          onArchive={() => void confirmArchive(item.session)}
                           onExport={() => void exportSession(item.session)}
                           onFork={() => void forkSession(item.session.sessionId)}
                           onRename={() =>
@@ -728,26 +760,39 @@ export function SessionDrawer(props: DrawerContentComponentProps): React.JSX.Ele
       </View>
       <ConfirmSheet
         open={confirm !== undefined}
-        title={confirm?.kind === 'archive' ? message('drawer.archiveSession') : message('drawer.removeWorkspace')}
+        title={
+          confirm?.kind === 'archive'
+            ? message(confirm.activity === undefined ? 'drawer.archiveSession' : 'drawer.archiveStopTitle')
+            : message('drawer.removeWorkspace')
+        }
         body={
           confirm?.kind === 'archive'
-            ? format('drawer.archiveSessionBody', {
-                title:
-                  typeof confirm.session.title === 'string' && confirm.session.title.trim()
-                    ? confirm.session.title
-                    : message('drawer.newSession'),
-              })
+            ? [
+                format(confirm.activity === undefined ? 'drawer.archiveSessionBody' : 'drawer.archiveStopBody', {
+                  title:
+                    typeof confirm.session.title === 'string' && confirm.session.title.trim()
+                      ? confirm.session.title
+                      : message('drawer.newSession'),
+                }),
+                ...(confirm.activity === undefined ? [] : ['', ...confirm.activity.map((line) => `· ${line}`)]),
+              ].join('\n')
             : confirm?.kind === 'deleteWorkspace'
               ? format('drawer.removeWorkspaceBody', { title: confirm.title })
               : ''
         }
-        confirmLabel={confirm?.kind === 'archive' ? message('drawer.archive') : message('drawer.remove')}
+        confirmLabel={
+          confirm?.kind === 'archive'
+            ? message(confirm.activity === undefined ? 'drawer.archive' : 'drawer.archiveStopAction')
+            : message('drawer.remove')
+        }
         onCancel={() => setConfirm(undefined)}
         onConfirm={() => {
           const pending = confirm
           setConfirm(undefined)
-          if (pending?.kind === 'archive') void archiveSession(pending.session.sessionId)
-          else if (pending?.kind === 'deleteWorkspace') void deleteWorkspace(pending.workspaceId)
+          if (pending?.kind === 'archive') {
+            warnFeedback()
+            void archiveSession(pending.session.sessionId, pending.activity !== undefined)
+          } else if (pending?.kind === 'deleteWorkspace') void deleteWorkspace(pending.workspaceId)
         }}
       />
     </SafeAreaView>
