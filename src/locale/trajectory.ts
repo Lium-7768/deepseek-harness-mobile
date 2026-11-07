@@ -8,9 +8,6 @@
 
 /** Trajectory step titles and tool action names. */
 export const trajectory = {
-  userRequest: '你的请求',
-  analyze: '分析问题',
-  generateReply: '生成回复',
   executeAction: '执行操作',
   reconnecting: '正在重新连接模型',
   turnIncomplete: '本次任务未完成',
@@ -37,5 +34,4 @@ export const trajectory = {
   running: '正在{action}。',
   runningWithTarget: '{action}：{target}',
   toolFailed: '操作未完成，请在桌面端查看详细错误信息。',
-  toolDone: '操作完成，可在桌面端查看完整结果。',
 } as const

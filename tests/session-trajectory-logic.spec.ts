@@ -5,7 +5,7 @@ import {
 } from '../src/components/session-trajectory-logic.ts'
 
 describe('native trajectory activity projection', () => {
-  it('maps durable events into readable activities and merges a tool result with its call', () => {
+  it('lists operations only and merges a tool result with its call', () => {
     const activities = projectNativeTrajectoryActivities([
       { seq: 1, event: { type: 'turn/start', time: 1_000, data: { turn: 4 } } },
       {
@@ -56,8 +56,9 @@ describe('native trajectory activity projection', () => {
       { seq: 7, event: { type: 'turn/end', data: { turn: 4 } } },
     ] as never)
 
+    // The ledger lists operations only: the request, the reasoning, and the reply
+    // belong to the chat tab, which already renders them.
     expect(activities).toEqual([
-      expect.objectContaining({ kind: 'user', title: '你的请求', detail: '请读取项目配置', turn: 4, showTurn: true }),
       expect.objectContaining({
         kind: 'tool',
         title: '读取文件',
@@ -65,14 +66,8 @@ describe('native trajectory activity projection', () => {
         state: 'completed',
         turn: 4,
         durationMs: 1_500,
+        showTurn: true,
       }),
-      expect.objectContaining({
-        kind: 'reasoning',
-        title: '分析问题',
-        detail: '先检查配置，再确认默认模型。',
-        turn: 4,
-      }),
-      expect.objectContaining({ kind: 'assistant', title: '生成回复', detail: '配置读取完成。', turn: 4 }),
     ])
     expect(activities.some((activity) => activity.title.includes('tool/call'))).toBe(false)
   })
@@ -100,7 +95,7 @@ describe('native trajectory activity projection', () => {
     ])
   })
 
-  it('replaces raw JSON tool output with a user-facing completion summary', () => {
+  it('drops machine JSON output instead of printing a summary line per call', () => {
     const activities = projectNativeTrajectoryActivities([
       {
         seq: 9,
@@ -118,14 +113,10 @@ describe('native trajectory activity projection', () => {
       },
     ] as never)
 
-    expect(activities).toEqual([
-      expect.objectContaining({
-        kind: 'tool',
-        title: '执行操作',
-        detail: '操作完成，可在桌面端查看完整结果。',
-        state: 'completed',
-      }),
-    ])
+    // A successful call with nothing readable adds no line: one boilerplate per
+    // call buried the rows that actually carried a result.
+    expect(activities).toEqual([expect.objectContaining({ kind: 'tool', title: '执行操作', state: 'completed' })])
+    expect(activities[0]?.detail).toBeUndefined()
   })
 
   it('formats operation durations the way the Web trajectory prints them', () => {

@@ -1,3 +1,4 @@
+import { NativeAnchoredPanel } from '@/components/native-anchored-panel'
 import { NativeIcon, type NativeIconName } from '@/components/native-icon'
 import {
   formatTrajectoryDuration,
@@ -11,7 +12,8 @@ import type { AppTheme } from '@/theme'
 import { useAppTheme, useThemedStyles } from '@/theme/hooks'
 import { MONOSPACE_FONT } from '@/theme/platform'
 import { memo } from 'react'
-import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native'
+import { useEffect, useRef, useState } from 'react'
+import { FlatList, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
 
 export type WorkbenchTab = 'chat' | 'trajectory'
 
@@ -89,12 +91,39 @@ function Tab({ active, label, onPress }: { active: boolean; label: string; onPre
 /**
  * Native counterpart to the desktop trajectory ledger. It projects durable
  * session events into compact operations rather than exposing wire-event names.
+ *
+ * Switching tabs unmounts this panel, so the caller keeps the offset and hands
+ * it back: a reader who scrolled into the middle of a long run returns to the
+ * same operation instead of the top of the session.
+ *
+ * @param props - Ordered events, the offset to restore, and the offset reporter.
+ * @returns The ledger list.
  */
-export function TrajectoryPanel({ items }: { items: SharedEventItem[] }): React.JSX.Element {
+export function TrajectoryPanel({
+  initialOffset = 0,
+  items,
+  onOffsetChange,
+}: {
+  items: SharedEventItem[]
+  /** Scroll offset to restore after a remount; `0` opens at the top. */
+  initialOffset?: number
+  onOffsetChange?: (offset: number) => void
+}): React.JSX.Element {
   const s = useThemedStyles(makeStyles)
+  const listRef = useRef<FlatList<NativeTrajectoryActivity>>(null)
+  const restored = useRef(false)
   const activities = projectNativeTrajectoryActivities(items)
+  useEffect(() => {
+    if (restored.current || initialOffset <= 0) return
+    restored.current = true
+    const timer = setTimeout(() => listRef.current?.scrollToOffset({ animated: false, offset: initialOffset }), 0)
+    return () => clearTimeout(timer)
+  }, [initialOffset])
   return (
     <FlatList
+      ref={listRef}
+      onScroll={(event) => onOffsetChange?.(event.nativeEvent.contentOffset.y)}
+      scrollEventThrottle={64}
       data={activities}
       keyExtractor={(activity) => activity.id}
       contentContainerStyle={s.panelList}
@@ -111,6 +140,7 @@ const TrajectoryActivityRow = memo(function TrajectoryActivityRow({
 }): React.JSX.Element {
   const theme = useAppTheme()
   const s = useThemedStyles(makeStyles)
+  const [open, setOpen] = useState(false)
   const stateLabel = activityStateLabel(activity)
   const detailLabel = activity.detail === undefined ? '' : `：${activity.detail}`
   const durationLabel =
@@ -118,40 +148,72 @@ const TrajectoryActivityRow = memo(function TrajectoryActivityRow({
       ? ''
       : format('workbench.elapsed', { duration: formatTrajectoryDuration(activity.durationMs) })
   const preview = trajectoryDetailPreview(activity.detail)
+  // A one-line preview in a dense list must not be the only copy of the detail:
+  // the row opens the whole text, which is what a reader comes to the ledger for.
+  const body = (
+    <View style={s.activityRow}>
+      <View style={[s.traceIndex, activity.state === 'failed' && s.traceIndexFailed]}>
+        <NativeIcon name={activityIcon(activity)} size={13} color={activityColor(activity, theme)} />
+      </View>
+      <View style={s.traceBody}>
+        <View style={s.activityTitleRow}>
+          <Text style={s.traceLabel}>{activity.title}</Text>
+          {stateLabel ? (
+            <Text style={[s.state, activity.state === 'failed' && s.stateFailed]}>{stateLabel}</Text>
+          ) : null}
+        </View>
+        {preview ? (
+          <Text ellipsizeMode="tail" numberOfLines={1} style={s.traceDetail}>
+            {preview}
+          </Text>
+        ) : null}
+      </View>
+      {activity.durationMs !== undefined ? (
+        <Text style={s.duration}>{formatTrajectoryDuration(activity.durationMs)}</Text>
+      ) : null}
+    </View>
+  )
   return (
-    <View accessibilityLabel={`${activity.title}${stateLabel}${detailLabel}${durationLabel}`} style={s.activityWrap}>
+    <View style={s.activityWrap}>
       {activity.showTurn === true && activity.turn !== undefined ? (
         <Text style={s.turnLabel}>{format('workbench.turn', { turn: activity.turn })}</Text>
       ) : null}
-      <View style={s.activityRow}>
-        <View style={[s.traceIndex, activity.state === 'failed' && s.traceIndexFailed]}>
-          <NativeIcon name={activityIcon(activity)} size={13} color={activityColor(activity, theme)} />
-        </View>
-        <View style={s.traceBody}>
-          <View style={s.activityTitleRow}>
-            <Text style={s.traceLabel}>{activity.title}</Text>
-            {stateLabel ? (
-              <Text style={[s.state, activity.state === 'failed' && s.stateFailed]}>{stateLabel}</Text>
-            ) : null}
+      {activity.detail === undefined ? (
+        <View accessibilityLabel={`${activity.title}${stateLabel}${durationLabel}`}>{body}</View>
+      ) : (
+        <Pressable
+          android_ripple={{ borderless: false }}
+          accessibilityLabel={`${activity.title}${stateLabel}${detailLabel}${durationLabel}`}
+          accessibilityRole="button"
+          accessibilityState={{ expanded: open }}
+          onPress={() => setOpen((current) => !current)}
+          style={({ pressed }) => [pressed && s.pressed]}
+        >
+          {body}
+        </Pressable>
+      )}
+      {activity.detail === undefined ? null : (
+        <NativeAnchoredPanel onClose={() => setOpen(false)} open={open}>
+          <View style={s.detailHeader}>
+            <NativeIcon name={activityIcon(activity)} size={14} color={activityColor(activity, theme)} />
+            <Text style={s.detailTitle}>{activity.title}</Text>
+            {activity.durationMs === undefined ? null : (
+              <Text style={s.duration}>{formatTrajectoryDuration(activity.durationMs)}</Text>
+            )}
           </View>
-          {preview ? (
-            <Text ellipsizeMode="tail" numberOfLines={1} style={s.traceDetail}>
-              {preview}
+          <ScrollView style={s.detailScroll}>
+            <Text selectable style={s.detailText}>
+              {activity.detail}
             </Text>
-          ) : null}
-        </View>
-        {activity.durationMs !== undefined ? (
-          <Text style={s.duration}>{formatTrajectoryDuration(activity.durationMs)}</Text>
-        ) : null}
-      </View>
+          </ScrollView>
+        </NativeAnchoredPanel>
+      )}
     </View>
   )
 })
 
 function activityIcon(activity: NativeTrajectoryActivity): NativeIconName {
   switch (activity.kind) {
-    case 'assistant':
-      return 'agent-preset-outline'
     case 'compaction':
       return 'data-outline'
     case 'context':
@@ -160,14 +222,10 @@ function activityIcon(activity: NativeTrajectoryActivity): NativeIconName {
       return 'warning-triangle-outline'
     case 'question':
       return 'warning-triangle-outline'
-    case 'reasoning':
-      return 'think-outline'
     case 'retry':
       return 'refresh-outline'
     case 'tool':
       return 'skill-outline'
-    case 'user':
-      return 'new-chat-outline'
   }
 }
 
@@ -285,6 +343,11 @@ const makeStyles = (theme: AppTheme) =>
     // The disclosed turn heading is a 24pt line box inside 28pt, leaving 4pt under
     // it. A minimum rather than a fixed height, so large Dynamic Type grows the row
     // instead of clipping the label.
+    pressed: { opacity: 0.62 },
+    detailHeader: { alignItems: 'center', flexDirection: 'row', gap: 8, paddingBottom: 8 },
+    detailTitle: { color: theme.colors.ink, flex: 1, fontSize: 14, fontWeight: '600', lineHeight: 22 },
+    detailScroll: { maxHeight: 420 },
+    detailText: { color: theme.colors.inkMuted, fontSize: 13, lineHeight: 20 },
     turnLabel: {
       color: theme.colors.inkMuted,
       fontSize: 12,

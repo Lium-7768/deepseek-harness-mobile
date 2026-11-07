@@ -1,8 +1,8 @@
 import { format, t as message } from '@/locale'
 import type { SharedEventItem } from '@/shared/dsh-presentation'
 
-export type NativeTrajectoryActivityKind =
-  'assistant' | 'compaction' | 'context' | 'error' | 'question' | 'reasoning' | 'retry' | 'tool' | 'user'
+/** Operations the ledger lists; conversation content stays in the chat tab. */
+export type NativeTrajectoryActivityKind = 'compaction' | 'context' | 'error' | 'question' | 'retry' | 'tool'
 
 export type NativeTrajectoryActivityState = 'completed' | 'failed' | 'running'
 
@@ -19,7 +19,6 @@ export type NativeTrajectoryActivity = {
 }
 
 type EventRecord = Record<string, unknown>
-type MessageBlock = { type?: unknown; text?: unknown }
 
 /**
  * Maps desktop durable events to the small set of user-readable activities that
@@ -53,46 +52,9 @@ export function projectNativeTrajectoryActivities(items: readonly SharedEventIte
     }
     if (type === 'assistant/chunk') continue
 
-    if (type === 'user/message') {
-      pushActivity(activities, {
-        id: activityId(item, 'user'),
-        kind: 'user',
-        title: message('trajectory.userRequest'),
-        ...textDetail(messageText(data)),
-        ...turnField(turn),
-      })
-      continue
-    }
-
-    if (type === 'assistant/message') {
-      const blocks = messageBlocks(data)
-      const text = blocks
-        .flatMap((block) => (block.type === 'text' && typeof block.text === 'string' ? [block.text] : []))
-        .join('\n')
-      const reasoning = blocks
-        .flatMap((block) => (block.type === 'reasoning' && typeof block.text === 'string' ? [block.text] : []))
-        .join('\n')
-      if (reasoning.trim()) {
-        pushActivity(activities, {
-          id: activityId(item, 'reasoning'),
-          kind: 'reasoning',
-          title: message('trajectory.analyze'),
-          ...textDetail(reasoning),
-          ...turnField(turn),
-        })
-      }
-      if (text.trim()) {
-        pushActivity(activities, {
-          id: activityId(item, 'assistant'),
-          kind: 'assistant',
-          title: message('trajectory.generateReply'),
-          ...textDetail(text),
-          ...turnField(turn),
-        })
-      }
-      continue
-    }
-
+    // Conversation content belongs to the chat tab: the request, the reply, and the
+    // reasoning that produced it all appear there. A ledger that repeats them
+    // pushes the operations a reader opened it for below the fold.
     if (type === 'tool/call') {
       const callId = stringField(data.callId)
       const toolName = stringField(data.name) ?? message('trajectory.tool')
@@ -254,10 +216,21 @@ function toolCallDetail(toolName: string, data: EventRecord): string {
     : format('trajectory.runningWithTarget', { action: toolActionName(toolName), target })
 }
 
-function toolResultDetail(output: string | undefined, failed: boolean): string {
+/**
+ * Reads what a finished call leaves behind, if anything worth printing.
+ *
+ * A successful call whose output is machine JSON or absent says nothing the row
+ * does not already say; printing one boilerplate line per call buried the rows
+ * that do carry a result. A failure keeps its line.
+ *
+ * @param output - Raw tool output, when the result carried one.
+ * @param failed - Whether the call reported an error.
+ * @returns The readable text, or undefined when there is nothing to add.
+ */
+function toolResultDetail(output: string | undefined, failed: boolean): string | undefined {
   const readable = output === undefined || isTechnicalText(output) ? undefined : previewText(output)
   if (readable !== undefined) return readable
-  return failed ? message('trajectory.toolFailed') : message('trajectory.toolDone')
+  return failed ? message('trajectory.toolFailed') : undefined
 }
 
 function toolTarget(value: unknown): string | undefined {
@@ -325,23 +298,6 @@ function previewText(value: string | undefined): string | undefined {
   const lastBreak = clipped.lastIndexOf('\n')
   const body = lastBreak > limit * 0.6 ? clipped.slice(0, lastBreak) : clipped
   return `${body.trimEnd()}…`
-}
-
-function messageBlocks(data: EventRecord): MessageBlock[] {
-  const message = recordField(data.message)
-  const content = message?.content
-  return Array.isArray(content)
-    ? content.filter(
-        (block): block is MessageBlock => block !== null && typeof block === 'object' && !Array.isArray(block),
-      )
-    : []
-}
-
-function messageText(data: EventRecord): string | undefined {
-  const text = messageBlocks(data)
-    .flatMap((block) => (block.type === 'text' && typeof block.text === 'string' ? [block.text] : []))
-    .join('\n')
-  return previewText(text)
 }
 
 function toolResult(data: EventRecord): { callId?: string; failed: boolean; output?: string } {

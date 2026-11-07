@@ -139,10 +139,13 @@ export default function SessionScreen(): React.JSX.Element {
   // One dock at rest: the three cards the desktop stacks above the composer
   // become a chip row, and a chip opens its own dock underneath.
   const [openDock, setOpenDock] = useState<ComposerDock | undefined>(undefined)
+  /** The ledger's scroll offset, kept across tab switches that unmount it. */
+  const trajectoryOffset = useRef(0)
   useEffect(() => {
     setGoalEditorOpen(false)
     setGoalEditRequest(0)
     setOpenDock(undefined)
+    trajectoryOffset.current = 0
   }, [sessionId])
   /** Set once `pinToLatest` exists so the send callback can reach it. */
   const pinToLatestRef = useRef<() => void>(() => undefined)
@@ -303,13 +306,6 @@ export default function SessionScreen(): React.JSX.Element {
     submittedDraft.current = value
     sendMessage.current([{ type: 'text', text: value }])
   }, [client, draft, sessionId])
-
-  useEffect(() => {
-    if (tab !== 'chat') return
-    initialLatestPositionPending.current = true
-    nearLatestMessage.current = true
-    setShowReturnToLatest(false)
-  }, [tab])
 
   const recentWindow = useMemo(
     () => sessionWindow(mergeEventItems(history.data?.items ?? [], events.data?.items ?? [])),
@@ -659,7 +655,15 @@ export default function SessionScreen(): React.JSX.Element {
                   }}
                 />
               ) : null}
-              {tab === 'trajectory' ? <TrajectoryPanel items={sourceItems} /> : null}
+              {tab === 'trajectory' ? (
+                <TrajectoryPanel
+                  initialOffset={trajectoryOffset.current}
+                  items={sourceItems}
+                  onOffsetChange={(offset) => {
+                    trajectoryOffset.current = offset
+                  }}
+                />
+              ) : null}
               {tab === 'chat' ? <ContextRows items={sourceItems} /> : null}
               <View style={tab === 'chat' ? s.listStage : s.hidden}>
                 <FlatList
@@ -890,7 +894,13 @@ export default function SessionScreen(): React.JSX.Element {
                   ) : undefined
                 }
                 placeholder={message('conversation.composerPlaceholder')}
-                onSend={(content) => send.mutateAsync(content).then(() => undefined)}
+                onSend={(content) =>
+                  send.mutateAsync(content).then(() => {
+                    // The reply arrives in the transcript; staying on the ledger
+                    // would hide the very message the reader just sent.
+                    setTab('chat')
+                  })
+                }
                 onCancel={() => cancel.mutate()}
                 commands={commands.data}
                 skills={skills.data}
@@ -918,11 +928,9 @@ export default function SessionScreen(): React.JSX.Element {
                 onSelectPermission={selections.selectPermission}
                 permissionLocked={selections.permissionLocked}
                 presets={presets.data?.presets}
-                footer={
-                  tab === 'chat' ? (
-                    <SessionDock items={sourceItems} projectionValues={history.data?.projections?.values} />
-                  ) : undefined
-                }
+                // The dock stays under both tabs: hiding it on the ledger tab
+                // shortened the composer by 26pt every time the reader switched.
+                footer={<SessionDock items={sourceItems} projectionValues={history.data?.projections?.values} />}
               />
             </>
           )}

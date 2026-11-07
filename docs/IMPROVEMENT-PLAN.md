@@ -82,6 +82,22 @@ names what reached the clipboard — lines and characters for text, lines for co
 for a table — because a phone cannot show the selection it is about to copy. A table copies whole
 as TSV, which pastes into a spreadsheet as real columns.
 
+## The trajectory ledger
+
+The ledger tab used to re-project the transcript: the request, the reasoning, and the reply
+each became a row, so opening it put a downsampled copy of the chat above the operations a
+reader came for. It now lists operations only — tool calls, retries, errors, questions,
+context, compaction — grouped under their turn headings, and each row opens the complete text
+in a sheet because a one-line preview in a dense list cannot be the only copy of a result.
+
+A finished call that returns machine JSON no longer prints `操作完成，可在桌面端查看完整结果。`:
+one boilerplate line per call buried the calls that did return something readable.
+
+Switching tabs no longer resets the reader: the transcript keeps its position (the latch used
+to re-pin on every return), the ledger restores the offset it was scrolled to, the statistics
+dock stays under both tabs so the composer keeps one height, and a send returns to the
+transcript to show the reply.
+
 ## Settings density
 
 A settings page is read at arm's length on a 402pt screen, so each tab now carries one
