@@ -27,7 +27,11 @@ export function composerPrimaryAction(input: {
   running: boolean
   sending: boolean
 }): { busy: boolean; disabled: boolean; kind: 'send' | 'stop' } {
-  if (input.running && !input.disabled) return { busy: input.cancelling, disabled: input.cancelling, kind: 'stop' }
+  // The desktop stops only from an empty composer: with a draft present the primary
+  // control delivers that draft instead (queued or steered), and Stop stays on the
+  // keyboard shortcut. A phone has no shortcut, so an empty draft is what exposes Stop.
+  if (input.running && !input.disabled && !input.hasText)
+    return { busy: input.cancelling, disabled: input.cancelling, kind: 'stop' }
   return {
     busy: input.sending,
     // A stop still reaches the Host over HTTP when only the event stream dropped, so

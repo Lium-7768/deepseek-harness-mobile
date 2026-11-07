@@ -359,6 +359,9 @@ function NativeCodeBlock({
   const theme = useAppTheme()
   const styles = useThemedStyles(makeStyles)
   const [expanded, setExpanded] = useState(false)
+  // The desktop's `codeBlock.wrap` toggle: a long line otherwise only scrolls sideways,
+  // which a phone cannot follow while reading.
+  const [wrapped, setWrapped] = useState(false)
   const tokens = useMemo(() => highlightCode(text, language), [text, language])
   const lineCount = text.split('\n').length
   const collapsible = lineCount > 16
@@ -371,6 +374,21 @@ function NativeCodeBlock({
             {copiedSize}
           </Text>
         )}
+        <Pressable
+          android_ripple={{ borderless: false }}
+          accessibilityRole="button"
+          accessibilityLabel={wrapped ? message('markdown.unwrapCode') : message('markdown.wrapCode')}
+          accessibilityState={{ selected: wrapped }}
+          hitSlop={8}
+          onPress={() => setWrapped((value) => !value)}
+          style={styles.copyButton}
+        >
+          <NativeIcon
+            name="chevrons-up-down-outline"
+            size={16}
+            color={wrapped ? theme.colors.ink : theme.colors.inkMuted}
+          />
+        </Pressable>
         <Pressable
           android_ripple={{ borderless: false }}
           accessibilityRole="button"
@@ -392,15 +410,32 @@ function NativeCodeBlock({
           />
         </Pressable>
       </View>
-      <ScrollView horizontal nestedScrollEnabled showsHorizontalScrollIndicator contentContainerStyle={styles.codeBody}>
-        <Text selectable numberOfLines={collapsible && !expanded ? 16 : undefined} style={styles.codeText}>
-          {tokens.map((token, index) => (
-            <Text key={index} style={{ color: codeTokenColor(theme, token.kind) }}>
-              {token.text}
-            </Text>
-          ))}
-        </Text>
-      </ScrollView>
+      {wrapped ? (
+        <View style={styles.codeBody}>
+          <Text selectable numberOfLines={collapsible && !expanded ? 16 : undefined} style={styles.codeText}>
+            {tokens.map((token, index) => (
+              <Text key={index} style={{ color: codeTokenColor(theme, token.kind) }}>
+                {token.text}
+              </Text>
+            ))}
+          </Text>
+        </View>
+      ) : (
+        <ScrollView
+          horizontal
+          nestedScrollEnabled
+          showsHorizontalScrollIndicator
+          contentContainerStyle={styles.codeBody}
+        >
+          <Text selectable numberOfLines={collapsible && !expanded ? 16 : undefined} style={styles.codeText}>
+            {tokens.map((token, index) => (
+              <Text key={index} style={{ color: codeTokenColor(theme, token.kind) }}>
+                {token.text}
+              </Text>
+            ))}
+          </Text>
+        </ScrollView>
+      )}
       {collapsible && !expanded ? (
         // `numberOfLines` clips silently, so a reader would otherwise believe the block
         // ends at the fold. The count is what the fold hides, not the total.

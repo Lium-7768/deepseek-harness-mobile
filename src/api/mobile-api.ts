@@ -526,8 +526,11 @@ export class MobileApi {
   }
 
   /** Queues native text and image content in the selected desktop-owned session. */
-  sendMessage(sessionId: string, content: MobilePromptContent): Promise<unknown> {
-    return this.#post(`/v1/sessions/${encodeURIComponent(sessionId)}/messages`, { content })
+  sendMessage(sessionId: string, content: MobilePromptContent, mode?: 'queue' | 'steer'): Promise<unknown> {
+    return this.#post(`/v1/sessions/${encodeURIComponent(sessionId)}/messages`, {
+      content,
+      ...(mode === undefined ? {} : { mode }),
+    })
   }
 
   /** Requests cancellation of the selected DSH session. */

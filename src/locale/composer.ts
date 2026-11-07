@@ -51,6 +51,9 @@ export const composer = {
   cameraFailedBody: '请检查相机权限后重试。',
 
   send: '发送消息',
+  /** Primary control while the agent runs and a draft is waiting. */
+  sendQueue: '排队发送',
+  sendSteer: '插话发送',
   sending: '正在发送消息',
   /** Stands in for the placeholder while the stream is down and nothing is drafted. */
   offlinePlaceholder: '连接已断开，恢复后可发送',

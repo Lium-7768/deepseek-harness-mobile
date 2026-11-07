@@ -110,7 +110,18 @@ export function useSessionQueries(
       return client.withSignal(signal).agentPresets()
     },
   })
+  /** Shares the settings query the settings screen already uses: one cached read per connection. */
+  const settings = useQuery({
+    queryKey: queryKeys.settings(connection?.gatewayUrl, connection?.deviceId),
+    enabled: Boolean(client),
+    staleTime: 60_000,
+    queryFn: ({ signal }) => {
+      if (!client) throw new Error(message('conversation.openFromList'))
+      return client.withSignal(signal).settingsDescribe()
+    },
+  })
   return {
+    settings,
     goal,
     history,
     events,

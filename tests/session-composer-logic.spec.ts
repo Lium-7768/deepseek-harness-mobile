@@ -14,12 +14,16 @@ describe('session composer projections', () => {
     expect(composerInputPolicy).toEqual({ returnKeyType: 'default', submitBehavior: 'newline' })
   })
 
-  it('keeps stop available while sending and shows busy state for both actions', () => {
+  it('stops only from an empty composer, the way the desktop stops from an empty draft', () => {
     expect(
-      composerPrimaryAction({ cancelling: false, disabled: false, hasText: true, running: true, sending: true }),
+      composerPrimaryAction({ cancelling: false, disabled: false, hasText: false, running: true, sending: true }),
     ).toEqual({ busy: false, disabled: false, kind: 'stop' })
+    // With a draft present the same control delivers it instead of stopping.
     expect(
-      composerPrimaryAction({ cancelling: true, disabled: false, hasText: true, running: true, sending: false }),
+      composerPrimaryAction({ cancelling: false, disabled: false, hasText: true, running: true, sending: false }),
+    ).toEqual({ busy: false, disabled: false, kind: 'send' })
+    expect(
+      composerPrimaryAction({ cancelling: true, disabled: false, hasText: false, running: true, sending: false }),
     ).toEqual({ busy: true, disabled: true, kind: 'stop' })
     expect(
       composerPrimaryAction({ cancelling: false, disabled: false, hasText: true, running: false, sending: true }),
@@ -88,7 +92,7 @@ describe('session composer projections', () => {
       composerPrimaryAction({
         cancelling: false,
         disabled: false,
-        hasText: true,
+        hasText: false,
         offline: true,
         running: true,
         sending: false,

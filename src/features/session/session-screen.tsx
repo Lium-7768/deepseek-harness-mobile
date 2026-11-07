@@ -14,6 +14,7 @@ import { todoFromProjection } from '@/components/todo-logic'
 import { NativeTurnGroup } from '@/components/native-turn-group'
 import { firstParam, withErrorContext } from '@/components/route-params'
 import { readPermissionSelect, streamDropped } from '@/components/session-composer-logic'
+import { namespaceValue, readRecord, readString } from '@/components/settings/settings-shared'
 import { planFromProjection } from '@/components/plan-logic'
 import {
   activeTurnStartedAt,
@@ -149,8 +150,15 @@ export default function SessionScreen(): React.JSX.Element {
     models,
     presets,
     commands,
+    settings,
   } = useSessionQueries(client, connection, sessionId)
+  // The composer delivers a draft into a running Turn the same way the desktop does;
+  // which of the two modes is the reader's stored preference.
+  const busyEnter: 'queue' | 'steer' =
+    readString(readRecord(namespaceValue(settings.data, 'ui-conversation'))?.busyEnter) === 'steer' ? 'steer' : 'queue'
   const sessionTitle = sessionDisplayTitle(activeSession)
+  const busyEnterRef = useRef(busyEnter)
+  busyEnterRef.current = busyEnter
   const { branch, send, updateQueue, cancel, goalMutation, createGoalMutation, interruptSubagent } = useSessionActions(
     client,
     sessionId,
@@ -161,6 +169,7 @@ export default function SessionScreen(): React.JSX.Element {
       sendFollowUntil.current = Date.now() + SEND_FOLLOW_WINDOW_MS
       pinToLatestRef.current()
     },
+    () => busyEnterRef.current,
   )
   const branchFromMessage = branch.mutate
   const loadOlder = useMutation({
@@ -852,6 +861,7 @@ export default function SessionScreen(): React.JSX.Element {
                 plan={plan}
                 sessionId={sessionId}
                 cancelling={cancel.isPending}
+                busyEnter={busyEnter}
                 disabled={!ready}
                 offline={offline}
                 sending={send.isPending}

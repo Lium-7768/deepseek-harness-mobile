@@ -55,6 +55,8 @@ import {
 
 type Props = {
   variant?: 'hero' | 'docked'
+  /** Delivery mode for a prompt sent while the agent is running. */
+  busyEnter?: 'queue' | 'steer'
   draftScope?: string
   agentPreset?: string
   cancelling?: boolean
@@ -110,6 +112,7 @@ type Props = {
  */
 export function WorkspaceComposer({
   agentPreset,
+  busyEnter = 'queue',
   cancelling = false,
   disabled = false,
   offline = false,
@@ -664,7 +667,9 @@ export function WorkspaceComposer({
                       ? message('composer.offlineSendLabel')
                       : action.busy
                         ? message('composer.sending')
-                        : message('composer.send')
+                        : running && hasContent
+                          ? message(busyEnter === 'steer' ? 'composer.sendSteer' : 'composer.sendQueue')
+                          : message('composer.send')
                   }
                   accessibilityState={{ busy: action.busy, disabled: action.disabled }}
                   disabled={action.disabled}

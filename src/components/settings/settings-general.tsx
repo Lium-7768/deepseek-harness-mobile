@@ -18,7 +18,6 @@ import {
   ChoiceSheet,
   PERMISSION_CHOICES,
   QueryErrorNotice,
-  ReadOnlySetting,
   SettingsFieldRow,
   namespace,
   namespaceValue,
@@ -55,6 +54,8 @@ export function GeneralSettings({
   const presetDefault =
     readString(readRecord(namespaceValue(settings.data, 'agent-presets'))?.default) ??
     presets.data?.presets.find((item) => item.isDefault)?.id
+  const busyEnter =
+    readString(readRecord(namespaceValue(settings.data, 'ui-conversation'))?.busyEnter) === 'steer' ? 'steer' : 'queue'
   const permissionDefault =
     readString(readRecord(namespaceValue(settings.data, 'permission'))?.defaultPreset) ?? 'workspace-write'
   // The phone renders its own stored preference: the desktop value describes the
@@ -192,10 +193,23 @@ export function GeneralSettings({
             )
           })}
         </View>
-        <ReadOnlySetting
-          title={message('settings.enterBehavior')}
-          value={message('settings.enterBehaviorValue')}
-          detail={message('settings.enterBehaviorDetail')}
+        <SettingsFieldRow
+          label={message('settings.enterBehavior')}
+          description={message('settings.enterBehaviorDetail')}
+          disabled={!writable || saving}
+          value={message(busyEnter === 'steer' ? 'settings.enterBehaviorSteer' : 'settings.enterBehaviorQueue')}
+          onPress={() =>
+            setPicker({
+              title: message('settings.enterBehavior'),
+              value: busyEnter,
+              options: [
+                { value: 'queue', label: message('settings.enterBehaviorQueue') },
+                { value: 'steer', label: message('settings.enterBehaviorSteer') },
+              ],
+              onSelect: (choice) =>
+                save('ui-conversation', { busyEnter: choice }, message('settings.enterBehaviorSaved')),
+            })
+          }
         />
         {appVersion === undefined ? null : (
           <Text style={styles.versionRow}>{format('settings.currentVersion', { version: appVersion })}</Text>

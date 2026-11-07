@@ -12,7 +12,13 @@ import { useRef } from 'react'
 import { Alert } from 'react-native'
 
 /** Commands retain their desktop authority and never retry ambiguous outcomes automatically. */
-export function useSessionActions(client: MobileApi | undefined, sessionId: string | undefined, onSent: () => void) {
+export function useSessionActions(
+  client: MobileApi | undefined,
+  sessionId: string | undefined,
+  onSent: () => void,
+  /** Delivery mode for a prompt sent while the agent is running. */
+  busyMode: () => 'queue' | 'steer' = () => 'queue',
+) {
   const queryClient = useQueryClient()
   const retrySend = useRef<(content: MobilePromptContent) => void>(() => undefined)
   const branch = useMutation({
@@ -33,7 +39,7 @@ export function useSessionActions(client: MobileApi | undefined, sessionId: stri
   const send = useMutation({
     mutationFn: (content: MobilePromptContent) => {
       if (!client || !sessionId) throw new Error(message('conversation.openFromList'))
-      return client.sendMessage(sessionId, content)
+      return client.sendMessage(sessionId, content, busyMode())
     },
     onSuccess: () => {
       tapFeedback()
