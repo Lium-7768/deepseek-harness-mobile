@@ -2,6 +2,7 @@ import { MobileApi, MobileApiError } from '@/api/mobile-api'
 import { queryKeys } from '@/api/query-keys'
 import { ConfirmSheet } from '@/components/confirm-sheet'
 import { NativeEmptyState } from '@/components/native-empty-state'
+import { NativeRunningRing } from '@/components/native-running-ring'
 import { ScheduleEditor } from '@/components/schedule-editor'
 import { NativeMenuPanel } from '@/components/native-menu-panel'
 import { NativeIcon } from '@/components/native-icon'
@@ -17,7 +18,7 @@ import type { MobileScheduleCreateRequest, MobileScheduleEntry } from '@/types/m
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { router } from 'expo-router'
 import { memo, useMemo, useRef, useState } from 'react'
-import { ActivityIndicator, Alert, FlatList, Pressable, StyleSheet, Text, View } from 'react-native'
+import { Alert, FlatList, Pressable, StyleSheet, Text, View } from 'react-native'
 
 /** Desktop-owned automation catalog; all visible controls invoke the corresponding schedule API. */
 export default function SchedulesScreen(): React.JSX.Element {
@@ -93,7 +94,9 @@ export default function SchedulesScreen(): React.JSX.Element {
           title={message('schedule.needsConnection')}
         />
       ) : catalog.isPending ? (
-        <ActivityIndicator color={theme.colors.inkMuted} />
+        <View style={s.loading}>
+          <NativeRunningRing size={20} />
+        </View>
       ) : catalog.isError ? (
         <ErrorNotice
           text={
@@ -249,6 +252,7 @@ const makeStyles = (theme: AppTheme) =>
     prompt: { color: theme.colors.inkMuted, fontSize: 14, lineHeight: 22 },
     meta: { color: theme.colors.inkTertiary, fontSize: 12, lineHeight: 18 },
     headerAction: { alignItems: 'center', height: 32, justifyContent: 'center', width: 32 },
+    loading: { alignItems: 'center', paddingVertical: 32 },
     rowAction: { alignItems: 'center', height: 28, justifyContent: 'center', width: 28 },
     pressed: { opacity: 0.62 },
   })

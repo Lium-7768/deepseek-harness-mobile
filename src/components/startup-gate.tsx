@@ -1,14 +1,14 @@
 import { t as message } from '@/locale'
 import { useConnectionStore } from '@/state/connection'
 import type { AppTheme } from '@/theme'
-import { useAppTheme, useThemedStyles } from '@/theme/hooks'
-import { ActivityIndicator, StyleSheet, Text, View } from 'react-native'
+import { useThemedStyles } from '@/theme/hooks'
+import { StyleSheet, Text, View } from 'react-native'
 import { NativeActionButton } from './native-action-button'
 import { NativeBrandMark } from './native-brand-mark'
+import { NativeRunningRing } from './native-running-ring'
 
 /** Keeps storage errors actionable before navigation or remote queries are mounted. */
 export function StartupGate(): React.JSX.Element {
-  const theme = useAppTheme()
   const s = useThemedStyles(styles)
   const error = useConnectionStore((state) => state.initializationError)
   const retry = useConnectionStore((state) => state.initialize)
@@ -30,7 +30,9 @@ export function StartupGate(): React.JSX.Element {
           />
         </>
       ) : (
-        <ActivityIndicator color={theme.colors.inkMuted} />
+        // The branded arc, not the platform spinner: the first paint is the one
+        // moment the app has no content of its own to show.
+        <NativeRunningRing size={22} />
       )}
     </View>
   )

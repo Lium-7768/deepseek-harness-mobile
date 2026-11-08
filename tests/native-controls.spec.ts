@@ -17,6 +17,11 @@ vi.mock('react-native', async () => {
     ActivityIndicator: 'ActivityIndicator',
     StyleSheet: { create: (styles: unknown) => styles, hairlineWidth: 1 },
     Alert: { alert: mocks.alert },
+    AccessibilityInfo: {
+      isReduceMotionEnabled: () => Promise.resolve(false),
+      addEventListener: () => ({ remove: () => undefined }),
+    },
+    AppState: { currentState: 'active', addEventListener: () => ({ remove: () => undefined }) },
     useWindowDimensions: () => ({ width: 393, height: 852, fontScale: 1 }),
     FlatList: (props: {
       data: unknown[]
@@ -46,6 +51,22 @@ vi.mock('@/theme/hooks', async () => {
   }
 })
 vi.mock('@/components/native-icon', () => ({ NativeIcon: 'Icon' }))
+// The schedules loading state draws the branded running ring, which is Reanimated.
+vi.mock('react-native-reanimated', async () => {
+  const { useRef } = await import('react')
+  return {
+    default: { createAnimatedComponent: () => 'AnimatedCircle', View: 'AnimatedView' },
+    cancelAnimation: () => undefined,
+    Easing: { linear: 'linear' },
+    interpolate: () => 0,
+    useSharedValue: (initial: number) => useRef({ value: initial }).current,
+    useAnimatedStyle: (factory: () => unknown) => factory(),
+    useAnimatedProps: (factory: () => unknown) => factory(),
+    withRepeat: (value: unknown) => value,
+    withTiming: (value: unknown) => value,
+  }
+})
+vi.mock('react-native-svg', () => ({ Circle: 'Circle', default: 'Svg' }))
 vi.mock('@/components/native-action-button', () => ({ NativeActionButton: 'ActionButton' }))
 vi.mock('@/components/workspace-shell', () => ({ WorkspaceShell: 'Shell' }))
 vi.mock('@/components/confirm-sheet', async () => {

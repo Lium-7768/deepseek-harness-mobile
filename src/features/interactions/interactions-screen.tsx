@@ -8,6 +8,7 @@ import {
 } from '@/components/interaction-state'
 import { NativeActionButton } from '@/components/native-action-button'
 import { NativeIcon } from '@/components/native-icon'
+import { NativeRunningRing } from '@/components/native-running-ring'
 import { NativeMarkdown } from '@/components/native-markdown'
 import { requireClient, withErrorContext } from '@/components/route-params'
 import { WorkspaceShell } from '@/components/workspace-shell'
@@ -27,7 +28,6 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { router, useLocalSearchParams } from 'expo-router'
 import { memo, useState } from 'react'
 import {
-  ActivityIndicator,
   Alert,
   FlatList,
   KeyboardAvoidingView,
@@ -160,7 +160,6 @@ function InteractionListStateView({
   query: { error: Error | null; refetch: () => Promise<unknown> }
   state: InteractionListState
 }): React.JSX.Element | null {
-  const theme = useAppTheme()
   const styles = useThemedStyles(makeStyles)
   if (state === 'ready') return null
   if (state === 'disconnected')
@@ -191,7 +190,7 @@ function InteractionListStateView({
   if (state === 'loading')
     return (
       <View style={styles.empty}>
-        <ActivityIndicator color={theme.colors.accent} />
+        <NativeRunningRing size={20} />
         <Text style={styles.emptyText}>{message('interactions.loading')}</Text>
       </View>
     )

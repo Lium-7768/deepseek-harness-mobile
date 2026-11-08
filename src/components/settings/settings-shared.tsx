@@ -3,13 +3,14 @@ import { mobileErrorMessage } from '@/api/mobile-api'
 import { NativeActionButton } from '@/components/native-action-button'
 import { NativeIcon } from '@/components/native-icon'
 import { NativeSection } from '@/components/native-list'
+import { NativeRunningRing } from '@/components/native-running-ring'
 import { NativeMenuPanel } from '@/components/native-menu-panel'
 import { type NativeModelSelection } from '@/components/native-model-selection'
 import { NativeSelectionRow } from '@/components/native-selection'
 import { format, t as message } from '@/locale'
 import { useAppTheme, useThemedStyles } from '@/theme/hooks'
 import type { MobileSettingsNamespaceView, MobileSettingsPayload } from '@/types/mobile'
-import { useWindowDimensions, ActivityIndicator, Pressable, Text, View } from 'react-native'
+import { useWindowDimensions, Pressable, Text, View } from 'react-native'
 
 import { makeSettingsStyles } from '@/components/settings/settings-styles'
 
@@ -211,11 +212,10 @@ export function ReadOnlySetting({
   )
 }
 export function CenteredState({ text }: { text: string }): React.JSX.Element {
-  const theme = useAppTheme()
   const styles = useThemedStyles(makeSettingsStyles)
   return (
     <View style={styles.center}>
-      <ActivityIndicator color={theme.colors.accent} />
+      <NativeRunningRing size={20} />
       <Text style={styles.muted}>{text}</Text>
     </View>
   )

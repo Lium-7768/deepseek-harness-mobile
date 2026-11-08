@@ -19,7 +19,22 @@ vi.mock('@/theme/hooks', async () => {
     useThemedStyles: (factory: (theme: unknown) => unknown) => factory(themes.light),
   }
 })
-vi.mock('react-native-svg', () => ({ default: 'Svg', SvgXml: 'SvgXml' }))
+vi.mock('react-native-svg', () => ({ Circle: 'Circle', default: 'Svg', SvgXml: 'SvgXml' }))
+// The settings loading state draws the branded running ring, which is Reanimated.
+vi.mock('react-native-reanimated', async () => {
+  const { useRef } = await import('react')
+  return {
+    default: { createAnimatedComponent: () => 'AnimatedCircle', View: 'AnimatedView' },
+    cancelAnimation: () => undefined,
+    Easing: { linear: 'linear' },
+    interpolate: () => 0,
+    useSharedValue: (initial: number) => useRef({ value: initial }).current,
+    useAnimatedStyle: (factory: () => unknown) => factory(),
+    useAnimatedProps: (factory: () => unknown) => factory(),
+    withRepeat: (value: unknown) => value,
+    withTiming: (value: unknown) => value,
+  }
+})
 vi.mock('@/components/native-icon', () => ({ NativeIcon: 'Icon' }))
 vi.mock('@/components/native-action-button', () => ({ NativeActionButton: 'ActionButton' }))
 vi.mock('@/components/native-selection', () => ({ NativeSelectionRow: 'SelectionRow' }))

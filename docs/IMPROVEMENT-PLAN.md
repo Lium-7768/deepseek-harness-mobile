@@ -178,6 +178,20 @@ to re-pin on every return), the ledger restores the offset it was scrolled to, t
 dock stays under both tabs so the composer keeps one height, and a send returns to the
 transcript to show the reply.
 
+## Launch and loading motion
+
+The native launch storyboard points at a `SplashScreen` image the asset catalog never carried, so
+the first second or two of a cold start was flat system background. The catalog now has that image
+(the whale mark rendered from `FishLogo`'s own path at 1x/2x/3x), and the app adds its own cover:
+a brand mark that settles in and lifts 8pt while the stored connection is read, held for at least
+450ms so a warm start still reads as a launch, then faded out over the first screen. Reduced motion
+skips both halves.
+
+First-paint loading stopped using the platform spinner: `StartupGate`, the settings `CenteredState`,
+the interactions list, and the automation catalog all draw the same rotating arc the session rows
+use (`NativeRunningRing`, now sizeable). The conversation skeleton staggers its blocks by 70ms so
+the placeholder reads as a wave instead of blinking in unison.
+
 ## Settings density
 
 A settings page is read at arm's length on a 402pt screen, so each tab now carries one

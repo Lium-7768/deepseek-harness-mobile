@@ -15,8 +15,14 @@ import Svg, { Circle } from 'react-native-svg'
 
 const AnimatedCircle = Animated.createAnimatedComponent(Circle)
 
-/** Desktop StateDot: 14pt track, 12→24 breathing arc, and one 1.5s rotation. */
-export function NativeRunningRing(): React.JSX.Element {
+/**
+ * Desktop StateDot: one 1.5s rotation over a 12→24 breathing arc.
+ *
+ * @param props.size - Square display size; the row badge uses the desktop's 14, a
+ *   first-paint loader draws it larger.
+ * @returns The rotating arc.
+ */
+export function NativeRunningRing({ size = 14 }: { size?: number }): React.JSX.Element {
   const theme = useAppTheme()
   const progress = useSharedValue(0)
   const [reduced, setReduced] = useState(true)
@@ -50,8 +56,8 @@ export function NativeRunningRing(): React.JSX.Element {
     strokeDashoffset: reduced ? -3 : interpolate(progress.value, [0, 0.5, 1], [0, -6, 0]),
   }))
   return (
-    <Animated.View accessible={false} style={[{ width: 14, height: 14 }, rotation]}>
-      <Svg width={14} height={14} viewBox="0 0 24 24">
+    <Animated.View accessible={false} style={[{ width: size, height: size }, rotation]}>
+      <Svg width={size} height={size} viewBox="0 0 24 24">
         <Circle
           cx={12}
           cy={12}

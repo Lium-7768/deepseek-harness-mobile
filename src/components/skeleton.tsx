@@ -14,6 +14,7 @@ import Animated, {
   cancelAnimation,
   useAnimatedStyle,
   useSharedValue,
+  withDelay,
   withRepeat,
   withTiming,
 } from 'react-native-reanimated'
@@ -28,6 +29,11 @@ export interface SkeletonBlockProps {
   radius?: number
   /** Extra layout applied to the block. */
   style?: ViewStyle
+  /**
+   * Delay before the pulse starts, so a column of blocks reads as a wave instead
+   * of blinking in unison.
+   */
+  delay?: number
 }
 
 /**
@@ -39,7 +45,13 @@ export interface SkeletonBlockProps {
  * @param props - Block geometry.
  * @returns The placeholder view.
  */
-export function SkeletonBlock({ width = '100%', height = 14, radius, style }: SkeletonBlockProps): React.JSX.Element {
+export function SkeletonBlock({
+  delay = 0,
+  width = '100%',
+  height = 14,
+  radius,
+  style,
+}: SkeletonBlockProps): React.JSX.Element {
   const theme = useAppTheme()
   const reducedMotion = useReducedMotion()
   const pulse = useSharedValue(0.55)
@@ -50,9 +62,12 @@ export function SkeletonBlock({ width = '100%', height = 14, radius, style }: Sk
       pulse.value = 0.8
       return
     }
-    pulse.value = withRepeat(withTiming(1, { duration: 1520, easing: Easing.inOut(Easing.quad) }), -1, true)
+    pulse.value = withDelay(
+      delay,
+      withRepeat(withTiming(1, { duration: 1520, easing: Easing.inOut(Easing.quad) }), -1, true),
+    )
     return () => cancelAnimation(pulse)
-  }, [pulse, reducedMotion])
+  }, [delay, pulse, reducedMotion])
 
   const animatedStyle = useAnimatedStyle(() => ({ opacity: pulse.value }))
 
@@ -90,9 +105,9 @@ export function SkeletonConversation(): React.JSX.Element {
     >
       {widths.map((width, index) => (
         <View key={index} style={{ gap: theme.spacing.sm }}>
-          <SkeletonBlock height={12} radius={theme.radius.pill} width="22%" />
-          <SkeletonBlock height={14} width={width} />
-          {index % 2 === 1 ? <SkeletonBlock height={14} width="52%" /> : null}
+          <SkeletonBlock delay={index * 70} height={12} radius={theme.radius.pill} width="22%" />
+          <SkeletonBlock delay={index * 70 + 40} height={14} width={width} />
+          {index % 2 === 1 ? <SkeletonBlock delay={index * 70 + 80} height={14} width="52%" /> : null}
         </View>
       ))}
     </View>
