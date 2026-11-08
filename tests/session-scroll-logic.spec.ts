@@ -1,17 +1,18 @@
 import { describe, expect, it } from 'vitest'
 import {
+  FOLLOW_PIN_DELAY_MS,
   isNearLatestMessage,
   restoredOffsetAfterPrepend,
   restoredOffsetOnOpen,
+  shouldCaptureUnreadBaseline,
   shouldFollowContentGrowth,
   shouldLoadOlderHistory,
   shouldRefreshFromPull,
-  shouldCaptureUnreadBaseline,
-  unreadCountLabel,
   shouldReleaseFollowOnScroll,
   shouldScrollToLatest,
   shouldShowReturnToLatest,
   shouldTrackLatestProximity,
+  unreadCountLabel,
 } from '../src/components/session-scroll-logic.ts'
 
 describe('session latest-message scroll policy', () => {
@@ -190,5 +191,14 @@ describe('unread badge', () => {
   it('clamps an offset that would land past the measured content', () => {
     expect(restoredOffsetOnOpen({ saved: { contentHeight: 4000, offsetY: 3900 }, contentHeight: 4000 })).toBe(3900)
     expect(restoredOffsetOnOpen({ saved: { contentHeight: 4000, offsetY: 4000 }, contentHeight: 4000 })).toBe(4000)
+  })
+})
+
+describe('follow pin coalescing', () => {
+  it('waits long enough for a measurement burst to settle', () => {
+    // Two frames at 60Hz is 33ms; a mounted markdown row and its re-measure take longer,
+    // so the window has to cover a few frames without feeling laggy to a reader.
+    expect(FOLLOW_PIN_DELAY_MS).toBeGreaterThanOrEqual(60)
+    expect(FOLLOW_PIN_DELAY_MS).toBeLessThanOrEqual(200)
   })
 })

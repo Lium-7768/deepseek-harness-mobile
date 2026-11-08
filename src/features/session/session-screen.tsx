@@ -70,6 +70,7 @@ import { useMobileSyncStore } from '@/state/mobile-sync'
 import { useReadingPositionStore } from '@/state/reading-positions'
 import { useRouteSessionSelection } from '@/state/session-selection'
 import { mergeEventItems } from '@/sync/event-items'
+import { FOLLOW_PIN_DELAY_MS } from '@/components/session-scroll-logic'
 import { sessionWindow } from '@/sync/session-window'
 import { useAppTheme, useThemedStyles } from '@/theme/hooks'
 import { useMutation } from '@tanstack/react-query'
@@ -111,6 +112,16 @@ export default function SessionScreen(): React.JSX.Element {
   const nearLatestMessage = useRef(true)
   const readerScrolling = useRef(false)
   const readerScrollIdleTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  /**
+   * One pending follow jump at most.
+   *
+   * A streaming turn changes the content height several times per frame — a chunk
+   * lands, the row re-measures, a tool result replaces its call row — and each change
+   * used to call `scrollToEnd` immediately. Consecutive jumps against measurements
+   * that trail the final height read as the text jumping up and down, so the follow
+   * now coalesces the burst into one jump against the settled height.
+   */
+  const followPinTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   // Set by the reader's own send, then cleared after SEND_FOLLOW_WINDOW_MS. The
   // prompt row and the first reply chunk land in separate commits, so a stale
   // offset measured in between would otherwise release the follow latch.
@@ -568,9 +579,26 @@ export default function SessionScreen(): React.JSX.Element {
   }
   pinToLatestRef.current = pinToLatest
 
+  /**
+   * Queues one follow jump for the end of the current measurement burst.
+   *
+   * Trailing rather than leading: the last size change of a burst is the one that
+   * carries the settled height, so jumping on it lands where the rows actually end.
+   */
+  function scheduleFollowPin(): void {
+    if (followPinTimer.current !== null) return
+    followPinTimer.current = setTimeout(() => {
+      followPinTimer.current = null
+      // A drag that started inside the window owns the list until the reader lets go.
+      if (!nearLatestMessage.current) return
+      pinToLatest()
+    }, FOLLOW_PIN_DELAY_MS)
+  }
+
   useEffect(
     () => () => {
       if (readerScrollIdleTimer.current) clearTimeout(readerScrollIdleTimer.current)
+      if (followPinTimer.current) clearTimeout(followPinTimer.current)
     },
     [],
   )
@@ -794,7 +822,7 @@ export default function SessionScreen(): React.JSX.Element {
                     })
                     if (!follow) return
                     initialLatestPositionPending.current = false
-                    pinToLatest()
+                    scheduleFollowPin()
                   }}
                   onMomentumScrollBegin={() => {
                     // Extend the reader window for a gesture's momentum tail; momentum that

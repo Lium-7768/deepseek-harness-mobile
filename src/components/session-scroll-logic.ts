@@ -1,3 +1,12 @@
+/**
+ * How long a burst of content-size changes waits before one follow jump.
+ *
+ * A streaming turn reports several size changes per frame: a chunk mounts, the row
+ * re-measures, a tool result replaces its call row. Jumping on each one lands against
+ * a height that is already stale, which reads as the text jumping up and down.
+ */
+export const FOLLOW_PIN_DELAY_MS = 90
+
 /** Pixel distance from the message list end that still counts as reading the latest conversation. */
 export const LATEST_MESSAGE_PROXIMITY_PX = 72
 

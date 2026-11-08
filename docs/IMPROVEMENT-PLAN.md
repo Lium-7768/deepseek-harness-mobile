@@ -140,6 +140,11 @@ states what the two fields are for, and the QR path is one ghost row.
 The header also stopped repeating the running state the transcript's live line prints, and that
 line's only English string became Chinese.
 
+A streaming turn reports several content-size changes in a row — a chunk mounts, its row
+re-measures, a tool result replaces its call row — and the list jumped to the end on each one,
+against a height that was already stale. The follow now coalesces a burst into one jump 90ms later,
+so the reader sees one settled position instead of the text jumping up and down.
+
 A detail pass against the desktop's own stylesheets closed the remaining 1–2px gaps: the user
 bubble holds the desktop's 14/22 measure and its `min(column × 0.702, 82%)` width, disclosure rows
 (thinking, commands, tool summaries, compactions) sit on the shared 24pt header instead of 28, the
