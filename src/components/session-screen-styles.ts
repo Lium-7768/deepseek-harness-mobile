@@ -102,6 +102,20 @@ export const makeSessionStyles = (theme: AppTheme) =>
     },
     // The desktop bubble sets its own 22px line, one step tighter than body text.
     userText: { color: theme.colors.ink, fontSize: theme.typography.message, lineHeight: 24 },
+    // One chip per reference the message carried, right-aligned above the bubble the
+    // way the desktop prints them.
+    referenceRow: { alignItems: 'center', flexDirection: 'row', flexWrap: 'wrap', gap: 4, justifyContent: 'flex-end' },
+    referenceChip: {
+      alignItems: 'center',
+      backgroundColor: theme.colors.surfaceMuted,
+      borderRadius: theme.radius.pill,
+      flexDirection: 'row',
+      gap: 4,
+      maxWidth: 220,
+      paddingHorizontal: 8,
+      paddingVertical: 2,
+    },
+    referenceText: { color: theme.colors.inkMuted, flexShrink: 1, fontSize: 12, lineHeight: 18 },
     toolRow: { maxWidth: '100%' },
     turnStatusSlot: { paddingTop: 16, paddingBottom: 8 },
     // `InputBar.dock`: one centred row 12px apart with 4px of top pad holding the

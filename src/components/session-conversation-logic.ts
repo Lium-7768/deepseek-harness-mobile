@@ -71,6 +71,26 @@ export type NativeConversationRow =
       rowKey?: string
       sourceSeq?: number
     }
+  | {
+      /** What started this Turn, when it was not the reader typing. */
+      kind: 'turn-trigger'
+      trigger: NativeTurnTrigger
+      /** The waking notification's own text, shown on demand. */
+      text?: string
+      rowKey?: string
+      sourceSeq?: number
+    }
+
+/**
+ * A non-human message that began a Turn.
+ *
+ * The desktop draws one of these above the Turn's disclosure so the reader knows
+ * why the assistant spoke. Injection bookkeeping (`time-context`, `runtime-context`,
+ * `skill-catalog`, instructions, reminders) is deliberately absent: it is not a
+ * trigger, and printing it would bury the turns that were.
+ */
+export type NativeTurnTrigger =
+  'agent' | 'approval' | 'continue' | 'goal' | 'job' | 'schedule' | 'subagent' | 'team' | 'webhook'
 
 type EventRecord = Record<string, unknown>
 type ContentBlock = { type?: unknown; text?: unknown }
@@ -132,6 +152,17 @@ export function projectNativeConversationRows(items: readonly SharedEventItem[])
       continue
     }
     if (type === 'user/message') {
+      const trigger = turnTriggerOf(data)
+      if (trigger !== undefined) {
+        const text = textFromMessage(data)
+        rows.push({
+          kind: 'turn-trigger',
+          trigger,
+          ...(text === undefined ? {} : { text }),
+          ...(sourceSeq === undefined ? {} : { sourceSeq }),
+        })
+        continue
+      }
       // Only a human turn is a user bubble. Runtime context, the skill catalog, the
       // time snapshot, agent instructions, and compaction checkpoints are logged as
       // user-role messages too, and the desktop renders them as context, not as what
@@ -363,6 +394,69 @@ function messageBlocks(data: EventRecord): ContentBlock[] {
         (block): block is ContentBlock => block !== null && typeof block === 'object' && !Array.isArray(block),
       )
     : []
+}
+
+/**
+ * Classifies a user-role message that a machine sent to wake the agent.
+ *
+ * @param data - The message payload.
+ * @returns The trigger family, or undefined for a message the reader typed or one
+ * that only carries injection bookkeeping.
+ */
+function turnTriggerOf(data: EventRecord): NativeTurnTrigger | undefined {
+  const source = recordField(data.source)
+  const kind = stringField(source?.kind)
+  switch (kind) {
+    case 'goal':
+      return 'goal'
+    case 'schedule':
+      return 'schedule'
+    case 'subagent-settled':
+      return 'subagent'
+    case 'tool-jobs':
+      return 'job'
+    case 'agent-message':
+      return 'agent'
+    case 'team-message':
+      return 'team'
+    case 'webhook':
+      return 'webhook'
+    case 'user-approval':
+      return 'approval'
+    case 'retry':
+      return 'continue'
+    default:
+      return undefined
+  }
+}
+
+/**
+ * Names one waking trigger for the transcript and the exported log.
+ *
+ * @param trigger - The classified family.
+ * @returns The localized label.
+ */
+export function triggerText(trigger: NativeTurnTrigger): string {
+  switch (trigger) {
+    case 'agent':
+      return message('conversation.triggerAgent')
+    case 'approval':
+      return message('conversation.triggerApproval')
+    case 'continue':
+      return message('conversation.triggerContinue')
+    case 'goal':
+      return message('conversation.triggerGoal')
+    case 'job':
+      return message('conversation.triggerJob')
+    case 'schedule':
+      return message('conversation.triggerSchedule')
+    case 'subagent':
+      return message('conversation.triggerSubagent')
+    case 'team':
+      return message('conversation.triggerTeam')
+    case 'webhook':
+      return message('conversation.triggerWebhook')
+  }
 }
 
 function humanUserText(data: EventRecord): string | undefined {

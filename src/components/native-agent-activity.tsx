@@ -7,6 +7,9 @@ import type { MobileJobView, MobileSubagentEntry } from '@/types/mobile'
 import { useState } from 'react'
 import { Pressable, StyleSheet, Text, View } from 'react-native'
 
+/** Background job rows shown before the overflow collapses. */
+const VISIBLE_JOBS = 3
+
 type MobileChildSubagentEntry = Extract<MobileSubagentEntry, { kind: 'child' }>
 type MobileDiagnosticReason = Extract<MobileSubagentEntry, { kind: 'diagnostic' }>['reason']
 
@@ -34,19 +37,37 @@ export function NativeAgentActivity({
 }): React.JSX.Element | null {
   const theme = useAppTheme()
   const styles = useThemedStyles(makeStyles)
+  const [jobsExpanded, setJobsExpanded] = useState(false)
   const children = subagents.filter((entry): entry is MobileChildSubagentEntry => entry.kind === 'child')
   const diagnostics = subagents.filter(
     (entry): entry is Extract<MobileSubagentEntry, { kind: 'diagnostic' }> => entry.kind === 'diagnostic',
   )
   if (jobs.length === 0 && children.length === 0 && diagnostics.length === 0) return null
+  // A session with a dozen background jobs would otherwise put a dozen rows
+  // between the header and the transcript; the overflow collapses to one line.
+  const collapsedJobs = jobs.slice(0, VISIBLE_JOBS)
+  const hiddenJobs = jobs.length - collapsedJobs.length
   return (
     <View style={styles.activity}>
       {jobs.length > 0 ? (
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>{message('activity.backgroundJobs')}</Text>
-          {jobs.map((job) => (
+          {(jobsExpanded ? jobs : collapsedJobs).map((job) => (
             <JobRow key={job.id} job={job} />
           ))}
+          {hiddenJobs > 0 ? (
+            <Pressable
+              accessibilityLabel={format('activity.moreJobs', { count: hiddenJobs })}
+              accessibilityRole="button"
+              accessibilityState={{ expanded: jobsExpanded }}
+              onPress={() => setJobsExpanded((current) => !current)}
+              style={({ pressed }) => [styles.moreJobs, pressed && styles.pressed]}
+            >
+              <Text style={styles.moreJobsText}>
+                {jobsExpanded ? message('activity.collapseJobs') : format('activity.moreJobs', { count: hiddenJobs })}
+              </Text>
+            </Pressable>
+          ) : null}
         </View>
       ) : null}
       {children.length > 0 || diagnostics.length > 0 ? (
@@ -206,6 +227,8 @@ const makeStyles = (theme: AppTheme) =>
       width: theme.touch.iconButton,
     },
     diagnostic: { color: theme.colors.warningText, fontSize: 13, lineHeight: 20 },
+    moreJobs: { justifyContent: 'center', minHeight: 32 },
+    moreJobsText: { color: theme.colors.accent, fontSize: 13, lineHeight: 20 },
     jobDetail: { gap: 6, padding: 16 },
     jobDetailTitle: { color: theme.colors.ink, fontSize: 15, fontWeight: '600', lineHeight: 22 },
     jobDetailMeta: { color: theme.colors.inkMuted, fontSize: 12, lineHeight: 18 },

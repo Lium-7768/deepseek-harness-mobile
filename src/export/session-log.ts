@@ -6,7 +6,7 @@
  * Think are separate sections, a tool call carries its correlated result, and
  * retries, turn errors, and compactions stay visible instead of disappearing.
  */
-import type { NativeConversationRow } from '@/components/session-conversation-logic'
+import { triggerText, type NativeConversationRow } from '@/components/session-conversation-logic'
 import { format, t } from '@/locale'
 
 /** Identity written into the exported file's header. */
@@ -94,6 +94,10 @@ function rowSections(row: NativeConversationRow): string[] {
           ...compactionDetail(row),
           ...(row.summary.trim() === '' ? [] : ['', row.summary]),
         ]),
+      ]
+    case 'turn-trigger':
+      return [
+        block(t('log.sectionTrigger'), [triggerText(row.trigger), ...(row.text === undefined ? [] : ['', row.text])]),
       ]
     case 'deliverables':
       return [

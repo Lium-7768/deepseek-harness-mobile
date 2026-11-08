@@ -12,6 +12,7 @@ import { tapFeedback } from '@/components/haptics'
 import { NativeIcon } from '@/components/native-icon'
 import { NativeMarkdown } from '@/components/native-markdown'
 import { NativeMessageAttachments } from '@/components/native-message-attachments'
+import { userReferences } from '@/components/user-references'
 import { NativeMessageFeedback } from '@/components/native-message-feedback'
 import { NativeToolCard } from '@/components/native-tool-card'
 import { type NativeConversationRow } from '@/components/session-conversation-logic'
@@ -52,6 +53,7 @@ export const MessageRow = memo(function MessageRow({
   onQuote?: (text: string) => void
 }): React.JSX.Element {
   const s = useThemedStyles(makeSessionStyles)
+  const theme = useAppTheme()
   const attachments =
     api !== undefined && sessionId !== undefined ? (
       <NativeMessageAttachments api={api} sessionId={sessionId} event={event} />
@@ -62,9 +64,32 @@ export const MessageRow = memo(function MessageRow({
     api !== undefined && sessionId !== undefined ? (
       <NativeMessageFeedback api={api} event={event} inline sessionId={sessionId} />
     ) : null
+  // The desktop draws one chip per reference above the bubble, resolved from the
+  // input machine. The phone reads the same mentions back out of the durable text.
+  const references = item.kind === 'user' ? userReferences(item.text) : []
   if (item.kind === 'user')
     return (
       <View style={s.userRow}>
+        {references.length === 0 ? null : (
+          <View style={s.referenceRow}>
+            {references.map((reference) => (
+              <View
+                accessibilityLabel={message('conversation.referenceChip')}
+                key={`${reference.kind}:${reference.label}`}
+                style={s.referenceChip}
+              >
+                <NativeIcon
+                  name={reference.kind === 'session' ? 'new-chat-outline' : 'workspace-tree-outline'}
+                  size={11}
+                  color={theme.colors.inkMuted}
+                />
+                <Text numberOfLines={1} style={s.referenceText}>
+                  {reference.label}
+                </Text>
+              </View>
+            ))}
+          </View>
+        )}
         <View style={s.userBubble}>
           <Text selectable style={s.userText}>
             {item.text}
@@ -87,7 +112,7 @@ export const MessageRow = memo(function MessageRow({
   if (item.kind === 'compaction') return <NativeCompactionRow row={item} />
   // The deliverables row renders through its own component; this renderer keeps the
   // union exhaustive for every other kind.
-  if (item.kind === 'deliverables') return <></>
+  if (item.kind === 'deliverables' || item.kind === 'turn-trigger') return <></>
   if (item.kind === 'tool')
     return (
       <View style={s.toolRow}>

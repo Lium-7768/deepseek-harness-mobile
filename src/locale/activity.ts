@@ -14,6 +14,9 @@ export const activity = {
   /** `{kind}` and `{status}` describe one background job. */
   jobStatus: '{kind} · {status}',
   // Job states come from the Host as wire tokens; a phone never prints them raw.
+  /** `{count}` background jobs the card folds away. */
+  moreJobs: '展开其余 {count} 项',
+  collapseJobs: '收起后台任务',
   jobRunning: '运行中',
   jobStopping: '正在停止',
   jobCompleted: '已完成',

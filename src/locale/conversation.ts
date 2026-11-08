@@ -12,6 +12,18 @@ export const conversation = {
   /** `{count}` pending interactions on this session. */
   pendingCount: '{count} 项操作需要处理',
   connecting: '正在连接',
+  // Why a Turn started, when the reader did not type it.
+  triggerGoal: '目标继续',
+  triggerSchedule: '定时任务触发',
+  triggerSubagent: '子 Agent 回报',
+  triggerJob: '后台任务回报',
+  triggerAgent: '其他智能体消息',
+  triggerTeam: '协作任务消息',
+  triggerWebhook: '外部事件触发',
+  triggerApproval: '审批结果',
+  triggerContinue: '继续请求',
+  copyTrigger: '复制触发内容',
+  referenceChip: '引用',
   /** `{count}` files a turn produced. */
   deliverables: '产出 {count} 个文件',
   /** `{path}` is the file a tap copies. */

@@ -193,3 +193,43 @@ describe('presented deliverables', () => {
     expect(rows).toEqual([])
   })
 })
+
+describe('turn triggers', () => {
+  it('attributes a turn the reader did not start', () => {
+    const rows = projectNativeConversationRows([
+      {
+        seq: 1,
+        event: {
+          type: 'user/message',
+          data: { source: { kind: 'goal' }, message: { content: [{ type: 'text', text: '继续推进目标' }] } },
+        },
+      },
+      {
+        seq: 2,
+        event: {
+          type: 'user/message',
+          data: { source: { kind: 'tool-jobs' }, message: { content: [{ type: 'text', text: '作业回报' }] } },
+        },
+      },
+    ] as never)
+    expect(rows).toEqual([
+      expect.objectContaining({ kind: 'turn-trigger', text: '继续推进目标', trigger: 'goal' }),
+      expect.objectContaining({ kind: 'turn-trigger', text: '作业回报', trigger: 'job' }),
+    ])
+  })
+
+  it('keeps injection bookkeeping out of the transcript', () => {
+    const rows = projectNativeConversationRows(
+      ['time-context', 'runtime-context', 'skill-catalog', 'agent-instructions', 'repeat-tool-reminder'].map(
+        (kind, index) => ({
+          seq: index + 1,
+          event: {
+            type: 'user/message',
+            data: { source: { kind }, message: { content: [{ type: 'text', text: 'bookkeeping' }] } },
+          },
+        }),
+      ) as never,
+    )
+    expect(rows).toEqual([])
+  })
+})

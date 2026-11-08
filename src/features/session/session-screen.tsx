@@ -51,6 +51,7 @@ import { ContextRows, TrajectoryPanel, WorkbenchTabs, type WorkbenchTab } from '
 import { SkeletonConversation } from '@/components/skeleton'
 import { ComposerDockChips, type ComposerDock } from '@/components/composer-dock-chips'
 import { NativeDeliverablesRow } from '@/components/native-deliverables-row'
+import { NativeTurnTriggerRow } from '@/components/native-turn-trigger-row'
 import { WorkspaceComposer } from '@/components/workspace-composer'
 import { WorkspaceShell } from '@/components/workspace-shell'
 import { workspaceKeyboardVerticalOffset } from '@/components/workspace-shell-logic'
@@ -386,6 +387,8 @@ export default function SessionScreen(): React.JSX.Element {
     (row: NativeConversationRow) =>
       row.kind === 'deliverables' ? (
         <NativeDeliverablesRow files={row.files} />
+      ) : row.kind === 'turn-trigger' ? (
+        <NativeTurnTriggerRow text={row.text} trigger={row.trigger} />
       ) : (
         <MessageRow
           api={client}

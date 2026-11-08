@@ -82,6 +82,24 @@ names what reached the clipboard — lines and characters for text, lines for co
 for a table — because a phone cannot show the selection it is about to copy. A table copies whole
 as TSV, which pastes into a spreadsheet as real columns.
 
+## What started a turn
+
+A Turn the reader did not type — a goal continuation, a schedule, a background job reporting, a
+sub-agent settling — used to look spontaneous on the phone: those waking messages arrive as
+user-role turns whose source is a machine, and the transcript dropped them. Each now prints one
+line above the turn (`目标继续`, `后台任务回报`, `子 Agent 回报` …) that opens the waking
+notification. Injection bookkeeping (`time-context`, `runtime-context`, `skill-catalog`,
+instructions, reminders) stays out: it is not a trigger, and printing it would bury the turns
+that were.
+
+A user bubble also echoes the references it carried: the `@[label](dsh-session:…)` mentions the
+composer inserted become chips above the bubble, since a phone cannot hover the message to see
+what it pointed at.
+
+The background-job section of the activity card shows three rows and folds the rest behind
+`展开其余 N 项`; a session with thirty jobs no longer puts thirty rows between the header and the
+transcript.
+
 ## Turn deliverables
 
 The desktop prints a delivery card per presented file at the turn tail and opens it in the
