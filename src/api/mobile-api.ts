@@ -22,6 +22,7 @@ import type {
   MobilePairingQrPayload,
   MobilePromptContent,
   MobileQueuePayload,
+  MobileScheduleCreateRequest,
   MobileReferenceFileCandidate,
   MobileReferencePayload,
   MobileReferenceSessionCandidate,
@@ -465,6 +466,16 @@ export class MobileApi {
     if (!isRecord(result) || !Array.isArray(result.items) || !result.items.every(isScheduleEntry))
       throw createError('protocol', message('errors.responseInvalid'))
     return { items: result.items }
+  }
+
+  /**
+   * Creates one automation through the gateway, which forwards the Host's own
+   * create request: the phone validates only what a form can know (a title, an
+   * instruction, a timing rule) and lets the Host judge the rest.
+   */
+  async createSchedule(request: MobileScheduleCreateRequest): Promise<void> {
+    const result = await this.#post<unknown>('/v1/schedules/create', { request })
+    if (!isRecord(result)) throw createError('protocol', message('errors.responseInvalid'))
   }
 
   async updateSchedule(

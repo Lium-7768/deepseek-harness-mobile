@@ -439,6 +439,19 @@ export interface MobileScheduleEntry {
   executionActive?: boolean
 }
 
+/** Timing rule the phone offers when creating an automation. */
+export type MobileScheduleTiming =
+  | { kind: 'after'; after_seconds: number }
+  | { kind: 'every'; every_seconds: number }
+  | { kind: 'daily'; daily: { time: string; time_zone: string } }
+
+/** Create request the gateway forwards to the Host's `schedule/create`. */
+export interface MobileScheduleCreateRequest {
+  title: string
+  prompt: string
+  timing: MobileScheduleTiming
+}
+
 /** One slash command the desktop advertises for a session. */
 export interface MobileCommandDescriptor {
   /** Lowercase command name without the leading slash. */

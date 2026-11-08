@@ -114,10 +114,17 @@ export function NativeAgentActivity({
               ) : null}
             </View>
           ))}
+          {/* A diagnostic is a row like the ones above it, not a stray paragraph:
+              same leading glyph slot so the section reads as one list. */}
           {diagnostics.map((entry) => (
-            <Text key={entry.id} style={styles.diagnostic}>
-              {format('activity.subagentDiagnostic', { name: entry.id, reason: diagnosticReason(entry.reason) })}
-            </Text>
+            <View key={entry.id} style={styles.diagnosticRow}>
+              <View style={styles.diagnosticIcon}>
+                <NativeIcon name="warning-outline" size={16} color={theme.colors.warningText} />
+              </View>
+              <Text style={styles.diagnostic}>
+                {format('activity.subagentDiagnostic', { name: entry.id, reason: diagnosticReason(entry.reason) })}
+              </Text>
+            </View>
           ))}
         </View>
       ) : null}
@@ -226,7 +233,9 @@ const makeStyles = (theme: AppTheme) =>
       justifyContent: 'center',
       width: theme.touch.iconButton,
     },
-    diagnostic: { color: theme.colors.warningText, fontSize: 13, lineHeight: 20 },
+    diagnosticRow: { alignItems: 'flex-start', flexDirection: 'row', gap: 10, paddingVertical: 2 },
+    diagnosticIcon: { alignItems: 'center', justifyContent: 'center', width: 16 },
+    diagnostic: { color: theme.colors.warningText, flex: 1, fontSize: 13, lineHeight: 20 },
     moreJobs: { justifyContent: 'center', minHeight: 32 },
     moreJobsText: { color: theme.colors.accent, fontSize: 13, lineHeight: 20 },
     jobDetail: { gap: 6, padding: 16 },

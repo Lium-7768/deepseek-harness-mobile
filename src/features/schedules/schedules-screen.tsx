@@ -2,6 +2,7 @@ import { MobileApi, MobileApiError } from '@/api/mobile-api'
 import { queryKeys } from '@/api/query-keys'
 import { ConfirmSheet } from '@/components/confirm-sheet'
 import { NativeEmptyState } from '@/components/native-empty-state'
+import { ScheduleEditor } from '@/components/schedule-editor'
 import { NativeMenuPanel } from '@/components/native-menu-panel'
 import { NativeIcon } from '@/components/native-icon'
 import { ErrorNotice } from '@/components/session-screen-state'
@@ -12,7 +13,7 @@ import { format, t as message } from '@/locale'
 import { useConnectionStore } from '@/state/connection'
 import type { AppTheme } from '@/theme'
 import { useAppTheme, useThemedStyles } from '@/theme/hooks'
-import type { MobileScheduleEntry } from '@/types/mobile'
+import type { MobileScheduleCreateRequest, MobileScheduleEntry } from '@/types/mobile'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { router } from 'expo-router'
 import { memo, useMemo, useRef, useState } from 'react'
@@ -27,6 +28,7 @@ export default function SchedulesScreen(): React.JSX.Element {
   const client = useMemo(() => (connection ? new MobileApi(connection) : undefined), [connection])
   const cache = useQueryClient()
   const gate = useRef(false)
+  const [creating, setCreating] = useState(false)
   const catalog = useQuery({
     queryKey: queryKeys.schedules(),
     enabled: !!client && active,
@@ -50,6 +52,13 @@ export default function SchedulesScreen(): React.JSX.Element {
       Alert.alert(message('schedule.failed'), error instanceof Error ? error.message : message('common.retry'))
     },
   })
+  const create = useMutation({
+    mutationFn: (request: MobileScheduleCreateRequest) => {
+      if (!client) throw new Error(message('drawer.connectFirstBody'))
+      return client.createSchedule(request)
+    },
+    onSuccess: () => cache.invalidateQueries({ queryKey: queryKeys.schedules() }),
+  })
   const update = (task: MobileScheduleEntry, action: 'pause' | 'resume' | 'delete'): void => {
     if (gate.current) return
     gate.current = true
@@ -61,7 +70,21 @@ export default function SchedulesScreen(): React.JSX.Element {
       })
   }
   return (
-    <WorkspaceShell title={message('schedule.title')}>
+    <WorkspaceShell
+      title={message('schedule.title')}
+      rightAction={
+        <Pressable
+          accessibilityLabel={message('schedule.createTitle')}
+          accessibilityRole="button"
+          disabled={!client}
+          hitSlop={8}
+          onPress={() => setCreating(true)}
+          style={({ pressed }) => [s.headerAction, pressed && s.pressed]}
+        >
+          <NativeIcon name="plus-outline" size={20} color={client ? theme.colors.ink : theme.colors.inkFaint} />
+        </Pressable>
+      }
+    >
       {!client ? (
         <NativeEmptyState
           action={{ icon: 'link-outline', label: message('connect.title'), onPress: () => router.replace('/connect') }}
@@ -87,6 +110,11 @@ export default function SchedulesScreen(): React.JSX.Element {
           keyExtractor={(task) => task.id}
           ListEmptyComponent={
             <NativeEmptyState
+              action={{
+                icon: 'plus-outline',
+                label: message('schedule.createAction'),
+                onPress: () => setCreating(true),
+              }}
               description={message('schedule.emptyDetail')}
               icon="clock-outline"
               title={message('schedule.empty')}
@@ -95,6 +123,13 @@ export default function SchedulesScreen(): React.JSX.Element {
           renderItem={({ item: task }) => <ScheduleCard task={task} disabled={mutation.isPending} onUpdate={update} />}
         />
       )}
+      <ScheduleEditor
+        onClose={() => setCreating(false)}
+        onCreate={(request) => create.mutateAsync(request).then(() => undefined)}
+        open={creating}
+        pending={create.isPending}
+        timeZone={Intl.DateTimeFormat().resolvedOptions().timeZone}
+      />
     </WorkspaceShell>
   )
 }
@@ -213,6 +248,7 @@ const makeStyles = (theme: AppTheme) =>
     status: { color: theme.colors.inkTertiary, fontSize: 12, lineHeight: 18 },
     prompt: { color: theme.colors.inkMuted, fontSize: 14, lineHeight: 22 },
     meta: { color: theme.colors.inkTertiary, fontSize: 12, lineHeight: 18 },
+    headerAction: { alignItems: 'center', height: 32, justifyContent: 'center', width: 32 },
     rowAction: { alignItems: 'center', height: 28, justifyContent: 'center', width: 28 },
     pressed: { opacity: 0.62 },
   })

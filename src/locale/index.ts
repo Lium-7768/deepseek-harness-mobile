@@ -49,6 +49,7 @@ const common = {
   cancel: '取消',
   save: '保存',
   retry: '请稍后重试。',
+  /** Every screen's back control: it returns to whatever opened it. */
   back: '返回',
   close: '关闭',
   continue: '继续',

@@ -171,7 +171,12 @@ account page prints one fact per row instead of a title, value and boilerplate s
 The release line returned to the desktop's 14/22 primary label while gaining its 16px
 padding.
 
-An automation card carried three full-width buttons for one task. The card now reads as a row —
+An automation card carried three full-width buttons for one task. The screen also gains the create
+form it never had: three timing shapes a person types on a phone (a daily time, every N hours, N
+minutes from now) are forwarded to the Host's own `schedule/create`, so the Host still validates
+and owns every schedule.
+
+The card now reads as a row —
 title, state, two lines of prompt, next run — and its verbs live behind the same `…` menu the
 session rows use.
 

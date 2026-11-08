@@ -67,7 +67,7 @@ export default function RenameSessionScreen(): React.JSX.Element {
         <Pressable
           android_ripple={{ borderless: false }}
           accessibilityRole="button"
-          accessibilityLabel={message('interactions.backToSession')}
+          accessibilityLabel={message('common.back')}
           hitSlop={8}
           onPress={() => router.back()}
           style={styles.back}

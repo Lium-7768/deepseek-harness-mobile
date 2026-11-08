@@ -83,7 +83,7 @@ export default function SubagentSessionScreen(): React.JSX.Element {
         <Pressable
           android_ripple={{ borderless: false }}
           accessibilityRole="button"
-          accessibilityLabel={message('interactions.backToSession')}
+          accessibilityLabel={message('common.back')}
           hitSlop={8}
           onPress={() => router.back()}
           style={({ pressed }) => [styles.headerAction, pressed && styles.pressed]}
@@ -170,7 +170,7 @@ function Unavailable({ text }: { text: string }): React.JSX.Element {
     <NativeEmptyState
       action={{
         icon: 'chevron-left-outline',
-        label: message('interactions.backToSession'),
+        label: message('common.back'),
         onPress: () => router.back(),
       }}
       icon="link-off"
