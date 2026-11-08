@@ -296,8 +296,9 @@ const makeStyles = (theme: AppTheme) =>
     errorMessage: { color: theme.colors.inkMuted, fontSize: 13, lineHeight: 20 },
     errorCode: { color: theme.colors.inkTertiary, fontFamily: MONOSPACE_FONT, fontSize: 11, lineHeight: 16 },
     command: { gap: 4 },
-    commandHeader: { alignItems: 'center', flexDirection: 'row', gap: 6, minHeight: 30, paddingHorizontal: 1 },
-    commandName: { color: theme.colors.ink, flex: 1, fontSize: 13, fontWeight: '500', lineHeight: 20 },
+    // `GenericCommandCard .summary`: 13/24 inside the shared 24pt disclosure header.
+    commandHeader: { alignItems: 'center', flexDirection: 'row', gap: 6, minHeight: 24, paddingHorizontal: 1 },
+    commandName: { color: theme.colors.ink, flex: 1, fontSize: 13, fontWeight: '500', lineHeight: 24 },
     commandRunning: { color: theme.colors.accentText, fontSize: 11, lineHeight: 16 },
     commandError: { color: theme.colors.danger, fontSize: 11, lineHeight: 16 },
     commandBody: {

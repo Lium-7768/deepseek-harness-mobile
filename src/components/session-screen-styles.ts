@@ -23,8 +23,10 @@ export const makeSessionStyles = (theme: AppTheme) =>
     // assistant tail time at 12/24 (`MessageItem` `.time` / `.endInfo`).
     // `.timeStart` (user) prints 13/24 tertiary with 12px of trailing padding;
     // `.timeEnd` (assistant tail) prints one step smaller on the same line.
+    // `.timeStart` is tertiary; `.timeEnd` inherits the action row's colour.
     actionTime: { color: theme.colors.inkTertiary, flexShrink: 1, fontSize: 12, lineHeight: 24, minWidth: 0 },
     actionTimeUser: { fontSize: 13, paddingRight: 12 },
+    // `.timeEnd` inherits the actions row's `label-tertiary`; only its offset differs.
     actionTimeEnd: { marginLeft: 8 },
     // The copy confirmation names what reached the clipboard; it shares the clock's
     // 12/24 slot so the action row keeps its height while the label comes and goes.
@@ -91,17 +93,24 @@ export const makeSessionStyles = (theme: AppTheme) =>
     },
     empty: { color: theme.colors.inkTertiary, paddingVertical: 24, textAlign: 'center' },
     assistantRow: { gap: theme.spacing.lg, maxWidth: '100%', minWidth: 0, width: '100%' },
-    userRow: { alignItems: 'flex-end', gap: 6, maxWidth: '100%' },
+    // `MessageItem .userRow` / `.userStack`: 6pt between the row's children, 8pt
+    // between the stack's own layers (attachments, bubble, references).
+    userRow: { alignItems: 'flex-end', gap: theme.spacing.sm, maxWidth: '100%' },
     userBubble: {
       alignSelf: 'flex-end',
       backgroundColor: theme.colors.userBubble,
       borderRadius: theme.radius.xl,
-      maxWidth: '88%',
+      // `MessageItem .userStack`: `min(column × 0.702, 82%)`, which resolves to 82%
+      // on a phone-width column.
+      maxWidth: '82%',
       paddingHorizontal: 16,
       paddingVertical: 10,
     },
     // The desktop bubble sets its own 22px line, one step tighter than body text.
-    userText: { color: theme.colors.ink, fontSize: theme.typography.message, lineHeight: 24 },
+    // `UserMessageBubble.module.css .bubble`: the desktop's content size on its
+    // 22px line. The assistant body keeps the phone's larger reading size; a bubble
+    // is a short quoted line, so it holds the desktop's measure.
+    userText: { color: theme.colors.ink, fontSize: 14, lineHeight: 22 },
     // One chip per reference the message carried, right-aligned above the bubble the
     // way the desktop prints them.
     referenceRow: { alignItems: 'center', flexDirection: 'row', flexWrap: 'wrap', gap: 4, justifyContent: 'flex-end' },

@@ -95,7 +95,10 @@ const makeStyles = (theme: AppTheme) =>
   StyleSheet.create({
     root: { minWidth: 0 },
     // `DisclosureRow .row`: one 24pt line, tertiary reading.
-    row: { alignItems: 'center', flexDirection: 'row', minHeight: 28, minWidth: 0 },
+    // `DisclosureRow.module.css`: the shared header is 24 tall (leading 16 + gap 8 +
+    // title on its 24px line). The touch target comes from the caller's hitSlop, not
+    // from a taller row.
+    row: { alignItems: 'center', flexDirection: 'row', minHeight: 24, minWidth: 0 },
     // `DisclosureRow .leading`: a 16pt box holding a 14pt glyph, 6pt before the title.
     leading: { alignItems: 'center', height: 16, justifyContent: 'center', marginRight: 6, width: 16 },
     title: { color: theme.colors.inkTertiary, flexShrink: 1, fontSize: 13, lineHeight: 24 },
@@ -104,6 +107,7 @@ const makeStyles = (theme: AppTheme) =>
     summary: { color: theme.colors.inkTertiary, flex: 1, fontSize: 13, lineHeight: 24, minWidth: 0 },
     danger: { color: theme.colors.danger },
     // `DisclosureRow .thinkBody`: the body indents under the title, past the glyph.
-    body: { gap: 8, paddingBottom: 8, paddingLeft: 22, paddingTop: 4 },
+    // `ReasoningRow .body`: 4pt above and below, indented past the 16pt leading box.
+    body: { gap: 8, paddingBottom: 4, paddingLeft: 22, paddingTop: 4 },
     pressed: { opacity: 0.62 },
   })

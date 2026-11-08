@@ -140,6 +140,13 @@ states what the two fields are for, and the QR path is one ghost row.
 The header also stopped repeating the running state the transcript's live line prints, and that
 line's only English string became Chinese.
 
+A detail pass against the desktop's own stylesheets closed the remaining 1–2px gaps: the user
+bubble holds the desktop's 14/22 measure and its `min(column × 0.702, 82%)` width, disclosure rows
+(thinking, commands, tool summaries, compactions) sit on the shared 24pt header instead of 28, the
+command summary rides its 24px line, and the thinking body keeps 4pt above and below. The header's
+green dot is gone while the stream is healthy — the desktop draws no resting indicator, and the
+phone now speaks only when something needs the reader.
+
 Above the composer, the goal bar carried three icon verbs beside its status line, and editing it
 turned the 36pt bar into a 180pt column with a second multi-line field against the composer's own.
 The bar is a status line plus `⋯` now; edit opens the same sheet that creates a goal, and clearing

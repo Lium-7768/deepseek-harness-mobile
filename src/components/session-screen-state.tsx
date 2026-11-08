@@ -65,13 +65,18 @@ export function ConnectionStatus({
   const needsReader = disconnected || status === 'waiting' || status === 'connecting'
   const body = (
     <>
-      <View
-        style={[
-          s.statusDot,
-          disconnected && s.statusOffline,
-          (status === 'waiting' || status === 'connecting') && s.statusPending,
-        ]}
-      />
+      {/* The desktop draws no resting indicator at all; the phone shows one only
+          when the stream needs the reader, so a healthy conversation keeps the
+          header bare instead of carrying a permanent green dot. */}
+      {needsReader ? (
+        <View
+          style={[
+            s.statusDot,
+            disconnected && s.statusOffline,
+            (status === 'waiting' || status === 'connecting') && s.statusPending,
+          ]}
+        />
+      ) : null}
       {needsReader ? (
         <Text maxFontSizeMultiplier={1.3} numberOfLines={1} style={s.statusText}>
           {label}
