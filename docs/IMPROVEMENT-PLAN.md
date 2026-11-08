@@ -82,6 +82,14 @@ names what reached the clipboard — lines and characters for text, lines for co
 for a table — because a phone cannot show the selection it is about to copy. A table copies whole
 as TSV, which pastes into a spreadsheet as real columns.
 
+## The shared task board
+
+The desktop's team plugin folds its board into the `agentTeam` session projection. The phone reads
+that same projection — it does not replay `team/task` events — and shows one line above the
+transcript (`团队任务 25/25`) that opens the board: subject, status glyph, and owner. A board of
+twenty-five rows would otherwise be twenty-five rows of transcript, and the phone never writes to
+it: claiming and closing tasks stays with the agents that own them.
+
 ## What started a turn
 
 A Turn the reader did not type — a goal continuation, a schedule, a background job reporting, a

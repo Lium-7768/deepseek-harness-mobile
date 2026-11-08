@@ -48,9 +48,11 @@ import {
   type NativeTurnMemberRow,
 } from '@/components/session-turn-logic'
 import { ContextRows, TrajectoryPanel, WorkbenchTabs, type WorkbenchTab } from '@/components/session-workbench'
+import { teamTasks } from '@/components/team-task-logic'
 import { SkeletonConversation } from '@/components/skeleton'
 import { ComposerDockChips, type ComposerDock } from '@/components/composer-dock-chips'
 import { NativeDeliverablesRow } from '@/components/native-deliverables-row'
+import { NativeTeamTasksRow } from '@/components/native-team-tasks-row'
 import { NativeTurnTriggerRow } from '@/components/native-turn-trigger-row'
 import { WorkspaceComposer } from '@/components/workspace-composer'
 import { WorkspaceShell } from '@/components/workspace-shell'
@@ -671,6 +673,7 @@ export default function SessionScreen(): React.JSX.Element {
                   }}
                 />
               ) : null}
+              {tab === 'chat' ? <NativeTeamTasksRow tasks={teamTasks(history.data?.projections?.values)} /> : null}
               {tab === 'chat' ? <ContextRows items={sourceItems} /> : null}
               <View style={tab === 'chat' ? s.listStage : s.hidden}>
                 <FlatList

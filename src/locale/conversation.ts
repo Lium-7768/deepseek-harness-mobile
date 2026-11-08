@@ -23,6 +23,10 @@ export const conversation = {
   triggerApproval: '审批结果',
   triggerContinue: '继续请求',
   copyTrigger: '复制触发内容',
+  /** `{completed}` of `{total}` tasks on the shared board. */
+  teamTasks: '团队任务 {completed}/{total}',
+  teamTasksTitle: '团队任务',
+  teamTaskOwner: '负责人 {name}',
   referenceChip: '引用',
   /** `{count}` files a turn produced. */
   deliverables: '产出 {count} 个文件',
