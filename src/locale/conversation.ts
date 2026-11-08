@@ -12,6 +12,10 @@ export const conversation = {
   /** `{count}` pending interactions on this session. */
   pendingCount: '{count} 项操作需要处理',
   connecting: '正在连接',
+  /** `{count}` files a turn produced. */
+  deliverables: '产出 {count} 个文件',
+  /** `{path}` is the file a tap copies. */
+  copyDeliverable: '复制路径：{path}',
   waitingForConfirmation: '等待确认',
 
   /** One notice covers a failed history, event stream, or interaction read. */

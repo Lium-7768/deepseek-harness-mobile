@@ -24,6 +24,7 @@ export const log = {
   sectionRetry: '重试',
   sectionTurnError: '回合错误',
   sectionTurnMaxTokens: '回合中断',
+  sectionDeliverables: '产出文件',
   sectionCompaction: '上下文压缩',
   stateCompleted: '已完成',
   stateFailed: '失败',

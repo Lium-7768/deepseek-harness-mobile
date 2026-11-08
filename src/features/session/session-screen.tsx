@@ -50,6 +50,7 @@ import {
 import { ContextRows, TrajectoryPanel, WorkbenchTabs, type WorkbenchTab } from '@/components/session-workbench'
 import { SkeletonConversation } from '@/components/skeleton'
 import { ComposerDockChips, type ComposerDock } from '@/components/composer-dock-chips'
+import { NativeDeliverablesRow } from '@/components/native-deliverables-row'
 import { WorkspaceComposer } from '@/components/workspace-composer'
 import { WorkspaceShell } from '@/components/workspace-shell'
 import { workspaceKeyboardVerticalOffset } from '@/components/workspace-shell-logic'
@@ -382,23 +383,26 @@ export default function SessionScreen(): React.JSX.Element {
     [sessionId],
   )
   const renderRow = useCallback(
-    (row: NativeConversationRow) => (
-      <MessageRow
-        api={client}
-        compact={row.kind === 'assistant' && !isClosingBlock(row)}
-        event={getEvent(row.sourceSeq)}
-        item={row}
-        onBranch={branchFromMessage}
-        onQuote={quoteIntoDraft}
-        sessionId={sessionId}
-        // Deliberate departure from the desktop: `MessageIconActions` renders only in
-        // `TurnTailNodeView` because a pointer can drag-select any earlier block. A phone
-        // cannot, and the selection handles inside a scrolling list are hard to grab, so
-        // every assistant block carries a copy control; only the closing block repeats the
-        // clock, rating and branch action.
-        showActions
-      />
-    ),
+    (row: NativeConversationRow) =>
+      row.kind === 'deliverables' ? (
+        <NativeDeliverablesRow files={row.files} />
+      ) : (
+        <MessageRow
+          api={client}
+          compact={row.kind === 'assistant' && !isClosingBlock(row)}
+          event={getEvent(row.sourceSeq)}
+          item={row}
+          onBranch={branchFromMessage}
+          onQuote={quoteIntoDraft}
+          sessionId={sessionId}
+          // Deliberate departure from the desktop: `MessageIconActions` renders only in
+          // `TurnTailNodeView` because a pointer can drag-select any earlier block. A phone
+          // cannot, and the selection handles inside a scrolling list are hard to grab, so
+          // every assistant block carries a copy control; only the closing block repeats the
+          // clock, rating and branch action.
+          showActions
+        />
+      ),
     [branchFromMessage, client, getEvent, isClosingBlock, quoteIntoDraft, sessionId],
   )
   // A step's rows sit behind one collapsed header, the way the desktop groups a

@@ -64,6 +64,13 @@ export type NativeConversationRow =
       rowKey?: string
       sourceSeq?: number
     }
+  | {
+      /** Files this turn produced for the reader, as the Host recorded them. */
+      files: readonly { path: string; description?: string }[]
+      kind: 'deliverables'
+      rowKey?: string
+      sourceSeq?: number
+    }
 
 type EventRecord = Record<string, unknown>
 type ContentBlock = { type?: unknown; text?: unknown }
@@ -241,6 +248,12 @@ export function projectNativeConversationRows(items: readonly SharedEventItem[])
       })
       continue
     }
+    if (type === 'deliverables/presented') {
+      const files = presentedFiles(data)
+      if (files.length > 0)
+        rows.push({ files, kind: 'deliverables', ...(sourceSeq === undefined ? {} : { sourceSeq }) })
+      continue
+    }
     if (type === 'compaction/summary') {
       rows.push({
         kind: 'compaction',
@@ -365,6 +378,24 @@ function textFromMessage(data: EventRecord): string | undefined {
     .join('')
     .trim()
   return text || undefined
+}
+
+/**
+ * Reads the files a `deliverables/presented` event handed the reader.
+ *
+ * @param data - The event payload.
+ * @returns One entry per path the Host recorded, dropping anything unreadable.
+ */
+function presentedFiles(data: EventRecord): { path: string; description?: string }[] {
+  const files = data.files
+  if (!Array.isArray(files)) return []
+  return files.flatMap((value) => {
+    const file = recordField(value)
+    const path = stringField(file?.path)
+    if (path === undefined || path === '') return []
+    const description = stringField(file?.description)?.trim()
+    return [{ path, ...(description === undefined || description === '' ? {} : { description }) }]
+  })
 }
 
 function toolResult(data: EventRecord): { callId?: string; failed: boolean; output?: string } {

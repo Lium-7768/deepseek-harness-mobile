@@ -95,6 +95,14 @@ function rowSections(row: NativeConversationRow): string[] {
           ...(row.summary.trim() === '' ? [] : ['', row.summary]),
         ]),
       ]
+    case 'deliverables':
+      return [
+        block(t('log.sectionDeliverables'), [
+          ...row.files.map((file) =>
+            file.description === undefined ? `- \`${file.path}\`` : `- \`${file.path}\` — ${file.description}`,
+          ),
+        ]),
+      ]
   }
 }
 

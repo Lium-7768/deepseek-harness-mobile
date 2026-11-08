@@ -159,3 +159,37 @@ describe('projectNativeConversationRows', () => {
     ).toBe(2_000)
   })
 })
+
+describe('presented deliverables', () => {
+  it('lists the files a turn handed over, with their descriptions', () => {
+    const rows = projectNativeConversationRows([
+      {
+        seq: 1,
+        event: {
+          type: 'deliverables/presented',
+          data: {
+            turn: 2,
+            files: [
+              { path: '/tmp/out/report.md', description: '本周报告' },
+              { path: '/tmp/out/shot.png' },
+              { path: '' },
+            ],
+          },
+        },
+      },
+    ] as never)
+    expect(rows).toEqual([
+      expect.objectContaining({
+        kind: 'deliverables',
+        files: [{ path: '/tmp/out/report.md', description: '本周报告' }, { path: '/tmp/out/shot.png' }],
+      }),
+    ])
+  })
+
+  it('adds no row when a presentation carries no readable path', () => {
+    const rows = projectNativeConversationRows([
+      { seq: 1, event: { type: 'deliverables/presented', data: { files: [{ description: 'x' }] } } },
+    ] as never)
+    expect(rows).toEqual([])
+  })
+})

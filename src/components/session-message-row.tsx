@@ -85,6 +85,9 @@ export const MessageRow = memo(function MessageRow({
   if (item.kind === 'turn-max-tokens') return <NativeTurnMaxTokensRow />
   if (item.kind === 'command') return <NativeCommandRow row={item} />
   if (item.kind === 'compaction') return <NativeCompactionRow row={item} />
+  // The deliverables row renders through its own component; this renderer keeps the
+  // union exhaustive for every other kind.
+  if (item.kind === 'deliverables') return <></>
   if (item.kind === 'tool')
     return (
       <View style={s.toolRow}>

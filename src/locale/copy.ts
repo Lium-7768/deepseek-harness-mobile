@@ -8,6 +8,8 @@
 
 /** Copy confirmation copy. */
 export const copy = {
+  /** Confirmation after copying a file path out of a deliverables row. */
+  pathCopied: '已复制文件路径',
   /** `{lines}` and `{chars}` describe the text that reached the clipboard. */
   copiedText: '已复制 {lines} 行 · {chars} 字',
   /** `{lines}` describes the code block that reached the clipboard. */

@@ -82,6 +82,15 @@ names what reached the clipboard — lines and characters for text, lines for co
 for a table — because a phone cannot show the selection it is about to copy. A table copies whole
 as TSV, which pastes into a spreadsheet as real columns.
 
+## Turn deliverables
+
+The desktop prints a delivery card per presented file at the turn tail and opens it in the
+document sidebar. A phone cannot open a file that lives on another machine, so a turn that
+presented files now ends with one row — `产出 4 个文件` — whose sheet lists every path with the
+description the assistant gave it; a tap copies the path. The rows come from the same
+`deliverables/presented` events the desktop reads, so nothing new crosses the wire, and the
+Markdown session log lists them under `产出文件`.
+
 ## The trajectory ledger
 
 The ledger tab used to re-project the transcript: the request, the reasoning, and the reply
