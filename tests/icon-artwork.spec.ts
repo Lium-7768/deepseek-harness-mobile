@@ -6,7 +6,9 @@ import desktop from './fixtures/desktop-icon-hashes.json'
 describe('desktop icon artwork parity', () => {
   it('preserves every shared glyph at regular and medium weights, including dimensions', () => {
     const hash = (text: string) => createHash('sha256').update(text).digest('hex')
-    const nativeOnly = new Set(['link-off', 'arrow-up'])
+    // `whale-tail` is desktop artwork too, but it lives in ui-chat's
+    // `RunningWhaleTail` rather than the primitives set the fixtures hash.
+    const nativeOnly = new Set(['link-off', 'arrow-up', 'whale-tail'])
     for (const [name, artwork] of Object.entries(ICON_ARTWORK)) {
       if (nativeOnly.has(name)) continue
       const expected = desktop[name as keyof typeof desktop]

@@ -1,4 +1,3 @@
-import { NativeBrandMark } from './native-brand-mark'
 import { useConversationDisclosure } from './conversation-disclosure'
 import { conversationRowKey } from './conversation-flow'
 import { NativeFlowRow } from '@/components/native-flow-row'
@@ -262,7 +261,7 @@ export function NativeTurnStatus({ startedAt }: { startedAt?: number }): React.J
       : format('status.deepDivingFor', { duration: formatDuration(Math.max(1_000, elapsed)) })
   return (
     <View accessibilityLiveRegion="polite" style={s.turnStatus}>
-      <NativeBrandMark size={14} />
+      <NativeIcon name="whale-tail" size={14} color={s.turnStatusText.color} />
       <Text style={s.turnStatusText}>{label}</Text>
     </View>
   )
