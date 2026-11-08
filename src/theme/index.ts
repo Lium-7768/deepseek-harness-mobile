@@ -119,6 +119,8 @@ export interface ThemeColors {
    * timestamps, and any supporting line.
    */
   inkTertiary: string
+  /** The live running indicator's label, mixed the way `design-platform.css` mixes it. */
+  inkDeepDiving: string
   /** Placeholder text only: the desktop's composer placeholder tone. */
   inkFaint: string
   /** Standard divider. */
@@ -300,6 +302,8 @@ const lightColors: ThemeColors = {
   ink: 'rgb(15, 17, 21)',
   inkMuted: 'rgb(97, 102, 107)',
   inkTertiary: 'rgb(129, 133, 140)',
+  // `--dsw-alias-label-deep-diving`: deepseek-500 70% + blue-950 30%.
+  inkDeepDiving: 'rgb(52, 94, 186)',
   inkFaint: 'rgb(173, 178, 184)',
   border: 'rgba(0, 0, 0, 0.12)',
   borderStrong: 'rgba(0, 0, 0, 0.16)',
@@ -391,6 +395,8 @@ const darkColors: ThemeColors = {
   ink: 'rgb(249, 250, 251)',
   inkMuted: 'rgb(207, 211, 214)',
   inkTertiary: 'rgb(173, 178, 184)',
+  // `--dsw-alias-label-deep-diving` (dark): deepseek-450 55% + neutral-bluish-400 45%.
+  inkDeepDiving: 'rgb(125, 154, 223)',
   // Lifted from the light appearance's placeholder grey: on the raised dark surface
   // it measured 3.8:1, below the 4.5:1 a 12px label needs.
   inkFaint: 'rgb(154, 159, 165)',

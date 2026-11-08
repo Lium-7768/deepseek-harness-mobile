@@ -134,6 +134,18 @@ describe('reading contrast', () => {
     }
   })
 
+  it('keeps the deep-diving label readable where the desktop draws it', () => {
+    // `--dsw-alias-label-deep-diving`: a blue that has to carry 12px running text.
+    for (const theme of [mobileTheme, darkTheme]) {
+      for (const surface of surfaces) {
+        expect(
+          contrast(theme.colors.inkDeepDiving, theme.colors[surface]),
+          `${theme.appearance}.inkDeepDiving on ${surface}`,
+        ).toBeGreaterThanOrEqual(4.5)
+      }
+    }
+  })
+
   it('keeps the dark appearance faint ink usable for a small label', () => {
     // The light appearance keeps its faint tone for placeholders only; the dark
     // list prints 12px labels in it, so it has to clear the text floor there.

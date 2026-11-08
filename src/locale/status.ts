@@ -5,8 +5,10 @@
 
 /** Conversation status copy. */
 export const status = {
-  /** The live "working" line under the transcript; the phone copy is Chinese throughout. */
-  deepDiving: '正在处理…',
+  /** The live "working" line under the transcript, as `ui-chat` prints it. */
+  deepDiving: '深度求索中',
+  /** `{duration}` is the running Turn's elapsed time; the trailing dots are the desktop's own. */
+  deepDivingFor: '深度求索中，用时 {duration} ···',
   /** The Think disclosure's title row, as the desktop prints it. */
   think: '思考',
   viewThink: '查看思考内容',

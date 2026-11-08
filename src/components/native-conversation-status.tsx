@@ -253,12 +253,17 @@ export function NativeTurnStatus({ startedAt }: { startedAt?: number }): React.J
     const timer = setInterval(() => setElapsed(Math.max(0, Date.now() - anchor)), 1_000)
     return () => clearInterval(timer)
   }, [anchor])
-  const showClock = elapsed >= 15_000
+  // The desktop prints one string — `深度求索中，用时 10 分 38 秒 ···` — as soon as the
+  // Turn's start time is durable; without one it drops only the duration. The clock
+  // used to wait 15 seconds here, so a short Turn read as a bare label with no time.
+  const label =
+    startedAt === undefined
+      ? message('status.deepDiving')
+      : format('status.deepDivingFor', { duration: formatDuration(Math.max(1_000, elapsed)) })
   return (
     <View accessibilityLiveRegion="polite" style={s.turnStatus}>
       <NativeBrandMark size={14} />
-      <Text style={s.turnStatusText}>{message('status.deepDiving')}</Text>
-      {showClock ? <Text style={s.turnClock}>{formatDuration(elapsed)}</Text> : null}
+      <Text style={s.turnStatusText}>{label}</Text>
     </View>
   )
 }
@@ -328,8 +333,8 @@ const makeStyles = (theme: AppTheme) =>
     },
     compactionDetail: { color: theme.colors.inkTertiary, fontSize: 11, fontWeight: '500', lineHeight: 16 },
     compactionBody: { color: theme.colors.inkTertiary, fontSize: 13, lineHeight: 20 },
+    // `ChatView .running`: 12/22 in the deep-diving label colour, 6pt after the glyph.
     turnStatus: { alignItems: 'center', flexDirection: 'row', gap: 6, paddingVertical: 4 },
-    turnStatusText: { color: theme.colors.inkTertiary, fontSize: 12, lineHeight: 22 },
-    turnClock: { color: theme.colors.inkTertiary, fontSize: 12, lineHeight: 22 },
+    turnStatusText: { color: theme.colors.inkDeepDiving, fontSize: 12, lineHeight: 22 },
     pressed: { opacity: 0.62 },
   })
