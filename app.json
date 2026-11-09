@@ -38,7 +38,19 @@
         }
       ],
       "expo-sharing",
-      "expo-image"
+      "expo-image",
+      [
+        "expo-splash-screen",
+        {
+          "backgroundColor": "#FFFFFF",
+          "dark": {
+            "backgroundColor": "#161618"
+          },
+          "image": "./assets/splash-whale.png",
+          "imageWidth": 108,
+          "resizeMode": "contain"
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true

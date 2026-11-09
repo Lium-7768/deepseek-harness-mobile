@@ -2,6 +2,7 @@ import { NativeWhaleMark } from '@/components/native-whale-mark'
 import type { AppTheme } from '@/theme'
 import { useThemedStyles } from '@/theme/hooks'
 import { useEffect, useState } from 'react'
+import * as SplashScreen from 'expo-splash-screen'
 import { AccessibilityInfo, StyleSheet, View } from 'react-native'
 import Animated, {
   Easing,
@@ -46,6 +47,10 @@ const EXIT_MS = 240
 export function BootSplash({ ready }: { ready: boolean }): React.JSX.Element | null {
   const s = useThemedStyles(makeStyles)
   const [gone, setGone] = useState(false)
+  // This cover is drawn now, so the native launch screen has nothing left to add.
+  useEffect(() => {
+    void SplashScreen.hideAsync().catch(() => undefined)
+  }, [])
   const enter = useSharedValue(0)
   const exit = useSharedValue(0)
 

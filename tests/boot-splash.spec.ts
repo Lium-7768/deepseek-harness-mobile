@@ -19,6 +19,7 @@ vi.mock('@/theme/hooks', async () => {
     useThemedStyles: (factory: (theme: unknown) => unknown) => factory(themes.light),
   }
 })
+vi.mock('expo-splash-screen', () => ({ hideAsync: async () => undefined, preventAutoHideAsync: async () => undefined }))
 vi.mock('@/components/native-whale-mark', () => ({ NativeWhaleMark: 'WhaleMark' }))
 vi.mock('react-native-reanimated', async () => {
   const { useRef } = await import('react')

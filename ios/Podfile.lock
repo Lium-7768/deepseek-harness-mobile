@@ -103,6 +103,8 @@ PODS:
     - ExpoModulesCore
   - ExpoSharing (57.0.24):
     - ExpoModulesCore
+  - ExpoSplashScreen (57.0.11):
+    - ExpoModulesCore
   - ExpoSymbols (57.0.3):
     - ExpoModulesCore
   - ExpoUI (57.0.26):
@@ -2359,6 +2361,7 @@ DEPENDENCIES:
   - "ExpoRouter (from `../node_modules/.pnpm/expo-router@57.0.29_0adf8c1bedeb414083204269da4cfbbe/node_modules/expo-router/ios`)"
   - "ExpoSecureStore (from `../node_modules/.pnpm/expo-secure-store@57.0.4_expo@57.0.31/node_modules/expo-secure-store/ios`)"
   - "ExpoSharing (from `../node_modules/.pnpm/expo-sharing@57.0.24_expo@57.0.31_react-native@0.86.3_@babel+core@7.29.7_@react-native+_9cb33eddb031eae3dea0b672f42f30a8/node_modules/expo-sharing/ios`)"
+  - "ExpoSplashScreen (from `../node_modules/.pnpm/expo-splash-screen@57.0.11_expo@57.0.31_typescript@6.0.3/node_modules/expo-splash-screen/ios`)"
   - "ExpoSymbols (from `../node_modules/.pnpm/expo-symbols@57.0.3_expo-font@57.0.4_expo@57.0.31_react-native@0.86.3_@babel+core@7.29._38101bd132efd4e4bb6858af2cb9d495/node_modules/expo-symbols/ios`)"
   - "ExpoUI (from `../node_modules/.pnpm/@expo+ui@57.0.26_@babel+core@7.29.7_@types+react@19.2.18_expo@57.0.31_react-native-work_0d04c2ec60c397faa069e40a10bad0af/node_modules/@expo/ui/ios`)"
   - "FBLazyVector (from `../node_modules/.pnpm/react-native@0.86.3_@babel+core@7.29.7_@react-native+metro-config@0.86.3_@babel+core@7._dcc1ba86c4f0f476b4029bc2604f6bbc/node_modules/react-native/Libraries/FBLazyVector`)"
@@ -2499,6 +2502,8 @@ EXTERNAL SOURCES:
     :path: "../node_modules/.pnpm/expo-secure-store@57.0.4_expo@57.0.31/node_modules/expo-secure-store/ios"
   ExpoSharing:
     :path: "../node_modules/.pnpm/expo-sharing@57.0.24_expo@57.0.31_react-native@0.86.3_@babel+core@7.29.7_@react-native+_9cb33eddb031eae3dea0b672f42f30a8/node_modules/expo-sharing/ios"
+  ExpoSplashScreen:
+    :path: "../node_modules/.pnpm/expo-splash-screen@57.0.11_expo@57.0.31_typescript@6.0.3/node_modules/expo-splash-screen/ios"
   ExpoSymbols:
     :path: "../node_modules/.pnpm/expo-symbols@57.0.3_expo-font@57.0.4_expo@57.0.31_react-native@0.86.3_@babel+core@7.29._38101bd132efd4e4bb6858af2cb9d495/node_modules/expo-symbols/ios"
   ExpoUI:
@@ -2698,6 +2703,7 @@ SPEC CHECKSUMS:
   ExpoRouter: 2caea06638922fe6c206cb7195749f77bfda29c0
   ExpoSecureStore: c704911d323d1d62ecf6b81bf3afa58eecedd80c
   ExpoSharing: 79c7c06d8444b0741660848c3830edf3ecb568cc
+  ExpoSplashScreen: dedee471d7666d6ebd508a57ac4874c49869cce4
   ExpoSymbols: 803dd72145830a3a437339e5a7a2e4b9d0c4332a
   ExpoUI: a2b7c42374630ba4345deb56c207a2c72db11c94
   FBLazyVector: 2138c6c2ab66c31bf5754dc18097fbc498a49c7f

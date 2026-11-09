@@ -1,5 +1,11 @@
 import { useComposerDraftStore } from '@/state/composer-drafts'
+import * as SplashScreen from 'expo-splash-screen'
 import 'react-native-gesture-handler'
+
+// Hold the native launch screen until the in-app cover is drawn, so the brand mark
+// never disappears between the two: the sequence is one screen handing over to the
+// next rather than a splash, a blank window, and then a mark.
+void SplashScreen.preventAutoHideAsync()
 
 import { createMobileQueryClient } from '@/api/query-client'
 import { AppErrorBoundary } from '@/components/app-error-boundary'
