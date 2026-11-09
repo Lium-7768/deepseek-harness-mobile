@@ -45,7 +45,8 @@ export const conversation = {
   triggerContinue: '继续请求',
   copyTrigger: '复制触发内容',
   // The Turn's own token accounting, opened from its action row.
-  usageLabel: '本轮消耗 {total} tok',
+  // The desktop's pill reads `用量 2.9M tok`; the action row keeps the same words.
+  usageLabel: '用量 {total} tok',
   usageTitle: '本轮用量',
   usageTotal: '合计',
   usageInput: '输入',

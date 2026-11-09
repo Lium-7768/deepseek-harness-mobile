@@ -177,6 +177,11 @@ function NativeTurnUsage({ usage }: { usage: TurnUsage }): React.JSX.Element {
           <NativeIcon name="database-outline" size={15} color={theme.colors.inkTertiary} />
         </Pressable>
       </View>
+      {/* The desktop prints the reading beside the glyph (`用量 2.9M tok`); an icon
+          alone would make the reader tap to learn what it counts. */}
+      <Text numberOfLines={1} style={s.actionUsage}>
+        {format('conversation.usageLabel', { total: formatStatisticsTokens(usage.totalTokens) })}
+      </Text>
       <NativeAnchoredPanel anchorRef={anchor} onClose={() => setOpen(false)} open={open}>
         {[
           { label: message('conversation.usageTotal'), value: formatStatisticsTokens(usage.totalTokens) },

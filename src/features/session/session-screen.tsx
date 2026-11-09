@@ -12,6 +12,7 @@ import { NativeQueueDock } from '@/components/native-queue-dock'
 import { NativeAnchoredPanel } from '@/components/native-anchored-panel'
 import { jobStatusLabel } from '@/components/native-agent-activity'
 import { NativeQuestionPromptRow } from '@/components/native-question-prompt-row'
+import { NativeStatisticsPage } from '@/components/native-statistics-page'
 import { SessionHeaderActions, type HeaderMenuRow } from '@/components/session-header-actions'
 import { shareSessionLog } from '@/export/session-log-share'
 import { NativeTurnRail } from '@/components/native-turn-rail'
@@ -783,6 +784,9 @@ export default function SessionScreen(): React.JSX.Element {
                     trajectoryOffset.current = offset
                   }}
                 />
+              ) : null}
+              {tab === 'statistics' ? (
+                <NativeStatisticsPage items={sourceItems} projections={history.data?.projections?.values} />
               ) : null}
               {tab === 'chat' ? <NativeTeamTasksRow tasks={teamTasks(history.data?.projections?.values)} /> : null}
               {tab === 'chat' ? <ContextRows items={sourceItems} /> : null}

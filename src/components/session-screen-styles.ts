@@ -156,6 +156,8 @@ export const makeSessionStyles = (theme: AppTheme) =>
     jobsLabel: { color: theme.colors.ink, flex: 1, fontSize: 13, lineHeight: 20 },
     jobsStatus: { color: theme.colors.inkMuted, fontSize: 12, lineHeight: 20 },
     jobsEmpty: { color: theme.colors.inkMuted, fontSize: 13, lineHeight: 20, paddingVertical: 8 },
+    // `.timeEnd`'s neighbour in the desktop row: one secondary line, no wrap.
+    actionUsage: { color: theme.colors.inkTertiary, flexShrink: 0, fontSize: 12, lineHeight: 24 },
     headerActions: { alignItems: 'center', flexDirection: 'row', gap: 2 },
     statusDot: { backgroundColor: theme.colors.success, borderRadius: 4, height: 7, width: 7 },
     statusPending: { backgroundColor: theme.colors.warning },

@@ -7,6 +7,7 @@ export const workbench = {
   chat: '对话',
   /** Trailing destination naming what waits on the reader. */
   pending: '待处理',
+  statistics: '统计',
   trajectory: '轨迹',
   emptyTrajectory: '该会话尚无可展示的操作轨迹。',
   emptyTrajectoryDetail: '工具调用、重试与上下文注入会按轮次出现在这里。',

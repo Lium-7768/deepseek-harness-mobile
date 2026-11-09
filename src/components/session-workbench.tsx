@@ -16,7 +16,7 @@ import { memo } from 'react'
 import { useEffect, useRef, useState } from 'react'
 import { FlatList, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
 
-export type WorkbenchTab = 'chat' | 'trajectory'
+export type WorkbenchTab = 'chat' | 'statistics' | 'trajectory'
 
 /**
  * Renders the chat/trajectory switch and, when anything waits on the reader, the
@@ -50,6 +50,13 @@ export function WorkbenchTabs({
         active={tab === 'trajectory'}
         label={message('workbench.trajectory')}
         onPress={() => onChange('trajectory')}
+      />
+      {/* The desktop's third tab: the same readings its dock chips open, on a page
+          instead of a popover, because a phone popover covers what it reports on. */}
+      <Tab
+        active={tab === 'statistics'}
+        label={message('workbench.statistics')}
+        onPress={() => onChange('statistics')}
       />
       {pending > 0 ? (
         <Pressable
