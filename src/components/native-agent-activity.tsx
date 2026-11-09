@@ -139,7 +139,13 @@ export function NativeAgentActivity({
  * @returns The localized label, falling back to the token for a state this client
  * does not know.
  */
-function jobStatusLabel(status: string): string {
+/**
+ * Names one job's status the way the desktop's job list does.
+ *
+ * @param status - The wire status token.
+ * @returns The localized status.
+ */
+export function jobStatusLabel(status: string): string {
   switch (status) {
     case 'running':
       return message('activity.jobRunning')

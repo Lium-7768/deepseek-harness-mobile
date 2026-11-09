@@ -9,7 +9,11 @@ import { NativeTurnStatus } from '@/components/native-conversation-status'
 import { NativeIcon } from '@/components/native-icon'
 import { NativeProcessGroup } from '@/components/native-process-group'
 import { NativeQueueDock } from '@/components/native-queue-dock'
+import { NativeAnchoredPanel } from '@/components/native-anchored-panel'
+import { jobStatusLabel } from '@/components/native-agent-activity'
 import { NativeQuestionPromptRow } from '@/components/native-question-prompt-row'
+import { SessionHeaderActions, type HeaderMenuRow } from '@/components/session-header-actions'
+import { shareSessionLog } from '@/export/session-log-share'
 import { NativeTurnRail } from '@/components/native-turn-rail'
 import { activeRailMark, turnRail } from '@/components/session-turn-rail-logic'
 import { NativeTodoDock } from '@/components/native-todo-dock'
@@ -370,6 +374,7 @@ export default function SessionScreen(): React.JSX.Element {
   const [frozenRows, setFrozenRows] = useState<NativeRow[] | null>(null)
   /** First row the viewport shows, for the turn rail's active mark. */
   const [firstVisibleRow, setFirstVisibleRow] = useState(0)
+  const [jobsSheetOpen, setJobsSheetOpen] = useState(false)
   const displayRowsRef = useRef<NativeRow[]>([])
   displayRowsRef.current = displayRows
   const railRows = (frozenRows ?? displayRows) as readonly NativeConversationRow[]
@@ -643,6 +648,35 @@ export default function SessionScreen(): React.JSX.Element {
     olderHasMore ??
     (recentWindow.truncated || events.data?.windowStartSeq !== undefined || history.data?.hasMore === true)
   const actions = interactions.data?.items.length ?? 0
+  const jobItems = jobs.data?.items ?? []
+  const headerCounts = {
+    jobs: jobItems.length,
+    runningJobs: jobItems.filter((job) => job.status === 'running' || job.status === 'queued').length,
+    subagents: (subagents.data?.entries ?? []).filter((entry) => entry.kind === 'child').length,
+  }
+  const headerMenu: HeaderMenuRow[] = [
+    {
+      icon: 'edit-outline',
+      label: message('conversation.sessionMenuRename'),
+      onSelect: () => router.push(`/session/${sessionId}/rename`),
+      value: 'rename',
+    },
+    {
+      icon: 'archive-outline',
+      label: message('conversation.sessionMenuShare'),
+      onSelect: () => {
+        if (client === undefined || sessionId === undefined) return
+        // The drawer's share path: read every page of history, then hand the file to
+        // the system sheet.
+        void shareSessionLog(client, { sessionId, title: sessionTitle })
+          .then((outcome) => {
+            if (outcome === 'unsupported') showSnackbar(message('conversation.shareUnsupported'))
+          })
+          .catch(() => showSnackbar(message('conversation.shareFailed')))
+      },
+      value: 'share',
+    },
+  ]
   const pendingQuestions = (interactions.data?.items ?? []).flatMap((item) =>
     item.type === 'question/requested' ? item.payload.questions : [],
   )
@@ -686,7 +720,17 @@ export default function SessionScreen(): React.JSX.Element {
     <ConversationDisclosureContext.Provider value={disclosures}>
       <WorkspaceShell
         title={sessionTitle}
-        rightAction={<ConnectionStatus onPress={() => void refreshFromPull()} status={displayStatus} />}
+        rightAction={
+          <View style={s.headerActions}>
+            <SessionHeaderActions
+              counts={headerCounts}
+              menu={headerMenu}
+              onOpenJobs={() => setJobsSheetOpen(true)}
+              onOpenSubagents={() => router.push(`/session/${sessionId}/subagent`)}
+            />
+            <ConnectionStatus onPress={() => void refreshFromPull()} status={displayStatus} />
+          </View>
+        }
       >
         <KeyboardAvoidingView
           behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
@@ -951,6 +995,21 @@ export default function SessionScreen(): React.JSX.Element {
                 onClose={() => setGoalEditorOpen(false)}
                 onCreate={(objective) => createGoalMutation.mutateAsync(objective).then(() => undefined)}
               />
+              {/* The header's job count opens the same list the desktop's header does. */}
+              <NativeAnchoredPanel onClose={() => setJobsSheetOpen(false)} open={jobsSheetOpen}>
+                {jobItems.length === 0 ? (
+                  <Text style={s.jobsEmpty}>{message('conversation.noJobs')}</Text>
+                ) : (
+                  jobItems.map((job) => (
+                    <View key={job.id} style={s.jobsRow}>
+                      <Text numberOfLines={1} style={s.jobsLabel}>
+                        {job.label}
+                      </Text>
+                      <Text style={s.jobsStatus}>{jobStatusLabel(job.status)}</Text>
+                    </View>
+                  ))
+                )}
+              </NativeAnchoredPanel>
               <WorkspaceComposer
                 key={sessionId ?? 'workspace'}
                 agentPreset={activeSession?.agentPreset}

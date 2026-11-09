@@ -52,6 +52,16 @@ export const conversation = {
   usageOutput: '输出',
   usageCalls: '请求次数',
   jumpToTurn: '跳到第 {turn} 轮',
+  // The desktop's header actions, collapsed to counts on a phone.
+  headerSubagents: '{count} 个子智能体',
+  headerJobs: '{count} 个后台任务',
+  headerJobsRunning: '{total} 个后台任务（{running} 运行中）',
+  sessionMenu: '会话菜单',
+  noJobs: '没有后台任务',
+  sessionMenuRename: '重命名会话',
+  sessionMenuShare: '分享会话日志',
+  shareFailed: '分享失败',
+  shareUnsupported: '当前设备不支持分享',
   /** `{completed}` of `{total}` tasks on the shared board. */
   teamTasks: '团队任务 {completed}/{total}',
   teamTasksTitle: '团队任务',
