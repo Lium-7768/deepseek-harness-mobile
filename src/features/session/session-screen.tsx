@@ -9,6 +9,8 @@ import { NativeTurnStatus } from '@/components/native-conversation-status'
 import { NativeIcon } from '@/components/native-icon'
 import { NativeProcessGroup } from '@/components/native-process-group'
 import { NativeQueueDock } from '@/components/native-queue-dock'
+import { NativeTurnRail } from '@/components/native-turn-rail'
+import { activeRailMark, turnRail } from '@/components/session-turn-rail-logic'
 import { NativeTodoDock } from '@/components/native-todo-dock'
 import { todoFromProjection } from '@/components/todo-logic'
 import { NativeTurnGroup } from '@/components/native-turn-group'
@@ -365,8 +367,12 @@ export default function SessionScreen(): React.JSX.Element {
    * the settle window keeps the transcript still while it is being read.
    */
   const [frozenRows, setFrozenRows] = useState<NativeRow[] | null>(null)
+  /** First row the viewport shows, for the turn rail's active mark. */
+  const [firstVisibleRow, setFirstVisibleRow] = useState(0)
   const displayRowsRef = useRef<NativeRow[]>([])
   displayRowsRef.current = displayRows
+  const railRows = (frozenRows ?? displayRows) as readonly NativeConversationRow[]
+  const railMarks = useMemo(() => turnRail(railRows), [railRows])
   const eventBySeq = useMemo(
     () =>
       new Map(sourceItems.flatMap((item) => (typeof item.seq === 'number' ? [[item.seq, item.event] as const] : []))),
@@ -882,10 +888,25 @@ export default function SessionScreen(): React.JSX.Element {
                     if (!shouldTrackLatestProximity({ initialPositionPending: initialLatestPositionPending.current }))
                       return
                     applyScrollProximity(event.nativeEvent, readerScrolling.current)
+                    // The rail's active mark follows the offset, not a row measurement: it
+                    // only has to name which Turn the reader is inside.
+                    if (railRows.length > 0) {
+                      const approximate = Math.floor(event.nativeEvent.contentOffset.y / 40)
+                      setFirstVisibleRow((current) => (current === approximate ? current : approximate))
+                    }
                   }}
                   onScrollBeginDrag={beginReaderScroll}
                   onScrollEndDrag={settleReaderScroll}
                   scrollEventThrottle={16}
+                />
+                <NativeTurnRail
+                  activeTurn={activeRailMark(railMarks, firstVisibleRow)?.turn}
+                  marks={railMarks}
+                  rowCount={railRows.length}
+                  onJump={(index) => {
+                    nearLatestMessage.current = false
+                    listRef.current?.scrollToIndex({ animated: false, index, viewPosition: 0 })
+                  }}
                 />
                 {showReturnToLatest ? (
                   <Pressable

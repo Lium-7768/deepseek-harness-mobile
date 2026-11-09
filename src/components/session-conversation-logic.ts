@@ -10,6 +10,8 @@ export type NativeConversationRow =
       time?: number
       /** Assistant only: the Turn's token accounting, when the Host reported it. */
       usage?: TurnTokenUsage
+      /** The Turn this message belongs to, for the turn rail. */
+      turn?: number
     }
   | {
       kind: 'reasoning'
@@ -211,7 +213,13 @@ export function projectNativeConversationRows(items: readonly SharedEventItem[])
       }
       const text = humanUserText(data)
       if (text)
-        rows.push({ kind: 'user', text, ...(sourceSeq === undefined ? {} : { sourceSeq }), ...eventTime(event) })
+        rows.push({
+          kind: 'user',
+          text,
+          ...(numberField(data.turn) === undefined ? {} : { turn: numberField(data.turn) as number }),
+          ...(sourceSeq === undefined ? {} : { sourceSeq }),
+          ...eventTime(event),
+        })
       continue
     }
     if (type === 'assistant/message') {
@@ -230,6 +238,7 @@ export function projectNativeConversationRows(items: readonly SharedEventItem[])
         rows.push({
           kind: 'assistant',
           text,
+          ...(turn === undefined ? {} : { turn }),
           ...(usage === undefined ? {} : { usage }),
           ...(sourceSeq === undefined ? {} : { sourceSeq }),
           ...eventTime(event),

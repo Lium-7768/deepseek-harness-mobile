@@ -146,7 +146,7 @@ describe('projectNativeConversationRows', () => {
           },
         },
       ]),
-    ).toEqual([{ kind: 'assistant', sourceSeq: 2, text: '最终正文。' }])
+    ).toEqual([{ kind: 'assistant', sourceSeq: 2, text: '最终正文。', turn: 3 }])
   })
 
   it('returns only the latest unclosed desktop turn start time', () => {

@@ -46,6 +46,7 @@ export const conversation = {
   usageInput: '输入',
   usageOutput: '输出',
   usageCalls: '请求次数',
+  jumpToTurn: '跳到第 {turn} 轮',
   /** `{completed}` of `{total}` tasks on the shared board. */
   teamTasks: '团队任务 {completed}/{total}',
   teamTasksTitle: '团队任务',
