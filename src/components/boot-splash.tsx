@@ -18,13 +18,14 @@ const BRAND_EASING = Easing.bezier(0.4, 0, 0.2, 1)
 
 const ENTER_MS = 320
 /**
- * Shortest time the cover stays, measured from mount.
+ * Shortest time the cover stays after the app reports it is ready.
  *
- * A warm start finishes reading the stored connection before the first frame, so
- * the entrance would otherwise be cut off after ~80ms and read as a flicker rather
- * than a launch. 450ms is under the point where a splash feels like a delay.
+ * Measured from readiness rather than from mount: on a cold start the cover mounts
+ * with the runtime, and readiness can arrive a second later, so a mount-relative
+ * floor had already elapsed and the mark's entrance was cut off after ~200ms. This
+ * keeps the mark fully drawn for a beat before the fade.
  */
-const MIN_VISIBLE_MS = 450
+const MIN_READY_HOLD_MS = 360
 const LIFT_PX = 8
 const EXIT_MS = 240
 
@@ -43,7 +44,6 @@ const EXIT_MS = 240
 export function BootSplash({ ready }: { ready: boolean }): React.JSX.Element | null {
   const s = useThemedStyles(makeStyles)
   const [gone, setGone] = useState(false)
-  const [mountedAt] = useState(() => Date.now())
   const enter = useSharedValue(0)
   const exit = useSharedValue(0)
 
@@ -68,11 +68,9 @@ export function BootSplash({ ready }: { ready: boolean }): React.JSX.Element | n
   useEffect(() => {
     if (!ready) return
     let active = true
-    // The shrink effect can arm on the frame the store finishes reading, before the
-    // mark's own entrance has run: keep the cover until the mark has landed, and for
-    // the floor measured from mount.
-    const elapsed = Date.now() - mountedAt
-    const hold = Math.max(ENTER_MS + 120 - elapsed, MIN_VISIBLE_MS - elapsed, 0)
+    // Hold from readiness, and never less than the entrance: the mark has to be fully
+    // drawn for a beat before the cover starts to leave.
+    const hold = Math.max(ENTER_MS + 100, MIN_READY_HOLD_MS)
     void AccessibilityInfo.isReduceMotionEnabled()
       .catch(() => false)
       .then((reduced) => {
@@ -92,7 +90,7 @@ export function BootSplash({ ready }: { ready: boolean }): React.JSX.Element | n
       active = false
       cancelAnimation(exit)
     }
-  }, [exit, mountedAt, ready])
+  }, [exit, ready])
 
   // The mark settles in with the cover, then the cover leaves over it.
   const markStyle = useAnimatedStyle(() => ({
