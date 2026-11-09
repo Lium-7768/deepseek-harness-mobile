@@ -39,6 +39,13 @@ export const conversation = {
   triggerApproval: '审批结果',
   triggerContinue: '继续请求',
   copyTrigger: '复制触发内容',
+  // The Turn's own token accounting, opened from its action row.
+  usageLabel: '本轮消耗 {total} tok',
+  usageTitle: '本轮用量',
+  usageTotal: '合计',
+  usageInput: '输入',
+  usageOutput: '输出',
+  usageCalls: '请求次数',
   /** `{completed}` of `{total}` tasks on the shared board. */
   teamTasks: '团队任务 {completed}/{total}',
   teamTasksTitle: '团队任务',

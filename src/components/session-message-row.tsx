@@ -9,6 +9,7 @@ import {
 } from '@/components/native-conversation-status'
 import { copyTextLabel, measureCopy } from '@/components/copy-feedback'
 import { tapFeedback } from '@/components/haptics'
+import { NativeAnchoredPanel } from '@/components/native-anchored-panel'
 import { NativeContextRow } from '@/components/native-context-row'
 import { NativeIcon } from '@/components/native-icon'
 import { NativeMarkdown } from '@/components/native-markdown'
@@ -16,7 +17,9 @@ import { NativeMessageAttachments } from '@/components/native-message-attachment
 import { userReferences } from '@/components/user-references'
 import { NativeMessageFeedback } from '@/components/native-message-feedback'
 import { NativeToolCard } from '@/components/native-tool-card'
-import { type NativeConversationRow } from '@/components/session-conversation-logic'
+import { formatStatisticsTokens } from '@/components/session-stats-logic'
+import { format } from '@/locale'
+import { type NativeConversationRow, type TurnTokenUsage as TurnUsage } from '@/components/session-conversation-logic'
 import {
   MESSAGE_ACTION_HIT_SLOP,
   formatMessageTime,
@@ -136,7 +139,14 @@ export const MessageRow = memo(function MessageRow({
           compact={compact}
           text={item.text}
           time={compact ? undefined : item.time}
-          trailing={compact ? undefined : feedback}
+          trailing={
+            compact ? undefined : (
+              <>
+                {feedback}
+                {item.kind === 'assistant' && item.usage !== undefined ? <NativeTurnUsage usage={item.usage} /> : null}
+              </>
+            )
+          }
           {...(compact || onBranch === undefined || item.sourceSeq === undefined
             ? {}
             : { onBranch: () => onBranch(item.sourceSeq as number) })}
@@ -146,6 +156,43 @@ export const MessageRow = memo(function MessageRow({
     </View>
   )
 })
+
+/** The desktop's `TurnUsagePanel`: a database control that opens the Turn's accounting. */
+function NativeTurnUsage({ usage }: { usage: TurnUsage }): React.JSX.Element {
+  const theme = useAppTheme()
+  const s = useThemedStyles(makeSessionStyles)
+  const [open, setOpen] = useState(false)
+  const anchor = useRef<View>(null)
+  return (
+    <>
+      <View collapsable={false} ref={anchor}>
+        <Pressable
+          android_ripple={{ borderless: false }}
+          accessibilityRole="button"
+          accessibilityLabel={format('conversation.usageLabel', { total: formatStatisticsTokens(usage.totalTokens) })}
+          hitSlop={MESSAGE_ACTION_HIT_SLOP}
+          onPress={() => setOpen(true)}
+          style={({ pressed }) => [messageActionLayout('assistant'), s.actionButton, pressed && s.pressed]}
+        >
+          <NativeIcon name="database-outline" size={15} color={theme.colors.inkTertiary} />
+        </Pressable>
+      </View>
+      <NativeAnchoredPanel anchorRef={anchor} onClose={() => setOpen(false)} open={open}>
+        {[
+          { label: message('conversation.usageTotal'), value: formatStatisticsTokens(usage.totalTokens) },
+          { label: message('conversation.usageInput'), value: formatStatisticsTokens(usage.inputTokens) },
+          { label: message('conversation.usageOutput'), value: formatStatisticsTokens(usage.outputTokens) },
+          { label: message('conversation.usageCalls'), value: String(usage.calls) },
+        ].map((row) => (
+          <View key={row.label} style={s.usageRow}>
+            <Text style={s.usageLabel}>{row.label}</Text>
+            <Text style={s.usageValue}>{row.value}</Text>
+          </View>
+        ))}
+      </NativeAnchoredPanel>
+    </>
+  )
+}
 
 export function MessageActions({
   alignment,

@@ -8,6 +8,8 @@ export type NativeConversationRow =
       rowKey?: string
       sourceSeq?: number
       time?: number
+      /** Assistant only: the Turn's token accounting, when the Host reported it. */
+      usage?: TurnTokenUsage
     }
   | {
       kind: 'reasoning'
@@ -148,6 +150,7 @@ export function projectNativeConversationRows(items: readonly SharedEventItem[])
       return key === undefined ? [] : [key]
     }),
   )
+  const turnUsage = turnUsageByTurn(orderedItems)
   const rows: NativeConversationRow[] = []
   const toolRowByCallId = new Map<string, number>()
   const commandRowByCommandId = new Map<string, number>()
@@ -221,8 +224,16 @@ export function projectNativeConversationRows(items: readonly SharedEventItem[])
         .flatMap((block) => (block.type === 'text' && typeof block.text === 'string' ? [block.text] : []))
         .join('')
         .trim()
+      const turn = numberField(data.turn)
+      const usage = turn === undefined ? undefined : turnUsage.get(turn)
       if (text)
-        rows.push({ kind: 'assistant', text, ...(sourceSeq === undefined ? {} : { sourceSeq }), ...eventTime(event) })
+        rows.push({
+          kind: 'assistant',
+          text,
+          ...(usage === undefined ? {} : { usage }),
+          ...(sourceSeq === undefined ? {} : { sourceSeq }),
+          ...eventTime(event),
+        })
       continue
     }
     if (type === 'tool/call') {
@@ -523,6 +534,47 @@ function contextRowOf(data: EventRecord, sourceSeq: number | undefined): NativeC
     text: text ?? summary ?? '',
     ...(sourceSeq === undefined ? {} : { sourceSeq }),
   }
+}
+
+/** Token accounting for one Turn, summed the way the desktop's token meter sums attempts. */
+export interface TurnTokenUsage {
+  /** Billed requests (assistant messages) that reported usage. */
+  calls: number
+  inputTokens: number
+  outputTokens: number
+  totalTokens: number
+}
+
+/**
+ * Sums each Turn's assistant-message usage.
+ *
+ * Every billed request reports its own figures, and the desktop's meter adds the
+ * attempts of one Turn together, so the phone adds the messages of one Turn the same
+ * way. Turns whose messages carry no usage stay absent rather than reading as zero.
+ *
+ * @param items - Durable events in sequence order.
+ * @returns Per-turn totals, keyed by Turn number.
+ */
+function turnUsageByTurn(items: readonly SharedEventItem[]): Map<number, TurnTokenUsage> {
+  const totals = new Map<number, TurnTokenUsage>()
+  for (const item of items) {
+    if (stringField(item.event.type) !== 'assistant/message') continue
+    const data = recordField(item.event.data) ?? item.event
+    const turn = numberField(data.turn)
+    const usage = recordField(data.usage)
+    if (turn === undefined || usage === undefined) continue
+    const input = numberField(usage.inputTokens) ?? 0
+    const output = numberField(usage.outputTokens) ?? 0
+    const total = numberField(usage.totalTokens) ?? input + output
+    const current = totals.get(turn) ?? { calls: 0, inputTokens: 0, outputTokens: 0, totalTokens: 0 }
+    totals.set(turn, {
+      calls: current.calls + 1,
+      inputTokens: current.inputTokens + input,
+      outputTokens: current.outputTokens + output,
+      totalTokens: current.totalTokens + total,
+    })
+  }
+  return totals
 }
 
 function turnTriggerOf(data: EventRecord): NativeTurnTrigger | undefined {

@@ -278,3 +278,47 @@ describe('context rows', () => {
     expect(rows[0]).toMatchObject({ kind: 'turn-trigger', trigger: 'subagentAborted' })
   })
 })
+
+describe('turn usage', () => {
+  it('sums one turn across its assistant messages and leaves other turns apart', () => {
+    const rows = projectNativeConversationRows([
+      {
+        seq: 1,
+        event: {
+          data: {
+            message: { content: [{ text: 'a', type: 'text' }] },
+            turn: 1,
+            usage: { inputTokens: 100, outputTokens: 10, totalTokens: 110 },
+          },
+          type: 'assistant/message',
+        },
+      },
+      {
+        seq: 2,
+        event: {
+          data: {
+            message: { content: [{ text: 'b', type: 'text' }] },
+            turn: 1,
+            usage: { inputTokens: 200, outputTokens: 20, totalTokens: 220 },
+          },
+          type: 'assistant/message',
+        },
+      },
+      {
+        seq: 3,
+        event: {
+          data: {
+            message: { content: [{ text: 'c', type: 'text' }] },
+            turn: 2,
+            usage: { inputTokens: 50, outputTokens: 5, totalTokens: 55 },
+          },
+          type: 'assistant/message',
+        },
+      },
+    ] as never)
+    const usage = rows.map((row) => (row.kind === 'assistant' ? row.usage : undefined))
+    expect(usage[0]).toEqual({ calls: 2, inputTokens: 300, outputTokens: 30, totalTokens: 330 })
+    expect(usage[1]).toEqual({ calls: 2, inputTokens: 300, outputTokens: 30, totalTokens: 330 })
+    expect(usage[2]).toEqual({ calls: 1, inputTokens: 50, outputTokens: 5, totalTokens: 55 })
+  })
+})

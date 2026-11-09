@@ -28,6 +28,16 @@ export const makeSessionStyles = (theme: AppTheme) =>
     actionTimeUser: { fontSize: 13, paddingRight: 12 },
     // `.timeEnd` inherits the actions row's `label-tertiary`; only its offset differs.
     actionTimeEnd: { marginLeft: 8 },
+    // The Turn-usage panel's `dt`/`dd` rows, one line each like the desktop's dialog.
+    usageRow: {
+      alignItems: 'center',
+      flexDirection: 'row',
+      gap: 24,
+      justifyContent: 'space-between',
+      paddingVertical: 6,
+    },
+    usageLabel: { color: theme.colors.inkMuted, fontSize: 13, lineHeight: 20 },
+    usageValue: { color: theme.colors.ink, fontSize: 13, fontVariant: ['tabular-nums'], lineHeight: 20 },
     // The copy confirmation names what reached the clipboard; it shares the clock's
     // 12/24 slot so the action row keeps its height while the label comes and goes.
     actionCopySize: { color: theme.colors.inkTertiary, flexShrink: 1, fontSize: 12, lineHeight: 24, minWidth: 0 },
