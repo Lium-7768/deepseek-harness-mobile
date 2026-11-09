@@ -72,6 +72,22 @@ export type NativeConversationRow =
       sourceSeq?: number
     }
   | {
+      /**
+       * Logged context the model received: a time snapshot, the runtime context, the
+       * skill catalog, project instructions, a model switch or a repeated-call notice.
+       * The desktop draws these as `上下文注入 · <producer>` disclosures rather than as
+       * anything the reader typed.
+       */
+      kind: 'context'
+      /** The source that produced it, e.g. `time-context`. */
+      producer: string
+      /** Producer-declared one-line summary, when the source carries one. */
+      summary?: string
+      text: string
+      rowKey?: string
+      sourceSeq?: number
+    }
+  | {
       /** What started this Turn, when it was not the reader typing. */
       kind: 'turn-trigger'
       trigger: NativeTurnTrigger
@@ -167,6 +183,11 @@ export function projectNativeConversationRows(items: readonly SharedEventItem[])
       // time snapshot, agent instructions, and compaction checkpoints are logged as
       // user-role messages too, and the desktop renders them as context, not as what
       // the reader typed.
+      const context = contextRowOf(data, sourceSeq)
+      if (context !== undefined) {
+        rows.push(context)
+        continue
+      }
       const text = humanUserText(data)
       if (text)
         rows.push({ kind: 'user', text, ...(sourceSeq === undefined ? {} : { sourceSeq }), ...eventTime(event) })
@@ -407,6 +428,45 @@ function messageBlocks(data: EventRecord): ContentBlock[] {
  * @returns The trigger family, or undefined for a message the reader typed or one
  * that only carries injection bookkeeping.
  */
+/**
+ * Injection sources the transcript shows, and the producers the desktop draws with them.
+ *
+ * Approval, goal, job, subagent and schedule sources are absent on purpose: each one
+ * already owns a row (the trigger line, the goal bar, the activity card, the subagent
+ * page), and printing its bookkeeping as well would say the same thing twice.
+ */
+const CONTEXT_PRODUCERS: ReadonlySet<string> = new Set([
+  'agent-instructions',
+  'model-selection',
+  'repeat-tool-reminder',
+  'runtime-context',
+  'skill-catalog',
+  'time-context',
+])
+
+/**
+ * Builds a context row for a logged injection, or `undefined` for anything else.
+ *
+ * @param data - The `user/message` payload.
+ * @param sourceSeq - Durable sequence of the owning event, for stable row keys.
+ * @returns The context row, when the message is an injection this transcript shows.
+ */
+function contextRowOf(data: EventRecord, sourceSeq: number | undefined): NativeConversationRow | undefined {
+  const source = recordField(data.source)
+  const producer = stringField(source?.kind)
+  if (producer === undefined || !CONTEXT_PRODUCERS.has(producer)) return undefined
+  const text = textFromMessage(data)
+  const summary = stringField(source?.summary)
+  if (text === undefined && summary === undefined) return undefined
+  return {
+    kind: 'context',
+    producer,
+    ...(summary === undefined ? {} : { summary }),
+    text: text ?? summary ?? '',
+    ...(sourceSeq === undefined ? {} : { sourceSeq }),
+  }
+}
+
 function turnTriggerOf(data: EventRecord): NativeTurnTrigger | undefined {
   const source = recordField(data.source)
   const kind = stringField(source?.kind)

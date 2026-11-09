@@ -339,6 +339,13 @@ export const ICON_ARTWORK = {
   // `ui-chat` `RunningWhaleTail`'s REST_PATH, verbatim: the live running status
   // draws this tail, not the full brand mark. It lives in ui-chat rather than the
   // primitives set, so it carries no desktop hash fixture.
+  // The desktop's `context-injection-outline`: a page with an arrow entering it, used
+  // for the logged context rows.
+  'context': {
+    size: 16,
+    svg: (strokeWidth) =>
+      `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="none" stroke-width="${strokeWidth}"><path d="M5 2.5H3.5C3.23478 2.5 2.98043 2.60536 2.79289 2.79289C2.60536 2.98043 2.5 3.23478 2.5 3.5V13.5C2.5 13.7652 2.60536 14.0196 2.79289 14.2071C2.98043 14.3946 3.23478 14.5 3.5 14.5H12.5C12.7652 14.5 13.0196 14.3946 13.2071 14.2071C13.3946 14.0196 13.5 13.7652 13.5 13.5V3.5C13.5 3.23478 13.3946 2.98043 13.2071 2.79289C13.0196 2.60536 12.7652 2.5 12.5 2.5H11" stroke="currentColor"></path><path d="M8 0.5V7.5" stroke="currentColor"></path><path d="M5.5 5L8 7.5L10.5 5" stroke="currentColor"></path><path d="M5.5 11H10.5" stroke="currentColor"></path></svg>`,
+  },
   'whale-tail': {
     size: 16,
     svg: (strokeWidth) =>

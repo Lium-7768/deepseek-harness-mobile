@@ -29,7 +29,7 @@ describe('durable user turns', () => {
     expect(rows.map((row) => row.kind)).toEqual(['user'])
   })
 
-  it('hides the injected context the desktop renders as context, not as a bubble', () => {
+  it('renders injected context as context rows, never as a user bubble', () => {
     const context = ['runtime-context', 'skill-catalog', 'time-context', 'agent-instructions', 'compact-checkpoint']
     const rows = projectNativeConversationRows(
       context.map((kind, index) => ({
@@ -40,7 +40,14 @@ describe('durable user turns', () => {
         },
       })),
     )
-    expect(rows).toEqual([])
+    expect(rows.every((row) => row.kind === 'context')).toBe(true)
+    // A compaction checkpoint owns its own row, so it is not repeated as context.
+    expect(rows.map((row) => (row.kind === 'context' ? row.producer : row.kind))).toEqual([
+      'runtime-context',
+      'skill-catalog',
+      'time-context',
+      'agent-instructions',
+    ])
   })
 
   it('still reads a settled assistant message from its nested payload', () => {

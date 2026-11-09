@@ -5,6 +5,7 @@
 
 /** Session-log export copy. */
 export const log = {
+  sectionContext: '上下文注入',
   action: '导出日志',
   dialogTitle: '导出会话日志',
   failedTitle: '导出会话日志失败',

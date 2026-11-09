@@ -218,7 +218,7 @@ describe('turn triggers', () => {
     ])
   })
 
-  it('keeps injection bookkeeping out of the transcript', () => {
+  it('draws injection bookkeeping as context rows, named by their producer', () => {
     const rows = projectNativeConversationRows(
       ['time-context', 'runtime-context', 'skill-catalog', 'agent-instructions', 'repeat-tool-reminder'].map(
         (kind, index) => ({
@@ -230,6 +230,14 @@ describe('turn triggers', () => {
         }),
       ) as never,
     )
-    expect(rows).toEqual([])
+    // The desktop shows these as `上下文注入 · <producer>` disclosures, so the phone
+    // keeps them instead of dropping them — but never as a user bubble.
+    expect(rows.map((row) => (row.kind === 'context' ? row.producer : row.kind))).toEqual([
+      'time-context',
+      'runtime-context',
+      'skill-catalog',
+      'agent-instructions',
+      'repeat-tool-reminder',
+    ])
   })
 })

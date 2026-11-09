@@ -99,6 +99,8 @@ function rowSections(row: NativeConversationRow): string[] {
       return [
         block(t('log.sectionTrigger'), [triggerText(row.trigger), ...(row.text === undefined ? [] : ['', row.text])]),
       ]
+    case 'context':
+      return [block(`${t('log.sectionContext')} · ${row.producer}`, [row.text])]
     case 'deliverables':
       return [
         block(t('log.sectionDeliverables'), [

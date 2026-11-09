@@ -9,6 +9,7 @@ import {
 } from '@/components/native-conversation-status'
 import { copyTextLabel, measureCopy } from '@/components/copy-feedback'
 import { tapFeedback } from '@/components/haptics'
+import { NativeContextRow } from '@/components/native-context-row'
 import { NativeIcon } from '@/components/native-icon'
 import { NativeMarkdown } from '@/components/native-markdown'
 import { NativeMessageAttachments } from '@/components/native-message-attachments'
@@ -112,6 +113,7 @@ export const MessageRow = memo(function MessageRow({
   if (item.kind === 'compaction') return <NativeCompactionRow row={item} />
   // The deliverables row renders through its own component; this renderer keeps the
   // union exhaustive for every other kind.
+  if (item.kind === 'context') return <NativeContextRow row={item} />
   if (item.kind === 'deliverables' || item.kind === 'turn-trigger') return <></>
   if (item.kind === 'tool')
     return (

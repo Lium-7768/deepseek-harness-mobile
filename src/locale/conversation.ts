@@ -5,6 +5,8 @@
 
 /** Conversation screen copy. */
 export const conversation = {
+  /** A logged context injection, titled the way the desktop titles it. */
+  contextInjection: '上下文注入',
   openFromList: '请先连接桌面端并从会话列表打开会话。',
   missingSessionId: '缺少会话标识，请从会话列表打开。',
   goConnect: '去连接',

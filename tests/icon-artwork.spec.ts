@@ -8,7 +8,7 @@ describe('desktop icon artwork parity', () => {
     const hash = (text: string) => createHash('sha256').update(text).digest('hex')
     // `whale-tail` is desktop artwork too, but it lives in ui-chat's
     // `RunningWhaleTail` rather than the primitives set the fixtures hash.
-    const nativeOnly = new Set(['link-off', 'arrow-up', 'whale-tail'])
+    const nativeOnly = new Set(['link-off', 'arrow-up', 'whale-tail', 'context'])
     for (const [name, artwork] of Object.entries(ICON_ARTWORK)) {
       if (nativeOnly.has(name)) continue
       const expected = desktop[name as keyof typeof desktop]
