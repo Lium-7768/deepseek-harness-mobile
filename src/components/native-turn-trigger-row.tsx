@@ -18,8 +18,16 @@ const TRIGGER_ICONS: Record<NativeTurnTrigger, NativeIconName> = {
   job: 'queue-outline',
   schedule: 'clock-outline',
   subagent: 'agent-preset-outline',
+  subagentAborted: 'agent-preset-outline',
+  subagentCompleted: 'agent-preset-outline',
+  subagentError: 'agent-preset-outline',
+  subagentMaxTokens: 'agent-preset-outline',
+  subagentRefusal: 'agent-preset-outline',
+  subagentUnknown: 'agent-preset-outline',
   team: 'apps-add-outline',
   webhook: 'globe-outline',
+  github: 'branch-outline',
+  plugin: 'plugin-pinwheel-outline',
 }
 
 /**

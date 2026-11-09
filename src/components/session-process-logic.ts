@@ -16,6 +16,9 @@ export type ProcessActivity =
   | 'code'
   | 'webSearch'
   | 'webFetch'
+  | 'subagents'
+  | 'plan'
+  | 'questions'
   | 'tools'
 
 /** One collapsible step: its reasoning and tool rows behind a single header. */
@@ -53,6 +56,9 @@ const RUNNING_KEYS = {
   code: 'process.runningCode',
   webSearch: 'process.runningWebSearch',
   webFetch: 'process.runningWebFetch',
+  subagents: 'process.runningSubagents',
+  plan: 'process.runningPlan',
+  questions: 'process.runningQuestions',
   tools: 'process.runningTools',
 } as const satisfies Record<ProcessActivity, string>
 
@@ -67,6 +73,9 @@ const DONE_KEYS = {
   code: 'process.doneCode',
   webSearch: 'process.doneWebSearch',
   webFetch: 'process.doneWebFetch',
+  subagents: 'process.doneSubagents',
+  plan: 'process.donePlan',
+  questions: 'process.doneQuestions',
   tools: 'process.doneTools',
 } as const satisfies Record<ProcessActivity, string>
 
@@ -78,7 +87,33 @@ const DONE_KEYS = {
 export function processActivity(row: NativeConversationRow): ProcessActivity {
   if (row.kind === 'reasoning') return 'thinking'
   if (row.kind !== 'tool') return 'tools'
+  // The desktop's own table, exact names first: a heuristic on the name alone put
+  // `todo_write` under tools and `ask_user_question` under nothing at all.
   const name = row.toolName.toLowerCase()
+  const exact: Partial<Record<string, ProcessActivity>> = {
+    read: 'read',
+    read_image: 'readImage',
+    write: 'write',
+    edit: 'edit',
+    apply_patch: 'edit',
+    bash: 'commands',
+    pwsh: 'commands',
+    exec_command: 'commands',
+    write_stdin: 'commands',
+    run_code: 'code',
+    web_search: 'webSearch',
+    web_fetch: 'webFetch',
+    todo_write: 'plan',
+    create_goal: 'plan',
+    update_goal: 'plan',
+    get_goal: 'plan',
+    ask_user_question: 'questions',
+    request_user_input: 'questions',
+  }
+  const named = exact[name] ?? (name === 'grep' || name === 'glob' || name.endsWith('_inspect') ? 'search' : undefined)
+  if (named !== undefined) return named
+  if (name === 'subagent' || name.startsWith('subagent_')) return 'subagents'
+  if (name.startsWith('terminal_')) return 'commands'
   if (/image|screenshot/.test(name)) return 'readImage'
   if (/search/.test(name)) return /web|browser/.test(name) ? 'webSearch' : 'search'
   if (/fetch|url|browse/.test(name)) return 'webFetch'

@@ -241,3 +241,40 @@ describe('turn triggers', () => {
     ])
   })
 })
+
+describe('context rows', () => {
+  const message = (source: Record<string, unknown>, content: unknown[]): never =>
+    ({ seq: 1, event: { data: { message: { content }, source }, type: 'user/message' } }) as never
+
+  it('titles a single tool change by its tool and a batch by its counts', () => {
+    const single = projectNativeConversationRows([
+      message({ kind: 'skill-catalog' }, [{ toolName: 'web_search', type: 'tool-addition' }]),
+    ])
+    expect(single[0]).toMatchObject({ kind: 'context', title: '已添加工具：web_search' })
+
+    const batch = projectNativeConversationRows([
+      message({ kind: 'skill-catalog' }, [
+        { toolName: 'a', type: 'tool-addition' },
+        { toolName: 'b', type: 'tool-addition' },
+        { toolName: 'c', type: 'tool-removal' },
+      ]),
+    ])
+    expect(batch[0]).toMatchObject({ kind: 'context', summary: '新增 2 个，移除 1 个' })
+  })
+
+  it('names how a settled subagent ended instead of a generic receipt', () => {
+    const rows = projectNativeConversationRows([
+      {
+        seq: 2,
+        event: {
+          data: {
+            message: { content: [{ text: 'done', type: 'text' }] },
+            source: { kind: 'subagent-settled', stopReason: 'aborted' },
+          },
+          type: 'user/message',
+        },
+      },
+    ] as never)
+    expect(rows[0]).toMatchObject({ kind: 'turn-trigger', trigger: 'subagentAborted' })
+  })
+})

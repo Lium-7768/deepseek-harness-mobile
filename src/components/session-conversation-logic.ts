@@ -1,4 +1,4 @@
-import { t as message } from '@/locale'
+import { format, t as message } from '@/locale'
 import type { SharedEventItem } from '@/shared/dsh-presentation'
 
 export type NativeConversationRow =
@@ -81,6 +81,8 @@ export type NativeConversationRow =
       kind: 'context'
       /** The source that produced it, e.g. `time-context`. */
       producer: string
+      /** A change's own heading, when the source is not a plain injection. */
+      title?: string
       /** Producer-declared one-line summary, when the source carries one. */
       summary?: string
       text: string
@@ -106,10 +108,26 @@ export type NativeConversationRow =
  * trigger, and printing it would bury the turns that were.
  */
 export type NativeTurnTrigger =
-  'agent' | 'approval' | 'continue' | 'goal' | 'job' | 'schedule' | 'subagent' | 'team' | 'webhook'
+  | 'agent'
+  | 'approval'
+  | 'continue'
+  | 'github'
+  | 'goal'
+  | 'job'
+  | 'plugin'
+  | 'schedule'
+  | 'subagent'
+  | 'subagentAborted'
+  | 'subagentCompleted'
+  | 'subagentError'
+  | 'subagentMaxTokens'
+  | 'subagentRefusal'
+  | 'subagentUnknown'
+  | 'team'
+  | 'webhook'
 
 type EventRecord = Record<string, unknown>
-type ContentBlock = { type?: unknown; text?: unknown }
+type ContentBlock = { type?: unknown; text?: unknown; toolName?: unknown }
 
 /**
  * Projects desktop durable session events into ordered native conversation rows.
@@ -445,6 +463,44 @@ const CONTEXT_PRODUCERS: ReadonlySet<string> = new Set([
 ])
 
 /**
+ * Reads a tool-set change out of an injection's content blocks.
+ *
+ * The desktop titles a single change by its tool (`已添加工具：<name>`) and a batch as
+ * `工具已更新` with the two counts beside it, so the reader learns what changed
+ * without expanding.
+ *
+ * @param data - The `user/message` payload.
+ * @returns A context row carrying the change, or `undefined` when the message is not one.
+ */
+function toolChangeOf(data: EventRecord): NativeConversationRow | undefined {
+  const blocks = messageBlocks(data).filter((block) => block.type === 'tool-addition' || block.type === 'tool-removal')
+  if (blocks.length === 0) return undefined
+  const added = blocks.flatMap((block) => (block.type === 'tool-addition' ? [stringField(block.toolName)] : []))
+  const removed = blocks.flatMap((block) => (block.type === 'tool-removal' ? [stringField(block.toolName)] : []))
+  const single = blocks.length === 1 ? blocks[0] : undefined
+  const name = single === undefined ? undefined : stringField(single.toolName)
+  if (single !== undefined && name !== undefined)
+    return {
+      kind: 'context',
+      title:
+        single.type === 'tool-addition'
+          ? format('conversation.toolAdded', { name })
+          : format('conversation.toolRemoved', { name }),
+      producer: 'tools',
+      text: '',
+    }
+  const addedCount = added.filter((entry) => entry !== undefined).length
+  const removedCount = removed.filter((entry) => entry !== undefined).length
+  const summary =
+    addedCount > 0 && removedCount > 0
+      ? format('conversation.toolsChanged', { added: addedCount, removed: removedCount })
+      : addedCount > 0
+        ? format('conversation.toolsAddedCount', { count: addedCount })
+        : format('conversation.toolsRemovedCount', { count: removedCount })
+  return { kind: 'context', producer: 'tools', summary, text: '' }
+}
+
+/**
  * Builds a context row for a logged injection, or `undefined` for anything else.
  *
  * @param data - The `user/message` payload.
@@ -455,6 +511,8 @@ function contextRowOf(data: EventRecord, sourceSeq: number | undefined): NativeC
   const source = recordField(data.source)
   const producer = stringField(source?.kind)
   if (producer === undefined || !CONTEXT_PRODUCERS.has(producer)) return undefined
+  const tools = toolChangeOf(data)
+  if (tools !== undefined) return { ...tools, ...(sourceSeq === undefined ? {} : { sourceSeq }) }
   const text = textFromMessage(data)
   const summary = stringField(source?.summary)
   if (text === undefined && summary === undefined) return undefined
@@ -476,7 +534,22 @@ function turnTriggerOf(data: EventRecord): NativeTurnTrigger | undefined {
     case 'schedule':
       return 'schedule'
     case 'subagent-settled':
-      return 'subagent'
+      // The desktop names how the subagent ended; an unreadable reason stays generic
+      // rather than implying success.
+      switch (stringField(source?.stopReason)) {
+        case 'completed':
+          return 'subagentCompleted'
+        case 'aborted':
+          return 'subagentAborted'
+        case 'error':
+          return 'subagentError'
+        case 'max-tokens':
+          return 'subagentMaxTokens'
+        case 'refusal':
+          return 'subagentRefusal'
+        default:
+          return 'subagentUnknown'
+      }
     case 'tool-jobs':
       return 'job'
     case 'agent-message':
@@ -484,7 +557,9 @@ function turnTriggerOf(data: EventRecord): NativeTurnTrigger | undefined {
     case 'team-message':
       return 'team'
     case 'webhook':
-      return 'webhook'
+      return stringField(source?.provider) === 'github' ? 'github' : 'webhook'
+    case 'cordis-host-runner':
+      return 'plugin'
     case 'user-approval':
       return 'approval'
     case 'retry':
@@ -516,6 +591,22 @@ export function triggerText(trigger: NativeTurnTrigger): string {
       return message('conversation.triggerSchedule')
     case 'subagent':
       return message('conversation.triggerSubagent')
+    case 'subagentCompleted':
+      return message('conversation.triggerSubagentCompleted')
+    case 'subagentAborted':
+      return message('conversation.triggerSubagentAborted')
+    case 'subagentError':
+      return message('conversation.triggerSubagentError')
+    case 'subagentMaxTokens':
+      return message('conversation.triggerSubagentMaxTokens')
+    case 'subagentRefusal':
+      return message('conversation.triggerSubagentRefusal')
+    case 'subagentUnknown':
+      return message('conversation.triggerSubagentUnknown')
+    case 'github':
+      return message('conversation.triggerGithub')
+    case 'plugin':
+      return message('conversation.triggerPlugin')
     case 'team':
       return message('conversation.triggerTeam')
     case 'webhook':

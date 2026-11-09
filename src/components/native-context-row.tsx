@@ -22,20 +22,23 @@ type ContextRow = Extract<NativeConversationRow, { kind: 'context' }>
 export function NativeContextRow({ row }: { row: ContextRow }): React.JSX.Element {
   const s = useThemedStyles(makeStyles)
   const [open, setOpen] = useState(false)
+  const title = row.title ?? `${message('conversation.contextInjection')} · ${row.producer}`
   return (
     <NativeFlowRow
-      accessibilityLabel={`${message('conversation.contextInjection')} · ${row.producer}`}
-      expandable
+      accessibilityLabel={title}
+      expandable={row.text !== ''}
       icon="context"
       open={open}
       summary={row.summary}
-      title={`${message('conversation.contextInjection')} · ${row.producer}`}
+      title={title}
       tone="tertiary"
       onToggle={() => setOpen((current) => !current)}
     >
-      <Text selectable style={s.body}>
-        {row.text}
-      </Text>
+      {row.text === '' ? null : (
+        <Text selectable style={s.body}>
+          {row.text}
+        </Text>
+      )}
     </NativeFlowRow>
   )
 }

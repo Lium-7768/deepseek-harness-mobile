@@ -17,6 +17,9 @@ export const process = {
   runningCode: '正在运行代码',
   runningWebSearch: '正在搜索网页',
   runningWebFetch: '正在访问网页',
+  runningSubagents: '正在协调子智能体',
+  runningPlan: '正在更新计划',
+  runningQuestions: '等待你的操作',
   runningTools: '正在调用工具',
 
   // Settled labels summarise the step by activity.
@@ -30,6 +33,9 @@ export const process = {
   doneCode: '运行了代码',
   doneWebSearch: '已搜索网页',
   doneWebFetch: '已访问网页',
+  doneSubagents: '已协调子智能体',
+  donePlan: '更新了计划',
+  doneQuestions: '向用户提出了问题',
   doneTools: '已调用工具',
 
   /** Separates the activity labels of a step that did more than two things. */
