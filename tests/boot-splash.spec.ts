@@ -19,7 +19,7 @@ vi.mock('@/theme/hooks', async () => {
     useThemedStyles: (factory: (theme: unknown) => unknown) => factory(themes.light),
   }
 })
-vi.mock('@/components/native-brand-mark', () => ({ NativeBrandMark: 'BrandMark' }))
+vi.mock('@/components/native-whale-mark', () => ({ NativeWhaleMark: 'WhaleMark' }))
 vi.mock('react-native-reanimated', async () => {
   const { useRef } = await import('react')
   return {
@@ -58,7 +58,7 @@ describe('launch cover', () => {
     })
     // The cover and the mark's own animated wrapper.
     expect(covers().length).toBeGreaterThanOrEqual(1)
-    expect(renderer.container.queryAll((node) => node.type === 'BrandMark')).toHaveLength(1)
+    expect(renderer.container.queryAll((node) => node.type === 'WhaleMark')).toHaveLength(1)
   })
 
   it('stays up until the mark has landed even when readiness arrives immediately', async () => {

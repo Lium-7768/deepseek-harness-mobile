@@ -1,4 +1,4 @@
-import { NativeBrandMark } from '@/components/native-brand-mark'
+import { NativeWhaleMark } from '@/components/native-whale-mark'
 import type { AppTheme } from '@/theme'
 import { useThemedStyles } from '@/theme/hooks'
 import { useEffect, useState } from 'react'
@@ -17,6 +17,8 @@ import Animated, {
 const BRAND_EASING = Easing.bezier(0.4, 0, 0.2, 1)
 
 const ENTER_MS = 320
+/** Outline-to-fill transition; the cover must outlive it. */
+const WARM_UP_MS = 720
 /**
  * Shortest time the cover stays after the app reports it is ready.
  *
@@ -70,7 +72,9 @@ export function BootSplash({ ready }: { ready: boolean }): React.JSX.Element | n
     let active = true
     // Hold from readiness, and never less than the entrance: the mark has to be fully
     // drawn for a beat before the cover starts to leave.
-    const hold = Math.max(ENTER_MS + 100, MIN_READY_HOLD_MS)
+    // The mark itself takes WARM_UP_MS to gain its fill; the cover leaves after that
+    // plus the ready floor, so the reader sees a finished mark before the app.
+    const hold = WARM_UP_MS + Math.max(ENTER_MS + 100, MIN_READY_HOLD_MS)
     void AccessibilityInfo.isReduceMotionEnabled()
       .catch(() => false)
       .then((reduced) => {
@@ -109,7 +113,7 @@ export function BootSplash({ ready }: { ready: boolean }): React.JSX.Element | n
     >
       <View style={s.center}>
         <Animated.View style={markStyle}>
-          <NativeBrandMark size={72} />
+          <NativeWhaleMark size={84} />
         </Animated.View>
       </View>
     </Animated.View>
