@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   FOLLOW_PIN_DELAY_MS,
+  PIN_SETTLE_MS,
   isNearLatestMessage,
   restoredOffsetAfterPrepend,
   restoredOffsetOnOpen,
@@ -200,5 +201,14 @@ describe('follow pin coalescing', () => {
     // so the window has to cover a few frames without feeling laggy to a reader.
     expect(FOLLOW_PIN_DELAY_MS).toBeGreaterThanOrEqual(60)
     expect(FOLLOW_PIN_DELAY_MS).toBeLessThanOrEqual(200)
+  })
+})
+
+describe('pin settle', () => {
+  it('re-asserts the bottom after the rows that arrived with it have measured', () => {
+    // Longer than one frame (16ms) so late layout lands, short enough that the reader
+    // does not see two separate movements.
+    expect(PIN_SETTLE_MS).toBeGreaterThanOrEqual(80)
+    expect(PIN_SETTLE_MS).toBeLessThanOrEqual(250)
   })
 })

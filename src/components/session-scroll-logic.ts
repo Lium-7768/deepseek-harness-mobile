@@ -7,6 +7,15 @@
  */
 export const FOLLOW_PIN_DELAY_MS = 90
 
+/**
+ * How long after a pin the list re-asserts the bottom.
+ *
+ * `scrollToEnd` measures the content at the moment it runs; the rows that arrived in
+ * the same commit are laid out afterwards, so the first landing sits above the newest
+ * row by their height. The second jump only moves a list that is still following.
+ */
+export const PIN_SETTLE_MS = 130
+
 /** Pixel distance from the message list end that still counts as reading the latest conversation. */
 export const LATEST_MESSAGE_PROXIMITY_PX = 72
 

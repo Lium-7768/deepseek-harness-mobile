@@ -70,7 +70,7 @@ import { useMobileSyncStore } from '@/state/mobile-sync'
 import { useReadingPositionStore } from '@/state/reading-positions'
 import { useRouteSessionSelection } from '@/state/session-selection'
 import { mergeEventItems } from '@/sync/event-items'
-import { FOLLOW_PIN_DELAY_MS } from '@/components/session-scroll-logic'
+import { FOLLOW_PIN_DELAY_MS, PIN_SETTLE_MS } from '@/components/session-scroll-logic'
 import { sessionWindow } from '@/sync/session-window'
 import { useAppTheme, useThemedStyles } from '@/theme/hooks'
 import { useMutation } from '@tanstack/react-query'
@@ -122,6 +122,8 @@ export default function SessionScreen(): React.JSX.Element {
    * now coalesces the burst into one jump against the settled height.
    */
   const followPinTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  /** Second scroll after a pin, once the rows that arrived with it have measured. */
+  const pinSettleTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   // Set by the reader's own send, then cleared after SEND_FOLLOW_WINDOW_MS. The
   // prompt row and the first reply chunk land in separate commits, so a stale
   // offset measured in between would otherwise release the follow latch.
@@ -576,6 +578,15 @@ export default function SessionScreen(): React.JSX.Element {
     pendingRestore.current = null
     if (sessionId !== undefined) forgetPosition(sessionId)
     listRef.current?.scrollToEnd({ animated: false })
+    // The rows that arrived in this commit measure after the jump, so the first
+    // landing is short by their height; a second jump once layout settles puts the
+    // reader on the newest row instead of just above it.
+    if (pinSettleTimer.current) clearTimeout(pinSettleTimer.current)
+    pinSettleTimer.current = setTimeout(() => {
+      pinSettleTimer.current = null
+      if (readerScrolling.current || !nearLatestMessage.current) return
+      listRef.current?.scrollToEnd({ animated: false })
+    }, PIN_SETTLE_MS)
   }
   pinToLatestRef.current = pinToLatest
 
@@ -589,8 +600,9 @@ export default function SessionScreen(): React.JSX.Element {
     if (followPinTimer.current !== null) return
     followPinTimer.current = setTimeout(() => {
       followPinTimer.current = null
-      // A drag that started inside the window owns the list until the reader lets go.
-      if (!nearLatestMessage.current) return
+      // A drag — or its momentum — owns the list until the reader lets go: jumping
+      // under a finger is what made a scroll-up look like the text shaking.
+      if (readerScrolling.current || !nearLatestMessage.current) return
       pinToLatest()
     }, FOLLOW_PIN_DELAY_MS)
   }
@@ -599,6 +611,7 @@ export default function SessionScreen(): React.JSX.Element {
     () => () => {
       if (readerScrollIdleTimer.current) clearTimeout(readerScrollIdleTimer.current)
       if (followPinTimer.current) clearTimeout(followPinTimer.current)
+      if (pinSettleTimer.current) clearTimeout(pinSettleTimer.current)
     },
     [],
   )
