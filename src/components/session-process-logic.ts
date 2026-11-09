@@ -199,14 +199,13 @@ export function groupProcessRows(
       activities,
       kind: 'process',
       rows: members,
-      running: live || inLiveTurn,
+      // Only the group still taking rows is running; earlier groups of the live Turn
+      // have finished their own work and read as done, the way the desktop labels them.
+      running: live,
       ...(continueLiveTurn ? { header: false as const } : {}),
       rowKey: `process:${firstRow?.rowKey ?? firstRow?.sourceSeq ?? index}`,
       ...(firstRow?.sourceSeq === undefined ? {} : { sourceSeq: firstRow.sourceSeq }),
-      title:
-        live || inLiveTurn
-          ? (liveTitle ?? message(RUNNING_KEYS[activity] as 'process.runningThinking'))
-          : processTitle(members),
+      title: live ? (liveTitle ?? message(RUNNING_KEYS[activity] as 'process.runningThinking')) : processTitle(members),
     })
   }
   return display

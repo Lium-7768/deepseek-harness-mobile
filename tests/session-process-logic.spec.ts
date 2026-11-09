@@ -60,3 +60,19 @@ describe('process grouping', () => {
     expect(group.kind === 'process' && group.running).toBe(true)
   })
 })
+
+describe('step labels inside a live turn', () => {
+  it('names the finished groups as done and only the tail group as running', () => {
+    const rows = [
+      { kind: 'tool' as const, state: 'completed' as const, toolName: 'bash', sourceSeq: 1 },
+      { kind: 'assistant' as const, text: '中间说明', sourceSeq: 2 },
+      { kind: 'tool' as const, state: 'running' as const, toolName: 'bash', sourceSeq: 3 },
+    ]
+    const display = groupProcessRows(rows, { liveTurnStartSeq: 1, running: true })
+    const groups = display.filter((row) => row.kind === 'process')
+    expect(groups).toHaveLength(2)
+    expect(groups[0]?.running).toBe(false)
+    expect(groups[0]?.title).toBe('执行了命令')
+    expect(groups[1]?.running).toBe(true)
+  })
+})

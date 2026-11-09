@@ -189,13 +189,17 @@ export function projectNativeConversationRows(items: readonly SharedEventItem[])
     if (type === 'tool/call') {
       const callId = stringField(data.callId)
       const toolName = stringField(data.name) ?? message('session.toolCall')
+      // The desktop prefers a command's own description ("Wait for Deploy to finish")
+      // over the command line: the call carries it inside its arguments, not on the
+      // event, so the row reads the same on both clients.
+      const summary = fieldText(data.description) ?? argumentDescription(data.arguments)
       const row: NativeConversationRow = {
         kind: 'tool',
         state: 'running',
         toolName,
         ...(callId === undefined ? {} : { callId }),
         ...(fieldText(data.arguments) === undefined ? {} : { toolInput: fieldText(data.arguments) }),
-        ...(fieldText(data.description) === undefined ? {} : { summary: fieldText(data.description) }),
+        ...(summary === undefined ? {} : { summary }),
         ...(sourceSeq === undefined ? {} : { sourceSeq }),
       }
       rows.push(row)
@@ -529,6 +533,27 @@ function stringField(value: unknown): string | undefined {
 
 function numberField(value: unknown): number | undefined {
   return typeof value === 'number' && Number.isFinite(value) ? value : undefined
+}
+
+/**
+ * Reads a tool call's own one-line description from its arguments.
+ *
+ * @param value - The call's `arguments`, a JSON string or an object.
+ * @returns The trimmed description, or `undefined` when the call carries none.
+ */
+function argumentDescription(value: unknown): string | undefined {
+  let args: unknown = value
+  if (typeof value === 'string') {
+    try {
+      args = JSON.parse(value) as unknown
+    } catch {
+      // A non-JSON argument string has no fields to read.
+      return undefined
+    }
+  }
+  if (args === null || typeof args !== 'object' || Array.isArray(args)) return undefined
+  const description = (args as Record<string, unknown>).description
+  return typeof description === 'string' && description.trim() ? description.trim() : undefined
 }
 
 function fieldText(value: unknown): string | undefined {
