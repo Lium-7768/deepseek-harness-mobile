@@ -36,4 +36,6 @@ export const status = {
   /** `{minutes}` and `{seconds}` for a duration over a minute. */
   durationMinutes: '{minutes}分{seconds}秒',
   durationSeconds: '{seconds}秒',
+  /** Under one second the desktop prints milliseconds, so a first turn is not `0秒`. */
+  durationMilliseconds: '{milliseconds}毫秒',
 } as const

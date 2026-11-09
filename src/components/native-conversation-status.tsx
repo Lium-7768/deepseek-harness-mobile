@@ -267,13 +267,29 @@ export function NativeTurnStatus({ startedAt }: { startedAt?: number }): React.J
   )
 }
 
-function formatDuration(milliseconds: number): string {
+/**
+ * Formats a running Turn's elapsed time the way the desktop formats it: milliseconds
+ * under a second, seconds under a minute, then minutes and seconds.
+ *
+ * @param milliseconds - Elapsed time since the Turn started.
+ * @returns The localized duration.
+ */
+export function formatDurationLabel(milliseconds: number): string {
+  return formatDurationLabel0(milliseconds)
+}
+
+function formatDurationLabel0(milliseconds: number): string {
+  // The desktop prints `duration.milliseconds` below a second; without it the first
+  // second of a Turn reads as `0秒`.
+  if (milliseconds < 1_000) return format('status.durationMilliseconds', { milliseconds })
   const seconds = Math.floor(milliseconds / 1_000)
   const minutes = Math.floor(seconds / 60)
   return minutes > 0
     ? format('status.durationMinutes', { minutes, seconds: seconds % 60 })
     : format('status.durationSeconds', { seconds })
 }
+
+const formatDuration = formatDurationLabel
 
 const makeStyles = (theme: AppTheme) =>
   StyleSheet.create({
