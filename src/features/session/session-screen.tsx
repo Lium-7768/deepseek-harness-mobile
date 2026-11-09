@@ -355,6 +355,18 @@ export default function SessionScreen(): React.JSX.Element {
   // A settled Turn folds behind one control; an open Turn has no end sequence, so
   // its steps keep their live headers.
   const displayRows = useMemo(() => foldCompletedTurns(stepRows, { spans }), [spans, stepRows])
+  /**
+   * The rows the list shows while the reader is steering it.
+   *
+   * Streamed events land several times per second and each one rebuilds the row
+   * array; a rebuilt array re-measures cells, and any cell that lands a few points
+   * taller than before shifts everything below it. Under a finger that reads as the
+   * conversation shaking. Holding the last rows for the duration of the gesture and
+   * the settle window keeps the transcript still while it is being read.
+   */
+  const [frozenRows, setFrozenRows] = useState<NativeRow[] | null>(null)
+  const displayRowsRef = useRef<NativeRow[]>([])
+  displayRowsRef.current = displayRows
   const eventBySeq = useMemo(
     () =>
       new Map(sourceItems.flatMap((item) => (typeof item.seq === 'number' ? [[item.seq, item.event] as const] : []))),
@@ -537,6 +549,9 @@ export default function SessionScreen(): React.JSX.Element {
     if (readerScrollIdleTimer.current) clearTimeout(readerScrollIdleTimer.current)
     readerScrollIdleTimer.current = null
     readerScrolling.current = true
+    // Hold the transcript still for the gesture: a rebuilt row array re-measures cells,
+    // and a cell that lands taller than before shifts everything under the finger.
+    setFrozenRows((current) => current ?? displayRowsRef.current)
   }
 
   /** Closes the reader window after the momentum tail of the current gesture. */
@@ -546,6 +561,7 @@ export default function SessionScreen(): React.JSX.Element {
     readerScrollIdleTimer.current = setTimeout(() => {
       readerScrolling.current = false
       readerScrollIdleTimer.current = null
+      setFrozenRows(null)
       // The gesture has settled, so the offset now names a row rather than a frame in a
       // moving list. This is the moment a reopen can trust.
       if (sessionId !== undefined) {
@@ -720,7 +736,7 @@ export default function SessionScreen(): React.JSX.Element {
                 <FlatList
                   style={s.listView}
                   ref={listRef}
-                  data={displayRows}
+                  data={frozenRows ?? displayRows}
                   keyExtractor={keyExtractor}
                   // A long session can hold hundreds of rows; bound the first paint and
                   // the batch size so opening one does not mount every row at once.
