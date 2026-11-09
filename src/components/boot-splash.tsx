@@ -68,7 +68,11 @@ export function BootSplash({ ready }: { ready: boolean }): React.JSX.Element | n
   useEffect(() => {
     if (!ready) return
     let active = true
-    const hold = Math.max(0, MIN_VISIBLE_MS - (Date.now() - mountedAt))
+    // The shrink effect can arm on the frame the store finishes reading, before the
+    // mark's own entrance has run: keep the cover until the mark has landed, and for
+    // the floor measured from mount.
+    const elapsed = Date.now() - mountedAt
+    const hold = Math.max(ENTER_MS + 120 - elapsed, MIN_VISIBLE_MS - elapsed, 0)
     void AccessibilityInfo.isReduceMotionEnabled()
       .catch(() => false)
       .then((reduced) => {
