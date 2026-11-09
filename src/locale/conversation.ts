@@ -13,6 +13,11 @@ export const conversation = {
   backToWorkspace: '返回工作区',
   /** `{count}` pending interactions on this session. */
   pendingCount: '{count} 项操作需要处理',
+  // A Turn waiting on the reader: the desktop answers these in a transcript card, the
+  // phone names the question and hands over to the pending screen.
+  questionWaiting: '需要你回答：{question}',
+  questionWaitingMore: '需要你回答：{question}（还有 {count} 个问题）',
+  questionWaitingHint: '打开「待处理」作答',
   connecting: '正在连接',
   // Why a Turn started, when the reader did not type it.
   triggerGoal: '目标继续',

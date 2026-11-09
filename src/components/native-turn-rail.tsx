@@ -1,5 +1,5 @@
 import type { TurnRailMark } from '@/components/session-turn-rail-logic'
-import { format } from '@/locale'
+import { format, t as message } from '@/locale'
 import type { AppTheme } from '@/theme'
 import { useThemedStyles } from '@/theme/hooks'
 import { Pressable, StyleSheet, View } from 'react-native'
@@ -19,20 +19,36 @@ import { Pressable, StyleSheet, View } from 'react-native'
  */
 export function NativeTurnRail({
   activeTurn,
+  hasOlderTurns,
   marks,
   onJump,
+  onLoadOlder,
   rowCount,
 }: {
   activeTurn?: number
+  /** Whether history above this window exists, so the rail can offer to page it in. */
+  hasOlderTurns?: boolean
   marks: readonly TurnRailMark[]
   onJump: (index: number) => void
+  onLoadOlder?: () => void
   /** Rows the list is showing, so a mark sits where its Turn sits. */
   rowCount: number
 }): React.JSX.Element | null {
   const s = useThemedStyles(makeStyles)
-  if (marks.length < 2 || rowCount < 2) return null
+  if ((marks.length < 2 && hasOlderTurns !== true) || rowCount < 2) return null
   return (
     <View accessibilityRole="adjustable" pointerEvents="box-none" style={s.rail}>
+      {/* The desktop's rail covers the whole session because it can page a Turn in; the
+          phone only holds a window, so its oldest mark is the way to reach further back. */}
+      {hasOlderTurns === true && onLoadOlder !== undefined ? (
+        <Pressable
+          accessibilityLabel={message('conversation.loadOlder')}
+          accessibilityRole="button"
+          hitSlop={6}
+          onPress={onLoadOlder}
+          style={({ pressed }) => [s.markOlder, pressed ? s.markPressed : null]}
+        />
+      ) : null}
       {marks.map((mark) => (
         <Pressable
           accessibilityLabel={format('conversation.jumpToTurn', { turn: mark.turn })}
@@ -71,4 +87,13 @@ const makeStyles = (theme: AppTheme) =>
     mark: { backgroundColor: theme.colors.inkFaint, borderRadius: 2, height: 6, position: 'absolute', width: 2 },
     markActive: { backgroundColor: theme.colors.inkMuted, height: 14 },
     markPressed: { backgroundColor: theme.colors.accent },
+    // Sits above the first mark, at the rail's top edge.
+    markOlder: {
+      backgroundColor: theme.colors.inkTertiary,
+      borderRadius: 2,
+      height: 2,
+      position: 'absolute',
+      top: 0,
+      width: 8,
+    },
   })

@@ -9,6 +9,7 @@ import { NativeTurnStatus } from '@/components/native-conversation-status'
 import { NativeIcon } from '@/components/native-icon'
 import { NativeProcessGroup } from '@/components/native-process-group'
 import { NativeQueueDock } from '@/components/native-queue-dock'
+import { NativeQuestionPromptRow } from '@/components/native-question-prompt-row'
 import { NativeTurnRail } from '@/components/native-turn-rail'
 import { activeRailMark, turnRail } from '@/components/session-turn-rail-logic'
 import { NativeTodoDock } from '@/components/native-todo-dock'
@@ -642,6 +643,9 @@ export default function SessionScreen(): React.JSX.Element {
     olderHasMore ??
     (recentWindow.truncated || events.data?.windowStartSeq !== undefined || history.data?.hasMore === true)
   const actions = interactions.data?.items.length ?? 0
+  const pendingQuestions = (interactions.data?.items ?? []).flatMap((item) =>
+    item.type === 'question/requested' ? item.payload.questions : [],
+  )
   const goal = goalWithActivation(
     goalFromProjection(history.data?.projections?.values),
     liveGoal.isError ? undefined : liveGoal.data?.goal,
@@ -802,11 +806,19 @@ export default function SessionScreen(): React.JSX.Element {
                     </>
                   }
                   ListFooterComponent={
-                    status === 'running' ? (
-                      <View style={s.turnStatusSlot}>
-                        <NativeTurnStatus startedAt={runningTurnStartedAt} />
-                      </View>
-                    ) : null
+                    <>
+                      {/* A question the Turn is waiting on outranks its clock: the reader
+                          is the blocker, and the row opens the screen that answers it. */}
+                      <NativeQuestionPromptRow
+                        onOpen={() => router.push(`/session/${sessionId}/interactions`)}
+                        questions={pendingQuestions}
+                      />
+                      {status === 'running' ? (
+                        <View style={s.turnStatusSlot}>
+                          <NativeTurnStatus startedAt={runningTurnStartedAt} />
+                        </View>
+                      ) : null}
+                    </>
                   }
                   ListEmptyComponent={
                     history.isPending ? (
@@ -901,7 +913,9 @@ export default function SessionScreen(): React.JSX.Element {
                 />
                 <NativeTurnRail
                   activeTurn={activeRailMark(railMarks, firstVisibleRow)?.turn}
+                  hasOlderTurns={hasMoreHistory}
                   marks={railMarks}
+                  onLoadOlder={() => void loadOlder.mutateAsync({ manual: true }).catch(() => undefined)}
                   rowCount={railRows.length}
                   onJump={(index) => {
                     nearLatestMessage.current = false
