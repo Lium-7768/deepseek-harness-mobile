@@ -11,6 +11,7 @@ import { NativeIcon } from '@/components/native-icon'
 import { NativeRunningRing } from '@/components/native-running-ring'
 import { NativeMarkdown } from '@/components/native-markdown'
 import { requireClient, withErrorContext } from '@/components/route-params'
+import { backToSession } from '@/components/session-back'
 import { WorkspaceShell } from '@/components/workspace-shell'
 import { workspaceKeyboardVerticalOffset } from '@/components/workspace-shell-logic'
 import { format, t as message } from '@/locale'
@@ -113,7 +114,7 @@ export default function InteractionsScreen(): React.JSX.Element {
           accessibilityRole="button"
           accessibilityLabel={message('interactions.backToSession')}
           hitSlop={8}
-          onPress={() => router.back()}
+          onPress={() => backToSession(typeof sessionId === 'string' ? sessionId : undefined)}
           style={({ pressed }) => [styles.headerAction, pressed && styles.pressed]}
         >
           <NativeIcon name="chevron-left-outline" color={theme.colors.ink} size={20} />
@@ -146,7 +147,13 @@ export default function InteractionsScreen(): React.JSX.Element {
               tintColor={theme.colors.accent}
             />
           }
-          ListEmptyComponent={<InteractionListStateView query={interactions} state={listState} />}
+          ListEmptyComponent={
+            <InteractionListStateView
+              onBack={() => backToSession(typeof sessionId === 'string' ? sessionId : undefined)}
+              query={interactions}
+              state={listState}
+            />
+          }
         />
       </KeyboardAvoidingView>
     </WorkspaceShell>
@@ -154,9 +161,11 @@ export default function InteractionsScreen(): React.JSX.Element {
 }
 
 function InteractionListStateView({
+  onBack,
   query,
   state,
 }: {
+  onBack: () => void
   query: { error: Error | null; refetch: () => Promise<unknown> }
   state: InteractionListState
 }): React.JSX.Element | null {
@@ -183,7 +192,7 @@ function InteractionListStateView({
           label={message('interactions.backToSession')}
           icon="chevron-left-outline"
           variant="secondary"
-          onPress={() => router.back()}
+          onPress={onBack}
         />
       </View>
     )

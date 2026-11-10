@@ -82,7 +82,7 @@ export function NativeAgentActivity({
                 onPress={() => onOpenSubagent(entry)}
                 style={({ pressed }) => [styles.subagentMain, pressed && styles.pressed]}
               >
-                <NativeIcon name="agent-preset-outline" size={16} color={theme.colors.accentText} />
+                <NativeIcon name="users-outline" size={16} color={theme.colors.accentText} />
                 <View style={styles.subagentCopy}>
                   <Text numberOfLines={1} style={styles.subagentLabel}>
                     {entry.label ?? entry.id}

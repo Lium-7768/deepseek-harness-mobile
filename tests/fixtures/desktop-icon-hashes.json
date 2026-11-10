@@ -365,6 +365,12 @@
     "regular": "305c172b0d8d8467d305a39581bf4d2fa5f14c5989fd79cfc1ecc3099ea044d1",
     "size": 16
   },
+  "users-outline": {
+    "size": 16,
+    "aspect": [1, 1],
+    "regular": "ccef188d6ce2e5c168a98aff393ead08d0f4517fa1908513029dcd8dfcf41fca",
+    "medium": "cd78d9e9a7d0ed5dca95ede9ec28845a869ee5a0d97ee33a6a664bd2086a82f9"
+  },
   "warning-outline": {
     "size": 16,
     "aspect": [1, 1],

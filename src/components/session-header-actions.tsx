@@ -37,6 +37,7 @@ export interface SessionHeaderCounts {
  */
 export function SessionHeaderActions({
   counts,
+  modeLabel,
   menu,
   onOpenJobs,
   onOpenPending,
@@ -44,6 +45,8 @@ export function SessionHeaderActions({
   pending,
 }: {
   counts: SessionHeaderCounts
+  /** The Agent preset this session runs, printed where the desktop prints it. */
+  modeLabel?: string
   menu: readonly HeaderMenuRow[]
   onOpenJobs: () => void
   /** Opens the screen that answers pending interactions. */
@@ -57,9 +60,14 @@ export function SessionHeaderActions({
   const [menuOpen, setMenuOpen] = useState(false)
   return (
     <View style={s.row}>
+      {modeLabel === undefined ? null : (
+        <Text numberOfLines={1} style={s.mode}>
+          {modeLabel}
+        </Text>
+      )}
       {counts.subagents > 0 ? (
         <HeaderAction
-          icon="agent-preset-outline"
+          icon="users-outline"
           label={format('conversation.headerSubagents', { count: counts.subagents })}
           onPress={onOpenSubagents}
         />
@@ -141,7 +149,11 @@ function HeaderAction({
 
 const makeStyles = (theme: AppTheme) =>
   StyleSheet.create({
-    row: { alignItems: 'center', flexDirection: 'row', gap: 4 },
+    row: { alignItems: 'center', flexDirection: 'row', gap: 6 },
+    // `SubagentCatalogAction`'s leading band: the preset name sits before the counts.
+    // The title gives way before the preset name does: a truncated `标.` names nothing,
+    // while a shortened title still reads (`桌面端这种对话是收…`), as the desktop shows it.
+    mode: { color: theme.colors.inkMuted, flexShrink: 0, fontSize: 12, lineHeight: 18 },
     action: { alignItems: 'center', flexDirection: 'row', gap: 2, paddingHorizontal: 4, paddingVertical: 6 },
     count: { color: theme.colors.inkMuted, fontSize: 11, fontVariant: ['tabular-nums'], lineHeight: 16 },
     countLive: { color: theme.colors.accent },

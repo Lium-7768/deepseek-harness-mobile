@@ -9,9 +9,10 @@ import { NativeTurnStatus } from '@/components/native-conversation-status'
 import { NativeIcon } from '@/components/native-icon'
 import { NativeProcessGroup } from '@/components/native-process-group'
 import { NativeQueueDock } from '@/components/native-queue-dock'
-import { NativeJobsSheet } from '@/components/native-jobs-sheet'
+import { NativeSessionCatalogSheet } from '@/components/native-session-catalog-sheet'
 import { NativeQuestionPromptRow } from '@/components/native-question-prompt-row'
 import { SessionHeaderActions, type HeaderMenuRow } from '@/components/session-header-actions'
+import { agentPresetLabel } from '@/components/session-composer-logic'
 import { shareSessionLog } from '@/export/session-log-share'
 import { NativeTurnRail } from '@/components/native-turn-rail'
 import { activeRailMark, turnRail } from '@/components/session-turn-rail-logic'
@@ -371,7 +372,7 @@ export default function SessionScreen(): React.JSX.Element {
   const [frozenRows, setFrozenRows] = useState<NativeRow[] | null>(null)
   /** First row the viewport shows, for the turn rail's active mark. */
   const [firstVisibleRow, setFirstVisibleRow] = useState(0)
-  const [jobsSheetOpen, setJobsSheetOpen] = useState(false)
+  const [catalogSheetOpen, setCatalogSheetOpen] = useState(false)
   const displayRowsRef = useRef<NativeRow[]>([])
   displayRowsRef.current = displayRows
   const railRows = (frozenRows ?? displayRows) as readonly NativeConversationRow[]
@@ -721,13 +722,14 @@ export default function SessionScreen(): React.JSX.Element {
           <View style={s.headerActions}>
             <SessionHeaderActions
               counts={headerCounts}
+              modeLabel={agentPresetLabel(activeSession?.agentPreset)}
               menu={headerMenu}
-              onOpenJobs={() => setJobsSheetOpen(true)}
+              onOpenJobs={() => setCatalogSheetOpen(true)}
               onOpenPending={() => {
                 if (sessionId === undefined) return
                 router.push({ pathname: '/session/[sessionId]/interactions', params: { sessionId } })
               }}
-              onOpenSubagents={() => router.push(`/session/${sessionId}/subagent`)}
+              onOpenSubagents={() => setCatalogSheetOpen(true)}
               pending={actions}
             />
             <ConnectionStatus onPress={() => void refreshFromPull()} status={displayStatus} />
@@ -980,8 +982,20 @@ export default function SessionScreen(): React.JSX.Element {
                 onClose={() => setGoalEditorOpen(false)}
                 onCreate={(objective) => createGoalMutation.mutateAsync(objective).then(() => undefined)}
               />
-              {/* The header's job count opens the same list the desktop's header does. */}
-              <NativeJobsSheet jobs={jobItems} onClose={() => setJobsSheetOpen(false)} open={jobsSheetOpen} />
+              {/* The desktop's two header catalogs share one sheet here: the subagent
+                  list and the job list are the same tap away on a phone. */}
+              <NativeSessionCatalogSheet
+                jobs={jobItems}
+                onClose={() => setCatalogSheetOpen(false)}
+                onOpenSubagent={(entry) =>
+                  router.push({
+                    pathname: '/session/[sessionId]/subagent',
+                    params: { sessionId: entry.id, parentSessionId: sessionId, mode: entry.mode },
+                  })
+                }
+                open={catalogSheetOpen}
+                subagents={subagents.data?.entries ?? []}
+              />
               <WorkspaceComposer
                 key={sessionId ?? 'workspace'}
                 agentPreset={activeSession?.agentPreset}

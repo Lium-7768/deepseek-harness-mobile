@@ -10,7 +10,8 @@ import type { AppTheme } from '@/theme'
 import { useAppTheme, useThemedStyles } from '@/theme/hooks'
 import type { SessionListPayload } from '@/types/mobile'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { router, useLocalSearchParams } from 'expo-router'
+import { useLocalSearchParams } from 'expo-router'
+import { backToSession } from '@/components/session-back'
 import { useEffect, useMemo, useState } from 'react'
 import { Alert, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
@@ -56,7 +57,7 @@ export default function RenameSessionScreen(): React.JSX.Element {
       await queryClient.invalidateQueries({
         queryKey: queryKeys.sessionList(connection?.gatewayUrl, connection?.deviceId),
       })
-      router.back()
+      backToSession(typeof rawSessionId === 'string' ? rawSessionId : undefined)
     },
     onError: (error) => Alert.alert(message('rename.failedTitle'), mobileErrorMessage(error, message('common.retry'))),
   })
@@ -69,7 +70,7 @@ export default function RenameSessionScreen(): React.JSX.Element {
           accessibilityRole="button"
           accessibilityLabel={message('common.back')}
           hitSlop={8}
-          onPress={() => router.back()}
+          onPress={() => backToSession(typeof rawSessionId === 'string' ? rawSessionId : undefined)}
           style={styles.back}
         >
           <NativeIcon name="chevron-left-outline" color={theme.colors.ink} size={20} />

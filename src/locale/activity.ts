@@ -18,6 +18,7 @@ export const activity = {
   moreJobs: '展开其余 {count} 项',
   collapseJobs: '收起后台任务',
   jobRunning: '运行中',
+  jobFinished: '已完成',
   jobStopping: '正在停止',
   jobCompleted: '已完成',
   jobFailed: '已失败',

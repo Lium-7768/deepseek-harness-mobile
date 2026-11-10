@@ -4,6 +4,7 @@ import { NativeEmptyState } from '@/components/native-empty-state'
 import { ErrorNotice } from '@/components/session-screen-state'
 import { NativeIcon } from '@/components/native-icon'
 import { firstParam, withErrorContext } from '@/components/route-params'
+import { backToSession } from '@/components/session-back'
 import { projectNativeConversationRows } from '@/components/session-conversation-logic'
 import { MessageRow } from '@/components/session-message-row'
 import { WorkspaceComposer } from '@/components/workspace-composer'
@@ -15,7 +16,7 @@ import { useConnectionStore } from '@/state/connection'
 import type { AppTheme } from '@/theme'
 import { useAppTheme, useThemedStyles } from '@/theme/hooks'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { router, useLocalSearchParams } from 'expo-router'
+import { useLocalSearchParams } from 'expo-router'
 import { useEffect, useMemo } from 'react'
 import { Alert, FlatList, KeyboardAvoidingView, Platform, Pressable, StyleSheet, Text, View } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
@@ -85,7 +86,7 @@ export default function SubagentSessionScreen(): React.JSX.Element {
           accessibilityRole="button"
           accessibilityLabel={message('common.back')}
           hitSlop={8}
-          onPress={() => router.back()}
+          onPress={() => backToSession(parentId)}
           style={({ pressed }) => [styles.headerAction, pressed && styles.pressed]}
         >
           <NativeIcon name="chevron-left-outline" color={theme.colors.ink} size={20} />
@@ -93,7 +94,7 @@ export default function SubagentSessionScreen(): React.JSX.Element {
       }
     >
       {!ready ? (
-        <Unavailable text={message('subagent.missingAddress')} />
+        <Unavailable onBack={() => backToSession(parentId)} text={message('subagent.missingAddress')} />
       ) : (
         <KeyboardAvoidingView
           style={styles.canvas}
@@ -165,13 +166,13 @@ export default function SubagentSessionScreen(): React.JSX.Element {
   )
 }
 
-function Unavailable({ text }: { text: string }): React.JSX.Element {
+function Unavailable({ onBack, text }: { onBack: () => void; text: string }): React.JSX.Element {
   return (
     <NativeEmptyState
       action={{
         icon: 'chevron-left-outline',
         label: message('common.back'),
-        onPress: () => router.back(),
+        onPress: onBack,
       }}
       icon="link-off"
       title={text}
