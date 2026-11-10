@@ -194,7 +194,10 @@ const makeStyles = (theme: AppTheme) =>
     // The Web header prints its breadcrumb and title at 14/500 on a 20px line
     // (ConversationRoot.module.css `.crumbs`).
     title: { color: theme.colors.ink, flexShrink: 1, fontSize: 14, fontWeight: '500', lineHeight: 20 },
-    right: { alignItems: 'flex-end', minWidth: 28, maxWidth: '36%' },
+    // The trailing cluster yields before the title does: its own children shrink in
+    // turn (a long preset name ellipsizes), so a long session title and a long preset
+    // name can never overlap.
+    right: { alignItems: 'flex-end', flexShrink: 1, minWidth: 28, maxWidth: '52%' },
     metaRow: {
       alignItems: 'center',
       flexDirection: 'row',

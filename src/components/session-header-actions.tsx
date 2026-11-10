@@ -61,7 +61,7 @@ export function SessionHeaderActions({
   return (
     <View style={s.row}>
       {modeLabel === undefined ? null : (
-        <Text numberOfLines={1} style={s.mode}>
+        <Text ellipsizeMode="tail" numberOfLines={1} style={s.mode}>
           {modeLabel}
         </Text>
       )}
@@ -149,11 +149,11 @@ function HeaderAction({
 
 const makeStyles = (theme: AppTheme) =>
   StyleSheet.create({
-    row: { alignItems: 'center', flexDirection: 'row', gap: 6 },
+    row: { alignItems: 'center', flexDirection: 'row', flexShrink: 1, gap: 6, minWidth: 0 },
     // `SubagentCatalogAction`'s leading band: the preset name sits before the counts.
     // The title gives way before the preset name does: a truncated `标.` names nothing,
     // while a shortened title still reads (`桌面端这种对话是收…`), as the desktop shows it.
-    mode: { color: theme.colors.inkMuted, flexShrink: 0, fontSize: 12, lineHeight: 18 },
+    mode: { color: theme.colors.inkMuted, flexShrink: 1, fontSize: 12, lineHeight: 18, minWidth: 0 },
     action: { alignItems: 'center', flexDirection: 'row', gap: 2, paddingHorizontal: 4, paddingVertical: 6 },
     count: { color: theme.colors.inkMuted, fontSize: 11, fontVariant: ['tabular-nums'], lineHeight: 16 },
     countLive: { color: theme.colors.accent },
