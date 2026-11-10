@@ -1,23 +1,13 @@
 /**
- * Copy for the workbench tabs and the trajectory list.
+ * Copy for the transcript's context line.
+ *
+ * The tab row and the trajectory ledger are desktop-only: a phone screen cannot show
+ * a second column beside the conversation, and the ledger restated rows the transcript
+ * already draws.
  */
 
 /** Workbench copy. */
 export const workbench = {
-  chat: '对话',
-  /** Trailing destination naming what waits on the reader. */
-  pending: '待处理',
-  statistics: '统计',
-  trajectory: '轨迹',
-  emptyTrajectory: '该会话尚无可展示的操作轨迹。',
-  emptyTrajectoryDetail: '工具调用、重试与上下文注入会按轮次出现在这里。',
-  /** `{duration}` is already formatted. */
-  elapsed: '，耗时 {duration}',
-  activityRunning: '进行中',
-  activityFailed: '失败',
-  activityCompleted: '已完成',
-  /** `{turn}` is the turn number. */
-  turn: '第 {turn} 轮',
   /** `{name}` is the injected context's name. */
   contextInjection: '上下文注入 · {name}',
   /** `{name}` is the first injected source; `{count}` the number of them. */

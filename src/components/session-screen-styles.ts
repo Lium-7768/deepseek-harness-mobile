@@ -152,10 +152,6 @@ export const makeSessionStyles = (theme: AppTheme) =>
       paddingTop: 4,
     },
     status: { alignItems: 'center', flexDirection: 'row', gap: 5 },
-    jobsRow: { alignItems: 'center', flexDirection: 'row', gap: 12, paddingVertical: 8 },
-    jobsLabel: { color: theme.colors.ink, flex: 1, fontSize: 13, lineHeight: 20 },
-    jobsStatus: { color: theme.colors.inkMuted, fontSize: 12, lineHeight: 20 },
-    jobsEmpty: { color: theme.colors.inkMuted, fontSize: 13, lineHeight: 20, paddingVertical: 8 },
     // `.timeEnd`'s neighbour in the desktop row: one secondary line, no wrap.
     actionUsage: { color: theme.colors.inkTertiary, flexShrink: 0, fontSize: 12, lineHeight: 24 },
     headerActions: { alignItems: 'center', flexDirection: 'row', gap: 2 },

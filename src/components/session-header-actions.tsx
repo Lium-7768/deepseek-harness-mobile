@@ -39,12 +39,18 @@ export function SessionHeaderActions({
   counts,
   menu,
   onOpenJobs,
+  onOpenPending,
   onOpenSubagents,
+  pending,
 }: {
   counts: SessionHeaderCounts
   menu: readonly HeaderMenuRow[]
   onOpenJobs: () => void
+  /** Opens the screen that answers pending interactions. */
+  onOpenPending: () => void
   onOpenSubagents: () => void
+  /** Pending interactions; `0` draws nothing. */
+  pending: number
 }): React.JSX.Element {
   const theme = useAppTheme()
   const s = useThemedStyles(makeStyles)
@@ -68,6 +74,14 @@ export function SessionHeaderActions({
           }
           onPress={onOpenJobs}
           {...(counts.runningJobs > 0 ? { live: true } : {})}
+        />
+      ) : null}
+      {pending > 0 ? (
+        <HeaderAction
+          icon="checklist-outline"
+          label={format('conversation.headerPending', { count: pending })}
+          live
+          onPress={onOpenPending}
         />
       ) : null}
       <Pressable

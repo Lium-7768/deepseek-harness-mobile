@@ -9,10 +9,8 @@ import { NativeTurnStatus } from '@/components/native-conversation-status'
 import { NativeIcon } from '@/components/native-icon'
 import { NativeProcessGroup } from '@/components/native-process-group'
 import { NativeQueueDock } from '@/components/native-queue-dock'
-import { NativeAnchoredPanel } from '@/components/native-anchored-panel'
-import { jobStatusLabel } from '@/components/native-agent-activity'
+import { NativeJobsSheet } from '@/components/native-jobs-sheet'
 import { NativeQuestionPromptRow } from '@/components/native-question-prompt-row'
-import { NativeStatisticsPage } from '@/components/native-statistics-page'
 import { SessionHeaderActions, type HeaderMenuRow } from '@/components/session-header-actions'
 import { shareSessionLog } from '@/export/session-log-share'
 import { NativeTurnRail } from '@/components/native-turn-rail'
@@ -55,7 +53,7 @@ import {
   type NativeRow,
   type NativeTurnMemberRow,
 } from '@/components/session-turn-logic'
-import { ContextRows, TrajectoryPanel, WorkbenchTabs, type WorkbenchTab } from '@/components/session-workbench'
+import { ContextRows } from '@/components/session-workbench'
 import { teamTasks } from '@/components/team-task-logic'
 import { SkeletonConversation } from '@/components/skeleton'
 import { ComposerDockChips, type ComposerDock } from '@/components/composer-dock-chips'
@@ -158,19 +156,17 @@ export default function SessionScreen(): React.JSX.Element {
   const [unseenCount, setUnseenCount] = useState(0)
   const [olderItems, setOlderItems] = useState<SharedEventItem[]>([])
   const [olderHasMore, setOlderHasMore] = useState<boolean | undefined>()
-  const [tab, setTab] = useState<WorkbenchTab>('chat')
+
   const [goalEditorOpen, setGoalEditorOpen] = useState(false)
   const [goalEditRequest, setGoalEditRequest] = useState(0)
   // One dock at rest: the three cards the desktop stacks above the composer
   // become a chip row, and a chip opens its own dock underneath.
   const [openDock, setOpenDock] = useState<ComposerDock | undefined>(undefined)
-  /** The ledger's scroll offset, kept across tab switches that unmount it. */
-  const trajectoryOffset = useRef(0)
+
   useEffect(() => {
     setGoalEditorOpen(false)
     setGoalEditRequest(0)
     setOpenDock(undefined)
-    trajectoryOffset.current = 0
   }, [sessionId])
   /** Set once `pinToLatest` exists so the send callback can reach it. */
   const pinToLatestRef = useRef<() => void>(() => undefined)
@@ -516,10 +512,10 @@ export default function SessionScreen(): React.JSX.Element {
     setOpenSteps(new Set())
   }, [sessionId])
   useEffect(() => {
-    if (tab !== 'chat' || messages.length === 0 || !initialLatestPositionPending.current) return
+    if (messages.length === 0 || !initialLatestPositionPending.current) return
     const timer = setTimeout(() => listRef.current?.scrollToEnd({ animated: false }), 0)
     return () => clearTimeout(timer)
-  }, [messages.length, tab])
+  }, [messages.length])
 
   /**
    * Records how far the reader is from the newest message and mirrors it into the
@@ -727,7 +723,12 @@ export default function SessionScreen(): React.JSX.Element {
               counts={headerCounts}
               menu={headerMenu}
               onOpenJobs={() => setJobsSheetOpen(true)}
+              onOpenPending={() => {
+                if (sessionId === undefined) return
+                router.push({ pathname: '/session/[sessionId]/interactions', params: { sessionId } })
+              }}
               onOpenSubagents={() => router.push(`/session/${sessionId}/subagent`)}
+              pending={actions}
             />
             <ConnectionStatus onPress={() => void refreshFromPull()} status={displayStatus} />
           </View>
@@ -752,14 +753,6 @@ export default function SessionScreen(): React.JSX.Element {
             />
           ) : (
             <>
-              <WorkbenchTabs
-                onChange={setTab}
-                onOpenPending={() =>
-                  router.push({ pathname: '/session/[sessionId]/interactions', params: { sessionId } })
-                }
-                pending={actions}
-                tab={tab}
-              />
               {/* One notice for the three reads a phone cannot tell apart: they fail
                   together when the stream is down, and three identical retry rows
                   said so three times. */}
@@ -776,21 +769,9 @@ export default function SessionScreen(): React.JSX.Element {
                   }}
                 />
               ) : null}
-              {tab === 'trajectory' ? (
-                <TrajectoryPanel
-                  initialOffset={trajectoryOffset.current}
-                  items={sourceItems}
-                  onOffsetChange={(offset) => {
-                    trajectoryOffset.current = offset
-                  }}
-                />
-              ) : null}
-              {tab === 'statistics' ? (
-                <NativeStatisticsPage items={sourceItems} projections={history.data?.projections?.values} />
-              ) : null}
-              {tab === 'chat' ? <NativeTeamTasksRow tasks={teamTasks(history.data?.projections?.values)} /> : null}
-              {tab === 'chat' ? <ContextRows items={sourceItems} /> : null}
-              <View style={tab === 'chat' ? s.listStage : s.hidden}>
+              <NativeTeamTasksRow tasks={teamTasks(history.data?.projections?.values)} />
+              <ContextRows items={sourceItems} />
+              <View style={s.listStage}>
                 <FlatList
                   style={s.listView}
                   ref={listRef}
@@ -1000,20 +981,7 @@ export default function SessionScreen(): React.JSX.Element {
                 onCreate={(objective) => createGoalMutation.mutateAsync(objective).then(() => undefined)}
               />
               {/* The header's job count opens the same list the desktop's header does. */}
-              <NativeAnchoredPanel onClose={() => setJobsSheetOpen(false)} open={jobsSheetOpen}>
-                {jobItems.length === 0 ? (
-                  <Text style={s.jobsEmpty}>{message('conversation.noJobs')}</Text>
-                ) : (
-                  jobItems.map((job) => (
-                    <View key={job.id} style={s.jobsRow}>
-                      <Text numberOfLines={1} style={s.jobsLabel}>
-                        {job.label}
-                      </Text>
-                      <Text style={s.jobsStatus}>{jobStatusLabel(job.status)}</Text>
-                    </View>
-                  ))
-                )}
-              </NativeAnchoredPanel>
+              <NativeJobsSheet jobs={jobItems} onClose={() => setJobsSheetOpen(false)} open={jobsSheetOpen} />
               <WorkspaceComposer
                 key={sessionId ?? 'workspace'}
                 agentPreset={activeSession?.agentPreset}
@@ -1059,13 +1027,7 @@ export default function SessionScreen(): React.JSX.Element {
                   ) : undefined
                 }
                 placeholder={message('conversation.composerPlaceholder')}
-                onSend={(content) =>
-                  send.mutateAsync(content).then(() => {
-                    // The reply arrives in the transcript; staying on the ledger
-                    // would hide the very message the reader just sent.
-                    setTab('chat')
-                  })
-                }
+                onSend={(content) => send.mutateAsync(content).then(() => undefined)}
                 onCancel={() => cancel.mutate()}
                 commands={commands.data}
                 skills={skills.data}

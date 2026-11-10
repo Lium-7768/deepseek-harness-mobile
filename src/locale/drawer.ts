@@ -5,8 +5,6 @@
 
 /** Session drawer copy. */
 export const drawer = {
-  /** The brand block's build line; `{version}` comes from the bundle. */
-  buildVersion: '本地构建 v{version}',
   plugins: '插件',
   automations: '自动化任务',
   more: '更多',
