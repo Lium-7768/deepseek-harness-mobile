@@ -13,6 +13,7 @@ import {
 import { defaultDrawerView, useDrawerViewStore } from '@/state/drawer-view'
 import { showSnackbar } from '@/state/snackbar'
 import { NativeBrandMark } from '@/components/native-brand-mark'
+import Constants from 'expo-constants'
 import { NativeIcon } from '@/components/native-icon'
 import { NativeListRow } from '@/components/native-list'
 import { SessionItem, WorkspaceItem } from '@/components/session-drawer-items'
@@ -47,6 +48,7 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 const SYNC_FEEDBACK_MS = 900
 
 export function SessionDrawer(props: DrawerContentComponentProps): React.JSX.Element {
+  const appVersion = Constants.expoConfig?.version ?? '0.1.0'
   const theme = useAppTheme()
   const insets = useSafeAreaInsets()
   const styles = useThemedStyles(makeSessionDrawerStyles)
@@ -369,12 +371,19 @@ export function SessionDrawer(props: DrawerContentComponentProps): React.JSX.Ele
         >
           <View style={styles.drawerHeader}>
             <View style={styles.brandRow}>
-              <View style={styles.brand}>
-                <NativeBrandMark size={24} />
-                <Text numberOfLines={1} style={styles.brandWord}>
-                  deepseek
+              <View style={styles.brandColumn}>
+                <View style={styles.brand}>
+                  <NativeBrandMark size={24} />
+                  <Text numberOfLines={1} style={styles.brandWord}>
+                    deepseek
+                  </Text>
+                  <Text style={styles.brandTag}>HARNESS</Text>
+                </View>
+                {/* The desktop's brand block carries its build line under the wordmark;
+                    the phone names the same thing with the bundle's own version. */}
+                <Text numberOfLines={1} style={styles.brandVersion}>
+                  {format('drawer.buildVersion', { version: appVersion })}
                 </Text>
-                <Text style={styles.brandTag}>HARNESS</Text>
               </View>
               <Pressable
                 android_ripple={{ borderless: false }}

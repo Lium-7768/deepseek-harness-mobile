@@ -22,6 +22,7 @@ vi.mock('react-native', async () => {
       addEventListener: () => ({ remove: () => undefined }),
     },
     AppState: { currentState: 'active', addEventListener: () => ({ remove: () => undefined }) },
+    Platform: { OS: 'ios', select: (options: Record<string, unknown>) => options.ios },
     useWindowDimensions: () => ({ width: 393, height: 852, fontScale: 1 }),
     FlatList: (props: {
       data: unknown[]

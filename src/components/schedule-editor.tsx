@@ -4,10 +4,23 @@ import { NativeMenuPanel } from '@/components/native-menu-panel'
 import { t as message } from '@/locale'
 import type { AppTheme } from '@/theme'
 import { useAppTheme, useThemedStyles } from '@/theme/hooks'
-import { timingOf, type TimingKind } from '@/components/schedule-editor-logic'
+import { timingOf, WEEKDAY_LABELS, type TimingKind } from '@/components/schedule-editor-logic'
 import type { MobileScheduleCreateRequest } from '@/types/mobile'
 import { useEffect, useState } from 'react'
+import { MONOSPACE_FONT } from '@/theme/platform'
+import { format } from '@/locale'
 import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native'
+
+/** The message key each timing kind prints as its label. */
+const KIND_LABELS = {
+  after: 'schedule.timingAfter',
+  at: 'schedule.timingAt',
+  cron: 'schedule.timingCron',
+  daily: 'schedule.timingDaily',
+  every: 'schedule.timingEvery',
+  rrule: 'schedule.timingRrule',
+  weekly: 'schedule.timingWeekly',
+} as const satisfies Record<TimingKind, string>
 
 /**
  * Creates one automation through the Host's own `schedule/create`.
@@ -42,6 +55,10 @@ export function ScheduleEditor({
   const [time, setTime] = useState('09:00')
   const [hours, setHours] = useState('6')
   const [minutes, setMinutes] = useState('30')
+  const [date, setDate] = useState('')
+  const [weekdays, setWeekdays] = useState<readonly number[]>([1])
+  const [cron, setCron] = useState('0 9 * * *')
+  const [rrule, setRrule] = useState('FREQ=DAILY')
   const [pickerOpen, setPickerOpen] = useState(false)
   const [error, setError] = useState<string | undefined>(undefined)
 
@@ -53,10 +70,14 @@ export function ScheduleEditor({
     setTime('09:00')
     setHours('6')
     setMinutes('30')
+    setDate('')
+    setWeekdays([1])
+    setCron('0 9 * * *')
+    setRrule('FREQ=DAILY')
     setError(undefined)
   }, [open])
 
-  const timing = timingOf({ hours, kind, minutes, time, timeZone }) ?? undefined
+  const timing = timingOf({ cron, date, hours, kind, minutes, rrule, time, timeZone, weekdays }) ?? undefined
   const ready = title.trim() !== '' && prompt.trim() !== '' && timing !== undefined && !pending
   const submit = async (): Promise<void> => {
     if (timing === undefined) {
@@ -72,12 +93,7 @@ export function ScheduleEditor({
       setError(reason instanceof Error ? reason.message : message('common.retry'))
     }
   }
-  const kindLabel =
-    kind === 'daily'
-      ? message('schedule.timingDaily')
-      : kind === 'every'
-        ? message('schedule.timingEvery')
-        : message('schedule.timingAfter')
+  const kindLabel = message(KIND_LABELS[kind])
   return (
     <NativeAnchoredPanel onClose={onClose} open={open}>
       <View style={s.content}>
@@ -136,6 +152,85 @@ export function ScheduleEditor({
             value={hours}
           />
         ) : null}
+        {kind === 'at' ? (
+          <TextInput
+            accessibilityLabel={message('schedule.fieldDate')}
+            autoCapitalize="none"
+            editable={!pending}
+            onChangeText={setDate}
+            placeholder="2026-11-11"
+            placeholderTextColor={theme.colors.inkTertiary}
+            selectionColor={theme.colors.accent}
+            style={s.input}
+            value={date}
+          />
+        ) : null}
+        {kind === 'at' || kind === 'weekly' ? (
+          <TextInput
+            accessibilityLabel={message('schedule.fieldTime')}
+            autoCapitalize="none"
+            editable={!pending}
+            onChangeText={setTime}
+            placeholder="09:00"
+            placeholderTextColor={theme.colors.inkTertiary}
+            selectionColor={theme.colors.accent}
+            style={s.input}
+            value={time}
+          />
+        ) : null}
+        {kind === 'weekly' ? (
+          <View style={s.weekdays}>
+            {WEEKDAY_LABELS.map((day) => {
+              const on = weekdays.includes(day.iso)
+              return (
+                <Pressable
+                  accessibilityLabel={format('schedule.weekdayLabel', { day: day.label })}
+                  accessibilityRole="button"
+                  accessibilityState={{ selected: on }}
+                  disabled={pending}
+                  key={day.iso}
+                  onPress={() =>
+                    setWeekdays((current) =>
+                      on ? current.filter((iso) => iso !== day.iso) : [...current, day.iso].sort((a, b) => a - b),
+                    )
+                  }
+                  style={({ pressed }) => [s.weekday, on && s.weekdayOn, pressed && s.pressed]}
+                >
+                  <Text style={[s.weekdayText, on && s.weekdayTextOn]}>{day.label}</Text>
+                </Pressable>
+              )
+            })}
+          </View>
+        ) : null}
+        {kind === 'cron' ? (
+          <TextInput
+            accessibilityLabel={message('schedule.fieldCron')}
+            autoCapitalize="none"
+            autoCorrect={false}
+            editable={!pending}
+            onChangeText={setCron}
+            placeholder="0 9 * * *"
+            placeholderTextColor={theme.colors.inkTertiary}
+            selectionColor={theme.colors.accent}
+            style={[s.input, s.mono]}
+            value={cron}
+          />
+        ) : null}
+        {kind === 'rrule' ? (
+          <TextInput
+            accessibilityLabel={message('schedule.fieldRrule')}
+            autoCapitalize="none"
+            autoCorrect={false}
+            editable={!pending}
+            multiline
+            onChangeText={setRrule}
+            placeholder="FREQ=WEEKLY;BYDAY=MO"
+            placeholderTextColor={theme.colors.inkTertiary}
+            selectionColor={theme.colors.accent}
+            style={[s.input, s.mono, s.multiline]}
+            value={rrule}
+          />
+        ) : null}
         {kind === 'after' ? (
           <TextInput
             accessibilityLabel={message('schedule.fieldMinutes')}
@@ -172,11 +267,10 @@ export function ScheduleEditor({
       <NativeMenuPanel
         groups={[
           {
-            options: [
-              { label: message('schedule.timingDaily'), value: 'daily' },
-              { label: message('schedule.timingEvery'), value: 'every' },
-              { label: message('schedule.timingAfter'), value: 'after' },
-            ],
+            options: (['after', 'at', 'every', 'daily', 'weekly', 'cron', 'rrule'] as const).map((value) => ({
+              label: message(KIND_LABELS[value]),
+              value,
+            })),
           },
         ]}
         onClose={() => setPickerOpen(false)}
@@ -196,6 +290,20 @@ const makeStyles = (theme: AppTheme) =>
   StyleSheet.create({
     content: { gap: 10, padding: 16 },
     title: { color: theme.colors.ink, fontSize: 16, fontWeight: '600', lineHeight: 24 },
+    // One row of ISO weekday chips; the Host rejects an empty set, so the form does too.
+    weekdays: { flexDirection: 'row', gap: 6 },
+    weekday: {
+      alignItems: 'center',
+      backgroundColor: theme.colors.surfaceMuted,
+      borderRadius: theme.radius.control,
+      height: 32,
+      justifyContent: 'center',
+      width: 32,
+    },
+    weekdayOn: { backgroundColor: theme.colors.accent },
+    weekdayText: { color: theme.colors.inkMuted, fontSize: 13, lineHeight: 18 },
+    weekdayTextOn: { color: theme.colors.onAccent, fontWeight: '600' },
+    mono: { fontFamily: MONOSPACE_FONT },
     input: {
       backgroundColor: theme.colors.surfaceMuted,
       borderRadius: theme.radius.control,

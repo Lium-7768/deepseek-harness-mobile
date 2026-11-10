@@ -43,7 +43,10 @@ export const makeSessionDrawerStyles = (theme: AppTheme) =>
       paddingLeft: 4,
       paddingVertical: 8,
     },
+    brandColumn: { flexShrink: 1, gap: 2, minWidth: 0 },
     brand: { alignItems: 'center', flexDirection: 'row', gap: 6, minWidth: 0 },
+    // `SidebarBrand .build`: the same secondary line the desktop prints under the mark.
+    brandVersion: { color: theme.colors.inkTertiary, fontSize: 11, lineHeight: 14 },
     brandWord: { color: theme.colors.ink, fontSize: theme.typography.title, fontWeight: '600', letterSpacing: -0.4 },
     brandTag: {
       backgroundColor: theme.colors.ink,

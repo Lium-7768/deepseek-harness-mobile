@@ -444,6 +444,10 @@ export type MobileScheduleTiming =
   | { kind: 'after'; after_seconds: number }
   | { kind: 'every'; every_seconds: number }
   | { kind: 'daily'; daily: { time: string; time_zone: string } }
+  | { kind: 'at'; at: { date: string; time: string; time_zone: string } }
+  | { kind: 'weekly'; weekly: { time: string; time_zone: string; weekdays: number[] } }
+  | { kind: 'cron'; cron: { expression: string; time_zone: string } }
+  | { kind: 'rrule'; rrule: string }
 
 /** Create request the gateway forwards to the Host's `schedule/create`. */
 export interface MobileScheduleCreateRequest {

@@ -14,6 +14,15 @@ export const schedule = {
   timingDaily: '每天固定时间',
   timingEvery: '每隔 N 小时',
   timingAfter: 'N 分钟后一次',
+  timingAt: '指定日期时间',
+  timingWeekly: '每周固定几天',
+  timingCron: 'Cron 表达式',
+  timingRrule: 'iCalendar 重复规则',
+  fieldDate: '日期（YYYY-MM-DD）',
+  weekdayLabel: '星期{day}',
+  fieldWeekdays: '星期',
+  fieldCron: 'Cron（分 时 日 月 周）',
+  fieldRrule: '重复规则（如 FREQ=WEEKLY;BYDAY=MO）',
   invalidTiming: '时间规则填写不完整。',
   /** Tells a phone reader where an automation can actually be created. */
   emptyDetail: '用右上角的加号创建，或在对话中让助手安排定时任务。',
@@ -35,3 +44,6 @@ export const schedule = {
   actionsFor: '{title} 的操作',
   openSession: '打开目标会话',
 } as const
+
+/** The `schedule` dictionary's key union. */
+export type ScheduleKey = keyof typeof schedule
