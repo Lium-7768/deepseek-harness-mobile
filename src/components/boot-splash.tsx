@@ -19,10 +19,20 @@ const BRAND_EASING = Easing.bezier(0.4, 0, 0.2, 1)
 
 const ENTER_MS = 320
 /**
- * Everything the mark does. Long enough to be a gesture rather than a flicker: the
- * outline arrives, holds while the reader recognises it, then the fill lands.
+ * When the native launch screen goes away.
+ *
+ * The launch image is a still of the same mark in the same grey at the same size.
+ * Removing it at mount exposed the cover's empty first frame — one white flash
+ * between two drawn marks. By this point the cover is opaque and holds the still's
+ * exact frame, so the two line up instead of cutting to blank.
  */
-const WARM_UP_MS = 2_200
+const HANDOVER_MS = 420
+/**
+ * Everything the mark does. Long enough to be a gesture rather than a flicker: the
+ * launch image's grey mark holds while the reader recognises it, then takes the
+ * brand colour.
+ */
+const WARM_UP_MS = 3_200
 /**
  * Shortest time the cover stays after the app reports it is ready.
  *
@@ -31,7 +41,7 @@ const WARM_UP_MS = 2_200
  * floor had already elapsed and the mark's entrance was cut off after ~200ms. This
  * keeps the mark fully drawn for a beat before the fade.
  */
-const MIN_READY_HOLD_MS = 1_000
+const MIN_READY_HOLD_MS = 1_200
 const LIFT_PX = 8
 const EXIT_MS = 240
 
@@ -50,9 +60,13 @@ const EXIT_MS = 240
 export function BootSplash({ ready }: { ready: boolean }): React.JSX.Element | null {
   const s = useThemedStyles(makeStyles)
   const [gone, setGone] = useState(false)
-  // This cover is drawn now, so the native launch screen has nothing left to add.
+  // The native launch screen stays until the mark's entrance has finished, so its
+  // removal lands on a drawn mark instead of on the cover's empty first frame.
   useEffect(() => {
-    void SplashScreen.hideAsync().catch(() => undefined)
+    const id = setTimeout(() => {
+      void SplashScreen.hideAsync().catch(() => undefined)
+    }, HANDOVER_MS)
+    return () => clearTimeout(id)
   }, [])
   const enter = useSharedValue(0)
   const exit = useSharedValue(0)
@@ -121,7 +135,9 @@ export function BootSplash({ ready }: { ready: boolean }): React.JSX.Element | n
     >
       <View style={s.center}>
         <Animated.View style={markStyle}>
-          <NativeWhaleMark breathe duration={WARM_UP_MS} size={96} />
+          {/* 100pt is the launch image's own width, so the handover is the same mark
+              in the same place rather than a resize. */}
+          <NativeWhaleMark breathe duration={WARM_UP_MS} size={100} />
         </Animated.View>
       </View>
     </Animated.View>

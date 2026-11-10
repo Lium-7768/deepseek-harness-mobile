@@ -27,14 +27,15 @@ const VIEWBOX = { height: 17.04, width: 23.16 } as const
 const BRAND_EASING = Easing.bezier(0.4, 0, 0.2, 1)
 
 /**
- * Draws the whale as an outline that gains its fill.
+ * Draws the whale as the launch image's grey mark settling into the brand colour.
  *
- * The outline arrives first and holds, then the solid mark fades in over it while the
- * outline leaves — so the launch reads as one shape gaining weight rather than two
- * icons cross-fading. Both layers are ordinary views whose opacity and scale animate;
- * animating SVG paint properties directly does not repaint reliably in a Release build,
- * which is why the geometry itself stays still. Reduced motion renders the finished
- * mark immediately.
+ * The native launch screen is a still of this same path, filled in `launchInk` at
+ * one point per pixel of `size`. This component draws that still's exact frame first
+ * and then changes only the colour, so the handover from the launch screen to the
+ * cover is invisible: the mark gains its weight instead of being swapped for a
+ * different drawing. Two layers cross-fade because animating SVG paint properties
+ * directly does not repaint reliably in a Release build. Reduced motion renders the
+ * finished mark immediately.
  *
  * @param props.duration - Length of the whole outline-to-fill gesture.
  * @param props.size - Width in points; the height keeps the mark's ratio.
@@ -87,30 +88,30 @@ export function NativeWhaleMark({
       .then((reduced) => {
         if (reduced) return
         // One breath is a full second and a half, well under a rate that would distract.
-        pulse.value = withRepeat(withTiming(1, { duration: 1_400, easing: Easing.inOut(Easing.quad) }), -1, true)
+        pulse.value = withRepeat(withTiming(1, { duration: 1_900, easing: Easing.inOut(Easing.quad) }), -1, true)
       })
     return () => cancelAnimation(pulse)
   }, [breathe, pulse])
 
-  // Outline: in over the first eighth, held, then out as the fill takes over.
-  const outlineStyle = useAnimatedStyle(() => ({
-    opacity: interpolate(progress.value, [0, 0.12, 0.5, 0.78], [0, 1, 1, 0]),
-    transform: [{ scale: interpolate(progress.value, [0, 0.5, 1], [0.9, 1, 1.02]) * (1 + pulse.value * 0.065) }],
+  // The launch image's frame: still, at its own size, so the handover adds no jump.
+  const stillStyle = useAnimatedStyle(() => ({
+    opacity: 1 - interpolate(progress.value, [0.35, 0.85], [0, 1]),
+    transform: [{ scale: interpolate(progress.value, [0.35, 1], [1, 1.02]) * (1 + pulse.value * 0.075) }],
   }))
-  // Fill: starts once the outline has drawn attention, lands before the outline leaves.
-  const fillStyle = useAnimatedStyle(() => ({
-    opacity: interpolate(progress.value, [0.42, 0.86], [0, 1]),
-    transform: [{ scale: interpolate(progress.value, [0, 0.5, 1], [0.9, 1, 1.02]) * (1 + pulse.value * 0.065) }],
+  // The brand mark arrives only after the reader has seen the shape hold.
+  const brandStyle = useAnimatedStyle(() => ({
+    opacity: interpolate(progress.value, [0.35, 0.85], [0, 1]),
+    transform: [{ scale: interpolate(progress.value, [0.35, 1], [1, 1.02]) * (1 + pulse.value * 0.075) }],
   }))
   const height = (size * VIEWBOX.height) / VIEWBOX.width
   return (
     <View accessibilityElementsHidden style={{ height, width: size }}>
-      <Animated.View style={[StyleSheet.absoluteFill, outlineStyle]}>
+      <Animated.View style={[StyleSheet.absoluteFill, stillStyle]}>
         <Svg height={height} viewBox={`0 0 ${VIEWBOX.width} ${VIEWBOX.height}`} width={size}>
-          <Path d={WHALE_PATH} fill="none" stroke={theme.colors.brand} strokeLinejoin="round" strokeWidth={1.1} />
+          <Path d={WHALE_PATH} fill={theme.colors.launchInk} />
         </Svg>
       </Animated.View>
-      <Animated.View style={[StyleSheet.absoluteFill, fillStyle]}>
+      <Animated.View style={[StyleSheet.absoluteFill, brandStyle]}>
         <Svg height={height} viewBox={`0 0 ${VIEWBOX.width} ${VIEWBOX.height}`} width={size}>
           <Path d={WHALE_PATH} fill={theme.colors.brand} />
         </Svg>

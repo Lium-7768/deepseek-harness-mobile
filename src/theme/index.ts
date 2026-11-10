@@ -123,6 +123,11 @@ export interface ThemeColors {
   inkDeepDiving: string
   /** Placeholder text only: the desktop's composer placeholder tone. */
   inkFaint: string
+  /**
+   * The launch image's mark colour. The same value in both appearances because the
+   * native launch image is a single asset on either background.
+   */
+  launchInk: string
   /** Standard divider. */
   border: string
   /** Emphasised divider and control outline. */
@@ -305,6 +310,7 @@ const lightColors: ThemeColors = {
   // `--dsw-alias-label-deep-diving`: deepseek-500 70% + blue-950 30%.
   inkDeepDiving: 'rgb(52, 94, 186)',
   inkFaint: 'rgb(173, 178, 184)',
+  launchInk: 'rgb(138, 143, 152)',
   border: 'rgba(0, 0, 0, 0.12)',
   borderStrong: 'rgba(0, 0, 0, 0.16)',
   borderHairline: 'rgba(0, 0, 0, 0.04)',
@@ -400,6 +406,7 @@ const darkColors: ThemeColors = {
   // Lifted from the light appearance's placeholder grey: on the raised dark surface
   // it measured 3.8:1, below the 4.5:1 a 12px label needs.
   inkFaint: 'rgb(154, 159, 165)',
+  launchInk: 'rgb(138, 143, 152)',
   border: 'rgba(255, 255, 255, 0.16)',
   borderStrong: 'rgba(255, 255, 255, 0.2)',
   borderHairline: 'rgba(255, 255, 255, 0.06)',
