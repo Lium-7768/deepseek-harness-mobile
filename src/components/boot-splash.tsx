@@ -18,8 +18,11 @@ import Animated, {
 const BRAND_EASING = Easing.bezier(0.4, 0, 0.2, 1)
 
 const ENTER_MS = 320
-/** Outline-to-fill transition; the cover must outlive it. */
-const WARM_UP_MS = 720
+/**
+ * Everything the mark does. Long enough to be a gesture rather than a flicker: the
+ * outline arrives, holds while the reader recognises it, then the fill lands.
+ */
+const WARM_UP_MS = 2_200
 /**
  * Shortest time the cover stays after the app reports it is ready.
  *
@@ -28,7 +31,7 @@ const WARM_UP_MS = 720
  * floor had already elapsed and the mark's entrance was cut off after ~200ms. This
  * keeps the mark fully drawn for a beat before the fade.
  */
-const MIN_READY_HOLD_MS = 360
+const MIN_READY_HOLD_MS = 1_000
 const LIFT_PX = 8
 const EXIT_MS = 240
 
@@ -118,7 +121,7 @@ export function BootSplash({ ready }: { ready: boolean }): React.JSX.Element | n
     >
       <View style={s.center}>
         <Animated.View style={markStyle}>
-          <NativeWhaleMark size={84} />
+          <NativeWhaleMark breathe duration={WARM_UP_MS} size={96} />
         </Animated.View>
       </View>
     </Animated.View>

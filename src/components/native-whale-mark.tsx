@@ -1,12 +1,13 @@
 import { useAppTheme } from '@/theme/hooks'
 import { useEffect } from 'react'
-import { AccessibilityInfo } from 'react-native'
+import { AccessibilityInfo, StyleSheet, View } from 'react-native'
 import Animated, {
   Easing,
   cancelAnimation,
   interpolate,
-  useAnimatedProps,
+  useAnimatedStyle,
   useSharedValue,
+  withRepeat,
   withTiming,
 } from 'react-native-reanimated'
 import Svg, { Path } from 'react-native-svg'
@@ -22,34 +23,40 @@ const WHALE_PATH =
 
 const VIEWBOX = { height: 17.04, width: 23.16 } as const
 
-const AnimatedPath = Animated.createAnimatedComponent(Path)
-
 /** `cubic-bezier(0.4, 0, 0.2, 1)`, the desktop `--ds-ease-in-out`, as a UI-thread worklet. */
 const BRAND_EASING = Easing.bezier(0.4, 0, 0.2, 1)
 
 /**
- * Draws the whale as a line that becomes a solid mark.
+ * Draws the whale as an outline that gains its fill.
  *
- * The outline holds while the mark settles, then the stroke thins away as the fill
- * arrives, so the launch reads as one shape gaining weight instead of two icons
- * cross-fading. Reduced motion renders the finished mark immediately.
+ * The outline arrives first and holds, then the solid mark fades in over it while the
+ * outline leaves — so the launch reads as one shape gaining weight rather than two
+ * icons cross-fading. Both layers are ordinary views whose opacity and scale animate;
+ * animating SVG paint properties directly does not repaint reliably in a Release build,
+ * which is why the geometry itself stays still. Reduced motion renders the finished
+ * mark immediately.
  *
- * @param props.size - Square-ish width in points; the height keeps the mark's ratio.
- * @param props.duration - Length of the outline-to-fill transition.
- * @param props.start - Whether the transition may run; `false` holds the outline.
+ * @param props.duration - Length of the whole outline-to-fill gesture.
+ * @param props.size - Width in points; the height keeps the mark's ratio.
+ * @param props.start - Whether the gesture may run; `false` shows the mark at rest.
+ * @param props.breathe - Keeps a slow pulse running once the gesture has finished, so
+ *   the cover does not read as frozen while the runtime is still starting.
  * @returns The animated mark.
  */
 export function NativeWhaleMark({
-  duration = 720,
+  breathe = false,
+  duration = 1_800,
   size = 72,
   start = true,
 }: {
+  breathe?: boolean
   duration?: number
   size?: number
   start?: boolean
 }): React.JSX.Element {
   const theme = useAppTheme()
   const progress = useSharedValue(0)
+  const pulse = useSharedValue(0)
 
   useEffect(() => {
     let active = true
@@ -57,11 +64,10 @@ export function NativeWhaleMark({
       .catch(() => false)
       .then((reduced) => {
         if (!active) return
-        if (reduced) {
+        if (reduced || !start) {
           progress.value = 1
           return
         }
-        if (!start) return
         progress.value = withTiming(1, { duration, easing: BRAND_EASING })
       })
     return () => {
@@ -70,25 +76,45 @@ export function NativeWhaleMark({
     }
   }, [duration, progress, start])
 
-  // The line leads: it holds through the first half, then thins out as the fill lands.
-  const stroke = useAnimatedProps(() => ({
-    opacity: interpolate(progress.value, [0, 0.55, 1], [1, 1, 0]),
-    strokeWidth: interpolate(progress.value, [0, 0.55, 1], [1.4, 1.4, 0]),
-  }))
-  const fill = useAnimatedProps(() => ({
-    opacity: interpolate(progress.value, [0.45, 1], [0, 1]),
-  }))
+  useEffect(() => {
+    if (!breathe) {
+      cancelAnimation(pulse)
+      pulse.value = 0
+      return
+    }
+    void AccessibilityInfo.isReduceMotionEnabled()
+      .catch(() => false)
+      .then((reduced) => {
+        if (reduced) return
+        // One breath is a full second and a half, well under a rate that would distract.
+        pulse.value = withRepeat(withTiming(1, { duration: 1_400, easing: Easing.inOut(Easing.quad) }), -1, true)
+      })
+    return () => cancelAnimation(pulse)
+  }, [breathe, pulse])
 
+  // Outline: in over the first eighth, held, then out as the fill takes over.
+  const outlineStyle = useAnimatedStyle(() => ({
+    opacity: interpolate(progress.value, [0, 0.12, 0.5, 0.78], [0, 1, 1, 0]),
+    transform: [{ scale: interpolate(progress.value, [0, 0.5, 1], [0.9, 1, 1.02]) * (1 + pulse.value * 0.065) }],
+  }))
+  // Fill: starts once the outline has drawn attention, lands before the outline leaves.
+  const fillStyle = useAnimatedStyle(() => ({
+    opacity: interpolate(progress.value, [0.42, 0.86], [0, 1]),
+    transform: [{ scale: interpolate(progress.value, [0, 0.5, 1], [0.9, 1, 1.02]) * (1 + pulse.value * 0.065) }],
+  }))
+  const height = (size * VIEWBOX.height) / VIEWBOX.width
   return (
-    <Svg
-      accessibilityElementsHidden
-      aria-hidden
-      height={(size * VIEWBOX.height) / VIEWBOX.width}
-      viewBox={`0 0 ${VIEWBOX.width} ${VIEWBOX.height}`}
-      width={size}
-    >
-      <AnimatedPath animatedProps={stroke} d={WHALE_PATH} fill="none" stroke={theme.colors.brand} />
-      <AnimatedPath animatedProps={fill} d={WHALE_PATH} fill={theme.colors.brand} stroke="none" />
-    </Svg>
+    <View accessibilityElementsHidden style={{ height, width: size }}>
+      <Animated.View style={[StyleSheet.absoluteFill, outlineStyle]}>
+        <Svg height={height} viewBox={`0 0 ${VIEWBOX.width} ${VIEWBOX.height}`} width={size}>
+          <Path d={WHALE_PATH} fill="none" stroke={theme.colors.brand} strokeLinejoin="round" strokeWidth={1.1} />
+        </Svg>
+      </Animated.View>
+      <Animated.View style={[StyleSheet.absoluteFill, fillStyle]}>
+        <Svg height={height} viewBox={`0 0 ${VIEWBOX.width} ${VIEWBOX.height}`} width={size}>
+          <Path d={WHALE_PATH} fill={theme.colors.brand} />
+        </Svg>
+      </Animated.View>
+    </View>
   )
 }
