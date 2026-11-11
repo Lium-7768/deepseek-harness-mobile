@@ -20,6 +20,7 @@ import { runningSubagentCounts, sessionDisplayTitle, sessionIdFromRoute } from '
 import { makeSessionDrawerStyles } from '@/components/session-drawer-styles'
 import { shareSessionLog } from '@/export/session-log-share'
 import { format, t as message } from '@/locale'
+import { setConversationCovered } from '@/state/completion-notices'
 import { useConnectionStore } from '@/state/connection'
 import { useMobileSyncStore } from '@/state/mobile-sync'
 import { useSessionSelectionStore } from '@/state/session-selection'
@@ -52,6 +53,12 @@ export function SessionDrawer(props: DrawerContentComponentProps): React.JSX.Ele
   const styles = useThemedStyles(makeSessionDrawerStyles)
   const { navigation, state } = props
   const drawerStatus = useDrawerStatus()
+  // The drawer sits over the transcript rather than replacing it, so a turn that ends
+  // while it is open still earns a notice.
+  useEffect(() => {
+    setConversationCovered(drawerStatus === 'open')
+    return () => setConversationCovered(false)
+  }, [drawerStatus])
   const [searchOpen, setSearchOpen] = useState(false)
   const [confirm, setConfirm] = useState<
     | { kind: 'archive'; session: SessionSummary; activity?: readonly string[] }

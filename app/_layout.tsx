@@ -12,10 +12,13 @@ import { AppErrorBoundary } from '@/components/app-error-boundary'
 import { BootSplash } from '@/components/boot-splash'
 import { MobileSyncBridge } from '@/components/mobile-sync-bridge'
 import { NativeSnackbar } from '@/components/native-snackbar'
+import { NotificationFocus } from '@/components/notification-focus'
+import { NotificationRouter } from '@/components/notification-router'
 import { SessionDrawer } from '@/components/session-drawer'
 import { drawerWidthForViewport } from '@/components/session-drawer-logic'
 import { StartupGate } from '@/components/startup-gate'
 import { useNativeQueryFocus } from '@/hooks/use-native-query-focus'
+import { prepareNotifications } from '@/state/completion-notices'
 import { useConnectionStore } from '@/state/connection'
 import { mobileConnectionScope } from '@/state/connection-scope'
 import { useAppTheme } from '@/theme/hooks'
@@ -36,6 +39,11 @@ export default function RootLayout(): React.JSX.Element {
   useEffect(() => {
     void initialize()
   }, [initialize])
+  // Registered before any notice can be posted: the handler decides how a notice looks
+  // while the app is open, and the categories have to exist before a banner offers them.
+  useEffect(() => {
+    void prepareNotifications()
+  }, [])
   if (!initialized || initializationError)
     return (
       <>
@@ -76,6 +84,8 @@ export default function RootLayout(): React.JSX.Element {
             <Drawer.Screen name="schedules" />
           </Drawer>
           <NativeSnackbar />
+          <NotificationFocus />
+          <NotificationRouter />
         </ConnectionQueries>
       </AppErrorBoundary>
       <BootSplash ready={initialized} />

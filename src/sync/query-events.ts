@@ -1,5 +1,5 @@
 import { queryKeys } from '@/api/query-keys'
-import { noteSessionRunning } from '@/state/completion-notices'
+import { noteInteractionRequested, noteSessionRunning } from '@/state/completion-notices'
 import type { MobileStreamEvent, SessionEventItem, SessionEventsPayload } from '@/types/mobile'
 import type { QueryClient } from '@tanstack/react-query'
 import { sessionWindow } from './session-window'
@@ -29,6 +29,12 @@ export function applyMobileStreamEvent(queryClient: QueryClient, event: MobileSt
     case 'question/resolved':
       if (sessionId !== undefined)
         void queryClient.invalidateQueries({ queryKey: queryKeys.sessionInteractions(sessionId) })
+      // A turn that stops for an answer cannot continue without the reader, so the two
+      // request events are worth a notice; the resolutions are not.
+      if (sessionId !== undefined && event.type === 'question/requested')
+        noteInteractionRequested(sessionId, 'ask', firstQuestion(event.payload))
+      if (sessionId !== undefined && event.type === 'approval/requested')
+        noteInteractionRequested(sessionId, 'approve', approvalTool(event.payload))
       return
     case 'host/session-status':
       if (sessionId !== undefined && typeof event.payload.running === 'boolean') {
@@ -116,4 +122,20 @@ function isSessionListQuery(queryKey: readonly unknown[]): boolean {
 function isTurnEnd(value: unknown): boolean {
   if (value === null || typeof value !== 'object' || Array.isArray(value)) return false
   return (value as Record<string, unknown>).type === 'turn/end'
+}
+
+/** The first question in a `question/requested` payload, for the notice's detail line. */
+function firstQuestion(payload: Record<string, unknown>): string | undefined {
+  const questions = payload.questions
+  if (!Array.isArray(questions)) return undefined
+  const first: unknown = questions[0]
+  if (first === null || typeof first !== 'object') return undefined
+  const text = (first as Record<string, unknown>).question
+  return typeof text === 'string' ? text : undefined
+}
+
+/** The tool name in an `approval/requested` payload, for the notice's detail line. */
+function approvalTool(payload: Record<string, unknown>): string | undefined {
+  const tool = payload.toolName
+  return typeof tool === 'string' ? tool : undefined
 }

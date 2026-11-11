@@ -40,6 +40,17 @@
       "expo-sharing",
       "expo-image",
       [
+        "expo-notifications",
+        {
+          "sounds": [
+            "./assets/sounds/done.wav",
+            "./assets/sounds/ask.wav",
+            "./assets/sounds/fail.wav",
+            "./assets/sounds/plan.wav"
+          ]
+        }
+      ],
+      [
         "expo-splash-screen",
         {
           "backgroundColor": "#FFFFFF",

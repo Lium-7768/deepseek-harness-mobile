@@ -1,31 +1,39 @@
 import {
   awaySummary,
-  completionBody,
-  shouldBadgeCompletion,
-  shouldPresentCompletion,
-} from '@/components/completion-notice-logic'
+  type NoticeKind,
+  noticeContent,
+  noticeIdentifier,
+  shouldNotice,
+} from '@/components/notification-content'
 import { showSnackbar } from '@/state/snackbar'
 import { t as message } from '@/locale'
 
 /**
- * Completion notices for turns the reader is not watching.
+ * Notices for conversations the reader is not watching.
  *
- * The stream runs only while the app is in the foreground, so iOS never reports a turn
- * that ends while the phone is locked: there is no push channel from the Gateway. What
- * this module can do is report a turn that ends while the reader is in another screen of
- * the app, and, on return, a summary of what finished while the app was away — the
- * resumed session list carries the `running` flags that answer it.
+ * A turn runs for minutes, so the reader leaves the conversation. When it finishes,
+ * blocks on a question, or fails, the phone says so — naming the conversation, playing
+ * a tone chosen by what happened, and carrying the session id that reopens it.
  *
- * Every call swallows its own failure: a missing permission, a missing engine or a
+ * The stream that reports these runs only while the app is active, so the module reads
+ * two sources: live status events while the app is open, and the resumed session list
+ * for whatever finished while it was away. A notice posted here always describes a
+ * state the reader cannot already see on screen.
+ *
+ * Every call swallows its own failure: a missing permission, a missing engine, or a
  * refused notification must never disturb the transcript.
  */
 
 let granted = false
 let asked = false
-let focusedSessionId: string | undefined
+/** Set once the handler and the banner actions are registered. */
+let prepared = false
+let visibleSessionId: string | undefined
+/** Whether an overlay the reader opened, such as the session drawer, covers the screen. */
+let covered = false
 /** Sessions the client has seen running; a later `false` for one of them is a completion. */
 const running = new Set<string>()
-/** Completions the reader has not looked at since they happened. */
+/** Conversations holding at least one notice the reader has not opened yet. */
 const unseen = new Set<string>()
 /** Titles observed from the session list, used to name a notification. */
 const titles = new Map<string, string>()
@@ -33,14 +41,75 @@ let awaySince: number | undefined
 /** Mirrors the app's lifecycle; set by the bridge, which owns the listener. */
 let appActive = true
 
-/** Records which conversation is on screen, so its own completion stays silent. */
-export function setFocusedSession(sessionId: string | undefined): void {
-  focusedSessionId = sessionId
+/**
+ * Registers the presentation rules and the banner's open action.
+ *
+ * Runs once, before any notice is posted: the handler decides how a notice looks while
+ * the app is in the foreground, and a category has to exist before a banner offers its
+ * action.
+ */
+export async function prepareNotifications(): Promise<void> {
+  if (prepared) return
+  prepared = true
+  try {
+    const engine = await import('expo-notifications')
+    engine.setNotificationHandler({
+      handleNotification: () =>
+        Promise.resolve({
+          // The tone is the point: the reader learns that a turn needs them without
+          // looking at the screen.
+          shouldPlaySound: true,
+          shouldSetBadge: false,
+          shouldShowBanner: true,
+          shouldShowList: true,
+        }),
+    })
+    await engine.setNotificationCategoryAsync('completion-ask', [
+      {
+        identifier: 'open',
+        buttonTitle: message('completion.openAction'),
+        // The banner's own tap already opens the app; the action exists so the reader
+        // can open the conversation without dismissing the rest of Notification Centre.
+        options: { opensAppToForeground: true },
+      },
+    ])
+    await engine.setNotificationCategoryAsync('completion-approve', [
+      { identifier: 'open', buttonTitle: message('completion.openAction'), options: { opensAppToForeground: true } },
+    ])
+  } catch {
+    // Without the handler the app still works; it simply cannot post notices.
+  }
+}
+
+/**
+ * Records which conversation the router is showing.
+ *
+ * The route, not the mounted screen, decides this: a conversation stays mounted behind
+ * whatever the reader navigates to, and a turn finishing behind the settings screen is
+ * exactly the case a notice exists for.
+ *
+ * @param sessionId - Conversation in the current route, if it is a conversation.
+ */
+export function setVisibleSession(sessionId: string | undefined): void {
+  visibleSessionId = sessionId
+  // Opening the transcript is what answers "did the reader see this"; the badge follows.
   if (sessionId !== undefined && unseen.delete(sessionId)) void pushBadge()
 }
 
 /**
- * Feeds one status observation into the completion tracker.
+ * Records that an overlay covers the conversation on screen.
+ *
+ * The drawer sits over the transcript without unmounting it, so the reader is not
+ * reading anything while it is open and a completion still deserves its notice.
+ *
+ * @param isCovered - Whether an overlay is over the current screen.
+ */
+export function setConversationCovered(isCovered: boolean): void {
+  covered = isCovered
+}
+
+/**
+ * Feeds one status observation into the tracker.
  *
  * @param sessionId - Session the status belongs to.
  * @param isRunning - Whether the Host reports it as running.
@@ -51,7 +120,7 @@ export function noteSessionRunning(sessionId: string, isRunning: boolean): void 
     return
   }
   if (!running.delete(sessionId)) return
-  markFinished(sessionId)
+  noteFinished(sessionId)
 }
 
 /**
@@ -66,8 +135,36 @@ export function noteSessionList(
   for (const session of sessions) {
     if (session.title !== undefined && session.title.trim() !== '') titles.set(session.sessionId, session.title)
     if (session.running === true) running.add(session.sessionId)
-    else if (session.running === false && running.delete(session.sessionId)) markFinished(session.sessionId)
+    else if (session.running === false && running.delete(session.sessionId)) noteFinished(session.sessionId)
   }
+}
+
+/**
+ * Reports that a turn stopped to ask the reader something.
+ *
+ * This is the one state worth interrupting a reader who already has the conversation
+ * open: the turn cannot move until they answer, and nothing on screen makes a sound.
+ *
+ * @param sessionId - Conversation whose turn is waiting.
+ * @param kind - Whether the turn is waiting on a question or on a tool approval.
+ * @param detail - The question text, or the tool that needs approving.
+ */
+export function noteInteractionRequested(sessionId: string, kind: 'approve' | 'ask', detail: string | undefined): void {
+  unseen.add(sessionId)
+  void present(kind, sessionId, detail)
+  void pushBadge()
+}
+
+/**
+ * Reports that a turn ended in an error.
+ *
+ * @param sessionId - Conversation whose turn failed.
+ * @param detail - The failure's message, when the event carried one.
+ */
+export function noteSessionFailed(sessionId: string, detail: string | undefined): void {
+  unseen.add(sessionId)
+  void present('failed', sessionId, detail)
+  void pushBadge()
 }
 
 /** Records that the app left the foreground; the next foreground reports what finished. */
@@ -76,7 +173,6 @@ export function noteAppState(state: string): void {
   if (appActive) {
     if (awaySince !== undefined && unseen.size > 0) {
       const count = unseen.size
-      unseen.clear()
       void pushBadge()
       showSnackbar(awaySummary(count))
     }
@@ -97,38 +193,47 @@ export async function requestCompletionPermission(): Promise<boolean> {
   if (asked) return granted
   asked = true
   try {
+    await prepareNotifications()
     const engine = await import('expo-notifications')
-    // A foreground banner is the whole point: the app is open, on another screen.
-    engine.setNotificationHandler({
-      handleNotification: () =>
-        Promise.resolve({
-          shouldPlaySound: false,
-          shouldSetBadge: false,
-          shouldShowBanner: true,
-          shouldShowList: true,
-        }),
-    })
     const existing = await engine.getPermissionsAsync()
     const result = existing.granted ? existing : await engine.requestPermissionsAsync()
     granted = result.granted
   } catch {
     granted = false
   }
+  // A refused permission is silent otherwise: the reader would wait for a notice that
+  // can never arrive. Said once, at the moment they first send something.
+  if (!granted) showSnackbar(message('completion.permissionDenied'))
   return granted
 }
 
-function markFinished(sessionId: string): void {
-  unseen.add(sessionId)
-  const focused = sessionId === focusedSessionId
-  if (shouldPresentCompletion({ active: appActive, focused, granted })) void present(sessionId)
-  if (shouldBadgeCompletion({ active: appActive, focused })) void pushBadge()
+/**
+ * Records that the reader opened a conversation from its notice.
+ *
+ * @param sessionId - Conversation the notice pointed at.
+ */
+export function noteNoticeOpened(sessionId: string): void {
+  if (unseen.delete(sessionId)) void pushBadge()
 }
 
-async function present(sessionId: string): Promise<void> {
+function noteFinished(sessionId: string): void {
+  unseen.add(sessionId)
+  void present('done', sessionId)
+  void pushBadge()
+}
+
+async function present(kind: NoticeKind, sessionId: string, detail?: string): Promise<void> {
+  // A notice about the screen the reader is already looking at is noise, except for a
+  // question: that one stops the turn until they answer it.
+  const focused = appActive && !covered && sessionId === visibleSessionId
+  if (!shouldNotice({ kind, focused, granted })) return
   try {
     const engine = await import('expo-notifications')
     await engine.scheduleNotificationAsync({
-      content: { body: completionBody(titles.get(sessionId)), title: message('completion.title') },
+      // Posting under a stable identifier replaces the conversation's previous notice of
+      // the same kind instead of stacking a second banner for one turn.
+      identifier: noticeIdentifier(sessionId, kind),
+      content: noticeContent(kind, sessionId, titles.get(sessionId), detail),
       trigger: null,
     })
   } catch {
@@ -150,7 +255,8 @@ export function resetCompletionNotices(): void {
   running.clear()
   unseen.clear()
   titles.clear()
-  focusedSessionId = undefined
+  visibleSessionId = undefined
+  covered = false
   awaySince = undefined
   granted = false
   asked = false

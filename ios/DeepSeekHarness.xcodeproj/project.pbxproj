@@ -9,9 +9,13 @@
 /* Begin PBXBuildFile section */
 		13B07FBF1A68108700A75B9A /* Images.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 13B07FB51A68108700A75B9A /* Images.xcassets */; };
 		1F73D47842CA9533EDE1504F /* ExpoModulesProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = E3F933BD526B742610ABA26B /* ExpoModulesProvider.swift */; };
+		2869DED80E9B55D2E0E1540E /* ask.wav in Resources */ = {isa = PBXBuildFile; fileRef = 1D54DE3C8C7D60C3ADA95060 /* ask.wav */; };
+		2983FA6E9B9A28B993AC4902 /* plan.wav in Resources */ = {isa = PBXBuildFile; fileRef = 778D2E60785A8F2C850B170E /* plan.wav */; };
+		32E573AF485868B0684F053E /* done.wav in Resources */ = {isa = PBXBuildFile; fileRef = D067670E20E70B3BB00717F2 /* done.wav */; };
 		3E461D99554A48A4959DE609 /* SplashScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = AA286B85B6C04FC6940260E9 /* SplashScreen.storyboard */; };
 		90A116E4E1A4E1FE96046212 /* libPods-DeepSeekHarness.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 6FF1747546CE25A5E7B53961 /* libPods-DeepSeekHarness.a */; };
 		BB2F792D24A3F905000567C9 /* Expo.plist in Resources */ = {isa = PBXBuildFile; fileRef = BB2F792C24A3F905000567C9 /* Expo.plist */; };
+		E16DA4DFD4E2BE1AC0A494C9 /* fail.wav in Resources */ = {isa = PBXBuildFile; fileRef = 7476EA8FF4A2EA9C8378E69E /* fail.wav */; };
 		E7E0E64BA47FB7BB1C113AA2 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 3536C5E9E628E1DD47A2150E /* PrivacyInfo.xcprivacy */; };
 		F11748422D0307B40044C1D9 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = F11748412D0307B40044C1D9 /* AppDelegate.swift */; };
 /* End PBXBuildFile section */
@@ -20,12 +24,16 @@
 		13B07F961A680F5B00A75B9A /* DeepSeekHarness.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = DeepSeekHarness.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		13B07FB51A68108700A75B9A /* Images.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; name = Images.xcassets; path = DeepSeekHarness/Images.xcassets; sourceTree = "<group>"; };
 		13B07FB61A68108700A75B9A /* Info.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; name = Info.plist; path = DeepSeekHarness/Info.plist; sourceTree = "<group>"; };
+		1D54DE3C8C7D60C3ADA95060 /* ask.wav */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = audio.wav; name = ask.wav; path = DeepSeekHarness/ask.wav; sourceTree = "<group>"; };
 		3536C5E9E628E1DD47A2150E /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; includeInIndex = 1; name = PrivacyInfo.xcprivacy; path = DeepSeekHarness/PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 		6FF1747546CE25A5E7B53961 /* libPods-DeepSeekHarness.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = "libPods-DeepSeekHarness.a"; sourceTree = BUILT_PRODUCTS_DIR; };
+		7476EA8FF4A2EA9C8378E69E /* fail.wav */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = audio.wav; name = fail.wav; path = DeepSeekHarness/fail.wav; sourceTree = "<group>"; };
+		778D2E60785A8F2C850B170E /* plan.wav */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = audio.wav; name = plan.wav; path = DeepSeekHarness/plan.wav; sourceTree = "<group>"; };
 		A354D9C334948F87336EDDAF /* Pods-DeepSeekHarness.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-DeepSeekHarness.release.xcconfig"; path = "Target Support Files/Pods-DeepSeekHarness/Pods-DeepSeekHarness.release.xcconfig"; sourceTree = "<group>"; };
 		AA286B85B6C04FC6940260E9 /* SplashScreen.storyboard */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = file.storyboard; name = SplashScreen.storyboard; path = DeepSeekHarness/SplashScreen.storyboard; sourceTree = "<group>"; };
 		BB2F792C24A3F905000567C9 /* Expo.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; path = Expo.plist; sourceTree = "<group>"; };
 		C89F2EB8F8565EF7EC096D7F /* Pods-DeepSeekHarness.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-DeepSeekHarness.debug.xcconfig"; path = "Target Support Files/Pods-DeepSeekHarness/Pods-DeepSeekHarness.debug.xcconfig"; sourceTree = "<group>"; };
+		D067670E20E70B3BB00717F2 /* done.wav */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = audio.wav; name = done.wav; path = DeepSeekHarness/done.wav; sourceTree = "<group>"; };
 		E3F933BD526B742610ABA26B /* ExpoModulesProvider.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = ExpoModulesProvider.swift; path = "Pods/Target Support Files/Pods-DeepSeekHarness/ExpoModulesProvider.swift"; sourceTree = "<group>"; };
 		ED297162215061F000B7C4FE /* JavaScriptCore.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = JavaScriptCore.framework; path = System/Library/Frameworks/JavaScriptCore.framework; sourceTree = SDKROOT; };
 		F11748412D0307B40044C1D9 /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = AppDelegate.swift; path = DeepSeekHarness/AppDelegate.swift; sourceTree = "<group>"; };
@@ -54,6 +62,10 @@
 				13B07FB61A68108700A75B9A /* Info.plist */,
 				AA286B85B6C04FC6940260E9 /* SplashScreen.storyboard */,
 				3536C5E9E628E1DD47A2150E /* PrivacyInfo.xcprivacy */,
+				D067670E20E70B3BB00717F2 /* done.wav */,
+				7476EA8FF4A2EA9C8378E69E /* fail.wav */,
+				778D2E60785A8F2C850B170E /* plan.wav */,
+				1D54DE3C8C7D60C3ADA95060 /* ask.wav */,
 			);
 			name = DeepSeekHarness;
 			sourceTree = "<group>";
@@ -197,6 +209,10 @@
 				13B07FBF1A68108700A75B9A /* Images.xcassets in Resources */,
 				3E461D99554A48A4959DE609 /* SplashScreen.storyboard in Resources */,
 				E7E0E64BA47FB7BB1C113AA2 /* PrivacyInfo.xcprivacy in Resources */,
+				32E573AF485868B0684F053E /* done.wav in Resources */,
+				E16DA4DFD4E2BE1AC0A494C9 /* fail.wav in Resources */,
+				2983FA6E9B9A28B993AC4902 /* plan.wav in Resources */,
+				2869DED80E9B55D2E0E1540E /* ask.wav in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

@@ -71,7 +71,6 @@ import { showSnackbar } from '@/state/snackbar'
 import { tapFeedback } from '@/components/haptics'
 import { type SharedEventItem } from '@/shared/dsh-presentation'
 import { doneFeedback } from '@/components/haptics'
-import { setFocusedSession } from '@/state/completion-notices'
 import { useConnectionStore } from '@/state/connection'
 import { useMobileSyncStore } from '@/state/mobile-sync'
 import { useReadingPositionStore } from '@/state/reading-positions'
@@ -276,13 +275,6 @@ export default function SessionScreen(): React.JSX.Element {
   }, [events, history, interactions, jobs, loadOlder.isPending, queue, refreshing, subagents])
 
   useRouteSessionSelection(sessionId)
-
-  // A completion in the session the reader is looking at is already visible and already
-  // has its own haptic; the notice tracker only speaks for the others.
-  useEffect(() => {
-    setFocusedSession(sessionId)
-    return () => setFocusedSession(undefined)
-  }, [sessionId])
 
   useEffect(() => {
     submittedDraft.current = undefined
