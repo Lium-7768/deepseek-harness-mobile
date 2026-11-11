@@ -11,6 +11,8 @@ const RETRY_DELAYS = [1_000, 2_000, 5_000, 10_000]
 const HANDSHAKE_TIMEOUT = 15_000
 // Gateway emits a comment heartbeat regularly, including while sessions are idle.
 const IDLE_TIMEOUT = 45_000
+/** Live sessions hydrated at once after a reconnect; the rest wait for the next batch. */
+const HYDRATE_CONCURRENCY = 4
 
 interface SyncOptions {
   connection: MobileConnection
@@ -115,8 +117,15 @@ export function startMobileSync(options: SyncOptions): () => void {
           armWatchdog(IDLE_TIMEOUT)
           void api
             .runningSessions()
-            .then((snapshot) => {
-              if (valid()) for (const id of snapshot.sessionIds) void hydrate(id)
+            .then(async (snapshot) => {
+              if (!valid()) return
+              // Bounded: a workspace with many live sessions would otherwise open one
+              // gateway request per session in the same instant, the reconnect storm the
+              // stream itself just survived.
+              const ids = snapshot.sessionIds
+              for (let start = 0; start < ids.length; start += HYDRATE_CONCURRENCY) {
+                await Promise.allSettled(ids.slice(start, start + HYDRATE_CONCURRENCY).map((id) => hydrate(id)))
+              }
             })
             .catch(() => {
               if (valid()) reconnect()

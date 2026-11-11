@@ -35,6 +35,7 @@ vi.mock('react-native-reanimated', async () => {
   }
 })
 
+import { coverHoldMs, ENTER_MS, MIN_READY_HOLD_MS, WARM_UP_MS } from '@/components/boot-splash-logic'
 import { BootSplash } from '@/components/boot-splash'
 
 let renderer: RenderResult
@@ -73,5 +74,18 @@ describe('launch cover', () => {
       await vi.advanceTimersByTimeAsync(200)
     })
     expect(covers().length).toBeGreaterThanOrEqual(1)
+  })
+})
+
+describe('cover budget', () => {
+  it('spends the whole gesture when readiness is immediate', () => {
+    expect(coverHoldMs(0, 0)).toBe(WARM_UP_MS + Math.max(ENTER_MS + 100, MIN_READY_HOLD_MS))
+  })
+
+  it('shrinks by what the slow runtime start already played, and never below zero', () => {
+    const total = WARM_UP_MS + Math.max(ENTER_MS + 100, MIN_READY_HOLD_MS)
+    expect(coverHoldMs(0, total - 1_000)).toBe(1_000)
+    expect(coverHoldMs(0, total)).toBe(0)
+    expect(coverHoldMs(0, total + 5_000)).toBe(0)
   })
 })

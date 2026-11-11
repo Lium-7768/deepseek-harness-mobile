@@ -1,7 +1,8 @@
+import { coverHoldMs, ENTER_MS, EXIT_MS, WARM_UP_MS } from '@/components/boot-splash-logic'
 import { NativeWhaleMark } from '@/components/native-whale-mark'
 import type { AppTheme } from '@/theme'
 import { useThemedStyles } from '@/theme/hooks'
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import * as SplashScreen from 'expo-splash-screen'
 import { AccessibilityInfo, StyleSheet, View } from 'react-native'
 import Animated, {
@@ -17,7 +18,6 @@ import Animated, {
 /** `cubic-bezier(0.4, 0, 0.2, 1)`, the desktop `--ds-ease-in-out`, as a UI-thread worklet. */
 const BRAND_EASING = Easing.bezier(0.4, 0, 0.2, 1)
 
-const ENTER_MS = 320
 /**
  * When the native launch screen goes away.
  *
@@ -27,23 +27,8 @@ const ENTER_MS = 320
  * exact frame, so the two line up instead of cutting to blank.
  */
 const HANDOVER_MS = 420
-/**
- * Everything the mark does. Long enough to be a gesture rather than a flicker: the
- * launch image's grey mark holds while the reader recognises it, then takes the
- * brand colour.
- */
-const WARM_UP_MS = 3_200
-/**
- * Shortest time the cover stays after the app reports it is ready.
- *
- * Measured from readiness rather than from mount: on a cold start the cover mounts
- * with the runtime, and readiness can arrive a second later, so a mount-relative
- * floor had already elapsed and the mark's entrance was cut off after ~200ms. This
- * keeps the mark fully drawn for a beat before the fade.
- */
-const MIN_READY_HOLD_MS = 1_200
+/** The mark's lift on entrance, in points. */
 const LIFT_PX = 8
-const EXIT_MS = 240
 
 /**
  * Covers the first frame with the brand until the stored connection is read.
@@ -89,14 +74,14 @@ export function BootSplash({ ready }: { ready: boolean }): React.JSX.Element | n
     }
   }, [enter])
 
+  // The cover's clock starts at mount: the gesture and the readiness race each other,
+  // and the budget belongs to the whole launch rather than to whichever finished last.
+  const mountedAt = useRef(Date.now())
+
   useEffect(() => {
     if (!ready) return
     let active = true
-    // Hold from readiness, and never less than the entrance: the mark has to be fully
-    // drawn for a beat before the cover starts to leave.
-    // The mark itself takes WARM_UP_MS to gain its fill; the cover leaves after that
-    // plus the ready floor, so the reader sees a finished mark before the app.
-    const hold = WARM_UP_MS + Math.max(ENTER_MS + 100, MIN_READY_HOLD_MS)
+    const hold = coverHoldMs(mountedAt.current, Date.now())
     void AccessibilityInfo.isReduceMotionEnabled()
       .catch(() => false)
       .then((reduced) => {

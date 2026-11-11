@@ -37,6 +37,10 @@ const running = new Set<string>()
 const unseen = new Set<string>()
 /** Titles observed from the session list, used to name a notification. */
 const titles = new Map<string, string>()
+/** Two notices of one kind closer than this read as one interruption. */
+const KIND_QUIET_MS = 2_500
+/** When each kind last sounded, so a reconnect cannot ring the same tone twice. */
+const lastPresentedAt = new Map<NoticeKind, number>()
 let awaySince: number | undefined
 /** Mirrors the app's lifecycle; set by the bridge, which owns the listener. */
 let appActive = true
@@ -161,9 +165,9 @@ export function noteInteractionRequested(sessionId: string, kind: 'approve' | 'a
  * @param sessionId - Conversation whose turn failed.
  * @param detail - The failure's message, when the event carried one.
  */
-export function noteSessionFailed(sessionId: string, detail: string | undefined): void {
+export async function noteSessionFailed(sessionId: string, detail: string | undefined): Promise<void> {
   unseen.add(sessionId)
-  void present('failed', sessionId, detail)
+  await present('failed', sessionId, detail)
   void pushBadge()
 }
 
@@ -227,6 +231,13 @@ async function present(kind: NoticeKind, sessionId: string, detail?: string): Pr
   // question: that one stops the turn until they answer it.
   const focused = appActive && !covered && sessionId === visibleSessionId
   if (!shouldNotice({ kind, focused, granted })) return
+  // A reconnect can flip several sessions at once. The first notice of a kind says it
+  // with sound; the rest arrive as badge and list, because a tone per session rings
+  // the same interruption five times. Same rule the desktop sound notifier uses.
+  const now = Date.now()
+  const last = lastPresentedAt.get(kind)
+  if (last !== undefined && now - last < KIND_QUIET_MS) return
+  lastPresentedAt.set(kind, now)
   try {
     const engine = await import('expo-notifications')
     await engine.scheduleNotificationAsync({
@@ -255,6 +266,7 @@ export function resetCompletionNotices(): void {
   running.clear()
   unseen.clear()
   titles.clear()
+  lastPresentedAt.clear()
   visibleSessionId = undefined
   covered = false
   awaySince = undefined

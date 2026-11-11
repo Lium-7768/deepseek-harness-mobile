@@ -2,7 +2,7 @@ import { queryKeys } from '@/api/query-keys'
 import { noteInteractionRequested, noteSessionRunning } from '@/state/completion-notices'
 import type { MobileStreamEvent, SessionEventItem, SessionEventsPayload } from '@/types/mobile'
 import type { QueryClient } from '@tanstack/react-query'
-import { sessionWindow } from './session-window'
+import { LIVE_WINDOW_LIMIT, sessionWindow } from './session-window'
 
 export function applyMobileStreamEvent(queryClient: QueryClient, event: MobileStreamEvent): void {
   const sessionId = event.sessionId
@@ -32,9 +32,9 @@ export function applyMobileStreamEvent(queryClient: QueryClient, event: MobileSt
       // A turn that stops for an answer cannot continue without the reader, so the two
       // request events are worth a notice; the resolutions are not.
       if (sessionId !== undefined && event.type === 'question/requested')
-        noteInteractionRequested(sessionId, 'ask', firstQuestion(event.payload))
+        void noteInteractionRequested(sessionId, 'ask', firstQuestion(event.payload))
       if (sessionId !== undefined && event.type === 'approval/requested')
-        noteInteractionRequested(sessionId, 'approve', approvalTool(event.payload))
+        void noteInteractionRequested(sessionId, 'approve', approvalTool(event.payload))
       return
     case 'host/session-status':
       if (sessionId !== undefined && typeof event.payload.running === 'boolean') {
@@ -86,8 +86,22 @@ function appendSessionEvent(queryClient: QueryClient, sessionId: string, streamE
   }
   queryClient.setQueryData<SessionEventsPayload>(queryKeys.sessionEvents(sessionId), (current) => {
     const items = current?.items ?? []
-    if (item.seq !== undefined && items.some((existing) => existing.seq === item.seq)) return current
-    const window = sessionWindow([...items, item])
+    if (item.seq !== undefined) {
+      // Events arrive in seq order, so the duplicate that matters is the one just
+      // applied; the scan stays only for the out-of-order snapshot merge.
+      const last = items[items.length - 1]
+      if (last?.seq === item.seq) return current
+      if (items.some((existing) => existing.seq === item.seq)) return current
+    }
+    const next = [...items, item]
+    // Compaction only changes when a step settles: an assistant/message replaces its
+    // own transient chunks, so any other event copies the window forward as it was.
+    // Running sessionWindow per event rebuilt its set over the whole window each time;
+    // the over-limit guard keeps the original truncation bound without paying for it.
+    const window =
+      item.event.type === 'assistant/message' || next.length > LIVE_WINDOW_LIMIT
+        ? sessionWindow(next)
+        : { items: next, truncated: false }
     return {
       since: Math.max(current?.since ?? 0, item.seq ?? 0),
       items: window.items,

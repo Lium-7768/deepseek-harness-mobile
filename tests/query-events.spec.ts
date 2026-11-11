@@ -74,3 +74,72 @@ it('refreshes live Goal activation along with its durable projection after Goal 
   expect(client.getQueryState(key)?.isInvalidated).toBe(true)
   client.clear()
 })
+
+it('ignores a replayed event by comparing the tail, not the whole window', () => {
+  const client = new QueryClient()
+  const eventKey = queryKeys.sessionEvents('s')
+  const base: MobileStreamEvent = {
+    contractVersion: 1,
+    eventId: 'e',
+    type: 'session/event',
+    sessionId: 's',
+    payload: {},
+  }
+  client.setQueryData<SessionEventsPayload>(eventKey, {
+    since: 3,
+    status: 'running',
+    items: [1, 2, 3].map((seq) => ({
+      seq,
+      event: { type: 'host/session-status', data: { running: true } },
+    })),
+  })
+  applyMobileStreamEvent(client, { ...base, eventId: 'e-again', seq: 3, payload: { event: { type: 'turn/start' } } })
+  expect(client.getQueryData<SessionEventsPayload>(eventKey)?.items).toHaveLength(3)
+  expect(client.getQueryData<SessionEventsPayload>(eventKey)?.since).toBe(3)
+  client.clear()
+})
+
+it("compacts a settled step's chunks only once, when the message lands", () => {
+  const client = new QueryClient()
+  const eventKey = queryKeys.sessionEvents('s')
+  const chunk = (seq: number): SessionEventItem => ({
+    seq,
+    event: {
+      type: 'assistant/chunk',
+      data: { turn: 1, step: 1, chunk: { type: 'text-delta', index: 0, text: 'a' } },
+    },
+  })
+  client.setQueryData<SessionEventsPayload>(eventKey, {
+    since: 2,
+    status: 'running',
+    items: [chunk(1), chunk(2)],
+  })
+  // A non-settling event leaves the settled chunks in place; only the message compacts.
+  applyMobileStreamEvent(client, {
+    contractVersion: 1,
+    eventId: 'tool',
+    type: 'session/event',
+    sessionId: 's',
+    seq: 3,
+    payload: { event: { type: 'tool/call', data: { name: 'read' } } },
+  })
+  expect(client.getQueryData<SessionEventsPayload>(eventKey)?.items).toHaveLength(3)
+  applyMobileStreamEvent(client, {
+    contractVersion: 1,
+    eventId: 'message',
+    type: 'session/event',
+    sessionId: 's',
+    seq: 4,
+    payload: {
+      event: {
+        type: 'assistant/message',
+        data: { turn: 1, step: 1, message: { content: [{ type: 'text', text: 'a' }] } },
+      },
+    },
+  })
+  // The two chunks of the settled step are gone; the tool call and the message stay.
+  const items = client.getQueryData<SessionEventsPayload>(eventKey)?.items ?? []
+  expect(items.map((item) => item.seq)).toEqual([3, 4])
+  expect(items.map((item) => item.event.type)).toEqual(['tool/call', 'assistant/message'])
+  client.clear()
+})
