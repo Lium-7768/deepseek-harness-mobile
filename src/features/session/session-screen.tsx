@@ -371,7 +371,8 @@ export default function SessionScreen(): React.JSX.Element {
   /** What `renderItem` reads for the previous row's gap, without depending on the array. */
   const rowsRef = useRef<NativeRow[]>([])
   displayRowsRef.current = displayRows
-  rowsRef.current = frozenRows ?? displayRows
+  const listRows = frozenRows ?? displayRows
+  rowsRef.current = listRows
   const railRows = (frozenRows ?? displayRows) as readonly NativeConversationRow[]
   const railMarks = useMemo(() => turnRail(railRows), [railRows])
   const eventBySeq = useMemo(
@@ -802,7 +803,7 @@ export default function SessionScreen(): React.JSX.Element {
                 <FlatList
                   style={s.listView}
                   ref={listRef}
-                  data={frozenRows ?? displayRows}
+                  data={listRows}
                   keyExtractor={keyExtractor}
                   // A long session can hold hundreds of rows; bound the first paint and
                   // the batch size so opening one does not mount every row at once.
