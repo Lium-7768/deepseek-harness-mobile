@@ -76,12 +76,12 @@ import { useMobileSyncStore } from '@/state/mobile-sync'
 import { useReadingPositionStore } from '@/state/reading-positions'
 import { useRouteSessionSelection } from '@/state/session-selection'
 import { mergeEventItems } from '@/sync/event-items'
-import { FOLLOW_PIN_DELAY_MS, PIN_SETTLE_MS } from '@/components/session-scroll-logic'
+import { FOLLOW_PIN_DELAY_MS, PIN_SETTLE_MS, SETTLE_MIN_GAP_PX } from '@/components/session-scroll-logic'
 import { sessionWindow } from '@/sync/session-window'
 import { useAppTheme, useThemedStyles } from '@/theme/hooks'
 import { useMutation } from '@tanstack/react-query'
 import { router, useLocalSearchParams } from 'expo-router'
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { memo, type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   Alert,
   FlatList,
@@ -135,7 +135,9 @@ export default function SessionScreen(): React.JSX.Element {
   // offset measured in between would otherwise release the follow latch.
   const sendFollowUntil = useRef(0)
   /** Last measured content height and offset, used to anchor a history prepend. */
-  const listMetrics = useRef({ contentHeight: 0, offsetY: 0 })
+  const listMetrics = useRef({ contentHeight: 0, offsetY: 0, viewportHeight: 0 })
+  /** The offset to keep when the frozen rows are replaced by the live ones. */
+  const thawAnchor = useRef<{ contentHeight: number; offsetY: number } | null>(null)
   /** Set by `loadOlder` so the next content growth restores the reader's offset. */
   const pendingPrependAnchor = useRef<{ contentHeight: number; offsetY: number } | null>(null)
   /** A page that brought no rows means scrolling further cannot find more, even if the host says it has. */
@@ -504,9 +506,17 @@ export default function SessionScreen(): React.JSX.Element {
   useEffect(() => {
     setOpenSteps(new Set())
   }, [sessionId])
+  // One writer owns the initial landing. This used to jump on every `messages.length`
+  // change as well, so a cold open raced `onContentSizeChange`: two `scrollToEnd` calls
+  // against two different content heights, 0ms apart, which read as the page jumping.
+  // `onContentSizeChange` already re-pins on each growth while the latch is closed.
   useEffect(() => {
     if (messages.length === 0 || !initialLatestPositionPending.current) return
-    const timer = setTimeout(() => listRef.current?.scrollToEnd({ animated: false }), 0)
+    const timer = setTimeout(() => {
+      if (!initialLatestPositionPending.current) return
+      initialLatestPositionPending.current = false
+      listRef.current?.scrollToEnd({ animated: false })
+    }, 0)
     return () => clearTimeout(timer)
   }, [messages.length])
 
@@ -563,6 +573,17 @@ export default function SessionScreen(): React.JSX.Element {
     readerScrollIdleTimer.current = setTimeout(() => {
       readerScrolling.current = false
       readerScrollIdleTimer.current = null
+      // Thawing swaps the data array for the live one. The reader is no longer at the
+      // end, so growth must not re-pin: the follow latch is closed here, before the swap,
+      // or the content change that the swap itself provokes jumps the list under a
+      // reader who has just finished scrolling.
+      if (!nearLatestMessage.current) initialLatestPositionPending.current = false
+      // Thawing replaces the array the list renders, and the replacement re-measures the
+      // mounted cells. Anchor on the reader's current offset so the swap cannot move the
+      // transcript: without this the thaw lands a frame after the gesture and reads as
+      // the page jumping.
+      const thaw = listMetrics.current
+      thawAnchor.current = { contentHeight: thaw.contentHeight, offsetY: thaw.offsetY }
       setFrozenRows(null)
       // The gesture has settled, so the offset now names a row rather than a frame in a
       // moving list. This is the moment a reopen can trust.
@@ -596,13 +617,19 @@ export default function SessionScreen(): React.JSX.Element {
     pendingRestore.current = null
     if (sessionId !== undefined) forgetPosition(sessionId)
     listRef.current?.scrollToEnd({ animated: false })
-    // The rows that arrived in this commit measure after the jump, so the first
-    // landing is short by their height; a second jump once layout settles puts the
-    // reader on the newest row instead of just above it.
+    // The rows that arrived in this commit measure after the jump, so the first landing
+    // is short by their height. The settle re-assert is kept, but only when the list is
+    // measurably short of the end: an unconditional second jump moved a list that was
+    // already correct, which is the flicker a reader sees after every streaming burst.
     if (pinSettleTimer.current) clearTimeout(pinSettleTimer.current)
     pinSettleTimer.current = setTimeout(() => {
       pinSettleTimer.current = null
       if (readerScrolling.current || !nearLatestMessage.current) return
+      const metrics = listMetrics.current
+      const endOffset = metrics.contentHeight - metrics.viewportHeight
+      if (metrics.contentHeight <= 0 || metrics.viewportHeight <= 0) return
+      // Below the threshold the first landing is already on the newest row.
+      if (endOffset - metrics.offsetY < SETTLE_MIN_GAP_PX) return
       listRef.current?.scrollToEnd({ animated: false })
     }, PIN_SETTLE_MS)
   }
@@ -797,7 +824,7 @@ export default function SessionScreen(): React.JSX.Element {
                   }
                   showsVerticalScrollIndicator={false}
                   ListHeaderComponent={
-                    <>
+                    <SessionListHeader>
                       <NativeAgentActivity
                         jobs={jobs.data?.items ?? []}
                         subagents={subagents.data?.entries ?? []}
@@ -847,10 +874,10 @@ export default function SessionScreen(): React.JSX.Element {
                           <Text style={s.historyStartText}>{message('conversation.historyStart')}</Text>
                         </View>
                       )}
-                    </>
+                    </SessionListHeader>
                   }
                   ListFooterComponent={
-                    <>
+                    <SessionListFooter>
                       {/* A question the Turn is waiting on outranks its clock: the reader
                           is the blocker, and the row opens the screen that answers it. */}
                       <NativeQuestionPromptRow
@@ -862,7 +889,7 @@ export default function SessionScreen(): React.JSX.Element {
                           <NativeTurnStatus startedAt={runningTurnStartedAt} />
                         </View>
                       ) : null}
-                    </>
+                    </SessionListFooter>
                   }
                   ListEmptyComponent={
                     history.isPending ? (
@@ -876,6 +903,15 @@ export default function SessionScreen(): React.JSX.Element {
                     // streaming reply grows on every chunk, so the follow is decided per
                     // content change rather than once per open. The reader's own drag is
                     // what releases it; a programmatic jump cannot.
+                    // The thaw lands as one content change; hold the reader's offset
+                    // across it so replacing the frozen rows cannot shift the transcript.
+                    const thaw = thawAnchor.current
+                    if (thaw !== null) {
+                      thawAnchor.current = null
+                      if (Math.abs(height - thaw.contentHeight) > 0.5)
+                        listRef.current?.scrollToOffset({ animated: false, offset: thaw.offsetY })
+                      return
+                    }
                     const restore = pendingRestore.current
                     if (restore !== null) {
                       const offset = restoredOffsetOnOpen({ saved: restore, contentHeight: height })
@@ -929,6 +965,7 @@ export default function SessionScreen(): React.JSX.Element {
                     listMetrics.current = {
                       contentHeight: event.nativeEvent.contentSize.height,
                       offsetY: event.nativeEvent.contentOffset.y,
+                      viewportHeight: event.nativeEvent.layoutMeasurement.height,
                     }
                     // Reaching for older history should not need a second press on a button
                     // that sits above the very rows being requested.
@@ -1093,3 +1130,35 @@ export default function SessionScreen(): React.JSX.Element {
     </ConversationDisclosureContext.Provider>
   )
 }
+
+/**
+ * Holds the rows above the transcript for as long as the list is mounted.
+ *
+ * `ListHeaderComponent` takes an element, so an inline fragment handed to it is a new
+ * element on every render of the screen — and a new element remounts the subtree. The
+ * components inside carry their own disclosure state (`NativeTeamTasksRow`,
+ * `ContextRows`), so a scroll-driven re-render of the screen used to collapse them and
+ * re-expand them, which read as the header flashing. Declaring the element here keeps
+ * its identity across renders, so React reconciles the children instead of replacing
+ * them.
+ *
+ * @param props.children - The header rows, built once by the screen.
+ * @returns The header subtree with a stable identity.
+ */
+const SessionListHeader = memo(function SessionListHeader({ children }: { children: ReactNode }): React.JSX.Element {
+  return <>{children}</>
+})
+
+/**
+ * Holds the rows below the transcript across screen re-renders.
+ *
+ * Same identity problem as `SessionListHeader`: the pending-question row and the
+ * running-turn clock own state and animation, so remounting them on every scroll frame
+ * restarts both.
+ *
+ * @param props.children - The footer rows, built once by the screen.
+ * @returns The footer subtree with a stable identity.
+ */
+const SessionListFooter = memo(function SessionListFooter({ children }: { children: ReactNode }): React.JSX.Element {
+  return <>{children}</>
+})

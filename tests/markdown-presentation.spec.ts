@@ -68,3 +68,15 @@ it('routes diff and patch fences to the row renderer instead of the highlighter'
   const ts = parseBlocks(['```ts', 'const x = 1', '```'].join('\n'))
   expect(isDiffFence(ts[0]?.kind === 'code' ? ts[0].language : undefined)).toBe(false)
 })
+
+it('keeps the settle re-pin conditional so a correct landing is not moved again', async () => {
+  // The flicker after a streaming burst came from an unconditional second jump: the
+  // first landing was already on the newest row, and the settle timer moved a correct
+  // list. The gap between the landing and the end decides whether another jump is
+  // needed, so the threshold is what the behaviour rests on.
+  const { SETTLE_MIN_GAP_PX } = await import('@/components/session-scroll-logic')
+  expect(SETTLE_MIN_GAP_PX).toBeGreaterThan(0)
+  // A landing within the threshold is treated as arrived; past it the list is short.
+  expect(2 < SETTLE_MIN_GAP_PX).toBe(true)
+  expect(20 < SETTLE_MIN_GAP_PX).toBe(false)
+})

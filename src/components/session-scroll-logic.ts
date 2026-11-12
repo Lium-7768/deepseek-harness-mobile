@@ -16,6 +16,14 @@ export const FOLLOW_PIN_DELAY_MS = 90
  */
 export const PIN_SETTLE_MS = 130
 
+/**
+ * How far short of the end a pin may land before the settle jump corrects it.
+ *
+ * Below this the first landing already sits on the newest row, so a second jump only
+ * moves a correct list — the visible flicker after a streaming burst.
+ */
+export const SETTLE_MIN_GAP_PX = 4
+
 /** Pixel distance from the message list end that still counts as reading the latest conversation. */
 export const LATEST_MESSAGE_PROXIMITY_PX = 72
 
