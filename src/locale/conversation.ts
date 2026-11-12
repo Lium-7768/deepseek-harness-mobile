@@ -85,6 +85,12 @@ export const conversation = {
   noMoreHistory: '当前没有可分页的历史记录。',
   loading: '正在加载…',
   loadOlder: '加载更早消息',
+  /** Shown above the first turn once the desktop has nothing older to page. */
+  historyStart: '已到会话开头',
+  /** Shown while a page is being fetched and folded into the transcript. */
+  processingOlder: '正在处理',
+  /** Shown when the last page failed, so the same control asks again. */
+  retryLoadOlder: '重新加载',
   loadOlderFailedTitle: '加载更早消息失败',
   backToLatest: '返回最新消息',
   /** `{count}` message rows that arrived while the reader was away from the bottom. */

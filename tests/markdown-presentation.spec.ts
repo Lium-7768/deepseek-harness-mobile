@@ -1,5 +1,6 @@
 import { expect, it } from 'vitest'
-import { markdownBlockGap, markdownLinkTarget } from '@/components/markdown-blocks'
+import { markdownBlockGap, markdownLinkTarget, parseBlocks } from '@/components/markdown-blocks'
+import { isDiffFence } from '@/components/markdown-diff-fence'
 
 it('models collapsed desktop block spacing without doubling native heading gaps', () => {
   expect(markdownBlockGap({ kind: 'heading', level: 2, text: 'Title' })).toBe(0)
@@ -50,4 +51,20 @@ it('reports how many lines a collapsed code block hides', () => {
 it('keeps a table cell one step below body text, matching the desktop token', () => {
   // Desktop `--dsw-font-markdown-table` is 13px/22px; body 15px. Phone body is 14.
   expect(13).toBeLessThan(14)
+})
+
+it('routes diff and patch fences to the row renderer instead of the highlighter', () => {
+  // The desktop renders a `diff`/`patch` fence as rows, because the marker column is
+  // the meaning. A fence carrying a real patch must not reach the grammar highlighter.
+  const blocks = parseBlocks(['```diff', '@@ -1 +1 @@', '-old', '+new', '```'].join('\n'))
+  expect(blocks).toHaveLength(1)
+  expect(blocks[0]).toMatchObject({ kind: 'code', language: 'diff' })
+  expect(isDiffFence(blocks[0]?.kind === 'code' ? blocks[0].language : undefined)).toBe(true)
+
+  const patch = parseBlocks(['```patch', '--- a/x.ts', '+++ b/x.ts', '```'].join('\n'))
+  expect(isDiffFence(patch[0]?.kind === 'code' ? patch[0].language : undefined)).toBe(true)
+
+  // Every other language keeps the highlighter.
+  const ts = parseBlocks(['```ts', 'const x = 1', '```'].join('\n'))
+  expect(isDiffFence(ts[0]?.kind === 'code' ? ts[0].language : undefined)).toBe(false)
 })

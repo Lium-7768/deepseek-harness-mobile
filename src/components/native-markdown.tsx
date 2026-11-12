@@ -1,4 +1,6 @@
 import { highlightCode, codeTokenColor } from './code-highlighting'
+import { isDiffFence } from './markdown-diff-fence'
+import { NativeDiffFence } from './native-diff-fence'
 import {
   parseBlocks,
   tableLayout,
@@ -134,6 +136,20 @@ export function NativeMarkdown({
         if (block.kind === 'code') {
           const copied = copiedIndex === index
           const failed = copyFailedIndex === index
+          // A `diff`/`patch` fence is a change to read line by line, not code to
+          // highlight: the marker column carries the meaning.
+          if (isDiffFence(block.language))
+            return (
+              <NativeDiffFence
+                key={key}
+                copied={copied}
+                copiedSize={copied === true ? copiedSize : undefined}
+                failed={failed}
+                onCopy={() => void copy(index, block.text)}
+                spacing={spacing.marginTop}
+                text={block.text}
+              />
+            )
           return (
             <NativeCodeBlock
               key={key}

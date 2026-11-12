@@ -94,6 +94,11 @@ export const makeSessionStyles = (theme: AppTheme) =>
       paddingHorizontal: theme.spacing.md,
     },
     loadOlderText: { color: theme.colors.inkMuted, fontSize: 12, lineHeight: 20 },
+    /** The retry state: the same control, coloured as a failure. */
+    loadOlderError: { color: theme.colors.danger },
+    // The desktop states the boundary rather than leaving a gap where the control was.
+    historyStart: { alignItems: 'center', justifyContent: 'center', paddingVertical: theme.spacing.sm },
+    historyStartText: { color: theme.colors.inkTertiary, fontSize: 12, lineHeight: 18 },
     // ChatView.module.css spaces flow items by 12px behind 32px gutters. The
     // composer sits on 16px, so the text column is the narrower of the two, as on
     // the desktop.

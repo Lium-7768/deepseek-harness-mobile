@@ -5,6 +5,10 @@
 
 /** Markdown copy. */
 export const markdown = {
+  /** Banner label on a `diff`/`patch` fence. */
+  diff: 'diff',
+  /** `{shown}` rows rendered before the fence is clipped. */
+  diffTruncated: '已显示前 {shown} 行',
   openLinkFailed: '无法打开链接，请检查地址或稍后重试。',
   // `codeBlock.title` in the desktop dictionary: the banner names the block, not the language.
   code: '代码块',

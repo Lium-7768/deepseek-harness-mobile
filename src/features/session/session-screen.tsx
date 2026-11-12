@@ -814,18 +814,39 @@ export default function SessionScreen(): React.JSX.Element {
                         <Pressable
                           android_ripple={{ borderless: false }}
                           accessibilityRole="button"
-                          accessibilityLabel={message('conversation.loadOlder')}
+                          accessibilityLabel={
+                            loadOlder.isPending
+                              ? message('conversation.processingOlder')
+                              : loadOlder.isError
+                                ? message('conversation.retryLoadOlder')
+                                : message('conversation.loadOlder')
+                          }
                           accessibilityState={{ busy: loadOlder.isPending }}
                           disabled={loadOlder.isPending}
                           onPress={() => void loadOlder.mutateAsync({ manual: true }).catch(() => undefined)}
                           style={({ pressed }) => [s.loadOlder, pressed && s.pressed]}
                         >
-                          <NativeIcon name="chevron-up-outline" size={16} color={theme.colors.accentText} />
-                          <Text style={s.loadOlderText}>
-                            {loadOlder.isPending ? message('conversation.loading') : message('conversation.loadOlder')}
+                          <NativeIcon
+                            name={loadOlder.isError ? 'refresh-outline' : 'chevron-up-outline'}
+                            size={16}
+                            color={loadOlder.isError ? theme.colors.danger : theme.colors.accentText}
+                          />
+                          <Text style={[s.loadOlderText, loadOlder.isError === true && s.loadOlderError]}>
+                            {loadOlder.isPending
+                              ? message('conversation.processingOlder')
+                              : loadOlder.isError
+                                ? message('conversation.retryLoadOlder')
+                                : message('conversation.loadOlder')}
                           </Text>
                         </Pressable>
-                      ) : null}
+                      ) : (
+                        // The desktop states the boundary rather than leaving a blank where
+                        // the control used to be, so the reader knows the scroll ends here
+                        // instead of wondering whether a page failed to load.
+                        <View style={s.historyStart}>
+                          <Text style={s.historyStartText}>{message('conversation.historyStart')}</Text>
+                        </View>
+                      )}
                     </>
                   }
                   ListFooterComponent={
