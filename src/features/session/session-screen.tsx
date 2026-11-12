@@ -81,7 +81,7 @@ import { sessionWindow } from '@/sync/session-window'
 import { useAppTheme, useThemedStyles } from '@/theme/hooks'
 import { useMutation } from '@tanstack/react-query'
 import { router, useLocalSearchParams } from 'expo-router'
-import { memo, type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   Alert,
   FlatList,
@@ -368,7 +368,10 @@ export default function SessionScreen(): React.JSX.Element {
   const [firstVisibleRow, setFirstVisibleRow] = useState(0)
   const [catalogSheetOpen, setCatalogSheetOpen] = useState(false)
   const displayRowsRef = useRef<NativeRow[]>([])
+  /** What `renderItem` reads for the previous row's gap, without depending on the array. */
+  const rowsRef = useRef<NativeRow[]>([])
   displayRowsRef.current = displayRows
+  rowsRef.current = frozenRows ?? displayRows
   const railRows = (frozenRows ?? displayRows) as readonly NativeConversationRow[]
   const railMarks = useMemo(() => turnRail(railRows), [railRows])
   const eventBySeq = useMemo(
@@ -497,9 +500,12 @@ export default function SessionScreen(): React.JSX.Element {
         ) : (
           renderRow(item)
         )
-      return <View style={{ paddingTop: conversationFlowGap(item, displayRows[index - 1]) }}>{content}</View>
+      return <View style={{ paddingTop: conversationFlowGap(item, rowsRef.current[index - 1]) }}>{content}</View>
     },
-    [displayRows, openSteps, renderRow, renderStep, renderTurnMember, toggleStep],
+    // `displayRows` is read through `rowsRef`: listing it here gave the callback a new
+    // identity on every content change, which made FlatList re-render every visible cell
+    // and re-measure the ones whose content had just grown.
+    [openSteps, renderRow, renderStep, renderTurnMember, toggleStep],
   )
   const keyExtractor = useCallback((item: NativeRow, index: number) => conversationRowKey(item, index), [])
   const disclosures = useMemo(() => ({ expanded: openSteps, toggle: toggleStep }), [openSteps, toggleStep])
@@ -824,7 +830,7 @@ export default function SessionScreen(): React.JSX.Element {
                   }
                   showsVerticalScrollIndicator={false}
                   ListHeaderComponent={
-                    <SessionListHeader>
+                    <>
                       <NativeAgentActivity
                         jobs={jobs.data?.items ?? []}
                         subagents={subagents.data?.entries ?? []}
@@ -874,10 +880,10 @@ export default function SessionScreen(): React.JSX.Element {
                           <Text style={s.historyStartText}>{message('conversation.historyStart')}</Text>
                         </View>
                       )}
-                    </SessionListHeader>
+                    </>
                   }
                   ListFooterComponent={
-                    <SessionListFooter>
+                    <>
                       {/* A question the Turn is waiting on outranks its clock: the reader
                           is the blocker, and the row opens the screen that answers it. */}
                       <NativeQuestionPromptRow
@@ -889,7 +895,7 @@ export default function SessionScreen(): React.JSX.Element {
                           <NativeTurnStatus startedAt={runningTurnStartedAt} />
                         </View>
                       ) : null}
-                    </SessionListFooter>
+                    </>
                   }
                   ListEmptyComponent={
                     history.isPending ? (
@@ -1130,35 +1136,3 @@ export default function SessionScreen(): React.JSX.Element {
     </ConversationDisclosureContext.Provider>
   )
 }
-
-/**
- * Holds the rows above the transcript for as long as the list is mounted.
- *
- * `ListHeaderComponent` takes an element, so an inline fragment handed to it is a new
- * element on every render of the screen — and a new element remounts the subtree. The
- * components inside carry their own disclosure state (`NativeTeamTasksRow`,
- * `ContextRows`), so a scroll-driven re-render of the screen used to collapse them and
- * re-expand them, which read as the header flashing. Declaring the element here keeps
- * its identity across renders, so React reconciles the children instead of replacing
- * them.
- *
- * @param props.children - The header rows, built once by the screen.
- * @returns The header subtree with a stable identity.
- */
-const SessionListHeader = memo(function SessionListHeader({ children }: { children: ReactNode }): React.JSX.Element {
-  return <>{children}</>
-})
-
-/**
- * Holds the rows below the transcript across screen re-renders.
- *
- * Same identity problem as `SessionListHeader`: the pending-question row and the
- * running-turn clock own state and animation, so remounting them on every scroll frame
- * restarts both.
- *
- * @param props.children - The footer rows, built once by the screen.
- * @returns The footer subtree with a stable identity.
- */
-const SessionListFooter = memo(function SessionListFooter({ children }: { children: ReactNode }): React.JSX.Element {
-  return <>{children}</>
-})
