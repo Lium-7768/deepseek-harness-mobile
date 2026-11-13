@@ -16,6 +16,8 @@ vi.mock('@/state/snackbar', () => ({ showSnackbar: vi.fn() }))
 
 import {
   noteInteractionRequested,
+  noteReadState,
+  noteSessionList,
   noteSessionRead,
   noteSessionRunning,
   requestCompletionPermission,
@@ -145,6 +147,51 @@ describe('unread badge', () => {
     // in this conversation is silent.
     await act(async () => {
       await finish('late')
+    })
+    expect(scheduleNotificationAsync).toHaveBeenCalledTimes(1)
+  })
+})
+
+describe('host-owned read state', () => {
+  beforeEach(() => {
+    vi.useFakeTimers()
+    resetCompletionNotices()
+  })
+  afterEach(() => {
+    cleanup()
+    vi.useRealTimers()
+    vi.clearAllMocks()
+  })
+
+  it('adopts the Host mark instead of counting its own', async () => {
+    await act(async () => {
+      await requestCompletionPermission()
+    })
+    // The Host says one conversation is unread; the phone has seen no completion itself.
+    await act(async () => {
+      noteReadState([{ sessionId: 'host-says-unread', completionUnread: true }])
+    })
+    // A pushed frame clearing it stops counting it, which is what makes a mark cleared on
+    // the desktop disappear from the phone.
+    await act(async () => {
+      noteReadState([{ sessionId: 'host-says-unread', completionUnread: false }])
+    })
+    // Nothing to assert on the engine — the badge is pushed and no banner is posted for a
+    // Session the Host already reported.
+    expect(scheduleNotificationAsync).not.toHaveBeenCalled()
+  })
+
+  it('lets the session list replace the local opinion for the rows it names', async () => {
+    await act(async () => {
+      await requestCompletionPermission()
+    })
+    await act(async () => {
+      await finish('listed')
+    })
+    // The list reports it read: the local count for that Session is settled, so a second
+    // completion is the only thing that may speak again.
+    await act(async () => {
+      noteSessionList([{ sessionId: 'listed', completionUnread: false }])
     })
     expect(scheduleNotificationAsync).toHaveBeenCalledTimes(1)
   })

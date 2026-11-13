@@ -35,6 +35,16 @@ let covered = false
 const running = new Set<string>()
 /** Conversations holding at least one notice the reader has not opened yet. */
 const unseen = new Set<string>()
+/**
+ * The Host's reading records, keyed by Session.
+ *
+ * The desktop owns whether a completed turn has been acknowledged. Counting completions
+ * here gave the two clients separate opinions of the same conversation, and only one of
+ * them could be right. This mirror is refreshed by the session list and by the gateway's
+ * `host/read-state-changed` event; `unseen` stays for what the phone saw before the list
+ * caught up.
+ */
+const hostUnread = new Set<string>()
 /** Titles observed from the session list, used to name a notification. */
 const titles = new Map<string, string>()
 /** Two notices of one kind closer than this read as one interruption. */
@@ -134,8 +144,15 @@ export function noteSessionRunning(sessionId: string, isRunning: boolean): void 
  * @param sessions - Rows carrying a session id, a title and the Host's running flag.
  */
 export function noteSessionList(
-  sessions: ReadonlyArray<{ running?: boolean; sessionId: string; title?: string }>,
+  sessions: ReadonlyArray<{ completionUnread?: boolean; running?: boolean; sessionId: string; title?: string }>,
 ): void {
+  // The Host's reading record replaces the local opinion for every Session it names, so a
+  // mark the desktop cleared stops counting here on the next list.
+  for (const session of sessions) {
+    if (session.completionUnread === true) hostUnread.add(session.sessionId)
+    else hostUnread.delete(session.sessionId)
+  }
+  void pushBadge()
   for (const session of sessions) {
     if (session.title !== undefined && session.title.trim() !== '') titles.set(session.sessionId, session.title)
     if (session.running === true) running.add(session.sessionId)
@@ -176,8 +193,9 @@ export async function noteSessionFailed(sessionId: string, detail: string | unde
 export function noteAppState(state: string): void {
   appActive = state === 'active'
   if (appActive) {
-    if (awaySince !== undefined && unseen.size > 0) {
-      const count = unseen.size
+    const pending = unreadSessions()
+    if (awaySince !== undefined && pending.size > 0) {
+      const count = pending.size
       void pushBadge()
       showSnackbar(awaySummary(count))
     }
@@ -223,6 +241,26 @@ export async function requestCompletionPermission(): Promise<boolean> {
  */
 export function noteSessionRead(sessionId: string): void {
   if (unseen.delete(sessionId)) void pushBadge()
+}
+
+/**
+ * Replaces the Host's unread set from a pushed reading-state frame.
+ *
+ * The frame carries every record the Host currently holds, so a Session missing from it
+ * has been read. Anything the phone counted before this frame arrived is dropped for the
+ * Sessions the frame names, which is what makes a mark cleared on the desktop disappear
+ * from the phone badge too.
+ *
+ * @param items - One entry per Session the Host reports.
+ */
+export function noteReadState(items: ReadonlyArray<{ completionUnread?: boolean; sessionId: string }>): void {
+  for (const item of items) {
+    if (item.completionUnread === true) hostUnread.add(item.sessionId)
+    else hostUnread.delete(item.sessionId)
+    // The Host has spoken for this Session, so the phone's earlier guess is settled.
+    unseen.delete(item.sessionId)
+  }
+  void pushBadge()
 }
 
 /**
@@ -282,10 +320,19 @@ async function present(kind: NoticeKind, sessionId: string, detail?: string): Pr
   }
 }
 
+/**
+ * Every conversation currently unread, according to the Host and the phone's own backlog.
+ *
+ * @returns Session ids the badge and the away summary count.
+ */
+function unreadSessions(): Set<string> {
+  return new Set([...hostUnread, ...unseen])
+}
+
 async function pushBadge(): Promise<void> {
   try {
     const engine = await import('expo-notifications')
-    await engine.setBadgeCountAsync(unseen.size)
+    await engine.setBadgeCountAsync(unreadSessions().size)
   } catch {
     // The icon badge is decoration; losing it changes nothing about the session.
   }

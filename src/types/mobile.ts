@@ -59,6 +59,15 @@ export interface SessionSummary {
   updatedAt?: number
   blank?: boolean
   agentPreset?: string
+  /**
+   * Whether the Host has not yet acknowledged this Session's latest completed turn.
+   *
+   * Owned by the desktop, not counted here: the phone shows the mark the Host keeps so
+   * the same conversation reads the same on both clients.
+   */
+  completionUnread?: boolean
+  /** The unacknowledged turn ended with an execution error. */
+  completionFailed?: boolean
   [key: string]: unknown
 }
 

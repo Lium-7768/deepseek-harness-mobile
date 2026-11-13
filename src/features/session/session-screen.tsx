@@ -361,12 +361,15 @@ export default function SessionScreen(): React.JSX.Element {
   // A settled Turn folds behind one control; an open Turn has no end sequence, so
   // its steps keep their live headers.
   const displayRows = useMemo(() => foldCompletedTurns(stepRows, { spans }), [spans, stepRows])
-  // The router only reports a route change, and a turn finishing in the conversation the
-  // reader is already in changes no route. Clearing on each row change is what keeps the
-  // icon badge from holding a number for a transcript the reader is watching.
+  // The desktop owns the reading record, so opening this transcript — or a turn finishing
+  // in it — tells the Host rather than counting locally. Opening is what the Host treats
+  // as acknowledgement; the row count is what catches a turn that completed while the
+  // reader was already here, which changes no route.
   useEffect(() => {
-    if (sessionId !== undefined) noteSessionRead(sessionId)
-  }, [displayRows.length, sessionId])
+    if (sessionId === undefined) return
+    noteSessionRead(sessionId)
+    void client?.markSessionRead(sessionId).catch(() => undefined)
+  }, [client, displayRows.length, sessionId])
   /**
    * The rows the list shows while the reader is steering it.
    *

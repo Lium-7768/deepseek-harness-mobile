@@ -293,6 +293,19 @@ export class MobileApi {
     return this.#post<SessionHistoryPayload>(`/v1/sessions/${encodeURIComponent(sessionId)}/history`, options)
   }
 
+  /**
+   * Records this conversation as read on the desktop.
+   *
+   * The Host owns the reading record, so opening the transcript has to tell it; counting
+   * the acknowledgement locally would leave the desktop's own unread mark in place.
+   *
+   * @param sessionId - Conversation the reader opened.
+   * @returns The Host's resulting unread flag for that conversation.
+   */
+  markSessionRead(sessionId: string): Promise<{ completionUnread: boolean; sessionId: string }> {
+    return this.#post('/v1/sessions/read-state', { sessionId, read: true })
+  }
+
   /** Creates a desktop-owned session, optionally in one existing workspace. */
   createSession(
     input: { workspaceId?: string; cwd?: string; agentPreset?: string } = {},

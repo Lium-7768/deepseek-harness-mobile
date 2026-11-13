@@ -1,5 +1,5 @@
 import { queryKeys } from '@/api/query-keys'
-import { noteInteractionRequested, noteSessionRunning } from '@/state/completion-notices'
+import { noteInteractionRequested, noteReadState, noteSessionRunning } from '@/state/completion-notices'
 import type { MobileStreamEvent, SessionEventItem, SessionEventsPayload } from '@/types/mobile'
 import type { QueryClient } from '@tanstack/react-query'
 import { LIVE_WINDOW_LIMIT, sessionWindow } from './session-window'
@@ -41,6 +41,12 @@ export function applyMobileStreamEvent(queryClient: QueryClient, event: MobileSt
         updateSessionStatus(queryClient, sessionId, event.payload.running)
         noteSessionRunning(sessionId, event.payload.running)
       }
+      return
+    case 'host/read-state-changed':
+      // The Host changed which conversations are unread — a turn completed while the app
+      // was away, or the desktop acknowledged one. The badge follows the Host, not a
+      // local count, so the two clients never disagree.
+      if (Array.isArray(event.payload.items)) noteReadState(event.payload.items)
       return
     case 'host/session-added':
     case 'host/session-removed':
