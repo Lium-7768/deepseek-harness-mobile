@@ -262,7 +262,11 @@ export function NativeTurnStatus({ startedAt }: { startedAt?: number }): React.J
   return (
     <View accessibilityLiveRegion="polite" style={s.turnStatus}>
       <NativeIcon name="whale-tail" size={14} color={s.turnStatusText.color} />
-      <Text style={s.turnStatusText}>{label}</Text>
+      {/* One line, whatever the clock says: a wrapped duration changes the footer's
+          height once a minute, and the footer sits inside the scroll view. */}
+      <Text numberOfLines={1} style={s.turnStatusText}>
+        {label}
+      </Text>
     </View>
   )
 }
