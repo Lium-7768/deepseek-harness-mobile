@@ -38,6 +38,8 @@ import {
   RESTORE_WAIT_MS,
   SEND_FOLLOW_WINDOW_MS,
   isNearLatestMessage,
+  OLDER_HISTORY_REARM_PX,
+  OLDER_HISTORY_TRIGGER_PX,
   restoredOffsetAfterPrepend,
   restoredOffsetOnOpen,
   shouldFollowContentGrowth,
@@ -142,6 +144,8 @@ export default function SessionScreen(): React.JSX.Element {
   const pendingPrependAnchor = useRef<{ contentHeight: number; offsetY: number } | null>(null)
   /** A page that brought no rows means scrolling further cannot find more, even if the host says it has. */
   const exhaustedOlderHistory = useRef(false)
+  /** Closed after a page lands; opened once the reader scrolls back out of the runway. */
+  const awaitingOlderRearm = useRef(false)
   /** Whether the in-flight older-page request came from the button rather than the scroll. */
   const lastOlderRequestWasManual = useRef(false)
   const [showReturnToLatest, setShowReturnToLatest] = useState(false)
@@ -229,6 +233,7 @@ export default function SessionScreen(): React.JSX.Element {
       setOlderItems((current) => mergeEventItems(page.items, current))
       setOlderHasMore(page.hasMore ?? false)
       pendingPrependAnchor.current = before
+      awaitingOlderRearm.current = true
     },
     onError: (error) => {
       // A failed page is also the end of the line for the automatic trigger: retrying it
@@ -286,6 +291,7 @@ export default function SessionScreen(): React.JSX.Element {
     setOlderItems([])
     setOlderHasMore(undefined)
     exhaustedOlderHistory.current = false
+    awaitingOlderRearm.current = false
     unseenBaseline.current = undefined
     setUnseenCount(0)
     // A conversation left mid-read reopens where it was left; a new one lands on the
@@ -977,11 +983,19 @@ export default function SessionScreen(): React.JSX.Element {
                     // Reaching for older history should not need a second press on a button
                     // that sits above the very rows being requested.
                     if (
+                      awaitingOlderRearm.current &&
+                      event.nativeEvent.contentOffset.y > OLDER_HISTORY_TRIGGER_PX + OLDER_HISTORY_REARM_PX
+                    )
+                      // The reader moved back out past the runway, so the next approach is
+                      // a new page request rather than the echo of the one just answered.
+                      awaitingOlderRearm.current = false
+                    if (
                       shouldLoadOlderHistory({
                         offsetY: event.nativeEvent.contentOffset.y,
                         hasMore: olderHasMore !== false,
                         loading: loadOlder.isPending,
                         exhausted: exhaustedOlderHistory.current,
+                        awaitingRearm: awaitingOlderRearm.current,
                       })
                     )
                       void loadOlder.mutateAsync({ manual: false }).catch(() => undefined)

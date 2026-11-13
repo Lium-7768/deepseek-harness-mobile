@@ -121,10 +121,23 @@ export function restoredOffsetAfterPrepend({
 export const OLDER_HISTORY_TRIGGER_PX = 320
 
 /**
+ * How far the reader must move back out of the trigger zone before another page is asked
+ * for, after one landed.
+ *
+ * A prepended page restores the reader to `offset + added height`. When that landing is
+ * still inside the trigger zone — a page shorter than the runway, or a restore that came
+ * out a fraction short — the next scroll frame asks again, and each answer prepends more
+ * rows. The list then grows and re-anchors continuously, which reads as the transcript
+ * flickering instead of the reader paging back through it.
+ */
+export const OLDER_HISTORY_REARM_PX = 64
+
+/**
  * Decides whether a scroll measurement should request the next older page.
  *
  * @param args - The current offset, whether more pages exist, whether a request is already
- *   in flight, and whether an earlier request settled without adding rows.
+ *   in flight, whether an earlier request settled without adding rows, and whether a page
+ *   landed recently enough that the reader has not yet left the trigger zone.
  * @returns True when one more page should be requested.
  */
 export function shouldLoadOlderHistory({
@@ -132,14 +145,19 @@ export function shouldLoadOlderHistory({
   hasMore,
   loading,
   exhausted,
+  awaitingRearm = false,
 }: {
   offsetY: number
   hasMore: boolean
   loading: boolean
   exhausted: boolean
+  awaitingRearm?: boolean
 }): boolean {
   if (!Number.isFinite(offsetY)) return false
   if (loading || exhausted || !hasMore) return false
+  // A page that just landed may leave the reader at the top; asking again from there
+  // would prepend forever, so the trigger stays closed until they move back out.
+  if (awaitingRearm && offsetY <= OLDER_HISTORY_TRIGGER_PX + OLDER_HISTORY_REARM_PX) return false
   return offsetY <= OLDER_HISTORY_TRIGGER_PX
 }
 
