@@ -1,5 +1,5 @@
 import { QueryClient } from '@tanstack/react-query'
-import { expect, it } from 'vitest'
+import { expect, it, vi } from 'vitest'
 import { queryKeys } from '@/api/query-keys'
 import { applyMobileStreamEvent } from '@/sync/query-events'
 import type { MobileStreamEvent, SessionEventsPayload } from '@/types/mobile'
@@ -141,5 +141,31 @@ it("compacts a settled step's chunks only once, when the message lands", () => {
   const items = client.getQueryData<SessionEventsPayload>(eventKey)?.items ?? []
   expect(items.map((item) => item.seq)).toEqual([3, 4])
   expect(items.map((item) => item.event.type)).toEqual(['tool/call', 'assistant/message'])
+  client.clear()
+})
+
+it('applies a pushed reading-state frame to the notice tracker', async () => {
+  // The gateway broadcasts the Host's reading records after a completion, a desktop
+  // acknowledgement, or a reconnect. The phone has to adopt it rather than keep counting,
+  // so the badge shows the desktop's answer.
+  const notices = await import('@/state/completion-notices')
+  const seen: string[] = []
+  const spy = vi.spyOn(notices, 'noteReadState').mockImplementation((items) => {
+    seen.push(...items.map((item) => `${item.sessionId}:${String(item.completionUnread)}`))
+  })
+  const client = new QueryClient()
+  applyMobileStreamEvent(client, {
+    contractVersion: 1,
+    eventId: 'read-state',
+    type: 'host/read-state-changed',
+    payload: {
+      items: [
+        { sessionId: 'a', completionUnread: true },
+        { sessionId: 'b', completionUnread: false },
+      ],
+    },
+  })
+  expect(seen).toEqual(['a:true', 'b:false'])
+  spy.mockRestore()
   client.clear()
 })
