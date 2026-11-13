@@ -236,3 +236,30 @@ describe('the gateway response reaching the badge', () => {
     expect(badge.mock.calls.at(-1)?.[0]).toBe(0)
   })
 })
+
+it('treats an absent flag as "this gateway cannot tell", not as read', async () => {
+  // A gateway that predates the reading-record mirror sends rows with no flag at all. That
+  // is not the Host saying "read": erasing the mark there would clear a badge for a
+  // conversation the desktop still considers unread.
+  const engine = await import('expo-notifications')
+  await act(async () => {
+    await requestCompletionPermission()
+  })
+  await act(async () => {
+    noteReadState([{ sessionId: 'from-host', completionUnread: true }])
+  })
+  const badge = engine.setBadgeCountAsync as unknown as { mock: { calls: [number][] } }
+  expect(badge.mock.calls.at(-1)?.[0]).toBe(1)
+
+  // An older gateway lists the same conversation with no flag.
+  await act(async () => {
+    noteSessionList([{ sessionId: 'from-host' }])
+  })
+  expect(badge.mock.calls.at(-1)?.[0]).toBe(1)
+
+  // A flag of false is the Host clearing it, and that does count.
+  await act(async () => {
+    noteSessionList([{ sessionId: 'from-host', completionUnread: false }])
+  })
+  expect(badge.mock.calls.at(-1)?.[0]).toBe(0)
+})

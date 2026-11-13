@@ -147,9 +147,13 @@ export function noteSessionList(
   sessions: ReadonlyArray<{ completionUnread?: boolean; running?: boolean; sessionId: string; title?: string }>,
 ): void {
   // The Host's reading record replaces the local opinion for every Session it names, so a
-  // mark the desktop cleared stops counting here on the next list.
+  // mark the desktop cleared stops counting here on the next list. A row with no flag at
+  // all means this gateway does not mirror the Host's records — a `false` is the Host
+  // saying "read", while an absent field says nothing and must not erase a mark the phone
+  // is still holding.
   for (const session of sessions) {
-    if (session.completionUnread === true) hostUnread.add(session.sessionId)
+    if (session.completionUnread === undefined) continue
+    if (session.completionUnread) hostUnread.add(session.sessionId)
     else hostUnread.delete(session.sessionId)
   }
   void pushBadge()
