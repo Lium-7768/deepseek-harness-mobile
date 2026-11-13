@@ -154,7 +154,8 @@ export function noteSessionList(
  * @param detail - The question text, or the tool that needs approving.
  */
 export function noteInteractionRequested(sessionId: string, kind: 'approve' | 'ask', detail: string | undefined): void {
-  unseen.add(sessionId)
+  // A question interrupts even on its own screen, but it is still being read there.
+  if (!isWatched(sessionId)) unseen.add(sessionId)
   void present(kind, sessionId, detail)
   void pushBadge()
 }
@@ -166,7 +167,7 @@ export function noteInteractionRequested(sessionId: string, kind: 'approve' | 'a
  * @param detail - The failure's message, when the event carried one.
  */
 export async function noteSessionFailed(sessionId: string, detail: string | undefined): Promise<void> {
-  unseen.add(sessionId)
+  if (!isWatched(sessionId)) unseen.add(sessionId)
   await present('failed', sessionId, detail)
   void pushBadge()
 }
@@ -212,6 +213,19 @@ export async function requestCompletionPermission(): Promise<boolean> {
 }
 
 /**
+ * Clears a conversation's unread mark because its transcript is on screen.
+ *
+ * `setVisibleSession` already does this when the route changes, but a turn can finish
+ * while the reader is already in the conversation — the route never changes, so nothing
+ * would clear the mark it just added.
+ *
+ * @param sessionId - Conversation now on screen.
+ */
+export function noteSessionRead(sessionId: string): void {
+  if (unseen.delete(sessionId)) void pushBadge()
+}
+
+/**
  * Records that the reader opened a conversation from its notice.
  *
  * @param sessionId - Conversation the notice pointed at.
@@ -220,8 +234,24 @@ export function noteNoticeOpened(sessionId: string): void {
   if (unseen.delete(sessionId)) void pushBadge()
 }
 
+/**
+ * Whether the reader is looking at this conversation right now.
+ *
+ * The route names the conversation, the app has to be in the foreground, and no overlay
+ * may cover it. A notice exists for the states the reader cannot already see, and so
+ * does the badge: counting a turn the reader watched finish leaves a number on the icon
+ * they have no way to clear without leaving and re-entering the conversation.
+ *
+ * @param sessionId - Conversation to test.
+ * @returns True when its transcript is the thing on screen.
+ */
+function isWatched(sessionId: string): boolean {
+  return appActive && !covered && sessionId === visibleSessionId
+}
+
 function noteFinished(sessionId: string): void {
-  unseen.add(sessionId)
+  // Watching a turn finish is reading it: no badge, and `present` stays silent anyway.
+  if (!isWatched(sessionId)) unseen.add(sessionId)
   void present('done', sessionId)
   void pushBadge()
 }
@@ -229,7 +259,7 @@ function noteFinished(sessionId: string): void {
 async function present(kind: NoticeKind, sessionId: string, detail?: string): Promise<void> {
   // A notice about the screen the reader is already looking at is noise, except for a
   // question: that one stops the turn until they answer it.
-  const focused = appActive && !covered && sessionId === visibleSessionId
+  const focused = isWatched(sessionId)
   if (!shouldNotice({ kind, focused, granted })) return
   // A reconnect can flip several sessions at once. The first notice of a kind says it
   // with sound; the rest arrive as badge and list, because a tone per session rings

@@ -16,9 +16,11 @@ vi.mock('@/state/snackbar', () => ({ showSnackbar: vi.fn() }))
 
 import {
   noteInteractionRequested,
+  noteSessionRead,
   noteSessionRunning,
   requestCompletionPermission,
   resetCompletionNotices,
+  setVisibleSession,
 } from '@/state/completion-notices'
 
 /** Runs one session from running to finished, the way the stream reports it. */
@@ -91,5 +93,59 @@ describe('completion notices', () => {
       await finish('b')
     })
     expect(scheduleNotificationAsync).toHaveBeenCalledTimes(2)
+  })
+})
+
+describe('unread badge', () => {
+  beforeEach(() => {
+    vi.useFakeTimers()
+    resetCompletionNotices()
+  })
+  afterEach(() => {
+    cleanup()
+    vi.useRealTimers()
+    vi.clearAllMocks()
+  })
+
+  it('does not count a turn that finished in the conversation on screen', async () => {
+    // The defect: `unseen.add` ran unconditionally, so watching a turn finish left a
+    // number on the icon that nothing could clear — the route never changed, and only a
+    // route change cleared it.
+    await act(async () => {
+      await requestCompletionPermission()
+    })
+    setVisibleSession('watched')
+    await act(async () => {
+      await finish('watched')
+    })
+    // No banner: the reader is looking at the transcript.
+    expect(scheduleNotificationAsync).not.toHaveBeenCalled()
+
+    // A conversation the reader left is still counted.
+    await act(async () => {
+      await finish('elsewhere')
+    })
+    expect(scheduleNotificationAsync).toHaveBeenCalledTimes(1)
+  })
+
+  it('clears a conversation that was counted before it came on screen', async () => {
+    await act(async () => {
+      await requestCompletionPermission()
+    })
+    await act(async () => {
+      await finish('late')
+    })
+    expect(scheduleNotificationAsync).toHaveBeenCalledTimes(1)
+    // Arriving at the conversation answers whether the reader saw it.
+    setVisibleSession('late')
+    await act(async () => {
+      noteSessionRead('late')
+    })
+    // Nothing further to assert on the engine: the badge is pushed, and a second finish
+    // in this conversation is silent.
+    await act(async () => {
+      await finish('late')
+    })
+    expect(scheduleNotificationAsync).toHaveBeenCalledTimes(1)
   })
 })

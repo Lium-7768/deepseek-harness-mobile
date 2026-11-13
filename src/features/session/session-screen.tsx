@@ -68,6 +68,7 @@ import { WorkspaceShell } from '@/components/workspace-shell'
 import { workspaceKeyboardVerticalOffset } from '@/components/workspace-shell-logic'
 import { format, t as message } from '@/locale'
 import { formatQuoteText } from '@/components/markdown-quote'
+import { noteSessionRead } from '@/state/completion-notices'
 import { useComposerDraftStore } from '@/state/composer-drafts'
 import { showSnackbar } from '@/state/snackbar'
 import { tapFeedback } from '@/components/haptics'
@@ -360,6 +361,12 @@ export default function SessionScreen(): React.JSX.Element {
   // A settled Turn folds behind one control; an open Turn has no end sequence, so
   // its steps keep their live headers.
   const displayRows = useMemo(() => foldCompletedTurns(stepRows, { spans }), [spans, stepRows])
+  // The router only reports a route change, and a turn finishing in the conversation the
+  // reader is already in changes no route. Clearing on each row change is what keeps the
+  // icon badge from holding a number for a transcript the reader is watching.
+  useEffect(() => {
+    if (sessionId !== undefined) noteSessionRead(sessionId)
+  }, [displayRows.length, sessionId])
   /**
    * The rows the list shows while the reader is steering it.
    *
