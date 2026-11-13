@@ -196,3 +196,43 @@ describe('host-owned read state', () => {
     expect(scheduleNotificationAsync).toHaveBeenCalledTimes(1)
   })
 })
+
+describe('the gateway response reaching the badge', () => {
+  beforeEach(() => {
+    vi.useFakeTimers()
+    resetCompletionNotices()
+  })
+  afterEach(async () => {
+    await cleanup()
+    vi.useRealTimers()
+    vi.clearAllMocks()
+  })
+
+  it('badges exactly the rows the desktop reports unread', async () => {
+    const engine = await import('expo-notifications')
+    await act(async () => {
+      await requestCompletionPermission()
+    })
+    // The shape `/v1/sessions/list` returns after the gateway mirrors the Host: one row
+    // the desktop has not acknowledged, one it has, and one with no record at all.
+    await act(async () => {
+      noteSessionList([
+        { sessionId: 'a', completionUnread: true },
+        { sessionId: 'b', completionUnread: false },
+        { sessionId: 'c' },
+      ])
+    })
+    const badge = engine.setBadgeCountAsync as unknown as { mock: { calls: [number][] } }
+    expect(badge.mock.calls.at(-1)?.[0]).toBe(1)
+
+    // The desktop acknowledges it; the next list clears the badge without the phone
+    // having to decide anything.
+    await act(async () => {
+      noteSessionList([
+        { sessionId: 'a', completionUnread: false },
+        { sessionId: 'b', completionUnread: false },
+      ])
+    })
+    expect(badge.mock.calls.at(-1)?.[0]).toBe(0)
+  })
+})
