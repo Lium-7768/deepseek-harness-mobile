@@ -361,6 +361,16 @@ export default function SessionScreen(): React.JSX.Element {
   // A settled Turn folds behind one control; an open Turn has no end sequence, so
   // its steps keep their live headers.
   const displayRows = useMemo(() => foldCompletedTurns(stepRows, { spans }), [spans, stepRows])
+  /**
+   * The shared task board, projected once per projection change.
+   *
+   * `teamTasks` builds a fresh array on every call, so calling it in render handed
+   * `NativeTeamTasksRow` new props on every scroll frame. The row returns `null` when the
+   * board is empty and a full row when it is not, so a re-render that flipped that
+   * condition changed the height of the block above the list — which moves the
+   * transcript under the reader.
+   */
+  const boardTasks = useMemo(() => teamTasks(history.data?.projections?.values), [history.data?.projections?.values])
   // The desktop owns the reading record, so opening this transcript — or a turn finishing
   // in it — tells the Host rather than counting locally. Opening is what the Host treats
   // as acknowledgement; the row count is what catches a turn that completed while the
@@ -813,8 +823,6 @@ export default function SessionScreen(): React.JSX.Element {
                   }}
                 />
               ) : null}
-              <NativeTeamTasksRow tasks={teamTasks(history.data?.projections?.values)} />
-              <ContextRows items={sourceItems} />
               <View style={s.listStage}>
                 <FlatList
                   style={s.listView}
@@ -848,6 +856,12 @@ export default function SessionScreen(): React.JSX.Element {
                   showsVerticalScrollIndicator={false}
                   ListHeaderComponent={
                     <>
+                      {/* The board and the context line sit in the header rather than
+                          above the list: a block outside the scroll view resizes the
+                          viewport whenever it appears, disappears, or re-measures,
+                          which moves every visible row. */}
+                      <NativeTeamTasksRow tasks={boardTasks} />
+                      <ContextRows items={sourceItems} />
                       <NativeAgentActivity
                         jobs={jobs.data?.items ?? []}
                         subagents={subagents.data?.entries ?? []}
