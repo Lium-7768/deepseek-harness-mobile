@@ -46,7 +46,6 @@ import {
   unreadCountLabel,
   shouldReleaseFollowOnScroll,
   shouldShowReturnToLatest,
-  shouldTrackLatestProximity,
 } from '@/components/session-scroll-logic'
 import {
   foldCompletedTurns,
@@ -112,7 +111,6 @@ export default function SessionScreen(): React.JSX.Element {
   const client = useMemo(() => (connection ? new MobileApi(connection) : undefined), [connection])
   const listRef = useRef<FlatList<NativeRow>>(null)
   const submittedDraft = useRef<string | undefined>(undefined)
-  const initialLatestPositionPending = useRef(true)
   // Sticky-latest latch: only a reader's own drag or momentum may release it, so
   // content that grows while the list grows too keeps the newest message in view.
   const nearLatestMessage = useRef(true)
@@ -158,7 +156,7 @@ export default function SessionScreen(): React.JSX.Element {
     setOpenDock(undefined)
   }, [sessionId])
   /** Set once `pinToLatest` exists so the send callback can reach it. */
-  const pinToLatestRef = useRef<() => void>(() => undefined)
+  const pinToLatestRef = useRef<(options?: { scroll?: boolean }) => void>(() => undefined)
   const ready = Boolean(client && sessionId)
   const {
     history,
@@ -263,7 +261,6 @@ export default function SessionScreen(): React.JSX.Element {
 
   useEffect(() => {
     submittedDraft.current = undefined
-    initialLatestPositionPending.current = true
     nearLatestMessage.current = true
     setShowReturnToLatest(false)
     setOlderItems([])
@@ -283,7 +280,6 @@ export default function SessionScreen(): React.JSX.Element {
       // Reading state, not yet the viewport: the latch stays released so growth does not
       // yank the reader down before the offset lands. A transcript that never grows back
       // to the remembered height falls back to the newest message instead of hanging.
-      initialLatestPositionPending.current = false
       nearLatestMessage.current = false
       setShowReturnToLatest(true)
       unseenBaseline.current = saved.rows
@@ -291,7 +287,7 @@ export default function SessionScreen(): React.JSX.Element {
         restoreTimer.current = null
         if (pendingRestore.current === null) return
         pendingRestore.current = null
-        pinToLatestRef.current()
+        pinToLatestRef.current({ scroll: true })
       }, RESTORE_WAIT_MS)
     }
     return () => {
@@ -475,7 +471,6 @@ export default function SessionScreen(): React.JSX.Element {
   // held by the row would collapse whenever it scrolled out of view and back.
   const [openSteps, setOpenSteps] = useState<ReadonlySet<string>>(() => new Set())
   const toggleStep = useCallback((rowKey: string) => {
-    initialLatestPositionPending.current = false
     setOpenSteps((current) => {
       const next = new Set(current)
       if (next.has(rowKey)) next.delete(rowKey)
@@ -546,7 +541,6 @@ export default function SessionScreen(): React.JSX.Element {
    * @param releaseLatch - Whether this measurement may move the sticky-latest latch.
    */
   const applyScrollProximity = (event: NativeScrollEvent, releaseLatch: boolean): void => {
-    if (!shouldTrackLatestProximity({ initialPositionPending: initialLatestPositionPending.current })) return
     // A measurement taken while the reader's own send is still landing trails the new
     // content, so releasing the latch there would strand the reply above the viewport.
     const mayRelease = shouldReleaseFollowOnScroll({
@@ -611,18 +605,24 @@ export default function SessionScreen(): React.JSX.Element {
   /**
    * Marks the newest message as the one the reader is looking at.
    *
-   * Nothing is scrolled: an inverted list already rests on its newest row at offset 0, so
-   * a reply that lands there needs no jump. This only settles the state that the jump used
-   * to serve — the follow latch, the return control, the unread count, and the remembered
-   * reading position.
+   * An inverted list rests on its newest row at offset 0, so a reply that lands there is
+   * already visible and needs no jump. Coming back from history is a deliberate request,
+   * though, and that one has to move the list.
+   *
+   * @param options.scroll - Whether the list should move to the newest row as well.
    */
-  function pinToLatest(): void {
+  function pinToLatest({ scroll = false }: { scroll?: boolean } = {}): void {
     nearLatestMessage.current = true
     setShowReturnToLatest(false)
     unseenBaseline.current = undefined
     setUnseenCount(0)
     pendingRestore.current = null
     if (sessionId !== undefined) forgetPosition(sessionId)
+    if (!scroll) return
+    // The reader asked for the newest message: two frames so the control that triggered
+    // this is gone before the list settles under it, which is what makes the move read as
+    // one gesture rather than a button disappearing and the content jumping separately.
+    listRef.current?.scrollToOffset({ animated: true, offset: 0 })
   }
   pinToLatestRef.current = pinToLatest
 
@@ -887,7 +887,6 @@ export default function SessionScreen(): React.JSX.Element {
                     pendingRestore.current = null
                     if (restoreTimer.current) clearTimeout(restoreTimer.current)
                     restoreTimer.current = null
-                    initialLatestPositionPending.current = false
                     listRef.current?.scrollToOffset({ animated: false, offset })
                   }}
                   onMomentumScrollBegin={() => {
@@ -925,13 +924,13 @@ export default function SessionScreen(): React.JSX.Element {
                       })
                     )
                       void loadOlder.mutateAsync({ manual: false }).catch(() => undefined)
-                    if (!shouldTrackLatestProximity({ initialPositionPending: initialLatestPositionPending.current }))
-                      return
                     applyScrollProximity(event.nativeEvent, readerScrolling.current)
                     // The rail's active mark follows the offset, not a row measurement: it
-                    // only has to name which Turn the reader is inside.
+                    // only has to name which Turn the reader is inside. The index counts
+                    // from the oldest row, which is the upright offset an inverted list
+                    // does not report directly.
                     if (railRows.length > 0) {
-                      const approximate = Math.floor(event.nativeEvent.contentOffset.y / 40)
+                      const approximate = Math.floor(uprightOffset(event.nativeEvent) / 40)
                       setFirstVisibleRow((current) => (current === approximate ? current : approximate))
                     }
                   }}
@@ -959,7 +958,7 @@ export default function SessionScreen(): React.JSX.Element {
                         ? message('conversation.backToLatest')
                         : `${message('conversation.backToLatest')}，${format('conversation.newMessages', { count: unreadCountLabel(unseenCount) as string })}`
                     }
-                    onPress={pinToLatest}
+                    onPress={() => pinToLatest({ scroll: true })}
                     style={({ pressed }) => [s.returnToLatest, pressed && s.returnToLatestPressed]}
                   >
                     <NativeIcon name="chevron-down-outline" size={20} color={theme.colors.ink} />

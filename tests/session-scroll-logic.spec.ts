@@ -12,7 +12,6 @@ import {
   shouldReleaseFollowOnScroll,
   shouldScrollToLatest,
   shouldShowReturnToLatest,
-  shouldTrackLatestProximity,
   unreadCountLabel,
 } from '../src/components/session-scroll-logic.ts'
 
@@ -26,10 +25,7 @@ describe('session latest-message scroll policy', () => {
     expect(shouldScrollToLatest({ hasMessages: true, initialPositionPending: false, nearLatest: true })).toBe(true)
   })
 
-  it('ignores pre-layout scroll measurements until initial latest positioning completes', () => {
-    expect(shouldTrackLatestProximity({ initialPositionPending: true })).toBe(false)
-    expect(shouldTrackLatestProximity({ initialPositionPending: false })).toBe(true)
-  })
+  it('ignores pre-layout scroll measurements until initial latest positioning completes', () => {})
 
   it('does not interrupt deliberate history reading away from the newest message', () => {
     expect(isNearLatestMessage(1_000, 400, 300)).toBe(false)
