@@ -40,9 +40,7 @@ import {
   isNearLatestMessage,
   OLDER_HISTORY_REARM_PX,
   OLDER_HISTORY_TRIGGER_PX,
-  restoredOffsetAfterPrepend,
   restoredOffsetOnOpen,
-  shouldFollowContentGrowth,
   shouldRefreshFromPull,
   shouldLoadOlderHistory,
   unreadCountLabel,
@@ -79,7 +77,6 @@ import { useMobileSyncStore } from '@/state/mobile-sync'
 import { useReadingPositionStore } from '@/state/reading-positions'
 import { useRouteSessionSelection } from '@/state/session-selection'
 import { mergeEventItems } from '@/sync/event-items'
-import { FOLLOW_PIN_DELAY_MS, PIN_SETTLE_MS, SETTLE_MIN_GAP_PX } from '@/components/session-scroll-logic'
 import { sessionWindow } from '@/sync/session-window'
 import { useAppTheme, useThemedStyles } from '@/theme/hooks'
 import { useMutation } from '@tanstack/react-query'
@@ -121,18 +118,6 @@ export default function SessionScreen(): React.JSX.Element {
   const nearLatestMessage = useRef(true)
   const readerScrolling = useRef(false)
   const readerScrollIdleTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
-  /**
-   * One pending follow jump at most.
-   *
-   * A streaming turn changes the content height several times per frame — a chunk
-   * lands, the row re-measures, a tool result replaces its call row — and each change
-   * used to call `scrollToEnd` immediately. Consecutive jumps against measurements
-   * that trail the final height read as the text jumping up and down, so the follow
-   * now coalesces the burst into one jump against the settled height.
-   */
-  const followPinTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
-  /** Second scroll after a pin, once the rows that arrived with it have measured. */
-  const pinSettleTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   // Set by the reader's own send, then cleared after SEND_FOLLOW_WINDOW_MS. The
   // prompt row and the first reply chunk land in separate commits, so a stale
   // offset measured in between would otherwise release the follow latch.
@@ -140,9 +125,6 @@ export default function SessionScreen(): React.JSX.Element {
   /** Last measured content height and offset, used to anchor a history prepend. */
   const listMetrics = useRef({ contentHeight: 0, offsetY: 0, viewportHeight: 0 })
   /** The offset to keep when the frozen rows are replaced by the live ones. */
-  const thawAnchor = useRef<{ contentHeight: number; offsetY: number } | null>(null)
-  /** Set by `loadOlder` so the next content growth restores the reader's offset. */
-  const pendingPrependAnchor = useRef<{ contentHeight: number; offsetY: number } | null>(null)
   /** A page that brought no rows means scrolling further cannot find more, even if the host says it has. */
   const exhaustedOlderHistory = useRef(false)
   /** Closed after a page lands; opened once the reader scrolls back out of the runway. */
@@ -229,11 +211,9 @@ export default function SessionScreen(): React.JSX.Element {
       // moving what is being read, so the offset has to grow by the same amount. The
       // list's own `maintainVisibleContentPosition` is gone because its latch also
       // fights the jump to the newest message.
-      const before = listMetrics.current
       if (page.items.length === 0) exhaustedOlderHistory.current = true
       setOlderItems((current) => mergeEventItems(page.items, current))
       setOlderHasMore(page.hasMore ?? false)
-      pendingPrependAnchor.current = before
       awaitingOlderRearm.current = true
     },
     onError: (error) => {
@@ -259,8 +239,6 @@ export default function SessionScreen(): React.JSX.Element {
   const [refreshing, setRefreshing] = useState(false)
   const refreshFromPull = useCallback(async (): Promise<void> => {
     if (!shouldRefreshFromPull({ refreshing, loadingOlder: loadOlder.isPending })) return
-    const before = listMetrics.current
-    pendingPrependAnchor.current = null
     setRefreshing(true)
     try {
       await Promise.all([
@@ -274,7 +252,6 @@ export default function SessionScreen(): React.JSX.Element {
       // Anchor only a reader who is reading history: someone already at the bottom wants
       // the newest rows, and restoring their old offset would park them above the end.
       if (nearLatestMessage.current) pinToLatest()
-      else pendingPrependAnchor.current = before
     } catch {
       // The query hooks already surface their own failure state; the pull only ends.
     } finally {
@@ -389,7 +366,6 @@ export default function SessionScreen(): React.JSX.Element {
    * conversation shaking. Holding the last rows for the duration of the gesture and
    * the settle window keeps the transcript still while it is being read.
    */
-  const [frozenRows, setFrozenRows] = useState<NativeRow[] | null>(null)
   /** First row the viewport shows, for the turn rail's active mark. */
   const [firstVisibleRow, setFirstVisibleRow] = useState(0)
   const [catalogSheetOpen, setCatalogSheetOpen] = useState(false)
@@ -397,10 +373,34 @@ export default function SessionScreen(): React.JSX.Element {
   /** What `renderItem` reads for the previous row's gap, without depending on the array. */
   const rowsRef = useRef<NativeRow[]>([])
   displayRowsRef.current = displayRows
-  const listRows = frozenRows ?? displayRows
-  rowsRef.current = listRows
-  const railRows = (frozenRows ?? displayRows) as readonly NativeConversationRow[]
+  const listRows = displayRows
+  /**
+   * The rows in the order an inverted list renders them: newest first.
+   *
+   * An inverted list anchors its offset at the newest row, so a reply that lands while
+   * the reader is at the bottom appears without a scroll call, and one that lands while
+   * they are reading history does not move what they are looking at. That is the whole
+   * reason for the inversion: no code has to chase the content height.
+   */
+  const invertedRows = useMemo(() => [...listRows].reverse(), [listRows])
+  rowsRef.current = invertedRows
+  const railRows = displayRows as readonly NativeConversationRow[]
   const railMarks = useMemo(() => turnRail(railRows), [railRows])
+  /**
+   * The offset an upright list would report for the same viewport.
+   *
+   * `inverted` measures from the newest row, while the proximity rules state distance
+   * from the bottom and distance from the start in upright terms. Converting here keeps
+   * one set of rules instead of two that could drift apart.
+   *
+   * @param metrics - One scroll measurement from the inverted list.
+   * @returns The equivalent offset in an upright list.
+   */
+  const uprightOffset = (metrics: {
+    contentOffset: { y: number }
+    contentSize: { height: number }
+    layoutMeasurement: { height: number }
+  }): number => Math.max(0, metrics.contentSize.height - metrics.layoutMeasurement.height - metrics.contentOffset.y)
   const eventBySeq = useMemo(
     () =>
       new Map(sourceItems.flatMap((item) => (typeof item.seq === 'number' ? [[item.seq, item.event] as const] : []))),
@@ -527,7 +527,7 @@ export default function SessionScreen(): React.JSX.Element {
         ) : (
           renderRow(item)
         )
-      return <View style={{ paddingTop: conversationFlowGap(item, rowsRef.current[index - 1]) }}>{content}</View>
+      return <View style={{ paddingTop: conversationFlowGap(item, rowsRef.current[index + 1]) }}>{content}</View>
     },
     // `displayRows` is read through `rowsRef`: listing it here gave the callback a new
     // identity on every content change, which made FlatList re-render every visible cell
@@ -539,20 +539,6 @@ export default function SessionScreen(): React.JSX.Element {
   useEffect(() => {
     setOpenSteps(new Set())
   }, [sessionId])
-  // One writer owns the initial landing. This used to jump on every `messages.length`
-  // change as well, so a cold open raced `onContentSizeChange`: two `scrollToEnd` calls
-  // against two different content heights, 0ms apart, which read as the page jumping.
-  // `onContentSizeChange` already re-pins on each growth while the latch is closed.
-  useEffect(() => {
-    if (messages.length === 0 || !initialLatestPositionPending.current) return
-    const timer = setTimeout(() => {
-      if (!initialLatestPositionPending.current) return
-      initialLatestPositionPending.current = false
-      listRef.current?.scrollToEnd({ animated: false })
-    }, 0)
-    return () => clearTimeout(timer)
-  }, [messages.length])
-
   /**
    * Records how far the reader is from the newest message and mirrors it into the
    * return-to-latest control.
@@ -571,7 +557,7 @@ export default function SessionScreen(): React.JSX.Element {
       nearLatestMessage.current = isNearLatestMessage(
         event.contentSize.height,
         event.layoutMeasurement.height,
-        event.contentOffset.y,
+        uprightOffset(event),
       )
     }
     // The control mirrors the latch, not this measurement: a programmatic scroll that
@@ -594,9 +580,6 @@ export default function SessionScreen(): React.JSX.Element {
     if (readerScrollIdleTimer.current) clearTimeout(readerScrollIdleTimer.current)
     readerScrollIdleTimer.current = null
     readerScrolling.current = true
-    // Hold the transcript still for the gesture: a rebuilt row array re-measures cells,
-    // and a cell that lands taller than before shifts everything under the finger.
-    setFrozenRows((current) => current ?? displayRowsRef.current)
   }
 
   /** Closes the reader window after the momentum tail of the current gesture. */
@@ -609,15 +592,6 @@ export default function SessionScreen(): React.JSX.Element {
       // Thawing swaps the data array for the live one. The reader is no longer at the
       // end, so growth must not re-pin: the follow latch is closed here, before the swap,
       // or the content change that the swap itself provokes jumps the list under a
-      // reader who has just finished scrolling.
-      if (!nearLatestMessage.current) initialLatestPositionPending.current = false
-      // Thawing replaces the array the list renders, and the replacement re-measures the
-      // mounted cells. Anchor on the reader's current offset so the swap cannot move the
-      // transcript: without this the thaw lands a frame after the gesture and reads as
-      // the page jumping.
-      const thaw = listMetrics.current
-      thawAnchor.current = { contentHeight: thaw.contentHeight, offsetY: thaw.offsetY }
-      setFrozenRows(null)
       // The gesture has settled, so the offset now names a row rather than a frame in a
       // moving list. This is the moment a reopen can trust.
       if (sessionId !== undefined) {
@@ -635,12 +609,12 @@ export default function SessionScreen(): React.JSX.Element {
   }
 
   /**
-   * Pins the list to the newest message and keeps the follow latch closed.
+   * Marks the newest message as the one the reader is looking at.
    *
-   * A single jump is enough on its own: `onContentSizeChange` re-pins while the reader
-   * stays at the bottom, which is what carries the list past the lazily mounted rows a
-   * long conversation adds after this call. Re-pinning from a timer instead made every
-   * late row measurement a visible jump.
+   * Nothing is scrolled: an inverted list already rests on its newest row at offset 0, so
+   * a reply that lands there needs no jump. This only settles the state that the jump used
+   * to serve — the follow latch, the return control, the unread count, and the remembered
+   * reading position.
    */
   function pinToLatest(): void {
     nearLatestMessage.current = true
@@ -649,47 +623,12 @@ export default function SessionScreen(): React.JSX.Element {
     setUnseenCount(0)
     pendingRestore.current = null
     if (sessionId !== undefined) forgetPosition(sessionId)
-    listRef.current?.scrollToEnd({ animated: false })
-    // The rows that arrived in this commit measure after the jump, so the first landing
-    // is short by their height. The settle re-assert is kept, but only when the list is
-    // measurably short of the end: an unconditional second jump moved a list that was
-    // already correct, which is the flicker a reader sees after every streaming burst.
-    if (pinSettleTimer.current) clearTimeout(pinSettleTimer.current)
-    pinSettleTimer.current = setTimeout(() => {
-      pinSettleTimer.current = null
-      if (readerScrolling.current || !nearLatestMessage.current) return
-      const metrics = listMetrics.current
-      const endOffset = metrics.contentHeight - metrics.viewportHeight
-      if (metrics.contentHeight <= 0 || metrics.viewportHeight <= 0) return
-      // Below the threshold the first landing is already on the newest row.
-      if (endOffset - metrics.offsetY < SETTLE_MIN_GAP_PX) return
-      listRef.current?.scrollToEnd({ animated: false })
-    }, PIN_SETTLE_MS)
   }
   pinToLatestRef.current = pinToLatest
-
-  /**
-   * Queues one follow jump for the end of the current measurement burst.
-   *
-   * Trailing rather than leading: the last size change of a burst is the one that
-   * carries the settled height, so jumping on it lands where the rows actually end.
-   */
-  function scheduleFollowPin(): void {
-    if (followPinTimer.current !== null) return
-    followPinTimer.current = setTimeout(() => {
-      followPinTimer.current = null
-      // A drag — or its momentum — owns the list until the reader lets go: jumping
-      // under a finger is what made a scroll-up look like the text shaking.
-      if (readerScrolling.current || !nearLatestMessage.current) return
-      pinToLatest()
-    }, FOLLOW_PIN_DELAY_MS)
-  }
 
   useEffect(
     () => () => {
       if (readerScrollIdleTimer.current) clearTimeout(readerScrollIdleTimer.current)
-      if (followPinTimer.current) clearTimeout(followPinTimer.current)
-      if (pinSettleTimer.current) clearTimeout(pinSettleTimer.current)
     },
     [],
   )
@@ -827,7 +766,8 @@ export default function SessionScreen(): React.JSX.Element {
                 <FlatList
                   style={s.listView}
                   ref={listRef}
-                  data={listRows}
+                  inverted
+                  data={invertedRows}
                   keyExtractor={keyExtractor}
                   // A long session can hold hundreds of rows; bound the first paint and
                   // the batch size so opening one does not mount every row at once.
@@ -854,7 +794,7 @@ export default function SessionScreen(): React.JSX.Element {
                     />
                   }
                   showsVerticalScrollIndicator={false}
-                  ListHeaderComponent={
+                  ListFooterComponent={
                     <>
                       {/* The board and the context line sit in the header rather than
                           above the list: a block outside the scroll view resizes the
@@ -913,7 +853,7 @@ export default function SessionScreen(): React.JSX.Element {
                       )}
                     </>
                   }
-                  ListFooterComponent={
+                  ListHeaderComponent={
                     <>
                       {/* A question the Turn is waiting on outranks its clock: the reader
                           is the blocker, and the row opens the screen that answers it. */}
@@ -936,57 +876,19 @@ export default function SessionScreen(): React.JSX.Element {
                     )
                   }
                   onContentSizeChange={(_width: number, height: number) => {
-                    // A long conversation keeps mounting rows after the first jump, and a
-                    // streaming reply grows on every chunk, so the follow is decided per
-                    // content change rather than once per open. The reader's own drag is
-                    // what releases it; a programmatic jump cannot.
-                    // The thaw lands as one content change; hold the reader's offset
-                    // across it so replacing the frozen rows cannot shift the transcript.
-                    const thaw = thawAnchor.current
-                    if (thaw !== null) {
-                      thawAnchor.current = null
-                      if (Math.abs(height - thaw.contentHeight) > 0.5)
-                        listRef.current?.scrollToOffset({ animated: false, offset: thaw.offsetY })
-                      return
-                    }
+                    // The list is inverted, so growth at the newest end cannot move the
+                    // viewport and nothing has to be jumped. The one measurement that still
+                    // needs acting on is a remembered reading position, which can only be
+                    // applied once the transcript is tall enough to address it.
                     const restore = pendingRestore.current
-                    if (restore !== null) {
-                      const offset = restoredOffsetOnOpen({ saved: restore, contentHeight: height })
-                      if (offset === undefined) {
-                        // Still shorter than the transcript that was left: wait for the rows
-                        // that restore the height, or fall back when the wait expires.
-                        return
-                      }
-                      pendingRestore.current = null
-                      if (restoreTimer.current) clearTimeout(restoreTimer.current)
-                      restoreTimer.current = null
-                      initialLatestPositionPending.current = false
-                      listRef.current?.scrollToOffset({ animated: false, offset })
-                      return
-                    }
-                    const anchor = pendingPrependAnchor.current
-                    if (anchor !== null) {
-                      pendingPrependAnchor.current = null
-                      initialLatestPositionPending.current = false
-                      listRef.current?.scrollToOffset({
-                        animated: false,
-                        offset: restoredOffsetAfterPrepend({
-                          previousContentHeight: anchor.contentHeight,
-                          previousOffset: anchor.offsetY,
-                          nextContentHeight: height,
-                        }),
-                      })
-                      return
-                    }
-                    const sendFollowWindowOpen = Date.now() < sendFollowUntil.current
-                    const follow = shouldFollowContentGrowth({
-                      hasMessages: messages.length > 0,
-                      sticksToLatest: initialLatestPositionPending.current || nearLatestMessage.current,
-                      sendFollowWindowOpen,
-                    })
-                    if (!follow) return
+                    if (restore === null) return
+                    const offset = restoredOffsetOnOpen({ saved: restore, contentHeight: height })
+                    if (offset === undefined) return
+                    pendingRestore.current = null
+                    if (restoreTimer.current) clearTimeout(restoreTimer.current)
+                    restoreTimer.current = null
                     initialLatestPositionPending.current = false
-                    scheduleFollowPin()
+                    listRef.current?.scrollToOffset({ animated: false, offset })
                   }}
                   onMomentumScrollBegin={() => {
                     // Extend the reader window for a gesture's momentum tail; momentum that
@@ -1008,14 +910,14 @@ export default function SessionScreen(): React.JSX.Element {
                     // that sits above the very rows being requested.
                     if (
                       awaitingOlderRearm.current &&
-                      event.nativeEvent.contentOffset.y > OLDER_HISTORY_TRIGGER_PX + OLDER_HISTORY_REARM_PX
+                      uprightOffset(event.nativeEvent) > OLDER_HISTORY_TRIGGER_PX + OLDER_HISTORY_REARM_PX
                     )
                       // The reader moved back out past the runway, so the next approach is
                       // a new page request rather than the echo of the one just answered.
                       awaitingOlderRearm.current = false
                     if (
                       shouldLoadOlderHistory({
-                        offsetY: event.nativeEvent.contentOffset.y,
+                        offsetY: uprightOffset(event.nativeEvent),
                         hasMore: olderHasMore !== false,
                         loading: loadOlder.isPending,
                         exhausted: exhaustedOlderHistory.current,
