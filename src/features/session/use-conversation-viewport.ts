@@ -9,8 +9,11 @@ import {
   READER_SCROLL_TAIL_MS,
   restoredOffsetOnOpen,
   RESTORE_WAIT_MS,
+  shouldLoadOlderHistory,
   shouldReleaseFollowOnScroll,
   shouldShowReturnToLatest,
+  OLDER_HISTORY_REARM_PX,
+  OLDER_HISTORY_TRIGGER_PX,
   SEND_FOLLOW_WINDOW_MS,
 } from '@/components/session-scroll-logic'
 
@@ -28,6 +31,8 @@ interface ScrollMetrics {
   contentHeight: number
   offsetY: number
   viewportHeight: number
+  /** The same position in upright terms, which is what the runway rules are stated in. */
+  uprightOffset: number
 }
 
 /** A remembered reading position, as the store keeps it. */
@@ -62,6 +67,10 @@ export interface ConversationViewport<Row> {
   resetForSession: (sessionId: string | undefined, messageCount: number) => void
   /** Answer a content measurement, applying a remembered offset when one is pending. */
   handleContentSizeChange: (height: number) => void
+  /** Whether the reader has come close enough to the oldest loaded row to ask for more. */
+  isAtHistoryRunway: () => boolean
+  /** Re-arm the runway after a page lands, so one gesture cannot request twice. */
+  noteOlderPageLoaded: () => void
 }
 
 /**
@@ -101,8 +110,10 @@ export function useConversationViewport<Row>({
   const readerIdleTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const sendFollowUntil = useRef(0)
   const unseenBaseline = useRef<number | undefined>(undefined)
-  const metrics = useRef<ScrollMetrics>({ contentHeight: 0, offsetY: 0, viewportHeight: 0 })
+  const metrics = useRef<ScrollMetrics>({ contentHeight: 0, offsetY: 0, uprightOffset: 0, viewportHeight: 0 })
   const pendingRestore = useRef<RestoreTarget | null>(null)
+  /** Closed after a page lands; opened once the reader scrolls back out of the runway. */
+  const awaitingOlderRearm = useRef(false)
   const restoreTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const [showReturnToLatest, setShowReturnToLatest] = useState(false)
   const [unseenCount, setUnseenCount] = useState(0)
@@ -186,6 +197,7 @@ export function useConversationViewport<Row>({
       metrics.current = {
         contentHeight: event.nativeEvent.contentSize.height,
         offsetY: event.nativeEvent.contentOffset.y,
+        uprightOffset: uprightOffset(event.nativeEvent),
         viewportHeight: event.nativeEvent.layoutMeasurement.height,
       }
       applyProximity(event.nativeEvent, readerScrolling.current)
@@ -194,6 +206,27 @@ export function useConversationViewport<Row>({
   )
 
   const isAwayFromLatest = useCallback((): boolean => !nearLatest.current, [])
+
+  const isAtHistoryRunway = useCallback((): boolean => {
+    const offset = metrics.current.uprightOffset
+    // Leaving the runway re-opens it, so the next approach is a new request rather than
+    // the echo of the one just answered.
+    if (awaitingOlderRearm.current) {
+      if (offset > OLDER_HISTORY_TRIGGER_PX + OLDER_HISTORY_REARM_PX) awaitingOlderRearm.current = false
+      else return false
+    }
+    return shouldLoadOlderHistory({
+      offsetY: offset,
+      hasMore: true,
+      loading: false,
+      exhausted: false,
+      awaitingRearm: awaitingOlderRearm.current,
+    })
+  }, [])
+
+  const noteOlderPageLoaded = useCallback((): void => {
+    awaitingOlderRearm.current = true
+  }, [])
 
   const noteReaderLeftLatest = useCallback((): void => {
     nearLatest.current = false
@@ -260,6 +293,8 @@ export function useConversationViewport<Row>({
     settleReaderScroll,
     handleScroll,
     isAwayFromLatest,
+    isAtHistoryRunway,
+    noteOlderPageLoaded,
     noteReaderLeftLatest,
     noteSend,
     resetForSession,

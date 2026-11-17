@@ -2,7 +2,8 @@ import { ConversationDisclosureContext } from '@/components/conversation-disclos
 import { useConversationViewport } from './use-conversation-viewport'
 import { closingAssistantSequences, conversationFlowGap, conversationRowKey } from '@/components/conversation-flow'
 import { MobileApi } from '@/api/mobile-api'
-import { NativeAgentActivity } from '@/components/native-agent-activity'
+import { ConversationLeadingBlocks } from './conversation-leading-blocks'
+import type { MobileSubagentEntry } from '@/types/mobile'
 import { NativeGoalEditor } from '@/components/native-goal-editor'
 import { NativeGoalBar } from '@/components/native-goal-bar'
 import { goalFromProjection, goalWithActivation } from '@/components/session-goal-logic'
@@ -34,25 +35,17 @@ import { MessageRow } from '@/components/session-message-row'
 import { groupProcessRows, runningProcessTitle, type NativeProcessRow } from '@/components/session-process-logic'
 import { ConnectionStatus, ErrorNotice, SessionDock, UnavailableState } from '@/components/session-screen-state'
 import { makeSessionStyles } from '@/components/session-screen-styles'
-import {
-  OLDER_HISTORY_REARM_PX,
-  OLDER_HISTORY_TRIGGER_PX,
-  shouldRefreshFromPull,
-  shouldLoadOlderHistory,
-  unreadCountLabel,
-} from '@/components/session-scroll-logic'
+import { shouldRefreshFromPull, unreadCountLabel } from '@/components/session-scroll-logic'
 import {
   foldCompletedTurns,
   turnSpans,
   type NativeRow,
   type NativeTurnMemberRow,
 } from '@/components/session-turn-logic'
-import { ContextRows } from '@/components/session-workbench'
 import { teamTasks } from '@/components/team-task-logic'
 import { SkeletonConversation } from '@/components/skeleton'
 import { ComposerDockChips, type ComposerDock } from '@/components/composer-dock-chips'
 import { NativeDeliverablesRow } from '@/components/native-deliverables-row'
-import { NativeTeamTasksRow } from '@/components/native-team-tasks-row'
 import { NativeTurnTriggerRow } from '@/components/native-turn-trigger-row'
 import { WorkspaceComposer } from '@/components/workspace-composer'
 import { WorkspaceShell } from '@/components/workspace-shell'
@@ -116,7 +109,6 @@ export default function SessionScreen(): React.JSX.Element {
   /** A page that brought no rows means scrolling further cannot find more, even if the host says it has. */
   const exhaustedOlderHistory = useRef(false)
   /** Closed after a page lands; opened once the reader scrolls back out of the runway. */
-  const awaitingOlderRearm = useRef(false)
   /** Whether the in-flight older-page request came from the button rather than the scroll. */
   const lastOlderRequestWasManual = useRef(false)
   const streamStatus = useMobileSyncStore((state) => state.status)
@@ -190,7 +182,7 @@ export default function SessionScreen(): React.JSX.Element {
       if (page.items.length === 0) exhaustedOlderHistory.current = true
       setOlderItems((current) => mergeEventItems(page.items, current))
       setOlderHasMore(page.hasMore ?? false)
-      awaitingOlderRearm.current = true
+      noteOlderPageLoaded()
     },
     onError: (error) => {
       // A failed page is also the end of the line for the automatic trigger: retrying it
@@ -261,6 +253,8 @@ export default function SessionScreen(): React.JSX.Element {
     settleReaderScroll,
     handleScroll,
     isAwayFromLatest,
+    isAtHistoryRunway,
+    noteOlderPageLoaded,
     noteReaderLeftLatest,
     noteSend,
     resetForSession,
@@ -271,6 +265,22 @@ export default function SessionScreen(): React.JSX.Element {
     void refreshFromPull()
   }, [refreshFromPull])
   const returnToLatest = useCallback((): void => pinToLatest({ scroll: true }), [pinToLatest])
+  const openSubagent = useCallback(
+    (entry: MobileSubagentEntry): void => {
+      // A diagnostic entry reports a subagent the Host cannot open, so there is nothing
+      // to navigate to; the row that shows it has no press handler either.
+      if (entry.kind !== 'child') return
+      void router.push({
+        pathname: '/session/[sessionId]/subagent',
+        params: { mode: entry.mode, parentSessionId: sessionId, sessionId: entry.id },
+      })
+    },
+    [sessionId],
+  )
+  const interruptSubagentHandler = useCallback(
+    (entry: MobileSubagentEntry): void => interruptSubagent.mutate(entry.id),
+    [interruptSubagent],
+  )
   const loadOlderManually = useCallback((): void => {
     void loadOlder.mutateAsync({ manual: true }).catch(() => undefined)
   }, [loadOlder])
@@ -280,7 +290,6 @@ export default function SessionScreen(): React.JSX.Element {
     setOlderItems([])
     setOlderHasMore(undefined)
     exhaustedOlderHistory.current = false
-    awaitingOlderRearm.current = false
     // The viewport restores its own reading position: where the reader left this
     // conversation, or the newest message for one they have not opened.
     resetForSession(sessionId, messageCount)
@@ -342,11 +351,6 @@ export default function SessionScreen(): React.JSX.Element {
   /** First row the viewport shows, for the turn rail's active mark. */
   const [firstVisibleRow, setFirstVisibleRow] = useState(0)
   const [catalogSheetOpen, setCatalogSheetOpen] = useState(false)
-  const displayRowsRef = useRef<NativeRow[]>([])
-  /** What `renderItem` reads for the previous row's gap, without depending on the array. */
-  const rowsRef = useRef<NativeRow[]>([])
-  displayRowsRef.current = displayRows
-  const listRows = displayRows
   /**
    * The rows in the order an inverted list renders them: newest first.
    *
@@ -355,8 +359,7 @@ export default function SessionScreen(): React.JSX.Element {
    * they are reading history does not move what they are looking at. That is the whole
    * reason for the inversion: no code has to chase the content height.
    */
-  const invertedRows = useMemo(() => [...listRows].reverse(), [listRows])
-  rowsRef.current = invertedRows
+  const invertedRows = useMemo(() => [...displayRows].reverse(), [displayRows])
   const railRows = displayRows as readonly NativeConversationRow[]
   const railMarks = useMemo(() => turnRail(railRows), [railRows])
   /**
@@ -500,12 +503,12 @@ export default function SessionScreen(): React.JSX.Element {
         ) : (
           renderRow(item)
         )
-      return <View style={gapStyles[conversationFlowGap(item, rowsRef.current[index + 1])]}>{content}</View>
+      return <View style={gapStyles[conversationFlowGap(item, invertedRows[index + 1])]}>{content}</View>
     },
     // `displayRows` is read through `rowsRef`: listing it here gave the callback a new
     // identity on every content change, which made FlatList re-render every visible cell
     // and re-measure the ones whose content had just grown.
-    [renderRow, renderStep, renderTurnMember, toggleStep],
+    [invertedRows, renderRow, renderStep, renderTurnMember, toggleStep],
   )
   const keyExtractor = useCallback((item: NativeRow, index: number) => conversationRowKey(item, index), [])
   const disclosures = useMemo(() => ({ expanded: openSteps, toggle: toggleStep }), [openSteps, toggleStep])
@@ -684,63 +687,18 @@ export default function SessionScreen(): React.JSX.Element {
                   }
                   showsVerticalScrollIndicator={false}
                   ListFooterComponent={
-                    <>
-                      {/* The board and the context line sit in the header rather than
-                          above the list: a block outside the scroll view resizes the
-                          viewport whenever it appears, disappears, or re-measures,
-                          which moves every visible row. */}
-                      <NativeTeamTasksRow tasks={boardTasks} />
-                      <ContextRows items={sourceItems} />
-                      <NativeAgentActivity
-                        jobs={jobs.data?.items ?? []}
-                        subagents={subagents.data?.entries ?? []}
-                        interruptingId={interruptSubagent.isPending ? interruptSubagent.variables : undefined}
-                        onOpenSubagent={(entry) =>
-                          router.push({
-                            pathname: '/session/[sessionId]/subagent',
-                            params: { sessionId: entry.id, parentSessionId: sessionId, mode: entry.mode },
-                          })
-                        }
-                        onInterruptSubagent={(entry) => interruptSubagent.mutate(entry.id)}
-                      />
-                      {hasMoreHistory ? (
-                        <Pressable
-                          android_ripple={{ borderless: false }}
-                          accessibilityRole="button"
-                          accessibilityLabel={
-                            loadOlder.isPending
-                              ? message('conversation.processingOlder')
-                              : loadOlder.isError
-                                ? message('conversation.retryLoadOlder')
-                                : message('conversation.loadOlder')
-                          }
-                          accessibilityState={{ busy: loadOlder.isPending }}
-                          disabled={loadOlder.isPending}
-                          onPress={loadOlderManually}
-                          style={({ pressed }) => [s.loadOlder, pressed && s.pressed]}
-                        >
-                          <NativeIcon
-                            name={loadOlder.isError ? 'refresh-outline' : 'chevron-up-outline'}
-                            size={16}
-                            color={loadOlder.isError ? theme.colors.danger : theme.colors.accentText}
-                          />
-                          <Text style={[s.loadOlderText, loadOlder.isError === true && s.loadOlderError]}>
-                            {loadOlder.isPending
-                              ? message('conversation.processingOlder')
-                              : loadOlder.isError
-                                ? message('conversation.retryLoadOlder')
-                                : message('conversation.loadOlder')}
-                          </Text>
-                        </Pressable>
-                      ) : (
-                        // The desktop states the boundary rather than leaving a blank where
-                        // the control used to be, so the reader knows the scroll ends here
-                        // instead of wondering whether a page failed to load.
-                        <View style={s.historyStart}>
-                          <Text style={s.historyStartText}>{message('conversation.historyStart')}</Text>
-                        </View>
-                      )}
-                    </>
+                    <ConversationLeadingBlocks
+                      hasMoreHistory={hasMoreHistory}
+                      interruptingId={interruptSubagent.isPending ? interruptSubagent.variables : undefined}
+                      jobs={jobs.data?.items ?? []}
+                      olderState={{ failed: loadOlder.isError, pending: loadOlder.isPending }}
+                      onInterruptSubagent={interruptSubagentHandler}
+                      onLoadOlder={loadOlderManually}
+                      onOpenSubagent={openSubagent}
+                      sourceItems={sourceItems}
+                      subagents={subagents.data?.entries ?? []}
+                      tasks={boardTasks}
+                    />
                   }
                   ListHeaderComponent={
                     <>
@@ -769,25 +727,10 @@ export default function SessionScreen(): React.JSX.Element {
                   onMomentumScrollEnd={settleReaderScroll}
                   onScroll={(event: NativeSyntheticEvent<NativeScrollEvent>) => {
                     handleScroll(event)
-                    // Reaching for older history should not need a second press on a button
-                    // that sits above the very rows being requested.
-                    if (
-                      awaitingOlderRearm.current &&
-                      uprightOffset(event.nativeEvent) > OLDER_HISTORY_TRIGGER_PX + OLDER_HISTORY_REARM_PX
-                    )
-                      // The reader moved back out past the runway, so the next approach is
-                      // a new page request rather than the echo of the one just answered.
-                      awaitingOlderRearm.current = false
-                    if (
-                      shouldLoadOlderHistory({
-                        offsetY: uprightOffset(event.nativeEvent),
-                        hasMore: olderHasMore !== false,
-                        loading: loadOlder.isPending,
-                        exhausted: exhaustedOlderHistory.current,
-                        awaitingRearm: awaitingOlderRearm.current,
-                      })
-                    )
-                      void loadOlder.mutateAsync({ manual: false }).catch(() => undefined)
+                    // Reaching for older history should not need a second press on the
+                    // button that sits above the rows being requested.
+                    if (olderHasMore !== false && !loadOlder.isPending && !exhaustedOlderHistory.current)
+                      if (isAtHistoryRunway()) void loadOlder.mutateAsync({ manual: false }).catch(() => undefined)
                     // The rail's active mark follows the offset, not a row measurement: it
                     // only has to name which Turn the reader is inside. The index counts
                     // from the oldest row, which is the upright offset an inverted list
