@@ -1,4 +1,5 @@
 import { ConversationDisclosureContext } from '@/components/conversation-disclosure'
+import { useConversationViewport } from './use-conversation-viewport'
 import { closingAssistantSequences, conversationFlowGap, conversationRowKey } from '@/components/conversation-flow'
 import { MobileApi } from '@/api/mobile-api'
 import { NativeAgentActivity } from '@/components/native-agent-activity'
@@ -34,18 +35,11 @@ import { groupProcessRows, runningProcessTitle, type NativeProcessRow } from '@/
 import { ConnectionStatus, ErrorNotice, SessionDock, UnavailableState } from '@/components/session-screen-state'
 import { makeSessionStyles } from '@/components/session-screen-styles'
 import {
-  READER_SCROLL_TAIL_MS,
-  RESTORE_WAIT_MS,
-  SEND_FOLLOW_WINDOW_MS,
-  isNearLatestMessage,
   OLDER_HISTORY_REARM_PX,
   OLDER_HISTORY_TRIGGER_PX,
-  restoredOffsetOnOpen,
   shouldRefreshFromPull,
   shouldLoadOlderHistory,
   unreadCountLabel,
-  shouldReleaseFollowOnScroll,
-  shouldShowReturnToLatest,
 } from '@/components/session-scroll-logic'
 import {
   foldCompletedTurns,
@@ -73,7 +67,6 @@ import { type SharedEventItem } from '@/shared/dsh-presentation'
 import { doneFeedback } from '@/components/haptics'
 import { useConnectionStore } from '@/state/connection'
 import { useMobileSyncStore } from '@/state/mobile-sync'
-import { useReadingPositionStore } from '@/state/reading-positions'
 import { useRouteSessionSelection } from '@/state/session-selection'
 import { mergeEventItems } from '@/sync/event-items'
 import { sessionWindow } from '@/sync/session-window'
@@ -98,6 +91,16 @@ import { useSessionActions } from './use-session-actions'
 import { useSessionSelections } from '@/hooks/use-session-selections'
 import { useSessionQueries } from './use-session-queries'
 
+/** Flow gaps are one of four measured values; a stable style per value avoids a new
+ * object on every row of every render, which is what defeats a row's memo comparison. */
+const gapStyles: Record<number, { paddingTop: number }> = {
+  0: { paddingTop: 0 },
+  4: { paddingTop: 4 },
+  12: { paddingTop: 12 },
+  16: { paddingTop: 16 },
+  24: { paddingTop: 24 },
+}
+
 export default function SessionScreen(): React.JSX.Element {
   const theme = useAppTheme()
   const s = useThemedStyles(makeSessionStyles)
@@ -109,38 +112,16 @@ export default function SessionScreen(): React.JSX.Element {
   const connection = useConnectionStore((state) => state.connection)
   const insets = useSafeAreaInsets()
   const client = useMemo(() => (connection ? new MobileApi(connection) : undefined), [connection])
-  const listRef = useRef<FlatList<NativeRow>>(null)
   const submittedDraft = useRef<string | undefined>(undefined)
-  // Sticky-latest latch: only a reader's own drag or momentum may release it, so
-  // content that grows while the list grows too keeps the newest message in view.
-  const nearLatestMessage = useRef(true)
-  const readerScrolling = useRef(false)
-  const readerScrollIdleTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
-  // Set by the reader's own send, then cleared after SEND_FOLLOW_WINDOW_MS. The
-  // prompt row and the first reply chunk land in separate commits, so a stale
-  // offset measured in between would otherwise release the follow latch.
-  const sendFollowUntil = useRef(0)
-  /** Last measured content height and offset, used to anchor a history prepend. */
-  const listMetrics = useRef({ contentHeight: 0, offsetY: 0, viewportHeight: 0 })
-  /** The offset to keep when the frozen rows are replaced by the live ones. */
   /** A page that brought no rows means scrolling further cannot find more, even if the host says it has. */
   const exhaustedOlderHistory = useRef(false)
   /** Closed after a page lands; opened once the reader scrolls back out of the runway. */
   const awaitingOlderRearm = useRef(false)
   /** Whether the in-flight older-page request came from the button rather than the scroll. */
   const lastOlderRequestWasManual = useRef(false)
-  const [showReturnToLatest, setShowReturnToLatest] = useState(false)
-  /** Set while an opened conversation is waiting for its remembered offset to apply. */
-  const pendingRestore = useRef<{ contentHeight: number; offsetY: number; rows: number } | null>(null)
-  const restoreTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const rememberPosition = useReadingPositionStore((state) => state.remember)
-  const forgetPosition = useReadingPositionStore((state) => state.forget)
   const streamStatus = useMobileSyncStore((state) => state.status)
   /** A paired client whose stream dropped: drafting stays open, sending does not. */
   const offline = streamDropped({ hasConnection: connection !== undefined, status: streamStatus })
-  // Message rows present when the reader left the bottom; the badge counts what came after.
-  const unseenBaseline = useRef<number | undefined>(undefined)
-  const [unseenCount, setUnseenCount] = useState(0)
   const [olderItems, setOlderItems] = useState<SharedEventItem[]>([])
   const [olderHasMore, setOlderHasMore] = useState<boolean | undefined>()
 
@@ -155,8 +136,6 @@ export default function SessionScreen(): React.JSX.Element {
     setGoalEditRequest(0)
     setOpenDock(undefined)
   }, [sessionId])
-  /** Set once `pinToLatest` exists so the send callback can reach it. */
-  const pinToLatestRef = useRef<(options?: { scroll?: boolean }) => void>(() => undefined)
   const ready = Boolean(client && sessionId)
   const {
     history,
@@ -187,8 +166,7 @@ export default function SessionScreen(): React.JSX.Element {
       // The prompt row and the first reply chunk arrive in separate commits, so the
       // follow window outlives this callback; content growth inside it re-pins even if
       // an intermediate measurement reads as away-from-bottom.
-      sendFollowUntil.current = Date.now() + SEND_FOLLOW_WINDOW_MS
-      pinToLatestRef.current()
+      noteSend()
     },
     () => busyEnterRef.current,
   )
@@ -249,7 +227,7 @@ export default function SessionScreen(): React.JSX.Element {
       ])
       // Anchor only a reader who is reading history: someone already at the bottom wants
       // the newest rows, and restoring their old offset would park them above the end.
-      if (nearLatestMessage.current) pinToLatest()
+      if (!isAwayFromLatest()) pinToLatest()
     } catch {
       // The query hooks already surface their own failure state; the pull only ends.
     } finally {
@@ -258,43 +236,6 @@ export default function SessionScreen(): React.JSX.Element {
   }, [events, history, interactions, jobs, loadOlder.isPending, queue, refreshing, subagents])
 
   useRouteSessionSelection(sessionId)
-
-  useEffect(() => {
-    submittedDraft.current = undefined
-    nearLatestMessage.current = true
-    setShowReturnToLatest(false)
-    setOlderItems([])
-    setOlderHasMore(undefined)
-    exhaustedOlderHistory.current = false
-    awaitingOlderRearm.current = false
-    unseenBaseline.current = undefined
-    setUnseenCount(0)
-    // A conversation left mid-read reopens where it was left; a new one lands on the
-    // newest message. The remembered offset only applies once the transcript reports a
-    // height it can still address, so it waits for the first content measurement.
-    const saved = sessionId === undefined ? undefined : useReadingPositionStore.getState().positions[sessionId]
-    pendingRestore.current = saved ?? null
-    if (restoreTimer.current) clearTimeout(restoreTimer.current)
-    restoreTimer.current = null
-    if (saved !== undefined) {
-      // Reading state, not yet the viewport: the latch stays released so growth does not
-      // yank the reader down before the offset lands. A transcript that never grows back
-      // to the remembered height falls back to the newest message instead of hanging.
-      nearLatestMessage.current = false
-      setShowReturnToLatest(true)
-      unseenBaseline.current = saved.rows
-      restoreTimer.current = setTimeout(() => {
-        restoreTimer.current = null
-        if (pendingRestore.current === null) return
-        pendingRestore.current = null
-        pinToLatestRef.current({ scroll: true })
-      }, RESTORE_WAIT_MS)
-    }
-    return () => {
-      if (restoreTimer.current) clearTimeout(restoreTimer.current)
-      restoreTimer.current = null
-    }
-  }, [sessionId])
 
   useEffect(() => {
     const value = firstParam(draft)
@@ -309,6 +250,42 @@ export default function SessionScreen(): React.JSX.Element {
   )
   const sourceItems = useMemo(() => mergeEventItems(olderItems, recentWindow.items), [olderItems, recentWindow])
   const messages = useMemo(() => projectNativeConversationRows(sourceItems), [sourceItems])
+  const messageCount = messages.length
+  const viewport = useConversationViewport<NativeRow>({ sessionId, messageCount })
+  const {
+    listRef,
+    showReturnToLatest,
+    unseenCount,
+    pinToLatest,
+    beginReaderScroll,
+    settleReaderScroll,
+    handleScroll,
+    isAwayFromLatest,
+    noteReaderLeftLatest,
+    noteSend,
+    resetForSession,
+    handleContentSizeChange,
+  } = viewport
+
+  const refetchAll = useCallback((): void => {
+    void refreshFromPull()
+  }, [refreshFromPull])
+  const returnToLatest = useCallback((): void => pinToLatest({ scroll: true }), [pinToLatest])
+  const loadOlderManually = useCallback((): void => {
+    void loadOlder.mutateAsync({ manual: true }).catch(() => undefined)
+  }, [loadOlder])
+
+  useEffect(() => {
+    submittedDraft.current = undefined
+    setOlderItems([])
+    setOlderHasMore(undefined)
+    exhaustedOlderHistory.current = false
+    awaitingOlderRearm.current = false
+    // The viewport restores its own reading position: where the reader left this
+    // conversation, or the newest message for one they have not opened.
+    resetForSession(sessionId, messageCount)
+  }, [messageCount, resetForSession, sessionId])
+
   const runningTurnStartedAt = useMemo(() => activeTurnStartedAt(sourceItems), [sourceItems])
   const spans = useMemo(() => turnSpans(sourceItems), [sourceItems])
   // The running Turn is flat like the desktop's latest Turn: one header names
@@ -413,12 +390,6 @@ export default function SessionScreen(): React.JSX.Element {
     (seq: number | undefined) => (seq === undefined ? undefined : eventBySeqRef.current.get(seq)),
     [],
   )
-  useEffect(() => {
-    const baseline = unseenBaseline.current
-    if (baseline === undefined) return
-    const arrived = messages.length - baseline
-    setUnseenCount(arrived > 0 ? arrived : 0)
-  }, [messages.length])
   const closingBlocks = useMemo(() => closingAssistantSequences(displayRows), [displayRows])
   const isClosingBlock = useCallback(
     (row: NativeConversationRow) => row.sourceSeq !== undefined && closingBlocks.has(row.sourceSeq),
@@ -470,6 +441,8 @@ export default function SessionScreen(): React.JSX.Element {
   // Open steps live here, not in the row: the list recycles rows, so a disclosure
   // held by the row would collapse whenever it scrolled out of view and back.
   const [openSteps, setOpenSteps] = useState<ReadonlySet<string>>(() => new Set())
+  const openStepsRef = useRef(openSteps)
+  openStepsRef.current = openSteps
   const toggleStep = useCallback((rowKey: string) => {
     setOpenSteps((current) => {
       const next = new Set(current)
@@ -479,16 +452,21 @@ export default function SessionScreen(): React.JSX.Element {
     })
   }, [])
   const renderGroupRow = useCallback((row: NativeConversationRow) => renderRow(row), [renderRow])
+  // A running step is open unless the reader closed it, so its disclosure is tracked
+  // under the `closed:` key; a settled step is tracked under its own.
+  const toggleProcessStep = useCallback((key: string) => toggleStep(`closed:${key}`), [toggleStep])
   const renderStep = useCallback(
     (row: NativeProcessRow) => (
       <NativeProcessGroup
-        expanded={row.running ? !openSteps.has(`closed:${row.rowKey}`) : openSteps.has(row.rowKey)}
+        expanded={
+          row.running ? !openStepsRef.current.has(`closed:${row.rowKey}`) : openStepsRef.current.has(row.rowKey)
+        }
         item={row}
-        onToggle={(key) => toggleStep(row.running ? `closed:${key}` : key)}
+        onToggle={row.running ? toggleProcessStep : toggleStep}
         renderRow={renderGroupRow}
       />
     ),
-    [openSteps, renderGroupRow, toggleStep],
+    [renderGroupRow, toggleProcessStep],
   )
   // A Turn's control reveals its rows directly. A step inside it would add a
   // second disclosure whose label repeats the first member it holds, so the
@@ -512,7 +490,7 @@ export default function SessionScreen(): React.JSX.Element {
       const content =
         item.kind === 'turn' ? (
           <NativeTurnGroup
-            expanded={openSteps.has(item.rowKey)}
+            expanded={openStepsRef.current.has(item.rowKey)}
             item={item}
             onToggle={toggleStep}
             renderRow={renderTurnMember}
@@ -522,12 +500,12 @@ export default function SessionScreen(): React.JSX.Element {
         ) : (
           renderRow(item)
         )
-      return <View style={{ paddingTop: conversationFlowGap(item, rowsRef.current[index + 1]) }}>{content}</View>
+      return <View style={gapStyles[conversationFlowGap(item, rowsRef.current[index + 1])]}>{content}</View>
     },
     // `displayRows` is read through `rowsRef`: listing it here gave the callback a new
     // identity on every content change, which made FlatList re-render every visible cell
     // and re-measure the ones whose content had just grown.
-    [openSteps, renderRow, renderStep, renderTurnMember, toggleStep],
+    [renderRow, renderStep, renderTurnMember, toggleStep],
   )
   const keyExtractor = useCallback((item: NativeRow, index: number) => conversationRowKey(item, index), [])
   const disclosures = useMemo(() => ({ expanded: openSteps, toggle: toggleStep }), [openSteps, toggleStep])
@@ -540,99 +518,6 @@ export default function SessionScreen(): React.JSX.Element {
    * @param event - Native scroll measurement that produced the current offset.
    * @param releaseLatch - Whether this measurement may move the sticky-latest latch.
    */
-  const applyScrollProximity = (event: NativeScrollEvent, releaseLatch: boolean): void => {
-    // A measurement taken while the reader's own send is still landing trails the new
-    // content, so releasing the latch there would strand the reply above the viewport.
-    const mayRelease = shouldReleaseFollowOnScroll({
-      readerScrolling: releaseLatch,
-      sendFollowWindowOpen: Date.now() < sendFollowUntil.current,
-    })
-    if (mayRelease) {
-      nearLatestMessage.current = isNearLatestMessage(
-        event.contentSize.height,
-        event.layoutMeasurement.height,
-        uprightOffset(event),
-      )
-    }
-    // The control mirrors the latch, not this measurement: a programmatic scroll that
-    // outruns content growth must not advertise a return-to-latest that lands nowhere.
-    setShowReturnToLatest(
-      shouldShowReturnToLatest({ hasMessages: messages.length > 0, nearLatest: nearLatestMessage.current }),
-    )
-    if (nearLatestMessage.current) {
-      unseenBaseline.current = undefined
-      setUnseenCount(0)
-    } else if (unseenBaseline.current === undefined) {
-      // The baseline is the row count at the moment the reader left the bottom, so the
-      // badge reports what arrived since, not the size of the whole transcript.
-      unseenBaseline.current = messages.length
-    }
-  }
-
-  /** Opens a window in which measurements count as the reader steering the list. */
-  const beginReaderScroll = (): void => {
-    if (readerScrollIdleTimer.current) clearTimeout(readerScrollIdleTimer.current)
-    readerScrollIdleTimer.current = null
-    readerScrolling.current = true
-  }
-
-  /** Closes the reader window after the momentum tail of the current gesture. */
-  const settleReaderScroll = (event: NativeSyntheticEvent<NativeScrollEvent>): void => {
-    applyScrollProximity(event.nativeEvent, true)
-    if (readerScrollIdleTimer.current) clearTimeout(readerScrollIdleTimer.current)
-    readerScrollIdleTimer.current = setTimeout(() => {
-      readerScrolling.current = false
-      readerScrollIdleTimer.current = null
-      // Thawing swaps the data array for the live one. The reader is no longer at the
-      // end, so growth must not re-pin: the follow latch is closed here, before the swap,
-      // or the content change that the swap itself provokes jumps the list under a
-      // The gesture has settled, so the offset now names a row rather than a frame in a
-      // moving list. This is the moment a reopen can trust.
-      if (sessionId !== undefined) {
-        if (nearLatestMessage.current) forgetPosition(sessionId)
-        else {
-          const metrics = listMetrics.current
-          rememberPosition(sessionId, {
-            contentHeight: metrics.contentHeight,
-            offsetY: metrics.offsetY,
-            rows: messages.length,
-          })
-        }
-      }
-    }, READER_SCROLL_TAIL_MS)
-  }
-
-  /**
-   * Marks the newest message as the one the reader is looking at.
-   *
-   * An inverted list rests on its newest row at offset 0, so a reply that lands there is
-   * already visible and needs no jump. Coming back from history is a deliberate request,
-   * though, and that one has to move the list.
-   *
-   * @param options.scroll - Whether the list should move to the newest row as well.
-   */
-  function pinToLatest({ scroll = false }: { scroll?: boolean } = {}): void {
-    nearLatestMessage.current = true
-    setShowReturnToLatest(false)
-    unseenBaseline.current = undefined
-    setUnseenCount(0)
-    pendingRestore.current = null
-    if (sessionId !== undefined) forgetPosition(sessionId)
-    if (!scroll) return
-    // The reader asked for the newest message: two frames so the control that triggered
-    // this is gone before the list settles under it, which is what makes the move read as
-    // one gesture rather than a button disappearing and the content jumping separately.
-    listRef.current?.scrollToOffset({ animated: true, offset: 0 })
-  }
-  pinToLatestRef.current = pinToLatest
-
-  useEffect(
-    () => () => {
-      if (readerScrollIdleTimer.current) clearTimeout(readerScrollIdleTimer.current)
-    },
-    [],
-  )
-
   const hasMoreHistory =
     olderHasMore ??
     (recentWindow.truncated || events.data?.windowStartSeq !== undefined || history.data?.hasMore === true)
@@ -723,7 +608,7 @@ export default function SessionScreen(): React.JSX.Element {
               onOpenSubagents={() => setCatalogSheetOpen(true)}
               pending={actions}
             />
-            <ConnectionStatus onPress={() => void refreshFromPull()} status={displayStatus} />
+            <ConnectionStatus onPress={refetchAll} status={displayStatus} />
           </View>
         }
       >
@@ -768,6 +653,10 @@ export default function SessionScreen(): React.JSX.Element {
                   ref={listRef}
                   inverted
                   data={invertedRows}
+                  // The open-step set lives in a ref so a disclosure toggle cannot change
+                  // the identity of the render callbacks; `extraData` is the signal that
+                  // tells the list those rows need re-rendering.
+                  extraData={openSteps}
                   keyExtractor={keyExtractor}
                   // A long session can hold hundreds of rows; bound the first paint and
                   // the batch size so opening one does not mount every row at once.
@@ -827,7 +716,7 @@ export default function SessionScreen(): React.JSX.Element {
                           }
                           accessibilityState={{ busy: loadOlder.isPending }}
                           disabled={loadOlder.isPending}
-                          onPress={() => void loadOlder.mutateAsync({ manual: true }).catch(() => undefined)}
+                          onPress={loadOlderManually}
                           style={({ pressed }) => [s.loadOlder, pressed && s.pressed]}
                         >
                           <NativeIcon
@@ -875,36 +764,11 @@ export default function SessionScreen(): React.JSX.Element {
                       <Text style={s.empty}>{message('conversation.noMessages')}</Text>
                     )
                   }
-                  onContentSizeChange={(_width: number, height: number) => {
-                    // The list is inverted, so growth at the newest end cannot move the
-                    // viewport and nothing has to be jumped. The one measurement that still
-                    // needs acting on is a remembered reading position, which can only be
-                    // applied once the transcript is tall enough to address it.
-                    const restore = pendingRestore.current
-                    if (restore === null) return
-                    const offset = restoredOffsetOnOpen({ saved: restore, contentHeight: height })
-                    if (offset === undefined) return
-                    pendingRestore.current = null
-                    if (restoreTimer.current) clearTimeout(restoreTimer.current)
-                    restoreTimer.current = null
-                    listRef.current?.scrollToOffset({ animated: false, offset })
-                  }}
-                  onMomentumScrollBegin={() => {
-                    // Extend the reader window for a gesture's momentum tail; momentum that
-                    // follows a programmatic scroll must not release the sticky latch.
-                    if (readerScrolling.current) beginReaderScroll()
-                  }}
-                  onMomentumScrollEnd={(event: NativeSyntheticEvent<NativeScrollEvent>) => {
-                    if (readerScrolling.current) settleReaderScroll(event)
-                  }}
+                  onContentSizeChange={(_width: number, height: number) => handleContentSizeChange(height)}
+                  onMomentumScrollBegin={beginReaderScroll}
+                  onMomentumScrollEnd={settleReaderScroll}
                   onScroll={(event: NativeSyntheticEvent<NativeScrollEvent>) => {
-                    // Every measurement feeds the prepend anchor, including the ones taken
-                    // before initial positioning finishes; only the follow latch is gated.
-                    listMetrics.current = {
-                      contentHeight: event.nativeEvent.contentSize.height,
-                      offsetY: event.nativeEvent.contentOffset.y,
-                      viewportHeight: event.nativeEvent.layoutMeasurement.height,
-                    }
+                    handleScroll(event)
                     // Reaching for older history should not need a second press on a button
                     // that sits above the very rows being requested.
                     if (
@@ -924,7 +788,6 @@ export default function SessionScreen(): React.JSX.Element {
                       })
                     )
                       void loadOlder.mutateAsync({ manual: false }).catch(() => undefined)
-                    applyScrollProximity(event.nativeEvent, readerScrolling.current)
                     // The rail's active mark follows the offset, not a row measurement: it
                     // only has to name which Turn the reader is inside. The index counts
                     // from the oldest row, which is the upright offset an inverted list
@@ -945,7 +808,7 @@ export default function SessionScreen(): React.JSX.Element {
                   onLoadOlder={() => void loadOlder.mutateAsync({ manual: true }).catch(() => undefined)}
                   rowCount={railRows.length}
                   onJump={(index) => {
-                    nearLatestMessage.current = false
+                    noteReaderLeftLatest()
                     listRef.current?.scrollToIndex({ animated: false, index, viewPosition: 0 })
                   }}
                 />
@@ -958,7 +821,7 @@ export default function SessionScreen(): React.JSX.Element {
                         ? message('conversation.backToLatest')
                         : `${message('conversation.backToLatest')}，${format('conversation.newMessages', { count: unreadCountLabel(unseenCount) as string })}`
                     }
-                    onPress={() => pinToLatest({ scroll: true })}
+                    onPress={returnToLatest}
                     style={({ pressed }) => [s.returnToLatest, pressed && s.returnToLatestPressed]}
                   >
                     <NativeIcon name="chevron-down-outline" size={20} color={theme.colors.ink} />

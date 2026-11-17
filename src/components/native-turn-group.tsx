@@ -4,6 +4,7 @@ import type { NativeTurnRow } from '@/components/session-turn-logic'
 import { t as message } from '@/locale'
 import type { AppTheme } from '@/theme'
 import { useAppTheme, useThemedStyles } from '@/theme/hooks'
+import { memo } from 'react'
 import { Pressable, StyleSheet, Text, View } from 'react-native'
 
 type Props = {
@@ -28,7 +29,7 @@ type Props = {
  * @param props - The Turn, its open state, and the member renderer.
  * @returns The collapsed or expanded Turn.
  */
-export function NativeTurnGroup({ expanded, item, onToggle, renderRow }: Props): React.JSX.Element {
+function NativeTurnGroupView({ expanded, item, onToggle, renderRow }: Props): React.JSX.Element {
   const theme = useAppTheme()
   const s = useThemedStyles(makeStyles)
   const open = item.locked || expanded
@@ -84,3 +85,13 @@ const makeStyles = (theme: AppTheme) =>
     body: { paddingBottom: 6, paddingTop: 8, gap: 4 },
     pressed: { opacity: 0.62 },
   })
+
+/**
+ * One Turn in a scrolling transcript.
+ *
+ * Memoized because a transcript re-renders on every streamed chunk: without it each
+ * chunk rebuilt every mounted Turn, and a Turn carries its own disclosure and header.
+ * The props are compared by identity, which is why the caller keeps `onToggle` and
+ * `renderRow` stable.
+ */
+export const NativeTurnGroup = memo(NativeTurnGroupView)
