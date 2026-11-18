@@ -67,8 +67,14 @@ export interface ConversationViewport<Row> {
   resetForSession: (sessionId: string | undefined, messageCount: number) => void
   /** Answer a content measurement, applying a remembered offset when one is pending. */
   handleContentSizeChange: (height: number) => void
-  /** Whether the reader has come close enough to the oldest loaded row to ask for more. */
-  isAtHistoryRunway: () => boolean
+  /**
+   * Whether the reader has come close enough to the oldest loaded row to ask for more.
+   *
+   * @param state - Whether more exists, whether a page is in flight, and whether one came
+   * back empty.
+   * @returns Whether a page should be requested now.
+   */
+  isAtHistoryRunway: (state: { hasMore: boolean; loading: boolean; exhausted: boolean }) => boolean
   /** Re-arm the runway after a page lands, so one gesture cannot request twice. */
   noteOlderPageLoaded: () => void
 }
@@ -207,22 +213,23 @@ export function useConversationViewport<Row>({
 
   const isAwayFromLatest = useCallback((): boolean => !nearLatest.current, [])
 
-  const isAtHistoryRunway = useCallback((): boolean => {
-    const offset = metrics.current.uprightOffset
-    // Leaving the runway re-opens it, so the next approach is a new request rather than
-    // the echo of the one just answered.
-    if (awaitingOlderRearm.current) {
-      if (offset > OLDER_HISTORY_TRIGGER_PX + OLDER_HISTORY_REARM_PX) awaitingOlderRearm.current = false
-      else return false
-    }
-    return shouldLoadOlderHistory({
-      offsetY: offset,
-      hasMore: true,
-      loading: false,
-      exhausted: false,
-      awaitingRearm: awaitingOlderRearm.current,
-    })
-  }, [])
+  const isAtHistoryRunway = useCallback(
+    (state: { hasMore: boolean; loading: boolean; exhausted: boolean }): boolean => {
+      const offset = metrics.current.uprightOffset
+      // Leaving the runway re-opens it, so the next approach is a new request rather than
+      // the echo of the one just answered.
+      if (awaitingOlderRearm.current && offset > OLDER_HISTORY_TRIGGER_PX + OLDER_HISTORY_REARM_PX)
+        awaitingOlderRearm.current = false
+      return shouldLoadOlderHistory({
+        offsetY: offset,
+        hasMore: state.hasMore,
+        loading: state.loading,
+        exhausted: state.exhausted,
+        awaitingRearm: awaitingOlderRearm.current,
+      })
+    },
+    [],
+  )
 
   const noteOlderPageLoaded = useCallback((): void => {
     awaitingOlderRearm.current = true

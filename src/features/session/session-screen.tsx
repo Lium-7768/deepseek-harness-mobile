@@ -728,9 +728,16 @@ export default function SessionScreen(): React.JSX.Element {
                   onScroll={(event: NativeSyntheticEvent<NativeScrollEvent>) => {
                     handleScroll(event)
                     // Reaching for older history should not need a second press on the
-                    // button that sits above the rows being requested.
-                    if (olderHasMore !== false && !loadOlder.isPending && !exhaustedOlderHistory.current)
-                      if (isAtHistoryRunway()) void loadOlder.mutateAsync({ manual: false }).catch(() => undefined)
+                    // button that sits above the rows being requested. The predicate owns
+                    // every condition, so the screen only reports what it knows.
+                    if (
+                      isAtHistoryRunway({
+                        hasMore: olderHasMore !== false,
+                        loading: loadOlder.isPending,
+                        exhausted: exhaustedOlderHistory.current,
+                      })
+                    )
+                      void loadOlder.mutateAsync({ manual: false }).catch(() => undefined)
                     // The rail's active mark follows the offset, not a row measurement: it
                     // only has to name which Turn the reader is inside. The index counts
                     // from the oldest row, which is the upright offset an inverted list

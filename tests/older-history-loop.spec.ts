@@ -35,3 +35,28 @@ describe('older-history auto load', () => {
     expect(shouldLoadOlderHistory({ ...base, offsetY: 100, awaitingRearm: false })).toBe(true)
   })
 })
+
+describe('the viewport runway honours the state it is given', () => {
+  // The viewport hands its measurement to `shouldLoadOlderHistory`. Hard-coding the
+  // "can load" answers there silently disabled the control, so the wrapper is held to
+  // forwarding each caller state rather than deciding for itself.
+  it('refuses to request when the caller reports no more pages', () => {
+    expect(shouldLoadOlderHistory({ ...base, hasMore: false, offsetY: 0 })).toBe(false)
+    expect(
+      shouldLoadOlderHistory({
+        hasMore: false,
+        loading: false,
+        exhausted: false,
+        offsetY: 0,
+      }),
+    ).toBe(false)
+  })
+
+  it('refuses to request while a page is in flight near the runway', () => {
+    expect(shouldLoadOlderHistory({ hasMore: true, loading: true, exhausted: false, offsetY: 0 })).toBe(false)
+  })
+
+  it('requests from the runway when every condition allows it', () => {
+    expect(shouldLoadOlderHistory({ hasMore: true, loading: false, exhausted: false, offsetY: 0 })).toBe(true)
+  })
+})
