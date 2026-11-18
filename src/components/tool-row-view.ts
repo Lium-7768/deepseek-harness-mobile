@@ -31,6 +31,8 @@ export type ToolRowView =
   | { kind: 'todo'; items: TodoItem[] }
   | { kind: 'command'; command: string; body?: string }
   | { kind: 'mutation'; path: string; operation: string; body?: string }
+  | { kind: 'office'; path: string; format?: string; body?: string }
+  | { kind: 'image'; path: string; body?: string }
   | { kind: 'generic'; body?: string }
 
 /** One item of a todo list, as the call reports it. */
@@ -78,6 +80,11 @@ function firstString(record: Record<string, unknown> | undefined, names: readonl
 const READ_TOOLS = new Set(['read', 'read_file', 'file_read'])
 /** Names that identify a search call, and which argument carries its pattern. */
 const SEARCH_TOOLS: Record<string, 'pattern' | 'query'> = { grep: 'pattern', glob: 'pattern', search: 'query' }
+/** Office document tools, which each name the file they read or write. */
+const OFFICE_TOOLS = new Set(['office_render', 'office_convert', 'office_recalculate'])
+/** Names that identify an image read. */
+const IMAGE_TOOLS = new Set(['read_image', 'view_image', 'image'])
+
 /** Names that identify a network read. */
 const WEB_TOOLS = new Set(['web_search', 'web_fetch', 'fetch', 'search_web'])
 /** What a mutation's recorded operation reads as in a row. */
@@ -192,6 +199,24 @@ export function toolRowView(call: ToolCall): ToolRowView {
     if (items.length > 0) return { kind: 'todo', items }
   }
 
+  if (OFFICE_TOOLS.has(name)) {
+    const path = firstString(record, ['input', 'path', 'file_path'])
+    if (path !== undefined) {
+      const format = firstString(record, ['format', 'outputFormat'])
+      return {
+        kind: 'office',
+        path,
+        ...(format === undefined ? {} : { format }),
+        ...(call.output ? { body: call.output } : {}),
+      }
+    }
+  }
+
+  if (IMAGE_TOOLS.has(name)) {
+    const path = firstString(record, ['path', 'file_path', 'file'])
+    if (path !== undefined) return { kind: 'image', path, ...(call.output ? { body: call.output } : {}) }
+  }
+
   // A file mutation reports the file it wrote and what it did in the call's metadata,
   // which is the pair the desktop's own mutation row leads with.
   const mutatedPath = firstString(call.toolMeta, ['path', 'filePath'])
@@ -263,6 +288,10 @@ export function describeRow(view: ToolRowView): string | undefined {
       return view.command
     case 'mutation':
       return `${MUTATION_VERB[view.operation] ?? view.operation} · ${view.path}`
+    case 'office':
+      return view.format === undefined ? view.path : `${view.path} → ${view.format}`
+    case 'image':
+      return view.path
     case 'generic':
       return undefined
     // A new kind must decide what its one line says rather than print nothing.

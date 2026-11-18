@@ -98,3 +98,18 @@ describe('file mutations read from the call metadata', () => {
     expect(view).toMatchObject({ kind: 'mutation', path: '/c/d.ts' })
   })
 })
+
+describe('rows whose tool family names a file', () => {
+  it('names the office document and the format it converts to', () => {
+    const view = toolRowView(call('office_convert', { input: '/a/report.docx', format: 'pdf' }))
+    expect(view).toMatchObject({ kind: 'office', path: '/a/report.docx', format: 'pdf' })
+    expect(describeRow(view)).toBe('/a/report.docx → pdf')
+  })
+
+  it('names the image a read opened', () => {
+    expect(toolRowView(call('read_image', { path: '/tmp/shot.png' }))).toMatchObject({
+      kind: 'image',
+      path: '/tmp/shot.png',
+    })
+  })
+})
