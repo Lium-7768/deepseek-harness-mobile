@@ -109,8 +109,9 @@ export function NativeToolCard({
         state: model.state,
         ...(model.toolInput === undefined ? {} : { toolInput: model.toolInput }),
         ...(model.output === undefined ? {} : { output: model.output }),
+        ...(row?.toolMeta === undefined ? {} : { toolMeta: row.toolMeta }),
       }),
-    [model.output, model.state, model.toolInput, model.toolName],
+    [model.output, model.state, model.toolInput, model.toolName, row?.toolMeta],
   )
   const summary =
     describeRow(view) ??

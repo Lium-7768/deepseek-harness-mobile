@@ -18,6 +18,8 @@ export type ToolCall = {
   toolInput?: string
   /** Rendered result text, when the call finished. */
   output?: string
+  /** The call's own metadata, which names a file mutation's path and operation. */
+  toolMeta?: Readonly<Record<string, unknown>>
   state: 'completed' | 'failed' | 'running'
 }
 
@@ -28,6 +30,7 @@ export type ToolRowView =
   | { kind: 'web'; query: string; url?: string; body?: string }
   | { kind: 'todo'; items: TodoItem[] }
   | { kind: 'command'; command: string; body?: string }
+  | { kind: 'mutation'; path: string; operation: string; body?: string }
   | { kind: 'generic'; body?: string }
 
 /** One item of a todo list, as the call reports it. */
@@ -77,6 +80,14 @@ const READ_TOOLS = new Set(['read', 'read_file', 'file_read'])
 const SEARCH_TOOLS: Record<string, 'pattern' | 'query'> = { grep: 'pattern', glob: 'pattern', search: 'query' }
 /** Names that identify a network read. */
 const WEB_TOOLS = new Set(['web_search', 'web_fetch', 'fetch', 'search_web'])
+/** What a mutation's recorded operation reads as in a row. */
+const MUTATION_VERB: Record<string, string> = {
+  create: '新建',
+  delete: '删除',
+  update: '修改',
+  write: '写入',
+}
+
 /** Names that replace a whole list, where the output is the list itself. */
 const TODO_TOOLS = new Set(['todo_write', 'todo'])
 
@@ -181,6 +192,14 @@ export function toolRowView(call: ToolCall): ToolRowView {
     if (items.length > 0) return { kind: 'todo', items }
   }
 
+  // A file mutation reports the file it wrote and what it did in the call's metadata,
+  // which is the pair the desktop's own mutation row leads with.
+  const mutatedPath = firstString(call.toolMeta, ['path', 'filePath'])
+  if (mutatedPath !== undefined) {
+    const operation = firstString(call.toolMeta, ['operation']) ?? 'update'
+    return { kind: 'mutation', path: mutatedPath, operation, ...(call.output ? { body: call.output } : {}) }
+  }
+
   const command = firstString(record, ['command', 'cmd'])
   if (command !== undefined) return { kind: 'command', command, ...(call.output ? { body: call.output } : {}) }
 
@@ -242,6 +261,8 @@ export function describeRow(view: ToolRowView): string | undefined {
     }
     case 'command':
       return view.command
+    case 'mutation':
+      return `${MUTATION_VERB[view.operation] ?? view.operation} · ${view.path}`
     case 'generic':
       return undefined
     // A new kind must decide what its one line says rather than print nothing.

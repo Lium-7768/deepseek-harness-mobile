@@ -28,6 +28,8 @@ export type NativeConversationRow =
       state: 'completed' | 'failed' | 'running'
       summary?: string
       toolInput?: string
+      /** The call's own metadata: a file mutation's path and diff live here. */
+      toolMeta?: Readonly<Record<string, unknown>>
       toolName: string
     }
   | {
@@ -258,6 +260,7 @@ export function projectNativeConversationRows(items: readonly SharedEventItem[])
         toolName,
         ...(callId === undefined ? {} : { callId }),
         ...(fieldText(data.arguments) === undefined ? {} : { toolInput: fieldText(data.arguments) }),
+        ...(metaOf(data) === undefined ? {} : { toolMeta: metaOf(data) }),
         ...(summary === undefined ? {} : { summary }),
         ...(sourceSeq === undefined ? {} : { sourceSeq }),
       }
@@ -800,6 +803,18 @@ const TOOL_ARGUMENT_FIELDS = [
  * @param toolInput - The call's raw `arguments` text, usually a JSON object.
  * @returns The preferred argument, or the raw input when it is not JSON.
  */
+/**
+ * The `meta` object a tool event carries, when it carries a usable one.
+ *
+ * @param data - The event's data record.
+ * @returns The metadata, or undefined when the event has none.
+ */
+function metaOf(data: Record<string, unknown>): Record<string, unknown> | undefined {
+  const meta = data.meta
+  if (meta === null || typeof meta !== 'object' || Array.isArray(meta)) return undefined
+  return meta as Record<string, unknown>
+}
+
 export function toolArgument(toolInput: string | undefined): string | undefined {
   if (toolInput === undefined) return undefined
   const raw = toolInput.trim()

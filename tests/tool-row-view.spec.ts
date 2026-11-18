@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { toolRowView } from '../src/components/tool-row-view.ts'
+import { describeRow, toolRowView } from '../src/components/tool-row-view.ts'
 
 /** Build a call with JSON arguments from an object, the way the projection carries them. */
 function call(toolName: string, args: unknown, output?: string) {
@@ -68,5 +68,33 @@ describe('tool row derivation', () => {
   it('survives argument text that is not JSON', () => {
     const view = toolRowView({ toolName: 'read', toolInput: 'not json', state: 'completed' })
     expect(view).toMatchObject({ kind: 'generic' })
+  })
+})
+
+describe('file mutations read from the call metadata', () => {
+  it('names the file a write touched and what it did', () => {
+    const view = toolRowView({
+      toolName: 'write',
+      toolInput: JSON.stringify({ path: '/a/b.ts' }),
+      toolMeta: { operation: 'create', path: '/a/b.ts' },
+      state: 'completed',
+    })
+    expect(view).toMatchObject({ kind: 'mutation', path: '/a/b.ts', operation: 'create' })
+  })
+
+  it('describes a mutation as its verb and path', () => {
+    const text = describeRow({ kind: 'mutation', path: '/a/b.ts', operation: 'create' })
+    expect(text).toContain('新建')
+    expect(text).toContain('/a/b.ts')
+  })
+
+  // The metadata names the file even when the arguments do not repeat it.
+  it('finds the path in the metadata alone', () => {
+    const view = toolRowView({
+      toolName: 'edit',
+      toolMeta: { operation: 'update', path: '/c/d.ts' },
+      state: 'completed',
+    })
+    expect(view).toMatchObject({ kind: 'mutation', path: '/c/d.ts' })
   })
 })

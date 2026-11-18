@@ -16,6 +16,14 @@ export type SharedMessagePresentation = {
   callId?: string
   toolInput?: string
   toolOutput?: string
+  /**
+   * The call's own metadata, as the Host recorded it.
+   *
+   * A file mutation reports the path it wrote, the operation, and its diff here, and a
+   * web search reports its sources. Rows that name those facts read this rather than
+   * re-parsing the result text.
+   */
+  toolMeta?: Readonly<Record<string, unknown>>
   sourceSeq?: number
 }
 /** Durable event together with its optional source sequence. */
@@ -35,6 +43,17 @@ const PROTOCOL_TYPES = [
 ]
 const asRecord = (value: unknown): Record<string, unknown> | undefined =>
   value !== null && typeof value === 'object' && !Array.isArray(value) ? (value as Record<string, unknown>) : undefined
+/**
+ * The `meta` object one tool event carries, when it carries a usable one.
+ *
+ * @param event - The projected event.
+ * @returns The metadata, or undefined when the event has none.
+ */
+function toolMetaOf(event: Record<string, unknown>): Record<string, unknown> | undefined {
+  const data = asRecord(event.data)
+  return data === undefined ? undefined : asRecord(data.meta)
+}
+
 const normalizedType = (event: Record<string, unknown>) =>
   typeof event.type === 'string' ? event.type.toLowerCase().trim() : ''
 function eventContent(event: Record<string, unknown>): string | undefined {
@@ -193,6 +212,7 @@ export function classifyEvent(event: Record<string, unknown>, _index = 0): Share
           ...(toolName ? { toolName } : {}),
           ...(input ? { toolInput: input } : {}),
           ...(output ? { toolOutput: output } : {}),
+          ...(toolMetaOf(event) === undefined ? {} : { toolMeta: toolMetaOf(event) }),
         }
       : {}),
     ...(typeof event.callId === 'string' ? { callId: event.callId } : {}),
