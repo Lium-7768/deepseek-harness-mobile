@@ -275,10 +275,14 @@ export function projectNativeConversationRows(items: readonly SharedEventItem[])
         if (rowIndex !== undefined) {
           const existing = rows[rowIndex]
           if (existing?.kind === 'tool') {
+            // The Host records a call's metadata on its result, not on its call, so the
+            // path a write touched arrives with the output that closed it.
+            const resultMeta = metaOf(data)
             rows[rowIndex] = {
               ...existing,
               state: result.failed ? 'failed' : 'completed',
               ...(result.output === undefined ? {} : { output: result.output }),
+              ...(resultMeta === undefined ? {} : { toolMeta: resultMeta }),
             }
             continue
           }
@@ -289,6 +293,7 @@ export function projectNativeConversationRows(items: readonly SharedEventItem[])
         state: result.failed ? 'failed' : 'completed',
         toolName: message('session.toolResult'),
         ...(result.output === undefined ? {} : { output: result.output }),
+        ...(metaOf(data) === undefined ? {} : { toolMeta: metaOf(data) }),
         ...(sourceSeq === undefined ? {} : { sourceSeq }),
       })
       continue

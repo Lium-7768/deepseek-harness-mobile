@@ -19,7 +19,7 @@ export type ToolCall = {
   /** Rendered result text, when the call finished. */
   output?: string
   /** The call's own metadata, which names a file mutation's path and operation. */
-  toolMeta?: Readonly<Record<string, unknown>>
+  toolMeta?: Readonly<Record<string, unknown>> | null
   state: 'completed' | 'failed' | 'running'
 }
 
@@ -67,8 +67,9 @@ function argumentsOf(toolInput: string | undefined): Record<string, unknown> | u
  * @param names - Field names to try, in order.
  * @returns The first non-empty string, or undefined.
  */
-function firstString(record: Record<string, unknown> | undefined, names: readonly string[]): string | undefined {
-  if (record === undefined) return undefined
+function firstString(record: Record<string, unknown> | null | undefined, names: readonly string[]): string | undefined {
+  // A call may record `meta: null`, which the wire keeps as JSON null rather than omitting it.
+  if (record === undefined || record === null) return undefined
   for (const name of names) {
     const value = record[name]
     if (typeof value === 'string' && value.trim() !== '') return value.trim()
@@ -217,13 +218,13 @@ export function toolRowView(call: ToolCall): ToolRowView {
     if (path !== undefined) return { kind: 'image', path, ...(call.output ? { body: call.output } : {}) }
   }
 
-  // A file mutation reports the file it wrote and what it did in the call's metadata,
-  // which is the pair the desktop's own mutation row leads with.
+  // A mutation reports both the file and what it did. `operation` is what distinguishes it:
+  // a result also records `path` for calls that merely named a file — an image read, an
+  // office render — and treating that path as a mutation would describe them as writes.
+  const operation = firstString(call.toolMeta, ['operation'])
   const mutatedPath = firstString(call.toolMeta, ['path', 'filePath'])
-  if (mutatedPath !== undefined) {
-    const operation = firstString(call.toolMeta, ['operation']) ?? 'update'
+  if (operation !== undefined && mutatedPath !== undefined)
     return { kind: 'mutation', path: mutatedPath, operation, ...(call.output ? { body: call.output } : {}) }
-  }
 
   const command = firstString(record, ['command', 'cmd'])
   if (command !== undefined) {

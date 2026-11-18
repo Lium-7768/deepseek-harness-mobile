@@ -126,3 +126,39 @@ describe('a shell call reads as its description first', () => {
     expect(describeRow(toolRowView(call('bash', { command: 'ls -la' })))).toBe('ls -la')
   })
 })
+
+describe('metadata that is present but empty', () => {
+  // The wire keeps `meta: null` rather than omitting the field, and a real session
+  // carried one, so the derivation has to survive it rather than dereference it.
+  it('survives a null metadata field', () => {
+    const view = toolRowView({
+      toolName: 'bash',
+      toolInput: JSON.stringify({ command: 'ls' }),
+      toolMeta: null,
+      state: 'completed',
+    })
+    expect(view).toMatchObject({ kind: 'command', command: 'ls' })
+  })
+})
+
+describe('a recorded path is not by itself a mutation', () => {
+  // Every tool result records the path it worked on. Only a mutation also records what it
+  // did, so `operation` is what separates a write from a read that merely named a file.
+  it('does not read a bare path as a write', () => {
+    const view = toolRowView({
+      toolName: 'read_image',
+      toolMeta: { path: '/tmp/shot.png' },
+      state: 'completed',
+    })
+    expect(view.kind).toBe('generic')
+  })
+
+  it('reads a path with an operation as a write', () => {
+    const view = toolRowView({
+      toolName: 'write',
+      toolMeta: { operation: 'create', path: '/a/b.ts' },
+      state: 'completed',
+    })
+    expect(view).toMatchObject({ kind: 'mutation', path: '/a/b.ts' })
+  })
+})
