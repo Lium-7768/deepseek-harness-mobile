@@ -29,7 +29,7 @@ export type ToolRowView =
   | { kind: 'search'; pattern: string; scope?: string; hitFiles?: number; hitLines?: number; body?: string }
   | { kind: 'web'; query: string; url?: string; body?: string }
   | { kind: 'todo'; items: TodoItem[] }
-  | { kind: 'command'; command: string; body?: string }
+  | { kind: 'command'; command: string; description?: string; body?: string }
   | { kind: 'mutation'; path: string; operation: string; body?: string }
   | { kind: 'office'; path: string; format?: string; body?: string }
   | { kind: 'image'; path: string; body?: string }
@@ -226,7 +226,18 @@ export function toolRowView(call: ToolCall): ToolRowView {
   }
 
   const command = firstString(record, ['command', 'cmd'])
-  if (command !== undefined) return { kind: 'command', command, ...(call.output ? { body: call.output } : {}) }
+  if (command !== undefined) {
+    // The desktop prefers the call's own description over the command line: a sentence
+    // reads in a flow where a shell invocation does not. The command stays in the view for
+    // the expanded body.
+    const description = firstString(record, ['description'])
+    return {
+      kind: 'command',
+      command,
+      ...(description === undefined ? {} : { description }),
+      ...(call.output ? { body: call.output } : {}),
+    }
+  }
 
   return { kind: 'generic', ...(call.output ? { body: call.output } : {}) }
 }
@@ -285,7 +296,7 @@ export function describeRow(view: ToolRowView): string | undefined {
       return `${String(done)}/${String(view.items.length)}`
     }
     case 'command':
-      return view.command
+      return view.description ?? view.command
     case 'mutation':
       return `${MUTATION_VERB[view.operation] ?? view.operation} · ${view.path}`
     case 'office':

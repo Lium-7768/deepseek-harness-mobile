@@ -113,3 +113,16 @@ describe('rows whose tool family names a file', () => {
     })
   })
 })
+
+describe('a shell call reads as its description first', () => {
+  // The desktop's bash row prefers the model-written description over the command line:
+  // a sentence reads in a flow where a shell invocation does not.
+  it('prefers the description over the command line', () => {
+    const view = toolRowView(call('bash', { command: 'grep -rn foo . | head -50', description: 'Find the call sites' }))
+    expect(describeRow(view)).toBe('Find the call sites')
+  })
+
+  it('falls back to the command when the call carries no description', () => {
+    expect(describeRow(toolRowView(call('bash', { command: 'ls -la' })))).toBe('ls -la')
+  })
+})
