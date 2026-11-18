@@ -12,6 +12,8 @@ import { NativeListRow } from '@/components/native-list'
 import type { NativeIconName } from '@/components/native-icon'
 import { toolArgument, type NativeConversationRow } from '@/components/session-conversation-logic'
 import { toolFileChange } from '@/components/tool-diff-logic'
+import { describeRow, toolRowView } from '@/components/tool-row-view'
+import { ToolTodoList } from '@/components/native-tool-todo-list'
 import { format, t as message } from '@/locale'
 import type { SharedMessagePresentation } from '@/shared/dsh-presentation'
 import type { AppTheme } from '@/theme'
@@ -97,10 +99,24 @@ export function NativeToolCard({
     }
   }, [presentation, row])
   const [icon, fallbackTitle] = useMemo(() => META[variantFor(model.toolName)], [model.toolName])
-  // The desktop prints "<verb> · <summary>"; the summary carries the argument a
-  // reader needs, and the tool name only stands in when there is none.
+  // Each tool names its own subject, the way the desktop's per-tool card models do:
+  // a read reports its path and line count, a search its pattern and hits, a shell call
+  // its command line. The generic argument falls back when the tool is not one of those.
+  const view = useMemo(
+    () =>
+      toolRowView({
+        toolName: model.toolName,
+        state: model.state,
+        ...(model.toolInput === undefined ? {} : { toolInput: model.toolInput }),
+        ...(model.output === undefined ? {} : { output: model.output }),
+      }),
+    [model.output, model.state, model.toolInput, model.toolName],
+  )
   const summary =
-    model.summary ?? toolArgument(model.toolInput) ?? (model.toolName === fallbackTitle ? undefined : model.toolName)
+    describeRow(view) ??
+    model.summary ??
+    toolArgument(model.toolInput) ??
+    (model.toolName === fallbackTitle ? undefined : model.toolName)
   const stateLabel =
     model.state === 'completed'
       ? message('tool.stateCompleted')
@@ -123,16 +139,18 @@ export function NativeToolCard({
         tone={model.state === 'failed' ? 'danger' : 'tertiary'}
         {...(hasDetails ? { onToggle: toggleExpanded } : {})}
       >
-        {change === undefined ? (
-          model.toolInput ? (
-            <ToolPayload label={message('tool.input')} text={model.toolInput} />
-          ) : null
-        ) : (
+        {/* The body follows the tool. A diff replaces the arguments where the call changed
+            a file; a todo list renders as its items rather than as the JSON that wrote
+            them; every other tool shows its result, because the arguments only repeat what
+            the summary already names. */}
+        {change !== undefined ? (
           <NativeDiffBlock change={change} />
-        )}
-        {model.toolInput && model.output ? <View style={styles.divider} /> : null}
-        {model.output ? (
-          <ToolPayload label={message('tool.output')} text={model.output} failed={model.state === 'failed'} />
+        ) : view.kind === 'todo' ? (
+          <ToolTodoList items={view.items} />
+        ) : view.body !== undefined ? (
+          <ToolPayload label={message('tool.output')} text={view.body} failed={model.state === 'failed'} />
+        ) : model.toolInput ? (
+          <ToolPayload label={message('tool.input')} text={model.toolInput} />
         ) : null}
       </NativeFlowRow>
     </View>
