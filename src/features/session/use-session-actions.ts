@@ -21,10 +21,23 @@ export function useSessionActions(
 ) {
   const queryClient = useQueryClient()
   const retrySend = useRef<(content: MobilePromptContent) => void>(() => undefined)
+  /**
+   * Runs one session command once a client and a session exist.
+   *
+   * Every command on this screen shares that precondition, so it is stated once. It runs
+   * inside the mutation rather than at render: a command cannot be issued before a
+   * conversation is open, but the screen renders before one is.
+   *
+   * @param command - The client call to make.
+   * @returns The command's result.
+   */
+  const run = <T>(command: (api: MobileApi, sessionId: string) => Promise<T>): Promise<T> => {
+    if (!client || !sessionId) return Promise.reject(new Error(message('conversation.openFromList')))
+    return command(client, sessionId)
+  }
   const branch = useMutation({
     mutationFn: (atSeq: number) => {
-      if (!client || !sessionId) throw new Error(message('conversation.openFromList'))
-      return client.forkSession(sessionId, atSeq)
+      return run((api, id) => api.forkSession(id, atSeq))
     },
     onSuccess: (created) => {
       void queryClient.invalidateQueries({ queryKey: queryKeys.sessionList() })
@@ -38,8 +51,7 @@ export function useSessionActions(
   })
   const send = useMutation({
     mutationFn: (content: MobilePromptContent) => {
-      if (!client || !sessionId) throw new Error(message('conversation.openFromList'))
-      return client.sendMessage(sessionId, content, busyMode())
+      return run((api, id) => api.sendMessage(id, content, busyMode()))
     },
     onSuccess: () => {
       tapFeedback()
@@ -78,15 +90,13 @@ export function useSessionActions(
   retrySend.current = send.mutate
   const updateQueue = useMutation({
     mutationFn: ({ itemId, action }: { itemId: string; action: Record<string, unknown> }) => {
-      if (!client || !sessionId) throw new Error(message('conversation.openFromList'))
-      return client.updateQueue(sessionId, itemId, action)
+      return run((api, id) => api.updateQueue(id, itemId, action))
     },
     onSuccess: () => void queryClient.invalidateQueries({ queryKey: queryKeys.sessionQueue(sessionId) }),
   })
   const cancel = useMutation({
     mutationFn: () => {
-      if (!client || !sessionId) throw new Error(message('conversation.openFromList'))
-      return client.cancelSession(sessionId)
+      return run((api, id) => api.cancelSession(id))
     },
     onSuccess: () => {
       warnFeedback()
@@ -109,8 +119,7 @@ export function useSessionActions(
       ref: { id: string; revision: number }
       objective?: string
     }) => {
-      if (!client || !sessionId) throw new Error(message('conversation.openFromList'))
-      return client.mutateGoal(sessionId, action, ref, objective === undefined ? {} : { objective })
+      return run((api, id) => api.mutateGoal(id, action, ref, objective === undefined ? {} : { objective }))
     },
     onSuccess: (result, { action }) => {
       if (action === 'clear') queryClient.setQueryData(queryKeys.sessionGoal(sessionId), { goal: null })
@@ -128,8 +137,7 @@ export function useSessionActions(
   })
   const createGoalMutation = useMutation({
     mutationFn: (objective: string) => {
-      if (!client || !sessionId) throw new Error(message('conversation.openFromList'))
-      return client.createGoal(sessionId, objective)
+      return run((api, id) => api.createGoal(id, objective))
     },
     onSuccess: () =>
       Promise.all([
@@ -144,8 +152,7 @@ export function useSessionActions(
   })
   const interruptSubagent = useMutation({
     mutationFn: (childSessionId: string) => {
-      if (!client || !sessionId) throw new Error(message('conversation.openFromList'))
-      return client.interruptSubagent(sessionId, childSessionId)
+      return run((api, id) => api.interruptSubagent(id, childSessionId))
     },
     onSuccess: () => void queryClient.invalidateQueries({ queryKey: queryKeys.sessionSubagents(sessionId) }),
     onError: (error) =>
