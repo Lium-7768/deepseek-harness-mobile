@@ -197,3 +197,23 @@ describe('arguments that arrive already parsed', () => {
     expect(view).toMatchObject({ kind: 'command', description: 'List files' })
   })
 })
+
+describe('the tools that name one subject each', () => {
+  it('names the skill a call loaded', () => {
+    const view = toolRowView(call('skill', { name: 'autoglm-browser-agent' }))
+    expect(view).toMatchObject({ kind: 'skill', skillName: 'autoglm-browser-agent' })
+    expect(describeRow(view)).toBe('autoglm-browser-agent')
+  })
+
+  it('reports what a goal call did, and why when it blocked', () => {
+    const blocked = toolRowView(call('update_goal', { action: 'blocked', blocked_reason: 'awaiting review' }))
+    expect(describeRow(blocked)).toBe('blocked · awaiting review')
+    const done = toolRowView(call('update_goal', { action: 'complete' }))
+    expect(describeRow(done)).toBe('complete')
+  })
+
+  // A read with no arguments names nothing, so it stays generic rather than inventing one.
+  it('leaves an argument-free read generic', () => {
+    expect(toolRowView(call('get_goal', {}))).toMatchObject({ kind: 'generic' })
+  })
+})

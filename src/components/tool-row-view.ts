@@ -40,6 +40,8 @@ export type ToolRowView =
   | { kind: 'image'; path: string; body?: string }
   | { kind: 'code'; language?: string; firstLine?: string; body?: string }
   | { kind: 'job'; jobId: string; waiting?: boolean; body?: string }
+  | { kind: 'skill'; skillName: string; body?: string }
+  | { kind: 'goal'; action: string; detail?: string; body?: string }
   | { kind: 'generic'; body?: string }
 
 /** One item of a todo list, as the call reports it. */
@@ -95,6 +97,11 @@ const SEARCH_TOOLS: Record<string, 'pattern' | 'query'> = { grep: 'pattern', glo
 const OFFICE_TOOLS = new Set(['office_render', 'office_convert', 'office_recalculate'])
 /** Names that identify an image read. */
 const IMAGE_TOOLS = new Set(['read_image', 'view_image', 'image'])
+
+/** Tools that load a named skill. */
+const SKILL_TOOLS = new Set(['skill', 'load_skill'])
+/** Tools that change a session goal, which reports the action it took. */
+const GOAL_TOOLS = new Set(['update_goal', 'create_goal'])
 
 /** Tools that run a snippet rather than a shell command. */
 const CODE_TOOLS = new Set(['run_code', 'code', 'execute_code', 'eval'])
@@ -242,6 +249,25 @@ export function toolRowView(call: ToolCall): ToolRowView {
   if (operation !== undefined && mutatedPath !== undefined)
     return { kind: 'mutation', path: mutatedPath, operation, ...(call.output ? { body: call.output } : {}) }
 
+  if (SKILL_TOOLS.has(name)) {
+    const skillName = firstString(record, ['name', 'skill'])
+    if (skillName !== undefined) return { kind: 'skill', skillName, ...(call.output ? { body: call.output } : {}) }
+  }
+
+  if (GOAL_TOOLS.has(name)) {
+    const action = firstString(record, ['action'])
+    if (action !== undefined) {
+      // A blocked goal says why, which is the only part of the call a reader needs.
+      const detail = firstString(record, ['blocked_reason', 'objective'])
+      return {
+        kind: 'goal',
+        action,
+        ...(detail === undefined ? {} : { detail }),
+        ...(call.output ? { body: call.output } : {}),
+      }
+    }
+  }
+
   if (CODE_TOOLS.has(name)) {
     const code = firstString(record, ['code', 'source', 'script'])
     if (code !== undefined) {
@@ -357,6 +383,10 @@ export function describeRow(view: ToolRowView): string | undefined {
       return view.path
     case 'job':
       return view.waiting === true ? `${view.jobId} · 等待中` : view.jobId
+    case 'skill':
+      return view.skillName
+    case 'goal':
+      return view.detail === undefined ? view.action : `${view.action} · ${view.detail}`
     case 'code':
       return view.language === undefined ? view.firstLine : `${view.language} · ${view.firstLine ?? ''}`
     case 'generic':
