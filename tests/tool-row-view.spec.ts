@@ -162,3 +162,38 @@ describe('a recorded path is not by itself a mutation', () => {
     expect(view).toMatchObject({ kind: 'mutation', path: '/a/b.ts' })
   })
 })
+
+describe('the tools this session actually used most', () => {
+  // `run_code` and `job_output` were the two most frequent families after `bash`, and
+  // both read as raw JSON before they had a kind.
+  it('names a code snippet by its language and first line', () => {
+    const view = toolRowView(
+      call('run_code', { code: '\nconst r = await tools.bash({ command: "ls" })', language: 'js' }),
+    )
+    expect(view).toMatchObject({ kind: 'code', language: 'js' })
+    expect(describeRow(view)).toBe('js · const r = await tools.bash({ command: "ls" })')
+  })
+
+  it('names the job a waiting read blocks on', () => {
+    const view = toolRowView(call('job_output', { job_id: 'bash-abc123', wait: true }))
+    expect(view).toMatchObject({ kind: 'job', jobId: 'bash-abc123', waiting: true })
+    expect(describeRow(view)).toBe('bash-abc123 · 等待中')
+  })
+
+  it('leaves the wait off when the read does not block', () => {
+    expect(describeRow(toolRowView(call('job_output', { job_id: 'bash-abc123' })))).toBe('bash-abc123')
+  })
+})
+
+describe('arguments that arrive already parsed', () => {
+  // The Host records `arguments` as JSON text for some tools and as an object for others;
+  // a real session carried both. Reading only text lost 96 of 410 calls.
+  it('reads an object argument directly', () => {
+    const view = toolRowView({
+      toolName: 'bash',
+      toolInput: { command: 'ls -la', description: 'List files' },
+      state: 'completed',
+    })
+    expect(view).toMatchObject({ kind: 'command', description: 'List files' })
+  })
+})

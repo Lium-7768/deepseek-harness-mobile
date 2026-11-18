@@ -14,8 +14,13 @@
 /** One tool call, as far as a row is concerned. */
 export type ToolCall = {
   toolName: string
-  /** Raw argument JSON, when the projection carried it. */
-  toolInput?: string
+  /**
+   * The call's arguments, either as JSON text or already parsed.
+   *
+   * The Host records the same field both ways depending on the tool, so the row accepts
+   * either rather than trusting one.
+   */
+  toolInput?: unknown
   /** Rendered result text, when the call finished. */
   output?: string
   /** The call's own metadata, which names a file mutation's path and operation. */
@@ -33,6 +38,8 @@ export type ToolRowView =
   | { kind: 'mutation'; path: string; operation: string; body?: string }
   | { kind: 'office'; path: string; format?: string; body?: string }
   | { kind: 'image'; path: string; body?: string }
+  | { kind: 'code'; language?: string; firstLine?: string; body?: string }
+  | { kind: 'job'; jobId: string; waiting?: boolean; body?: string }
   | { kind: 'generic'; body?: string }
 
 /** One item of a todo list, as the call reports it. */
@@ -44,8 +51,11 @@ export type TodoItem = { status: 'pending' | 'in_progress' | 'completed'; text: 
  * @param toolInput - Raw argument JSON, as the projection carries it.
  * @returns The parsed object, or undefined when it is absent or not an object.
  */
-function argumentsOf(toolInput: string | undefined): Record<string, unknown> | undefined {
-  if (toolInput === undefined) return undefined
+function argumentsOf(toolInput: unknown): Record<string, unknown> | undefined {
+  if (toolInput === undefined || toolInput === null) return undefined
+  // The Host records this field as JSON text for some tools and as an object for others.
+  if (typeof toolInput === 'object' && !Array.isArray(toolInput)) return toolInput as Record<string, unknown>
+  if (typeof toolInput !== 'string') return undefined
   const raw = toolInput.trim()
   if (raw === '') return undefined
   try {
@@ -85,6 +95,12 @@ const SEARCH_TOOLS: Record<string, 'pattern' | 'query'> = { grep: 'pattern', glo
 const OFFICE_TOOLS = new Set(['office_render', 'office_convert', 'office_recalculate'])
 /** Names that identify an image read. */
 const IMAGE_TOOLS = new Set(['read_image', 'view_image', 'image'])
+
+/** Tools that run a snippet rather than a shell command. */
+const CODE_TOOLS = new Set(['run_code', 'code', 'execute_code', 'eval'])
+
+/** Tools that read one background job's output, which is named by its id. */
+const JOB_TOOLS = new Set(['job_output', 'job_kill', 'job_log'])
 
 /** Names that identify a network read. */
 const WEB_TOOLS = new Set(['web_search', 'web_fetch', 'fetch', 'search_web'])
@@ -226,6 +242,41 @@ export function toolRowView(call: ToolCall): ToolRowView {
   if (operation !== undefined && mutatedPath !== undefined)
     return { kind: 'mutation', path: mutatedPath, operation, ...(call.output ? { body: call.output } : {}) }
 
+  if (CODE_TOOLS.has(name)) {
+    const code = firstString(record, ['code', 'source', 'script'])
+    if (code !== undefined) {
+      const language = firstString(record, ['language', 'lang'])
+      // A snippet's first line usually says what it does; its whole body belongs in the
+      // expanded row, where the reader asked to see it.
+      const firstLine = code
+        .split('\n')
+        .find((line) => line.trim() !== '')
+        ?.trim()
+        .slice(0, 80)
+      return {
+        kind: 'code',
+        ...(language === undefined ? {} : { language }),
+        ...(firstLine === undefined ? {} : { firstLine }),
+        ...(call.output ? { body: call.output } : {}),
+      }
+    }
+  }
+
+  if (JOB_TOOLS.has(name)) {
+    const jobId = firstString(record, ['job_id', 'jobId', 'id'])
+    if (jobId !== undefined) {
+      // A waiting read blocks until the job finishes; the row says so, because the reader
+      // otherwise cannot tell a slow job from a stuck one.
+      const waiting = record?.wait === true
+      return {
+        kind: 'job',
+        jobId,
+        ...(waiting ? { waiting: true } : {}),
+        ...(call.output ? { body: call.output } : {}),
+      }
+    }
+  }
+
   const command = firstString(record, ['command', 'cmd'])
   if (command !== undefined) {
     // The desktop prefers the call's own description over the command line: a sentence
@@ -304,6 +355,10 @@ export function describeRow(view: ToolRowView): string | undefined {
       return view.format === undefined ? view.path : `${view.path} → ${view.format}`
     case 'image':
       return view.path
+    case 'job':
+      return view.waiting === true ? `${view.jobId} · 等待中` : view.jobId
+    case 'code':
+      return view.language === undefined ? view.firstLine : `${view.language} · ${view.firstLine ?? ''}`
     case 'generic':
       return undefined
     // A new kind must decide what its one line says rather than print nothing.
