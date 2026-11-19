@@ -3,7 +3,7 @@ import type { NativeConversationRow } from '@/components/session-conversation-lo
 import { t as message } from '@/locale'
 import type { AppTheme } from '@/theme'
 import { useThemedStyles } from '@/theme/hooks'
-import { StyleSheet, Text } from 'react-native'
+import { ScrollView, StyleSheet, Text } from 'react-native'
 import { useState } from 'react'
 
 type ContextRow = Extract<NativeConversationRow, { kind: 'context' }>
@@ -35,9 +35,13 @@ export function NativeContextRow({ row }: { row: ContextRow }): React.JSX.Elemen
       onToggle={() => setOpen((current) => !current)}
     >
       {row.text === '' ? null : (
-        <Text selectable style={s.body}>
-          {row.text}
-        </Text>
+        // `ContextBody` bounds model-facing text at the disclosure (141px, scrolling)
+        // rather than letting one injection own the viewport.
+        <ScrollView nestedScrollEnabled style={s.textScroll}>
+          <Text selectable style={s.body}>
+            {row.text}
+          </Text>
+        </ScrollView>
       )}
     </NativeFlowRow>
   )
@@ -47,4 +51,11 @@ const makeStyles = (theme: AppTheme) =>
   StyleSheet.create({
     // `ContextBody`: the opaque body is the injected text at the secondary size.
     body: { color: theme.colors.inkTertiary, fontSize: 13, lineHeight: 20 },
+    textScroll: {
+      backgroundColor: theme.colors.codeBackground,
+      borderRadius: theme.radius.md,
+      maxHeight: 141,
+      paddingHorizontal: 12,
+      paddingVertical: 10,
+    },
   })
