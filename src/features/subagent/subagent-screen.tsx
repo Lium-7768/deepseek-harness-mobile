@@ -54,6 +54,19 @@ export default function SubagentSessionScreen(): React.JSX.Element {
     if (active)
       void queryClient.invalidateQueries({ queryKey: queryKeys.subagentHistory(parentId, childId, childMode) })
   }, [active, parentId, childId, childMode, queryClient])
+  // The parent already lists its children by label; reading that same catalog means the
+  // header can say which child this page is instead of naming the mode it was opened in.
+  const catalog = useQuery({
+    queryKey: queryKeys.sessionSubagents(parentId),
+    enabled: ready && active,
+    queryFn: ({ signal }) => {
+      if (!client || !parentId) throw new Error(message('subagent.invalidAddress'))
+      return client.withSignal(signal).subagents(parentId)
+    },
+  })
+  const childEntry = catalog.data?.entries.find((entry) => entry.id === childId)
+  // A diagnostic entry reports a child the Host cannot describe, so it carries no label.
+  const childLabel = childEntry?.kind === 'child' ? childEntry.label : undefined
   const send = useMutation({
     mutationFn: async (content: Parameters<MobileApi['sendSubagentMessage']>[2]) => {
       if (!client || !parentId || !childId) throw new Error(message('subagent.invalidAddress'))
@@ -74,7 +87,9 @@ export default function SubagentSessionScreen(): React.JSX.Element {
       Alert.alert(message('subagent.stopFailedTitle'), withErrorContext(message('subagent.stopFailedBody'), error)),
   })
   const messages = useMemo(() => projectNativeConversationRows(history.data?.items ?? []), [history.data?.items])
-  const title = childMode === 'continuable' ? message('subagent.title') : message('subagent.readOnlyTitle')
+  const modeTitle = childMode === 'continuable' ? message('subagent.title') : message('subagent.readOnlyTitle')
+  // A named child reads as itself; the mode stays as the fallback before the catalog lands.
+  const title = childLabel === undefined || childLabel === '' ? modeTitle : childLabel
 
   return (
     <WorkspaceShell
