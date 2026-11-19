@@ -570,7 +570,8 @@ const makeStyles = (theme: AppTheme) =>
       color: theme.colors.codeForeground,
       flexShrink: 0,
       fontFamily: MONOSPACE_FONT,
-      fontSize: 12,
+      // `--dsw-font-markdown-code-block`: 11px on a 19px line.
+      fontSize: 11,
       lineHeight: 19,
       minWidth: 0,
     },
