@@ -115,9 +115,10 @@ export const makeSessionStyles = (theme: AppTheme) =>
       alignSelf: 'flex-end',
       backgroundColor: theme.colors.userBubble,
       borderRadius: theme.radius.xl,
-      // `MessageItem .userStack`: `min(column × 0.702, 82%)`, which resolves to 82%
-      // on a phone-width column.
-      maxWidth: '82%',
+      // `MessageItem .userStack`: `min(column × 0.702, 82%)`. Both terms are relative to
+      // the same column, so the smaller one — 70.2% — is what actually binds at every
+      // width; the 82% cap never wins.
+      maxWidth: '70.2%',
       paddingHorizontal: 16,
       paddingVertical: 10,
     },

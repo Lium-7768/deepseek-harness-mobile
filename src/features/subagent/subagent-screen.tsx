@@ -224,7 +224,9 @@ const makeStyles = (theme: AppTheme) =>
     userBubble: {
       backgroundColor: theme.colors.userBubble,
       borderRadius: theme.radius.xl,
-      maxWidth: '82%',
+      // `MessageItem .userStack`: the smaller of `column × 0.702` and 82%, which is
+      // always the former.
+      maxWidth: '70.2%',
       paddingHorizontal: 16,
       paddingVertical: 10,
     },
