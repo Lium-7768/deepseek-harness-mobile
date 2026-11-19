@@ -315,7 +315,10 @@ const makeStyles = (theme: AppTheme) =>
   StyleSheet.create({
     canvas: { flex: 1 },
     startScroll: { flexGrow: 1, justifyContent: 'center', paddingVertical: 24 },
-    startPanel: { alignSelf: 'center', width: '100%', maxWidth: 760, gap: 12, paddingBottom: 24 },
+    // `--dsh-composer-card-max-width` is clamp(680..920) + 32 = 952, the same column the
+    // composer caps at; a narrower panel here would make the hero and its composer
+    // disagree about where the column ends.
+    startPanel: { alignSelf: 'center', width: '100%', maxWidth: 952, gap: 12, paddingBottom: 24 },
     hidden: { display: 'none' },
     // `FQzohq_composerStack`: 16pt between the identity block and the composer.
     summary: { gap: 16, paddingTop: 16 },
