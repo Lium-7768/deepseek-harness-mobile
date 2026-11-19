@@ -487,7 +487,9 @@ const makeStyles = (theme: AppTheme) =>
     body: {
       color: theme.colors.ink,
       flexShrink: 1,
-      fontSize: theme.typography.message,
+      // The desktop sets message text from `--dsh-content-font-size` (14px on a 24px line);
+      // `body` carries that same step here.
+      fontSize: theme.typography.body,
       lineHeight: theme.typography.lineMessage,
     },
     heading: { color: theme.colors.ink, fontWeight: '600' },
@@ -521,7 +523,7 @@ const makeStyles = (theme: AppTheme) =>
     // The desktop's markers are `label-secondary`, on the body line.
     marker: {
       color: theme.colors.inkMuted,
-      fontSize: theme.typography.message,
+      fontSize: theme.typography.body,
       lineHeight: theme.typography.lineMessage,
       minWidth: 12,
     },
