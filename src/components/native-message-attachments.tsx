@@ -233,7 +233,9 @@ const makeStyles = (theme: AppTheme) =>
       alignItems: 'center',
       backgroundColor: theme.colors.surfaceMuted,
       borderColor: theme.colors.border,
-      borderRadius: theme.radius.card,
+      // `MessageImage .frame`: `border-radius: var(--dsw-radius-xl)` (20), not the card
+      // radius — an attached image reads as its own surface, not as a card.
+      borderRadius: theme.radius.xl,
       borderWidth: StyleSheet.hairlineWidth,
       height: 168,
       justifyContent: 'center',
@@ -242,8 +244,8 @@ const makeStyles = (theme: AppTheme) =>
     },
     thumbnail: { height: '100%', width: '100%' },
     loadFailure: { alignItems: 'center', gap: 5 },
-    loadFailureText: { color: theme.colors.inkTertiary, fontSize: 11, lineHeight: 16 },
-    error: { color: theme.colors.danger, fontSize: 11, lineHeight: 16, maxWidth: 168 },
+    loadFailureText: { color: theme.colors.inkTertiary, fontSize: 12, lineHeight: 18 },
+    error: { color: theme.colors.danger, fontSize: 12, lineHeight: 18, maxWidth: 168 },
     modalBackdrop: {
       alignItems: 'center',
       backgroundColor: theme.colors.overlayMedia,
