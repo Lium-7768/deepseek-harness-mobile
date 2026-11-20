@@ -105,15 +105,21 @@ export function NativeTurnTriggerRow({
 
 const makeStyles = (theme: AppTheme) =>
   StyleSheet.create({
+    // `TurnTriggerNodeView .root` + `.header`: a rounded card on the code-block fill with
+    // a hairline border, `12px 16px` inside — not a bare transcript line.
     row: {
       alignItems: 'center',
+      backgroundColor: theme.colors.codeBackground,
+      borderColor: theme.colors.borderHairline,
+      borderRadius: theme.radius.xl,
+      borderWidth: StyleSheet.hairlineWidth,
       flexDirection: 'row',
-      gap: 6,
-      minHeight: 28,
-      paddingHorizontal: theme.spacing.lg,
-      paddingVertical: 2,
+      gap: 10,
+      minHeight: 44,
+      paddingHorizontal: 16,
+      paddingVertical: 12,
     },
-    label: { color: theme.colors.inkTertiary, flex: 1, fontSize: 12, lineHeight: 18 },
+    label: { color: theme.colors.inkTertiary, flex: 1, fontSize: 13, lineHeight: 20 },
     pressed: { opacity: 0.62 },
     sheet: { gap: 10, padding: 16 },
     sheetTitle: { color: theme.colors.ink, fontSize: 15, fontWeight: '600', lineHeight: 22 },
