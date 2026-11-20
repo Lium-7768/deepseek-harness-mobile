@@ -110,15 +110,13 @@ export const makeSessionStyles = (theme: AppTheme) =>
     assistantRow: { gap: theme.spacing.lg, maxWidth: '100%', minWidth: 0, width: '100%' },
     // `MessageItem .userRow` / `.userStack`: 6pt between the row's children, 8pt
     // between the stack's own layers (attachments, bubble, references).
-    userRow: { alignItems: 'flex-end', gap: theme.spacing.sm, maxWidth: '100%' },
+    // `MessageItem .userStack` caps the whole stack — references, bubble, attachments,
+    // actions — at `min(column × 0.702, 82%)`, so nothing in it can outgrow the bubble.
+    userRow: { alignItems: 'flex-end', gap: theme.spacing.sm, maxWidth: '70.2%' },
     userBubble: {
       alignSelf: 'flex-end',
       backgroundColor: theme.colors.userBubble,
       borderRadius: theme.radius.xl,
-      // `MessageItem .userStack`: `min(column × 0.702, 82%)`. Both terms are relative to
-      // the same column, so the smaller one — 70.2% — is what actually binds at every
-      // width; the 82% cap never wins.
-      maxWidth: '70.2%',
       paddingHorizontal: 16,
       paddingVertical: 10,
     },
