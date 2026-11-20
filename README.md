@@ -75,6 +75,8 @@ If the Gateway reports an expired or revoked device, create a new QR code in the
 | `pnpm test` | Run mobile API and UI-logic tests. |
 | `pnpm test:watch` | Run tests in watch mode. |
 | `pnpm typecheck` | Type-check TypeScript, including unused imports and parameters. |
+| `pnpm lint` | Check the React Hook rules: conditional or unordered hooks fail, a stale dependency array warns. |
+| `pnpm lint:fix` | Apply the fixes ESLint can make on its own. |
 | `pnpm format:check` | Verify shared formatting rules. |
 | `pnpm format` | Format routes, features, components, tests and visual fixtures. |
 

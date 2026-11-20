@@ -198,35 +198,6 @@ export default function SessionScreen(): React.JSX.Element {
   const sendMessage = useRef(send.mutate)
   sendMessage.current = send.mutate
 
-  /**
-   * Re-reads the conversation after a pull, keeping the reader's offset.
-   *
-   * A dropped event leaves the transcript stale with no way to ask again; a pull is that
-   * ask. The list is never cleared, so nothing flashes while the answer arrives.
-   */
-  const [refreshing, setRefreshing] = useState(false)
-  const refreshFromPull = useCallback(async (): Promise<void> => {
-    if (!shouldRefreshFromPull({ refreshing, loadingOlder: loadOlder.isPending })) return
-    setRefreshing(true)
-    try {
-      await Promise.all([
-        history.refetch(),
-        events.refetch(),
-        queue.refetch(),
-        jobs.refetch(),
-        subagents.refetch(),
-        interactions.refetch(),
-      ])
-      // Anchor only a reader who is reading history: someone already at the bottom wants
-      // the newest rows, and restoring their old offset would park them above the end.
-      if (!isAwayFromLatest()) pinToLatest()
-    } catch {
-      // The query hooks already surface their own failure state; the pull only ends.
-    } finally {
-      setRefreshing(false)
-    }
-  }, [events, history, interactions, jobs, loadOlder.isPending, queue, refreshing, subagents])
-
   useRouteSessionSelection(sessionId)
 
   useEffect(() => {
@@ -260,6 +231,46 @@ export default function SessionScreen(): React.JSX.Element {
     resetForSession,
     handleContentSizeChange,
   } = viewport
+
+  /**
+   * Re-reads the conversation after a pull, keeping the reader's offset.
+   *
+   * A dropped event leaves the transcript stale with no way to ask again; a pull is that
+   * ask. The list is never cleared, so nothing flashes while the answer arrives.
+   */
+  const [refreshing, setRefreshing] = useState(false)
+  const refreshFromPull = useCallback(async (): Promise<void> => {
+    if (!shouldRefreshFromPull({ refreshing, loadingOlder: loadOlder.isPending })) return
+    setRefreshing(true)
+    try {
+      await Promise.all([
+        history.refetch(),
+        events.refetch(),
+        queue.refetch(),
+        jobs.refetch(),
+        subagents.refetch(),
+        interactions.refetch(),
+      ])
+      // Anchor only a reader who is reading history: someone already at the bottom wants
+      // the newest rows, and restoring their old offset would park them above the end.
+      if (!isAwayFromLatest()) pinToLatest()
+    } catch {
+      // The query hooks already surface their own failure state; the pull only ends.
+    } finally {
+      setRefreshing(false)
+    }
+  }, [
+    events,
+    history,
+    interactions,
+    isAwayFromLatest,
+    jobs,
+    loadOlder.isPending,
+    pinToLatest,
+    queue,
+    refreshing,
+    subagents,
+  ])
 
   const refetchAll = useCallback((): void => {
     void refreshFromPull()
@@ -469,7 +480,7 @@ export default function SessionScreen(): React.JSX.Element {
         renderRow={renderGroupRow}
       />
     ),
-    [renderGroupRow, toggleProcessStep],
+    [renderGroupRow, toggleProcessStep, toggleStep],
   )
   // A Turn's control reveals its rows directly. A step inside it would add a
   // second disclosure whose label repeats the first member it holds, so the

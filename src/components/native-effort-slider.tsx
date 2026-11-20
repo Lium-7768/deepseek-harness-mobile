@@ -25,8 +25,13 @@ export function NativeEffortSlider({
   const theme = useAppTheme()
   const s = useThemedStyles(makeStyles)
   const [width, setWidth] = useState(0)
-  // Route/effort changes cancel gestures, while the measured track width survives.
-  const identity = useMemo(() => ({}), [selection?.provider, selection?.model, value, choices, disabled])
+  // Route/effort changes cancel gestures, while the measured track width survives. The
+  // object carries the inputs it keys on so the memo has a real body; a new reference is
+  // what invalidates a preview taken under the previous selection.
+  const identity = useMemo(
+    () => ({ provider: selection?.provider, model: selection?.model, value, choices: choices.length, disabled }),
+    [selection?.provider, selection?.model, value, choices, disabled],
+  )
   const [preview, setPreview] = useState<{ identity: object; index: number }>()
   const dragging = useRef<object | undefined>(undefined)
   useEffect(() => {

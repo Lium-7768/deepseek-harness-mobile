@@ -47,6 +47,9 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 /** Shortest window the manual sync spinner stays on screen. */
 const SYNC_FEEDBACK_MS = 900
 
+/** Stable stand-in while the list query has no data, so a memo keyed on the items holds. */
+const EMPTY_SESSIONS: readonly SessionSummary[] = []
+
 export function SessionDrawer(props: DrawerContentComponentProps): React.JSX.Element {
   const theme = useAppTheme()
   const insets = useSafeAreaInsets()
@@ -122,7 +125,7 @@ export function SessionDrawer(props: DrawerContentComponentProps): React.JSX.Ele
     [query.data?.archivedSessionIds],
   )
   const pinnedSessionIds = useMemo(() => new Set(query.data?.pinnedSessionIds ?? []), [query.data?.pinnedSessionIds])
-  const allSessions = query.data?.items ?? []
+  const allSessions = query.data?.items ?? EMPTY_SESSIONS
   const runningSubagents = useMemo(() => runningSubagentCounts(allSessions), [allSessions])
   const workspaces = query.data?.workspaces ?? []
   const searchActive = search.trim().length > 0

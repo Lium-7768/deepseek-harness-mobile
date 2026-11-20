@@ -290,6 +290,11 @@ const QuestionCard = memo(function QuestionCard({
   const theme = useAppTheme()
   const styles = useThemedStyles(makeStyles)
   const [draft, setDraft] = useState<AnswerDraft>({})
+  // One optional free-text answer per question, closed until asked for: a card of three
+  // questions otherwise opened three empty multi-line fields. Declared here with the other
+  // hooks because a `useState` after the early return below would change the hook count
+  // when an interaction switches between the plan-review and question forms.
+  const [customOpen, setCustomOpen] = useState<Record<string, boolean>>({})
   const questions = interaction.payload.questions
   const review = planReviewOf(questions)
   if (review !== undefined)
@@ -311,9 +316,6 @@ const QuestionCard = memo(function QuestionCard({
       },
     }))
   }
-  // One optional free-text answer per question, closed until asked for: a card of
-  // three questions otherwise opened three empty multi-line fields.
-  const [customOpen, setCustomOpen] = useState<Record<string, boolean>>({})
   const toggleOption = (question: DshQuestion, label: string) => {
     const selected = draft[question.id]?.selected ?? []
     const nextSelected = question.multiSelect
