@@ -81,11 +81,20 @@ const makeStyles = (theme: AppTheme) =>
       position: 'absolute',
       right: 2,
       top: 72,
-      width: 16,
+      // Wide enough for a 28px active mark; `TurnNavigator` allots 28 for the same rail.
+      width: 28,
     },
-    // `TurnNavigator .mark`: a 2x6 bar, tertiary at rest and the brand ink when active.
-    mark: { backgroundColor: theme.colors.inkFaint, borderRadius: 2, height: 6, position: 'absolute', width: 2 },
-    markActive: { backgroundColor: theme.colors.inkMuted, height: 14 },
+    // `TurnNavigator .mark::before`: a horizontal 20×2 bar that grows from the right
+    // edge (the Web scales it with `transform-origin: right center`), not a vertical tick.
+    mark: {
+      backgroundColor: theme.colors.inkFaint,
+      borderRadius: 2,
+      height: 2,
+      position: 'absolute',
+      right: 0,
+      width: 20,
+    },
+    markActive: { backgroundColor: theme.colors.inkMuted, width: 28 },
     markPressed: { backgroundColor: theme.colors.accent },
     // Sits above the first mark, at the rail's top edge.
     markOlder: {
