@@ -120,7 +120,7 @@ const makeStyles = (theme: AppTheme) =>
     // `.bar`: a 4-tall 999-radius track holding 1px-separated segments.
     bar: {
       backgroundColor: theme.colors.interactiveHover,
-      borderRadius: 999,
+      borderRadius: theme.radius.pill,
       flexDirection: 'row',
       gap: 1,
       height: 4,
