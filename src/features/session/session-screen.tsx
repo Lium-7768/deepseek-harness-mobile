@@ -589,9 +589,14 @@ export default function SessionScreen(): React.JSX.Element {
     status,
     unavailable: !ready || send.isPending || cancel.isPending,
   })
-  const syncStatus = useMobileSyncStore((state) => state.status)
+  // `streamStatus` is already subscribed above; derive the displayed status from it
+  // instead of opening a second subscription to the same store field.
   const displayStatus =
-    !connection || syncStatus === 'disconnected' ? 'disconnected' : syncStatus === 'connecting' ? 'connecting' : status
+    !connection || streamStatus === 'disconnected'
+      ? 'disconnected'
+      : streamStatus === 'connecting'
+        ? 'connecting'
+        : status
 
   return (
     <ConversationDisclosureContext.Provider value={disclosures}>
