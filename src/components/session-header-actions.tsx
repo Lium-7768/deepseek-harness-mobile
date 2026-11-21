@@ -32,7 +32,6 @@ export interface SessionHeaderCounts {
  * @param props.counts - Subagent and job counts for this session.
  * @param props.menu - Rows of the session menu.
  * @param props.onOpenJobs - Opens the background-job list.
- * @param props.onOpenSubagents - Opens the subagent list.
  * @returns The action cluster.
  */
 export function SessionHeaderActions({
@@ -41,7 +40,6 @@ export function SessionHeaderActions({
   menu,
   onOpenJobs,
   onOpenPending,
-  onOpenSubagents,
   pending,
 }: {
   counts: SessionHeaderCounts
@@ -51,7 +49,6 @@ export function SessionHeaderActions({
   onOpenJobs: () => void
   /** Opens the screen that answers pending interactions. */
   onOpenPending: () => void
-  onOpenSubagents: () => void
   /** Pending interactions; `0` draws nothing. */
   pending: number
 }): React.JSX.Element {
@@ -65,13 +62,6 @@ export function SessionHeaderActions({
           {modeLabel}
         </Text>
       )}
-      {counts.subagents > 0 ? (
-        <HeaderAction
-          icon="users-outline"
-          label={format('conversation.headerSubagents', { count: counts.subagents })}
-          onPress={onOpenSubagents}
-        />
-      ) : null}
       {counts.jobs > 0 ? (
         <HeaderAction
           icon="queue-outline"

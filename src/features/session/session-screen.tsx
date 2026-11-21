@@ -16,8 +16,6 @@ import { NativeQuestionPromptRow } from '@/components/native-question-prompt-row
 import { SessionHeaderActions, type HeaderMenuRow } from '@/components/session-header-actions'
 import { agentPresetLabel } from '@/components/session-composer-logic'
 import { shareSessionLog } from '@/export/session-log-share'
-import { NativeTurnRail } from '@/components/native-turn-rail'
-import { activeRailMark, turnRail } from '@/components/session-turn-rail-logic'
 import { NativeTodoDock } from '@/components/native-todo-dock'
 import { todoFromProjection } from '@/components/todo-logic'
 import { NativeTurnGroup } from '@/components/native-turn-group'
@@ -226,7 +224,6 @@ export default function SessionScreen(): React.JSX.Element {
     isAwayFromLatest,
     isAtHistoryRunway,
     noteOlderPageLoaded,
-    noteReaderLeftLatest,
     noteSend,
     resetForSession,
     handleContentSizeChange,
@@ -360,7 +357,6 @@ export default function SessionScreen(): React.JSX.Element {
    * the settle window keeps the transcript still while it is being read.
    */
   /** First row the viewport shows, for the turn rail's active mark. */
-  const [firstVisibleRow, setFirstVisibleRow] = useState(0)
   const [catalogSheetOpen, setCatalogSheetOpen] = useState(false)
   /**
    * The rows in the order an inverted list renders them: newest first.
@@ -371,23 +367,6 @@ export default function SessionScreen(): React.JSX.Element {
    * reason for the inversion: no code has to chase the content height.
    */
   const invertedRows = useMemo(() => [...displayRows].reverse(), [displayRows])
-  const railRows = displayRows as readonly NativeConversationRow[]
-  const railMarks = useMemo(() => turnRail(railRows), [railRows])
-  /**
-   * The offset an upright list would report for the same viewport.
-   *
-   * `inverted` measures from the newest row, while the proximity rules state distance
-   * from the bottom and distance from the start in upright terms. Converting here keeps
-   * one set of rules instead of two that could drift apart.
-   *
-   * @param metrics - One scroll measurement from the inverted list.
-   * @returns The equivalent offset in an upright list.
-   */
-  const uprightOffset = (metrics: {
-    contentOffset: { y: number }
-    contentSize: { height: number }
-    layoutMeasurement: { height: number }
-  }): number => Math.max(0, metrics.contentSize.height - metrics.layoutMeasurement.height - metrics.contentOffset.y)
   const eventBySeq = useMemo(
     () =>
       new Map(sourceItems.flatMap((item) => (typeof item.seq === 'number' ? [[item.seq, item.event] as const] : []))),
@@ -624,7 +603,6 @@ export default function SessionScreen(): React.JSX.Element {
                 if (sessionId === undefined) return
                 router.push({ pathname: '/session/[sessionId]/interactions', params: { sessionId } })
               }}
-              onOpenSubagents={() => setCatalogSheetOpen(true)}
               pending={actions}
             />
             <ConnectionStatus onPress={refetchAll} status={displayStatus} />
@@ -754,29 +732,10 @@ export default function SessionScreen(): React.JSX.Element {
                       })
                     )
                       void loadOlder.mutateAsync({ manual: false }).catch(() => undefined)
-                    // The rail's active mark follows the offset, not a row measurement: it
-                    // only has to name which Turn the reader is inside. The index counts
-                    // from the oldest row, which is the upright offset an inverted list
-                    // does not report directly.
-                    if (railRows.length > 0) {
-                      const approximate = Math.floor(uprightOffset(event.nativeEvent) / 40)
-                      setFirstVisibleRow((current) => (current === approximate ? current : approximate))
-                    }
                   }}
                   onScrollBeginDrag={beginReaderScroll}
                   onScrollEndDrag={settleReaderScroll}
                   scrollEventThrottle={16}
-                />
-                <NativeTurnRail
-                  activeTurn={activeRailMark(railMarks, firstVisibleRow)?.turn}
-                  hasOlderTurns={hasMoreHistory}
-                  marks={railMarks}
-                  onLoadOlder={() => void loadOlder.mutateAsync({ manual: true }).catch(() => undefined)}
-                  rowCount={railRows.length}
-                  onJump={(index) => {
-                    noteReaderLeftLatest()
-                    listRef.current?.scrollToIndex({ animated: false, index, viewPosition: 0 })
-                  }}
                 />
                 {showReturnToLatest ? (
                   <Pressable

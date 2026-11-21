@@ -60,7 +60,6 @@ export interface ConversationViewport<Row> {
   /** Whether the reader has left the newest message. */
   isAwayFromLatest: () => boolean
   /** Record that the reader picked a row away from the newest message. */
-  noteReaderLeftLatest: () => void
   /** Tell the viewport the reader's own send is landing, so growth is followed briefly. */
   noteSend: () => void
   /** Reset for a different conversation. */
@@ -235,10 +234,6 @@ export function useConversationViewport<Row>({
     awaitingOlderRearm.current = true
   }, [])
 
-  const noteReaderLeftLatest = useCallback((): void => {
-    nearLatest.current = false
-  }, [])
-
   const noteSend = useCallback((): void => {
     sendFollowUntil.current = Date.now() + SEND_FOLLOW_WINDOW_MS
     pinToLatest()
@@ -302,7 +297,6 @@ export function useConversationViewport<Row>({
     isAwayFromLatest,
     isAtHistoryRunway,
     noteOlderPageLoaded,
-    noteReaderLeftLatest,
     noteSend,
     resetForSession,
     handleContentSizeChange,
