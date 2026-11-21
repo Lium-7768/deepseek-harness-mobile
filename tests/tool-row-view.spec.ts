@@ -12,6 +12,51 @@ function call(toolName: string, args: unknown, output?: string) {
 }
 
 describe('tool row derivation', () => {
+  it('reads the questions a call asked with the answers recorded for them', () => {
+    const view = toolRowView(
+      call(
+        'ask_user_question',
+        {
+          questions: [
+            {
+              id: 'q1',
+              question: '隐藏哪些？',
+              header: '选择要改的项',
+              options: [{ label: '轮次导航条' }, { label: '子代理计数' }],
+              multiSelect: true,
+            },
+          ],
+        },
+        JSON.stringify({
+          answers: [{ id: 'q1', selected: ['轮次导航条', '子代理计数'] }],
+        }),
+      ),
+    )
+    expect(view).toMatchObject({
+      kind: 'question',
+      answered: true,
+      items: [
+        {
+          question: '隐藏哪些？',
+          options: ['轮次导航条', '子代理计数'],
+          answers: ['轮次导航条', '子代理计数'],
+        },
+      ],
+    })
+  })
+
+  it('keeps a question unanswered while the result carries no answer', () => {
+    const view = toolRowView(
+      call('ask_user_question', { questions: [{ id: 'q1', question: '继续吗？', options: [{ label: '是' }] }] }),
+    )
+    expect(view).toMatchObject({ kind: 'question', answered: false, items: [{ answers: [] }] })
+  })
+
+  it('summarises a question row by the question itself, not the tool name', () => {
+    const view = toolRowView(call('ask_user_question', { questions: [{ id: 'q1', question: '隐藏哪些？' }] }))
+    expect(describeRow(view)).toBe('隐藏哪些？')
+  })
+
   it('names the file a read opened, with the line count it returned', () => {
     const view = toolRowView(call('read', { file_path: '/a/b.ts' }, 'one\ntwo\nthree'))
     expect(view).toMatchObject({ kind: 'read', path: '/a/b.ts', lineCount: 3 })

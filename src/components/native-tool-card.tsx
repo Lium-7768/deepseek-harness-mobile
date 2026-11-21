@@ -14,6 +14,7 @@ import { toolArgument, type NativeConversationRow } from '@/components/session-c
 import { toolFileChange } from '@/components/tool-diff-logic'
 import { describeRow, toolRowView } from '@/components/tool-row-view'
 import { ToolTodoList } from '@/components/native-tool-todo-list'
+import { ToolQuestionList } from '@/components/native-tool-question-list'
 import { format, t as message } from '@/locale'
 import type { SharedMessagePresentation } from '@/shared/dsh-presentation'
 import type { AppTheme } from '@/theme'
@@ -148,6 +149,8 @@ export function NativeToolCard({
           <NativeDiffBlock change={change} />
         ) : view.kind === 'todo' ? (
           <ToolTodoList items={view.items} />
+        ) : view.kind === 'question' ? (
+          <ToolQuestionList items={view.items} />
         ) : view.body !== undefined ? (
           <ToolPayload label={message('tool.output')} text={view.body} failed={model.state === 'failed'} />
         ) : model.toolInput ? (

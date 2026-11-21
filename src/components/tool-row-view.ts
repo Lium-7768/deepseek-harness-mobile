@@ -34,6 +34,7 @@ export type ToolRowView =
   | { kind: 'search'; pattern: string; scope?: string; hitFiles?: number; hitLines?: number; body?: string }
   | { kind: 'web'; query: string; url?: string; body?: string }
   | { kind: 'todo'; items: TodoItem[] }
+  | { kind: 'question'; items: QuestionItem[]; answered: boolean }
   | { kind: 'command'; command: string; description?: string; body?: string }
   | { kind: 'mutation'; path: string; operation: string; body?: string }
   | { kind: 'office'; path: string; format?: string; body?: string }
@@ -46,6 +47,18 @@ export type ToolRowView =
 
 /** One item of a todo list, as the call reports it. */
 export type TodoItem = { status: 'pending' | 'in_progress' | 'completed'; text: string }
+
+/** One question the call asked, with the answer the reader gave it. */
+export type QuestionItem = {
+  /** The question as asked. */
+  question: string
+  /** Optional supporting detail the caller kept out of the option labels. */
+  detail?: string
+  /** Labels the caller offered as choices. */
+  options: readonly string[]
+  /** Answers the reader gave; empty while the question is still unanswered. */
+  answers: readonly string[]
+}
 
 /**
  * Parse a call's argument text.
@@ -121,6 +134,90 @@ const MUTATION_VERB: Record<string, string> = {
 
 /** Names that replace a whole list, where the output is the list itself. */
 const TODO_TOOLS = new Set(['todo_write', 'todo'])
+
+/** Tools that put a question to the reader and wait for the answer. */
+const QUESTION_TOOLS = new Set(['ask_user_question', 'request_user_input'])
+
+/**
+ * Reads the questions a call asked and the answers the reader gave.
+ *
+ * The Host records the questions in the call's arguments and the reader's answers in
+ * the result, so both sides are needed to show a question rather than a bare tool name.
+ *
+ * @param record - The call's parsed arguments.
+ * @param body - The call's rendered result text.
+ * @returns One entry per question the call carried.
+ */
+function questionItems(record: Record<string, unknown> | undefined, body: string | undefined): QuestionItem[] {
+  const source = record?.questions
+  if (!Array.isArray(source)) return []
+  const answers = answerMap(body)
+  const items: QuestionItem[] = []
+  for (const entry of source) {
+    if (entry === null || typeof entry !== 'object') continue
+    const item = entry as Record<string, unknown>
+    const question = typeof item.question === 'string' ? item.question.trim() : ''
+    if (question === '') continue
+    const detail = typeof item.detail === 'string' && item.detail.trim() !== '' ? item.detail.trim() : undefined
+    const options = Array.isArray(item.options)
+      ? item.options
+          .map((option) =>
+            option !== null &&
+            typeof option === 'object' &&
+            typeof (option as Record<string, unknown>).label === 'string'
+              ? ((option as Record<string, unknown>).label as string).trim()
+              : undefined,
+          )
+          .filter((label): label is string => label !== undefined && label !== '')
+      : []
+    const id = typeof item.id === 'string' ? item.id : undefined
+    items.push({
+      question,
+      ...(detail === undefined ? {} : { detail }),
+      options,
+      answers: id === undefined ? [] : (answers.get(id) ?? []),
+    })
+  }
+  return items
+}
+
+/**
+ * Reads the answers out of a finished call's result text.
+ *
+ * The result lists one answered question per line or as JSON; both forms key the answer
+ * by the question id so the question keeps its wording while its answer arrives.
+ *
+ * @param body - The call's rendered result text.
+ * @returns Selected labels keyed by question id.
+ */
+function answerMap(body: string | undefined): Map<string, string[]> {
+  const out = new Map<string, string[]>()
+  if (body === undefined || body.trim() === '') return out
+  let parsed: Record<string, unknown> | undefined
+  try {
+    const value: unknown = JSON.parse(body)
+    if (value !== null && typeof value === 'object' && !Array.isArray(value)) parsed = value as Record<string, unknown>
+  } catch {
+    parsed = undefined
+  }
+  const list = parsed?.answers
+  if (Array.isArray(list)) {
+    for (const entry of list) {
+      if (entry === null || typeof entry !== 'object') continue
+      const item = entry as Record<string, unknown>
+      const id = typeof item.id === 'string' ? item.id : undefined
+      if (id === undefined) continue
+      const selected = Array.isArray(item.selected)
+        ? item.selected.filter((value): value is string => typeof value === 'string')
+        : typeof item.selected === 'string'
+          ? [item.selected]
+          : []
+      const custom = typeof item.custom === 'string' && item.custom.trim() !== '' ? [item.custom.trim()] : []
+      out.set(id, [...selected, ...custom])
+    }
+  }
+  return out
+}
 
 /**
  * Count the lines of a result body.
@@ -221,6 +318,16 @@ export function toolRowView(call: ToolCall): ToolRowView {
   if (TODO_TOOLS.has(name)) {
     const items = todoItems(record, call.output)
     if (items.length > 0) return { kind: 'todo', items }
+  }
+
+  if (QUESTION_TOOLS.has(name)) {
+    const questions = questionItems(record, call.output)
+    if (questions.length > 0)
+      return {
+        kind: 'question',
+        items: questions,
+        answered: questions.every((item) => item.answers.length > 0),
+      }
   }
 
   if (OFFICE_TOOLS.has(name)) {
@@ -372,6 +479,13 @@ export function describeRow(view: ToolRowView): string | undefined {
     case 'todo': {
       const done = view.items.filter((item) => item.status === 'completed').length
       return `${String(done)}/${String(view.items.length)}`
+    }
+    case 'question': {
+      const first = view.items[0]
+      const count = view.items.length
+      const head = first?.question ?? ''
+      const more = count > 1 ? ` +${String(count - 1)}` : ''
+      return `${view.answered ? '' : ''}${head}${more}`
     }
     case 'command':
       return view.description ?? view.command
