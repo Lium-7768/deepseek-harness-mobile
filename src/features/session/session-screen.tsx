@@ -33,7 +33,7 @@ import { MessageRow } from '@/components/session-message-row'
 import { groupProcessRows, runningProcessTitle, type NativeProcessRow } from '@/components/session-process-logic'
 import { ConnectionStatus, ErrorNotice, SessionDock, UnavailableState } from '@/components/session-screen-state'
 import { makeSessionStyles } from '@/components/session-screen-styles'
-import { shouldRefreshFromPull, unreadCountLabel } from '@/components/session-scroll-logic'
+import { olderPageAdvance, shouldRefreshFromPull, unreadCountLabel } from '@/components/session-scroll-logic'
 import {
   foldCompletedTurns,
   turnSpans,
@@ -91,6 +91,9 @@ const gapStyles: Record<number, { paddingTop: number }> = {
   16: { paddingTop: 16 },
   24: { paddingTop: 24 },
 }
+
+/** Events one older page may add; enough for a screen or two of history per press. */
+const OLDER_PAGE_EVENTS = 400
 
 export default function SessionScreen(): React.JSX.Element {
   const theme = useAppTheme()
@@ -177,9 +180,21 @@ export default function SessionScreen(): React.JSX.Element {
       // moving what is being read, so the offset has to grow by the same amount. The
       // list's own `maintainVisibleContentPosition` is gone because its latch also
       // fights the jump to the newest message.
-      if (page.items.length === 0) exhaustedOlderHistory.current = true
-      setOlderItems((current) => mergeEventItems(page.items, current))
-      setOlderHasMore(page.hasMore ?? false)
+      //
+      // The Host sizes a page by messages but ships every event behind them, so the page
+      // repeats what is already loaded. Taking only the events older than the current
+      // oldest moves the cursor, which is what the next press needs.
+      const oldestLoaded = Math.min(...sourceItems.flatMap((item) => (typeof item.seq === 'number' ? [item.seq] : [])))
+      const advance = olderPageAdvance({
+        items: page.items,
+        oldestLoadedSeq: Number.isFinite(oldestLoaded) ? oldestLoaded : undefined,
+        pageSize: OLDER_PAGE_EVENTS,
+      })
+      if (advance.exhausted) exhaustedOlderHistory.current = true
+      setOlderItems((current) => mergeEventItems(advance.items, current))
+      // Only report more when this page actually advanced; otherwise the control would
+      // invite a press that repeats the same request forever.
+      setOlderHasMore(advance.exhausted ? false : (page.hasMore ?? advance.items.length > 0))
       noteOlderPageLoaded()
     },
     onError: (error) => {

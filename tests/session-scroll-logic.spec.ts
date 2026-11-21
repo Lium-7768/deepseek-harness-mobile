@@ -3,6 +3,7 @@ import {
   FOLLOW_PIN_DELAY_MS,
   PIN_SETTLE_MS,
   isNearLatestMessage,
+  olderPageAdvance,
   restoredOffsetAfterPrepend,
   restoredOffsetOnOpen,
   shouldCaptureUnreadBaseline,
@@ -206,5 +207,26 @@ describe('pin settle', () => {
     // does not see two separate movements.
     expect(PIN_SETTLE_MS).toBeGreaterThanOrEqual(80)
     expect(PIN_SETTLE_MS).toBeLessThanOrEqual(250)
+  })
+})
+
+describe('older page advance', () => {
+  it('keeps only the events older than the loaded window, so the cursor moves', () => {
+    // The Host ships a page sized in messages, which can repeat the whole transcript.
+    const items = Array.from({ length: 10 }, (_, index) => ({ seq: index + 1 }))
+    const advance = olderPageAdvance({ items, oldestLoadedSeq: 8, pageSize: 100 })
+    expect(advance.items.map((item) => item.seq)).toEqual([1, 2, 3, 4, 5, 6, 7])
+    expect(advance.exhausted).toBe(false)
+  })
+
+  it('keeps the events abutting the loaded window when the page is capped', () => {
+    const items = Array.from({ length: 10 }, (_, index) => ({ seq: index + 1 }))
+    const advance = olderPageAdvance({ items, oldestLoadedSeq: 8, pageSize: 3 })
+    expect(advance.items.map((item) => item.seq)).toEqual([5, 6, 7])
+  })
+
+  it('reports the start once the page holds nothing older', () => {
+    const advance = olderPageAdvance({ items: [{ seq: 9 }, { seq: 10 }], oldestLoadedSeq: 8, pageSize: 100 })
+    expect(advance).toEqual({ items: [], exhausted: true })
   })
 })

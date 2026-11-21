@@ -278,3 +278,32 @@ export function restoredOffsetOnOpen({
   if (contentHeight < saved.contentHeight * RESTORE_MIN_CONTENT_RATIO) return undefined
   return Math.max(0, Math.min(saved.offsetY, contentHeight))
 }
+
+/**
+ * How many events one older page can add before the reader's cursor would stand still.
+ *
+ * The Host sizes a history page by messages but returns every event behind them, so a
+ * single answer can bring thousands of chunk and tool records with it. Ingesting that
+ * whole prefix repeats rows the client already holds; `mergeEventItems` then dedupes them
+ * back to the same length, the oldest loaded sequence never changes, and the next press
+ * asks for the very same page. The transcript looks like it ignored the press.
+ *
+ * @param args - The page the Host returned and the oldest sequence already loaded.
+ * @returns The events older than the current window, capped at one page's worth.
+ */
+export function olderPageAdvance<Item extends { seq?: number }>({
+  items,
+  oldestLoadedSeq,
+  pageSize,
+}: {
+  items: readonly Item[]
+  oldestLoadedSeq: number | undefined
+  pageSize: number
+}): { items: Item[]; exhausted: boolean } {
+  if (oldestLoadedSeq === undefined) return { items: [...items], exhausted: items.length === 0 }
+  const older = items.filter((item) => typeof item.seq === 'number' && item.seq < oldestLoadedSeq)
+  if (older.length === 0) return { items: [], exhausted: true }
+  // Keep the newest events of the older slice: they abut what the reader already has, so
+  // the prepend stays contiguous, and the cursor moves back by exactly this many events.
+  return { items: older.slice(Math.max(0, older.length - pageSize)), exhausted: false }
+}
