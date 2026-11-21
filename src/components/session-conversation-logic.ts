@@ -147,18 +147,14 @@ type ContentBlock = { type?: unknown; text?: unknown; toolName?: unknown }
  */
 export function projectNativeConversationRows(items: readonly SharedEventItem[]): NativeConversationRow[] {
   const orderedItems = [...items].sort((left, right) => (left.seq ?? 0) - (right.seq ?? 0))
-  const settledAssistantSteps = new Set(
-    orderedItems.flatMap((item) => {
-      if (stringField(item.event.type) !== 'assistant/message') return []
-      const key = eventStepKey(recordField(item.event.data) ?? item.event)
-      return key === undefined ? [] : [key]
-    }),
-  )
   const turnUsage = turnUsageByTurn(orderedItems)
   const rows: NativeConversationRow[] = []
   const toolRowByCallId = new Map<string, number>()
   const commandRowByCommandId = new Map<string, number>()
   const streamingRowByBlock = new Map<string, number>()
+  // The first row each step streamed for a kind, so its settled message replaces that row
+  // in place instead of appending a second copy at the end of the Turn.
+  const settledRowByStep = new Map<string, number>()
   for (const item of orderedItems) {
     const event = item.event
     const type = stringField(event.type)
@@ -170,9 +166,11 @@ export function projectNativeConversationRows(items: readonly SharedEventItem[])
       const chunkType = stringField(chunk?.type)
       const index = numberField(chunk?.index)
       const text = stringField(chunk?.text)
+      // A settled step's chunks are kept: they carry the order the step ran in, and the
+      // settled message below replaces each of them where it stands. Dropping them put
+      // every tool row of a multi-step Turn ahead of all of its prose.
       if (
         stepKey !== undefined &&
-        !settledAssistantSteps.has(stepKey) &&
         index !== undefined &&
         text !== undefined &&
         (chunkType === 'reasoning-delta' || chunkType === 'text-delta')
@@ -189,6 +187,8 @@ export function projectNativeConversationRows(items: readonly SharedEventItem[])
         }
         rows.push({ kind, rowKey: `stream:${blockKey}`, text, ...(sourceSeq === undefined ? {} : { sourceSeq }) })
         streamingRowByBlock.set(blockKey, rows.length - 1)
+        const settledKey = `${stepKey}:${kind}`
+        if (!settledRowByStep.has(settledKey)) settledRowByStep.set(settledKey, rows.length - 1)
       }
       continue
     }
@@ -225,26 +225,48 @@ export function projectNativeConversationRows(items: readonly SharedEventItem[])
       continue
     }
     if (type === 'assistant/message') {
-      for (const block of messageBlocks(data)) {
-        if (block.type === 'reasoning' && typeof block.text === 'string' && block.text.trim()) {
-          rows.push({ kind: 'reasoning', text: block.text.trim(), ...(sourceSeq === undefined ? {} : { sourceSeq }) })
-        }
+      // The settled message is authoritative for its own step, so it replaces the rows
+      // that step streamed rather than appending new ones. Appending put the whole step's
+      // prose after its tool rows; replacing keeps the order the step ran in.
+      const stepKey = eventStepKey(data)
+      const settled = {
+        reasoning: messageBlocks(data)
+          .flatMap((block) => (block.type === 'reasoning' && typeof block.text === 'string' ? [block.text.trim()] : []))
+          .filter((text) => text !== '')
+          .join('\n\n'),
+        text: messageBlocks(data)
+          .flatMap((block) => (block.type === 'text' && typeof block.text === 'string' ? [block.text] : []))
+          .join('')
+          .trim(),
       }
-      const text = messageBlocks(data)
-        .flatMap((block) => (block.type === 'text' && typeof block.text === 'string' ? [block.text] : []))
-        .join('')
-        .trim()
       const turn = numberField(data.turn)
       const usage = turn === undefined ? undefined : turnUsage.get(turn)
-      if (text)
-        rows.push({
-          kind: 'assistant',
-          text,
-          ...(turn === undefined ? {} : { turn }),
-          ...(usage === undefined ? {} : { usage }),
-          ...(sourceSeq === undefined ? {} : { sourceSeq }),
-          ...eventTime(event),
-        })
+      for (const kind of ['reasoning', 'assistant'] as const) {
+        const text = kind === 'reasoning' ? settled.reasoning : settled.text
+        if (text === '') continue
+        const slot = stepKey === undefined ? undefined : settledRowByStep.get(`${stepKey}:${kind}`)
+        const extra =
+          kind === 'assistant'
+            ? {
+                ...(turn === undefined ? {} : { turn }),
+                ...(usage === undefined ? {} : { usage }),
+                ...eventTime(event),
+              }
+            : {}
+        if (slot !== undefined) {
+          // The settled row stands where the step streamed it, but reports the settled
+          // event's own sequence so later projections order it by the durable record.
+          rows[slot] = {
+            kind,
+            text,
+            ...(sourceSeq === undefined ? {} : { sourceSeq }),
+            ...extra,
+          } as NativeConversationRow
+          continue
+        }
+        rows.push({ kind, text, ...(sourceSeq === undefined ? {} : { sourceSeq }), ...extra } as NativeConversationRow)
+        if (stepKey !== undefined) settledRowByStep.set(`${stepKey}:${kind}`, rows.length - 1)
+      }
       continue
     }
     if (type === 'tool/call') {

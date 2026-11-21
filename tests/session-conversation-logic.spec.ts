@@ -149,6 +149,60 @@ describe('projectNativeConversationRows', () => {
     ).toEqual([{ kind: 'assistant', sourceSeq: 2, text: '最终正文。', turn: 3 }])
   })
 
+  it("keeps each step's prose ahead of that step's tool rows in a multi-step Turn", () => {
+    const rows = projectNativeConversationRows([
+      {
+        seq: 1,
+        event: {
+          type: 'assistant/chunk',
+          data: { turn: 1, step: 0, chunk: { type: 'text-delta', index: 0, text: '第一段' } },
+        },
+      },
+      {
+        seq: 2,
+        event: {
+          type: 'assistant/message',
+          data: { turn: 1, step: 0, message: { content: [{ type: 'text', text: '第一段。' }] } },
+        },
+      },
+      {
+        seq: 3,
+        event: {
+          type: 'tool/call',
+          data: { turn: 1, step: 0, callId: 'a', name: 'bash', arguments: { command: 'echo a' } },
+        },
+      },
+      {
+        seq: 4,
+        event: {
+          type: 'assistant/chunk',
+          data: { turn: 1, step: 1, chunk: { type: 'text-delta', index: 0, text: '第二段' } },
+        },
+      },
+      {
+        seq: 5,
+        event: {
+          type: 'assistant/message',
+          data: { turn: 1, step: 1, message: { content: [{ type: 'text', text: '第二段。' }] } },
+        },
+      },
+      {
+        seq: 6,
+        event: {
+          type: 'tool/call',
+          data: { turn: 1, step: 1, callId: 'b', name: 'bash', arguments: { command: 'echo b' } },
+        },
+      },
+    ])
+    // The prose of each step stays where the step put it; tool rows follow their own step.
+    expect(rows.map((row) => (row.kind === 'assistant' ? row.text : row.kind))).toEqual([
+      '第一段。',
+      'tool',
+      '第二段。',
+      'tool',
+    ])
+  })
+
   it('returns only the latest unclosed desktop turn start time', () => {
     expect(
       activeTurnStartedAt([
