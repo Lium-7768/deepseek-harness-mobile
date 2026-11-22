@@ -23,6 +23,11 @@ import type {
   MobilePromptContent,
   MobileQueuePayload,
   MobileScheduleCreateRequest,
+  MobileScheduleDeliveryReceipt,
+  MobileScheduleDeliveryRecord,
+  MobileScheduleEntry,
+  MobileScheduleHistoryPage,
+  MobileSchedulePatch,
   MobileReferenceFileCandidate,
   MobileReferencePayload,
   MobileReferenceSessionCandidate,
@@ -491,10 +496,7 @@ export class MobileApi {
     if (!isRecord(result)) throw createError('protocol', message('errors.responseInvalid'))
   }
 
-  async updateSchedule(
-    task: import('@/types/mobile').MobileScheduleEntry,
-    action: 'pause' | 'resume' | 'delete',
-  ): Promise<void> {
+  async updateSchedule(task: MobileScheduleEntry, action: 'pause' | 'resume' | 'delete'): Promise<void> {
     const result = await this.#post<unknown>(`/v1/schedules/${encodeURIComponent(task.id)}/${action}`, {
       expectedUpdatedAt: task.updatedAt ?? null,
     })
@@ -504,6 +506,84 @@ export class MobileApi {
     if (result.code === 'schedule_not_found')
       throw createError('schedule-not-found', message('schedule.notFound'), { code: result.code }, false)
     if (result.code !== undefined) throw createError('protocol', message('errors.responseInvalid'))
+  }
+
+  /** Reads the latest authoritative state of one desktop-owned automation task. */
+  async viewSchedule(id: string): Promise<MobileScheduleEntry> {
+    const result = await this.#post<unknown>(`/v1/schedules/${encodeURIComponent(id)}/view`, {})
+    if (!isRecord(result)) throw createError('protocol', message('errors.responseInvalid'))
+    if (result.code === 'schedule_not_found')
+      throw createError('schedule-not-found', message('schedule.notFound'), { code: result.code }, false)
+    if (!isScheduleEntry(result)) throw createError('protocol', message('errors.responseInvalid'))
+    return result
+  }
+
+  /** Reads one newest-first page of saved delivery records for an automation task. */
+  async scheduleHistory(id: string, request: { limit: number; before?: string }): Promise<MobileScheduleHistoryPage> {
+    const result = await this.#post<unknown>(`/v1/schedules/${encodeURIComponent(id)}/history`, {
+      request: {
+        limit: request.limit,
+        ...(request.before === undefined ? {} : { before: request.before }),
+      },
+    })
+    if (!isRecord(result)) throw createError('protocol', message('errors.responseInvalid'))
+    if (result.code === 'schedule_not_found')
+      throw createError('schedule-not-found', message('schedule.notFound'), { code: result.code }, false)
+    if (result.code === 'delivery_cursor_not_found')
+      throw createError('schedule-conflict', message('schedule.deliveryUnavailable'), { code: result.code }, false)
+    if (!isScheduleHistoryPage(result)) throw createError('protocol', message('errors.responseInvalid'))
+    return result
+  }
+
+  /** Queues an immediate manual run for an automation task. */
+  async runSchedule(id: string): Promise<MobileScheduleEntry> {
+    const result = await this.#post<unknown>(`/v1/schedules/${encodeURIComponent(id)}/run`, {})
+    if (!isRecord(result)) throw createError('protocol', message('errors.responseInvalid'))
+    if (result.code === 'schedule_not_found')
+      throw createError('schedule-not-found', message('schedule.notFound'), { code: result.code }, false)
+    if (result.code === 'schedule_execution_pending')
+      throw createError('schedule-conflict', message('schedule.runExecutionPending'), { code: result.code }, false)
+    if (!isScheduleEntry(result)) throw createError('protocol', message('errors.responseInvalid'))
+    return result
+  }
+
+  /** Applies an atomic edit patch to one automation task with optimistic CAS checking. */
+  async editSchedule(
+    id: string,
+    patch: MobileSchedulePatch,
+    expectedUpdatedAt: string | null,
+  ): Promise<MobileScheduleEntry> {
+    let result: unknown
+    try {
+      result = await this.#post<unknown>(`/v1/schedules/${encodeURIComponent(id)}/edit`, {
+        expectedUpdatedAt,
+        patch,
+      })
+    } catch (error) {
+      if (
+        error instanceof MobileApiError &&
+        ((error.diagnostic.status === 404 && error.diagnostic.code === 'not-found') ||
+          error.diagnostic.code === 'schedule-unsupported')
+      )
+        throw createError(
+          'unsupported',
+          message('schedule.detailEditUnsupported'),
+          {
+            code: error.diagnostic.code,
+            status: error.diagnostic.status,
+            rawMessage: error.diagnostic.rawMessage,
+          },
+          false,
+        )
+      throw error
+    }
+    if (!isRecord(result)) throw createError('protocol', message('errors.responseInvalid'))
+    if (result.code === 'schedule_conflict')
+      throw createError('schedule-conflict', message('schedule.conflict'), { code: result.code }, false)
+    if (result.code === 'schedule_not_found')
+      throw createError('schedule-not-found', message('schedule.notFound'), { code: result.code }, false)
+    if (!isScheduleEntry(result)) throw createError('protocol', message('errors.responseInvalid'))
+    return result
   }
 
   /** Reads live Goal activation, which is deliberately absent from durable projections. */
@@ -899,16 +979,71 @@ function isCommandDescriptor(value: unknown): value is MobileCommandDescriptor {
   )
 }
 
-function isScheduleEntry(value: unknown): value is import('@/types/mobile').MobileScheduleEntry {
+function isScheduleDeliveryReceipt(value: unknown): value is MobileScheduleDeliveryReceipt {
+  return (
+    isRecord(value) &&
+    typeof value.scheduledAt === 'string' &&
+    typeof value.deliveredAt === 'string' &&
+    typeof value.messageId === 'string' &&
+    value.messageId.trim() !== '' &&
+    typeof value.targetSessionId === 'string' &&
+    value.targetSessionId.trim() !== ''
+  )
+}
+
+function isScheduleDeliveryRecord(value: unknown): value is MobileScheduleDeliveryRecord {
+  return (
+    isScheduleDeliveryReceipt(value) &&
+    isRecord(value) &&
+    (value.prompt === undefined || typeof value.prompt === 'string')
+  )
+}
+
+function isScheduleHistoryPage(value: unknown): value is MobileScheduleHistoryPage {
+  return (
+    isRecord(value) &&
+    typeof value.id === 'string' &&
+    value.id.trim() !== '' &&
+    Array.isArray(value.records) &&
+    value.records.every(isScheduleDeliveryRecord) &&
+    typeof value.earlierRecordsUnavailable === 'boolean' &&
+    typeof value.earlierRecordsPruned === 'boolean' &&
+    isRecord(value.retention) &&
+    typeof value.retention.days === 'number' &&
+    typeof value.retention.records === 'number' &&
+    (value.nextBefore === undefined || typeof value.nextBefore === 'string')
+  )
+}
+
+function isScheduleEntry(value: unknown): value is MobileScheduleEntry {
   if (!isRecord(value) || !isRecord(value.target)) return false
   return (
     typeof value.id === 'string' &&
     value.id.trim() !== '' &&
+    (value.kind === undefined ||
+      value.kind === 'after' ||
+      value.kind === 'at' ||
+      value.kind === 'every' ||
+      value.kind === 'daily' ||
+      value.kind === 'weekly' ||
+      value.kind === 'cron' ||
+      value.kind === 'rrule') &&
     typeof value.title === 'string' &&
     typeof value.prompt === 'string' &&
     typeof value.scheduledAt === 'string' &&
+    (value.createdAt === undefined || typeof value.createdAt === 'string') &&
     (value.updatedAt === undefined || typeof value.updatedAt === 'string') &&
+    (value.time === undefined || typeof value.time === 'string') &&
+    (value.timeZone === undefined || typeof value.timeZone === 'string') &&
+    (value.weekdays === undefined ||
+      (Array.isArray(value.weekdays) && value.weekdays.every((day) => typeof day === 'number'))) &&
+    (value.everySeconds === undefined || typeof value.everySeconds === 'number') &&
+    (value.afterSeconds === undefined || typeof value.afterSeconds === 'number') &&
+    (value.expression === undefined || typeof value.expression === 'string') &&
+    (value.rrule === undefined || typeof value.rrule === 'string') &&
     (value.executionActive === undefined || typeof value.executionActive === 'boolean') &&
+    (value.deliveryFloorEndsAt === undefined || typeof value.deliveryFloorEndsAt === 'string') &&
+    (value.lastDelivery === undefined || isScheduleDeliveryReceipt(value.lastDelivery)) &&
     (value.status === 'active' || value.status === 'paused' || value.status === 'ended') &&
     (value.target.kind === 'new' ||
       ((value.target.kind === 'session' || value.target.kind === 'new_once') &&

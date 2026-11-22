@@ -561,4 +561,64 @@ describe('Goal and schedule response validation', () => {
       diagnostic: { kind, code, status },
     })
   })
+  it('reads schedule view/history and forwards run/edit with CAS and error mapping', async () => {
+    const api = new MobileApi(connection)
+    const entry = {
+      id: 'task-1',
+      kind: 'daily',
+      title: 'Daily brief',
+      prompt: 'Summarize changes',
+      status: 'active',
+      scheduledAt: '2026-11-23T01:00:00.000Z',
+      updatedAt: '2026-11-22T01:00:00.000Z',
+      time: '09:00:00.000',
+      timeZone: 'Asia/Shanghai',
+      target: { kind: 'new_once', sessionId: 's-1' },
+    }
+    fetchMock.mockResolvedValueOnce(jsonResponse({ contractVersion: 1, data: entry }, 200))
+    await expect(api.viewSchedule('task-1')).resolves.toEqual(entry)
+
+    const history = {
+      id: 'task-1',
+      records: [
+        {
+          scheduledAt: '2026-11-22T01:00:00.000Z',
+          deliveredAt: '2026-11-22T01:00:02.000Z',
+          messageId: 'm-1',
+          targetSessionId: 's-1',
+          prompt: 'Summarize changes',
+        },
+      ],
+      earlierRecordsUnavailable: false,
+      earlierRecordsPruned: false,
+      retention: { days: 30, records: 100 },
+    }
+    fetchMock.mockResolvedValueOnce(jsonResponse({ contractVersion: 1, data: history }, 200))
+    await expect(api.scheduleHistory('task-1', { limit: 20 })).resolves.toEqual(history)
+
+    fetchMock.mockResolvedValueOnce(jsonResponse({ contractVersion: 1, data: entry }, 200))
+    await expect(api.runSchedule('task-1')).resolves.toEqual(entry)
+
+    fetchMock.mockResolvedValueOnce(
+      jsonResponse({ contractVersion: 1, data: { id: 'task-1', code: 'schedule_execution_pending' } }, 200),
+    )
+    await expect(api.runSchedule('task-1')).rejects.toMatchObject({ kind: 'schedule-conflict' })
+
+    fetchMock.mockResolvedValueOnce(jsonResponse({ contractVersion: 1, data: entry }, 200))
+    await expect(api.editSchedule('task-1', { title: 'Daily brief' }, '2026-11-22T01:00:00.000Z')).resolves.toEqual(
+      entry,
+    )
+
+    fetchMock.mockResolvedValueOnce(
+      jsonResponse({ contractVersion: 1, data: { id: 'task-1', code: 'schedule_conflict' } }, 200),
+    )
+    await expect(api.editSchedule('task-1', { title: 'Changed' }, 'stale')).rejects.toMatchObject({
+      kind: 'schedule-conflict',
+    })
+
+    fetchMock.mockResolvedValueOnce(jsonResponse({ error: { code: 'not-found', message: 'Not found' } }, 404))
+    await expect(api.editSchedule('task-1', { title: 'Changed' }, null)).rejects.toMatchObject({
+      kind: 'unsupported',
+    })
+  })
 })

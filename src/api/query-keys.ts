@@ -29,6 +29,8 @@ export const queryKeys = {
   sessionFeedback: key('session-feedback'),
   subagentHistory: key('subagent-history'),
   schedules: key('schedules'),
+  scheduleDetail: key('schedule-detail'),
+  scheduleHistory: key('schedule-history'),
   settings: key('mobile-settings'),
   models: key('mobile-llm-models'),
 } as const

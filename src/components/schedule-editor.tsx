@@ -4,8 +4,8 @@ import { NativeMenuPanel } from '@/components/native-menu-panel'
 import { t as message } from '@/locale'
 import type { AppTheme } from '@/theme'
 import { useAppTheme, useThemedStyles } from '@/theme/hooks'
-import { timingOf, WEEKDAY_LABELS, type TimingKind } from '@/components/schedule-editor-logic'
-import type { MobileScheduleCreateRequest } from '@/types/mobile'
+import { formFromTiming, timingOf, WEEKDAY_LABELS, type TimingKind } from '@/components/schedule-editor-logic'
+import type { MobileScheduleCreateRequest, MobileScheduleTiming } from '@/types/mobile'
 import { useEffect, useState } from 'react'
 import { MONOSPACE_FONT } from '@/theme/platform'
 import { format } from '@/locale'
@@ -34,12 +34,14 @@ const KIND_LABELS = {
  * @returns The sheet, or `null` while closed.
  */
 export function ScheduleEditor({
+  initial,
   onClose,
   onCreate,
   open,
   pending,
   timeZone,
 }: {
+  initial?: { title: string; prompt: string; timing?: MobileScheduleTiming }
   onClose(): void
   onCreate(request: MobileScheduleCreateRequest): Promise<void>
   open: boolean
@@ -64,18 +66,19 @@ export function ScheduleEditor({
 
   useEffect(() => {
     if (!open) return
-    setTitle('')
-    setPrompt('')
-    setKind('daily')
-    setTime('09:00')
-    setHours('6')
-    setMinutes('30')
-    setDate('')
-    setWeekdays([1])
-    setCron('0 9 * * *')
-    setRrule('FREQ=DAILY')
+    setTitle(initial?.title ?? '')
+    setPrompt(initial?.prompt ?? '')
+    const seed = initial?.timing ? formFromTiming(initial.timing, timeZone) : undefined
+    setKind(seed?.kind ?? 'daily')
+    setTime(seed?.time ?? '09:00')
+    setHours(seed?.hours ?? '6')
+    setMinutes(seed?.minutes ?? '30')
+    setDate(seed?.date ?? '')
+    setWeekdays(seed?.weekdays ?? [1])
+    setCron(seed?.cron ?? '0 9 * * *')
+    setRrule(seed?.rrule ?? 'FREQ=DAILY')
     setError(undefined)
-  }, [open])
+  }, [initial, open, timeZone])
 
   const timing = timingOf({ cron, date, hours, kind, minutes, rrule, time, timeZone, weekdays }) ?? undefined
   const ready = title.trim() !== '' && prompt.trim() !== '' && timing !== undefined && !pending

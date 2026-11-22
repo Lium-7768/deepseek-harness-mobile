@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { timingOf, type TimingForm } from '@/components/schedule-editor-logic'
+import { formFromScheduleEntry, formFromTiming, timingOf, type TimingForm } from '@/components/schedule-editor-logic'
 
 /** A blank form; each case overrides the fields its timing kind reads. */
 const EMPTY: TimingForm = {
@@ -75,5 +75,30 @@ describe('the rest of the host timing union', () => {
       rrule: 'FREQ=WEEKLY;BYDAY=MO',
     })
     expect(timingOf({ ...EMPTY, kind: 'rrule', rrule: '   ' })).toBeUndefined()
+  })
+
+  it('hydrates editable form fields from schedule entries and timing rules', () => {
+    expect(
+      formFromTiming(
+        { kind: 'weekly', weekly: { time: '09:30:00', time_zone: 'Asia/Shanghai', weekdays: [1, 5] } },
+        'UTC',
+      ),
+    ).toMatchObject({ kind: 'weekly', time: '09:30', timeZone: 'Asia/Shanghai', weekdays: [1, 5] })
+    expect(
+      formFromScheduleEntry(
+        {
+          id: 't1',
+          kind: 'daily',
+          title: 'Daily',
+          prompt: 'Run',
+          status: 'active',
+          scheduledAt: '2026-11-23T01:00:00.000Z',
+          time: '09:15:00.000',
+          timeZone: 'Asia/Shanghai',
+          target: { kind: 'new' },
+        },
+        'UTC',
+      ),
+    ).toMatchObject({ kind: 'daily', time: '09:15', timeZone: 'Asia/Shanghai' })
   })
 })

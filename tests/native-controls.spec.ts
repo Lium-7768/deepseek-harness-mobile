@@ -14,6 +14,8 @@ vi.mock('react-native', async () => {
     TextInput: 'TextInput',
     Pressable: 'Pressable',
     ScrollView: 'ScrollView',
+    Modal: 'Modal',
+    KeyboardAvoidingView: 'KeyboardAvoidingView',
     ActivityIndicator: 'ActivityIndicator',
     StyleSheet: { create: (styles: unknown) => styles, hairlineWidth: 1 },
     Alert: { alert: mocks.alert },
@@ -68,6 +70,10 @@ vi.mock('react-native-reanimated', async () => {
   }
 })
 vi.mock('react-native-svg', () => ({ Circle: 'Circle', default: 'Svg' }))
+vi.mock('react-native-safe-area-context', () => ({
+  SafeAreaView: 'SafeAreaView',
+  useSafeAreaInsets: () => ({ top: 44, bottom: 34, left: 0, right: 0 }),
+}))
 vi.mock('@/components/native-action-button', () => ({ NativeActionButton: 'ActionButton' }))
 vi.mock('@/components/workspace-shell', () => ({ WorkspaceShell: 'Shell' }))
 vi.mock('@/components/confirm-sheet', async () => {
@@ -232,7 +238,15 @@ describe('automation screen interaction', () => {
     const first = deferred()
     update.mockReturnValueOnce(first.promise)
     await mount(createElement(QueryClientProvider, { client: cache }, createElement(SchedulesScreen)))
-    await settle(() => rowAction('active') !== undefined && rowAction('paused') !== undefined)
+    await settle(() => rowAction('active') !== undefined)
+    const allFilter = () =>
+      renderer.container.queryAll(
+        (node: { props: Record<string, unknown> }) => node.props.accessibilityLabel === '全部',
+      )[0]!
+    await act(async () => {
+      allFilter().props.onPress()
+    })
+    await settle(() => rowAction('paused') !== undefined)
     await act(async () => {
       rowAction('active').props.onPress()
     })
@@ -291,6 +305,28 @@ describe('automation screen interaction', () => {
       third.resolve()
     })
     await settle(() => rowAction('active').props.disabled === false)
+  })
+
+  it('places status filters before the search field with desktop-aligned chip styling', async () => {
+    vi.spyOn(MobileApi.prototype, 'schedules').mockResolvedValue({ items: [task('active')] })
+    await mount(createElement(QueryClientProvider, { client: cache }, createElement(SchedulesScreen)))
+    await settle(() => rowAction('active') !== undefined)
+    const controls = renderer.container.queryAll(
+      (node) => node.type === 'View' && node.props.style?.gap === 10 && node.props.style?.paddingBottom === 4,
+    )[0]!
+    expect(controls.children[0]).toMatchObject({ type: 'ScrollView' })
+    const activeChip = renderer.container.queryAll(
+      (node) => node.type === 'Pressable' && node.props.accessibilityLabel === '运行中',
+    )[0]!
+    const pausedChip = renderer.container.queryAll(
+      (node) => node.type === 'Pressable' && node.props.accessibilityLabel === '已暂停',
+    )[0]!
+    const activeStyle = activeChip.props.style({ pressed: false })
+    const pausedStyle = pausedChip.props.style({ pressed: false })
+    expect(activeStyle[0].borderRadius).toBe(8)
+    expect(activeStyle[0].backgroundColor).toBe('transparent')
+    expect(activeStyle[1].backgroundColor).toBe('rgba(38, 49, 72, 0.06)')
+    expect(pausedStyle[1]).toBe(false)
   })
 })
 

@@ -1,9 +1,17 @@
-import { MobileApi, MobileApiError } from '@/api/mobile-api'
+import { MobileApi, MobileApiError, mobileErrorMessage } from '@/api/mobile-api'
 import { queryKeys } from '@/api/query-keys'
 import { ConfirmSheet } from '@/components/confirm-sheet'
 import { NativeEmptyState } from '@/components/native-empty-state'
 import { NativeRunningRing } from '@/components/native-running-ring'
+import { ScheduleDetailModal } from '@/components/schedule-detail'
 import { ScheduleEditor } from '@/components/schedule-editor'
+import {
+  SCHEDULE_RECOMMENDATIONS,
+  filterSchedules,
+  scheduleFrequencyLabel,
+  scheduleNextRunLabel,
+  type ScheduleStatusFilter,
+} from '@/components/schedule-catalog-logic'
 import { NativeMenuPanel } from '@/components/native-menu-panel'
 import { NativeIcon } from '@/components/native-icon'
 import { ErrorNotice } from '@/components/session-screen-state'
@@ -12,13 +20,14 @@ import { WorkspaceShell } from '@/components/workspace-shell'
 import { useScreenActive } from '@/hooks/use-screen-active'
 import { format, t as message } from '@/locale'
 import { useConnectionStore } from '@/state/connection'
+import { showSnackbar } from '@/state/snackbar'
 import type { AppTheme } from '@/theme'
 import { useAppTheme, useThemedStyles } from '@/theme/hooks'
-import type { MobileScheduleCreateRequest, MobileScheduleEntry } from '@/types/mobile'
+import type { MobileScheduleCreateRequest, MobileScheduleEntry, MobileScheduleTiming } from '@/types/mobile'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { router } from 'expo-router'
 import { memo, useMemo, useRef, useState } from 'react'
-import { Alert, FlatList, Pressable, StyleSheet, Text, View } from 'react-native'
+import { Alert, FlatList, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native'
 
 /** Desktop-owned automation catalog; all visible controls invoke the corresponding schedule API. */
 export default function SchedulesScreen(): React.JSX.Element {
@@ -29,7 +38,14 @@ export default function SchedulesScreen(): React.JSX.Element {
   const client = useMemo(() => (connection ? new MobileApi(connection) : undefined), [connection])
   const cache = useQueryClient()
   const gate = useRef(false)
+  const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC'
   const [creating, setCreating] = useState(false)
+  const [createInitial, setCreateInitial] = useState<
+    { title: string; prompt: string; timing?: MobileScheduleTiming } | undefined
+  >()
+  const [selectedTask, setSelectedTask] = useState<MobileScheduleEntry | undefined>()
+  const [query, setQuery] = useState('')
+  const [statusFilter, setStatusFilter] = useState<ScheduleStatusFilter>('active')
   const catalog = useQuery({
     queryKey: queryKeys.schedules(),
     enabled: !!client && active,
@@ -60,6 +76,19 @@ export default function SchedulesScreen(): React.JSX.Element {
     },
     onSuccess: () => cache.invalidateQueries({ queryKey: queryKeys.schedules() }),
   })
+  const runNow = useMutation({
+    mutationFn: (task: MobileScheduleEntry) => {
+      if (!client) throw new Error(message('drawer.connectFirstBody'))
+      return client.runSchedule(task.id)
+    },
+    onSuccess: () => {
+      showSnackbar(message('schedule.runQueued'))
+      void cache.invalidateQueries({ queryKey: queryKeys.schedules() })
+    },
+    onError: (error) => {
+      Alert.alert(message('schedule.failed'), mobileErrorMessage(error, message('common.retry')))
+    },
+  })
   const update = (task: MobileScheduleEntry, action: 'pause' | 'resume' | 'delete'): void => {
     if (gate.current) return
     gate.current = true
@@ -70,6 +99,10 @@ export default function SchedulesScreen(): React.JSX.Element {
         gate.current = false
       })
   }
+  const catalogItems = catalog.data?.items ?? []
+  const visibleItems = filterSchedules(catalogItems, statusFilter, query)
+  const showRecommendations =
+    visibleItems.length === 0 && query.trim() === '' && (statusFilter === 'active' || statusFilter === 'all')
   return (
     <WorkspaceShell
       title={message('schedule.title')}
@@ -79,7 +112,10 @@ export default function SchedulesScreen(): React.JSX.Element {
           accessibilityRole="button"
           disabled={!client}
           hitSlop={8}
-          onPress={() => setCreating(true)}
+          onPress={() => {
+            setCreateInitial(undefined)
+            setCreating(true)
+          }}
           style={({ pressed }) => [s.headerAction, pressed && s.pressed]}
         >
           <NativeIcon name="plus-outline" size={20} color={client ? theme.colors.ink : theme.colors.inkFaint} />
@@ -109,30 +145,169 @@ export default function SchedulesScreen(): React.JSX.Element {
       ) : (
         <FlatList
           contentContainerStyle={s.list}
-          data={catalog.data.items}
+          data={visibleItems}
           keyExtractor={(task) => task.id}
-          ListEmptyComponent={
-            <NativeEmptyState
-              action={{
-                icon: 'plus-outline',
-                label: message('schedule.createAction'),
-                onPress: () => setCreating(true),
-              }}
-              description={message('schedule.emptyDetail')}
-              icon="clock-outline"
-              title={message('schedule.empty')}
-            />
+          keyboardDismissMode="on-drag"
+          keyboardShouldPersistTaps="handled"
+          ListHeaderComponent={
+            <View style={s.catalogControls}>
+              <ScrollView
+                contentContainerStyle={s.filters}
+                horizontal
+                keyboardShouldPersistTaps="handled"
+                showsHorizontalScrollIndicator={false}
+              >
+                {(['active', 'paused', 'ended', 'all'] as const).map((status) => {
+                  const selected = statusFilter === status
+                  return (
+                    <Pressable
+                      accessibilityLabel={
+                        status === 'active'
+                          ? message('schedule.filterActive')
+                          : status === 'paused'
+                            ? message('schedule.filterPaused')
+                            : status === 'ended'
+                              ? message('schedule.filterEnded')
+                              : message('schedule.filterAll')
+                      }
+                      accessibilityRole="button"
+                      accessibilityState={{ selected }}
+                      hitSlop={{ top: 8, bottom: 8 }}
+                      key={status}
+                      onPress={() => setStatusFilter(status)}
+                      style={({ pressed }) => [s.filter, selected && s.filterSelected, pressed && s.pressed]}
+                    >
+                      <Text style={[s.filterText, selected && s.filterTextSelected]}>
+                        {status === 'active'
+                          ? message('schedule.filterActive')
+                          : status === 'paused'
+                            ? message('schedule.filterPaused')
+                            : status === 'ended'
+                              ? message('schedule.filterEnded')
+                              : message('schedule.filterAll')}
+                      </Text>
+                    </Pressable>
+                  )
+                })}
+              </ScrollView>
+              <View style={s.search}>
+                <NativeIcon name="search-outline" size={16} color={theme.colors.inkTertiary} />
+                <TextInput
+                  accessibilityLabel={message('schedule.searchLabel')}
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                  onChangeText={setQuery}
+                  placeholder={message('schedule.searchPlaceholder')}
+                  placeholderTextColor={theme.colors.inkTertiary}
+                  returnKeyType="search"
+                  style={s.searchInput}
+                  value={query}
+                />
+                {query === '' ? null : (
+                  <Pressable
+                    accessibilityLabel={message('schedule.clearSearch')}
+                    accessibilityRole="button"
+                    hitSlop={8}
+                    onPress={() => setQuery('')}
+                    style={s.clearSearch}
+                  >
+                    <NativeIcon name="close-outline" size={16} color={theme.colors.inkTertiary} />
+                  </Pressable>
+                )}
+              </View>
+            </View>
           }
-          renderItem={({ item: task }) => <ScheduleCard task={task} disabled={mutation.isPending} onUpdate={update} />}
+          ListEmptyComponent={
+            <View style={s.emptyStack}>
+              {catalogItems.length === 0 || (query.trim() === '' && statusFilter !== 'all') ? (
+                <NativeEmptyState
+                  action={{
+                    icon: 'plus-outline',
+                    label: message('schedule.createAction'),
+                    onPress: () => {
+                      setCreateInitial(undefined)
+                      setCreating(true)
+                    },
+                  }}
+                  description={message('schedule.emptyDetail')}
+                  icon="clock-outline"
+                  title={message('schedule.empty')}
+                />
+              ) : (
+                <View style={s.noMatches}>
+                  <NativeIcon name="search-outline" size={26} color={theme.colors.inkTertiary} />
+                  <Text style={s.noMatchesTitle}>{message('schedule.noMatches')}</Text>
+                  <Text style={s.noMatchesDetail}>{message('schedule.noMatchesDetail')}</Text>
+                  <Pressable
+                    accessibilityRole="button"
+                    onPress={() => {
+                      setQuery('')
+                      setStatusFilter('all')
+                    }}
+                    style={({ pressed }) => [s.clearFilters, pressed && s.pressed]}
+                  >
+                    <Text style={s.clearFiltersText}>{message('schedule.clearFilters')}</Text>
+                  </Pressable>
+                </View>
+              )}
+              {showRecommendations ? (
+                <View style={s.recommendSection}>
+                  <Text style={s.recommendHeading}>{message('schedule.recommendHeading')}</Text>
+                  {SCHEDULE_RECOMMENDATIONS.map((item) => (
+                    <Pressable
+                      android_ripple={{ borderless: false }}
+                      accessibilityRole="button"
+                      key={item.id}
+                      onPress={() => {
+                        setCreateInitial({
+                          title: item.title,
+                          prompt: item.prompt,
+                          timing: item.timing(timeZone),
+                        })
+                        setCreating(true)
+                      }}
+                      style={({ pressed }) => [s.recommendCard, pressed && s.pressed]}
+                    >
+                      <View style={s.recommendHead}>
+                        <Text style={s.recommendTitle}>{item.title}</Text>
+                        <NativeIcon name="plus-outline" size={16} color={theme.colors.accent} />
+                      </View>
+                      <Text numberOfLines={2} style={s.recommendDesc}>
+                        {item.description}
+                      </Text>
+                      <View style={s.recommendWhenRow}>
+                        <NativeIcon name="clock-outline" size={13} color={theme.colors.inkTertiary} />
+                        <Text style={s.recommendWhen}>{item.schedule}</Text>
+                      </View>
+                    </Pressable>
+                  ))}
+                </View>
+              ) : null}
+            </View>
+          }
+          renderItem={({ item: task }) => (
+            <ScheduleCard
+              task={task}
+              disabled={mutation.isPending || runNow.isPending}
+              onOpenDetail={() => setSelectedTask(task)}
+              onRunNow={() => runNow.mutate(task)}
+              onUpdate={update}
+            />
+          )}
         />
       )}
       <ScheduleEditor
-        onClose={() => setCreating(false)}
+        initial={createInitial}
+        onClose={() => {
+          setCreating(false)
+          setCreateInitial(undefined)
+        }}
         onCreate={(request) => create.mutateAsync(request).then(() => undefined)}
         open={creating}
         pending={create.isPending}
-        timeZone={Intl.DateTimeFormat().resolvedOptions().timeZone}
+        timeZone={timeZone}
       />
+      <ScheduleDetailModal api={client} initialTask={selectedTask} onClose={() => setSelectedTask(undefined)} />
     </WorkspaceShell>
   )
 }
@@ -140,19 +315,28 @@ export default function SchedulesScreen(): React.JSX.Element {
 const ScheduleCard = memo(function ScheduleCard({
   task,
   disabled,
+  onOpenDetail,
+  onRunNow,
   onUpdate,
 }: {
   task: MobileScheduleEntry
   disabled: boolean
+  onOpenDetail: () => void
+  onRunNow: () => void
   onUpdate: (task: MobileScheduleEntry, action: 'pause' | 'resume' | 'delete') => void
 }): React.JSX.Element {
   const theme = useAppTheme()
   const s = useThemedStyles(makeStyles)
   const [confirmingRemove, setConfirmingRemove] = useState(false)
+  const [confirmingRun, setConfirmingRun] = useState(false)
   const [menuOpen, setMenuOpen] = useState(false)
+  const frequency = scheduleFrequencyLabel(task)
+  const nextRun = scheduleNextRunLabel(task)
   // One `…` menu per task instead of three buttons: a list of automations should
   // read as a list, and only one row's actions are ever wanted at a time.
   const actions = [
+    { icon: 'edit-outline' as const, label: message('schedule.viewDetail'), onPress: onOpenDetail },
+    { icon: 'paper-plane-outline' as const, label: message('schedule.runNow'), onPress: () => setConfirmingRun(true) },
     ...(task.status === 'ended'
       ? []
       : [
@@ -162,7 +346,7 @@ const ScheduleCard = memo(function ScheduleCard({
             onPress: () => onUpdate(task, task.status === 'active' ? 'pause' : 'resume'),
           },
         ]),
-    ...(task.target.kind === 'session'
+    ...(task.target.kind === 'session' || task.target.kind === 'new_once'
       ? [
           {
             icon: 'new-chat-outline' as const,
@@ -170,7 +354,7 @@ const ScheduleCard = memo(function ScheduleCard({
             onPress: () =>
               router.push({
                 pathname: '/session/[sessionId]',
-                params: { sessionId: (task.target as { kind: 'session'; sessionId: string }).sessionId },
+                params: { sessionId: (task.target as { kind: 'session' | 'new_once'; sessionId: string }).sessionId },
               }),
           },
         ]
@@ -178,7 +362,13 @@ const ScheduleCard = memo(function ScheduleCard({
     { icon: 'trash-outline' as const, label: message('schedule.remove'), onPress: () => setConfirmingRemove(true) },
   ]
   return (
-    <View style={s.card}>
+    <Pressable
+      android_ripple={{ borderless: false }}
+      accessibilityRole="button"
+      accessibilityLabel={task.title}
+      onPress={onOpenDetail}
+      style={({ pressed }) => [s.card, pressed && s.pressed]}
+    >
       <View style={s.heading}>
         <Text numberOfLines={1} style={s.title}>
           {task.title}
@@ -191,7 +381,10 @@ const ScheduleCard = memo(function ScheduleCard({
           accessibilityState={{ disabled, expanded: menuOpen }}
           disabled={disabled}
           hitSlop={8}
-          onPress={() => setMenuOpen((current) => !current)}
+          onPress={(event) => {
+            event?.stopPropagation()
+            setMenuOpen((current) => !current)
+          }}
           style={({ pressed }) => [s.rowAction, pressed && s.pressed]}
         >
           <NativeIcon name="ellipsis-outline" size={14} color={theme.colors.inkMuted} />
@@ -200,13 +393,10 @@ const ScheduleCard = memo(function ScheduleCard({
       <Text numberOfLines={2} style={s.prompt}>
         {task.prompt}
       </Text>
-      <Text style={s.meta}>
-        {format('schedule.next', {
-          time: Number.isNaN(Date.parse(task.scheduledAt))
-            ? task.scheduledAt
-            : new Date(task.scheduledAt).toLocaleString(),
-        })}
-      </Text>
+      <View style={s.metaRow}>
+        {frequency ? <Text style={s.meta}>{frequency}</Text> : null}
+        {nextRun ? <Text style={s.meta}>{nextRun}</Text> : null}
+      </View>
       <NativeMenuPanel
         actionMenu
         groups={[
@@ -221,6 +411,17 @@ const ScheduleCard = memo(function ScheduleCard({
         title={task.title}
       />
       <ConfirmSheet
+        open={confirmingRun}
+        title={message('schedule.runConfirmTitle')}
+        body={format('schedule.runConfirmBody', { title: task.title })}
+        confirmLabel={message('schedule.runNow')}
+        onCancel={() => setConfirmingRun(false)}
+        onConfirm={() => {
+          setConfirmingRun(false)
+          onRunNow()
+        }}
+      />
+      <ConfirmSheet
         open={confirmingRemove}
         title={message('schedule.remove')}
         body={format('schedule.removeBody', { title: task.title })}
@@ -231,13 +432,55 @@ const ScheduleCard = memo(function ScheduleCard({
           onUpdate(task, 'delete')
         }}
       />
-    </View>
+    </Pressable>
   )
 })
 
 const makeStyles = (theme: AppTheme) =>
   StyleSheet.create({
     list: { padding: 16, gap: 12 },
+    catalogControls: { gap: 10, paddingBottom: 4 },
+    search: {
+      alignItems: 'center',
+      backgroundColor: theme.colors.surfaceRaised,
+      borderColor: theme.colors.border,
+      borderRadius: theme.radius.md,
+      borderWidth: StyleSheet.hairlineWidth,
+      flexDirection: 'row',
+      gap: 8,
+      minHeight: 44,
+      paddingHorizontal: 12,
+    },
+    searchInput: { color: theme.colors.ink, flex: 1, fontSize: 16, minHeight: 44, paddingVertical: 8 },
+    clearSearch: { alignItems: 'center', height: 32, justifyContent: 'center', width: 32 },
+    // `TaskManagerPage .filterTabs` / `.filterTab`: 28pt height, 8pt radius,
+    // transparent at rest with tertiary text, hover fill + primary text when active.
+    // `hitSlop` on the Pressable keeps the 44pt native touch target.
+    filters: { flexDirection: 'row', gap: 8, paddingRight: 4 },
+    filter: {
+      alignItems: 'center',
+      backgroundColor: 'transparent',
+      borderRadius: theme.radius.sm,
+      justifyContent: 'center',
+      minHeight: 28,
+      paddingHorizontal: 10,
+    },
+    filterSelected: { backgroundColor: theme.colors.interactiveHover },
+    filterText: { color: theme.colors.inkTertiary, fontSize: 14, lineHeight: 22 },
+    filterTextSelected: { color: theme.colors.ink },
+    noMatches: { alignItems: 'center', gap: 8, justifyContent: 'center', padding: 24 },
+    noMatchesTitle: { color: theme.colors.ink, fontSize: 15, fontWeight: '500', lineHeight: 22, textAlign: 'center' },
+    noMatchesDetail: { color: theme.colors.inkMuted, fontSize: 13, lineHeight: 20, textAlign: 'center' },
+    clearFilters: {
+      alignItems: 'center',
+      backgroundColor: theme.colors.surfaceMuted,
+      borderRadius: theme.radius.control,
+      justifyContent: 'center',
+      marginTop: 6,
+      minHeight: 44,
+      paddingHorizontal: 16,
+    },
+    clearFiltersText: { color: theme.colors.ink, fontSize: 14, lineHeight: 20 },
     card: {
       backgroundColor: theme.colors.surfaceRaised,
       borderColor: theme.colors.border,
@@ -250,7 +493,24 @@ const makeStyles = (theme: AppTheme) =>
     title: { color: theme.colors.ink, fontSize: 14, lineHeight: 22, flexGrow: 1, flexShrink: 1 },
     status: { color: theme.colors.inkTertiary, fontSize: 12, lineHeight: 18 },
     prompt: { color: theme.colors.inkMuted, fontSize: 14, lineHeight: 22 },
+    metaRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
     meta: { color: theme.colors.inkTertiary, fontSize: 12, lineHeight: 18 },
+    emptyStack: { gap: 16 },
+    recommendSection: { gap: 10, paddingTop: 4 },
+    recommendHeading: { color: theme.colors.inkTertiary, fontSize: 12, fontWeight: '500', lineHeight: 18 },
+    recommendCard: {
+      backgroundColor: theme.colors.surfaceRaised,
+      borderColor: theme.colors.border,
+      borderRadius: theme.radius.md,
+      borderWidth: StyleSheet.hairlineWidth,
+      gap: 6,
+      padding: 14,
+    },
+    recommendHead: { alignItems: 'center', flexDirection: 'row', gap: 8, justifyContent: 'space-between' },
+    recommendTitle: { color: theme.colors.ink, flex: 1, fontSize: 14, fontWeight: '500', lineHeight: 20 },
+    recommendDesc: { color: theme.colors.inkMuted, fontSize: 13, lineHeight: 19 },
+    recommendWhenRow: { alignItems: 'center', flexDirection: 'row', gap: 5 },
+    recommendWhen: { color: theme.colors.inkTertiary, fontSize: 12, lineHeight: 18 },
     headerAction: { alignItems: 'center', height: 32, justifyContent: 'center', width: 32 },
     loading: { alignItems: 'center', paddingVertical: 32 },
     rowAction: { alignItems: 'center', height: 28, justifyContent: 'center', width: 28 },

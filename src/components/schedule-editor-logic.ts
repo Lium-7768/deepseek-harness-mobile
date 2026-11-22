@@ -1,4 +1,4 @@
-import type { MobileScheduleTiming } from '@/types/mobile'
+import type { MobileScheduleEntry, MobileScheduleTiming } from '@/types/mobile'
 
 /** Every timing rule the Host accepts, in the order the phone offers them. */
 export type TimingKind = 'after' | 'at' | 'cron' | 'daily' | 'every' | 'rrule' | 'weekly'
@@ -98,4 +98,110 @@ export function timingOf(form: TimingForm): MobileScheduleTiming | undefined {
   return kind === 'every'
     ? { every_seconds: Math.round(value * 3_600), kind: 'every' }
     : { after_seconds: Math.round(value * 60), kind: 'after' }
+}
+
+function shortClock(value: string | undefined): string {
+  if (value === undefined) return '09:00'
+  const match = /^(\d{2}):(\d{2})/.exec(value.trim())
+  return match ? `${match[1]}:${match[2]}` : '09:00'
+}
+
+function defaultForm(fallbackZone: string): TimingForm {
+  return {
+    cron: '0 9 * * *',
+    date: '',
+    hours: '6',
+    kind: 'daily',
+    minutes: '30',
+    rrule: 'FREQ=DAILY',
+    time: '09:00',
+    timeZone: fallbackZone,
+    weekdays: [1],
+  }
+}
+
+/** Projects a typed timing rule into editable form fields. */
+export function formFromTiming(timing: MobileScheduleTiming, fallbackZone: string): TimingForm {
+  const base = defaultForm(fallbackZone)
+  switch (timing.kind) {
+    case 'daily':
+      return { ...base, kind: 'daily', time: shortClock(timing.daily.time), timeZone: timing.daily.time_zone }
+    case 'weekly':
+      return {
+        ...base,
+        kind: 'weekly',
+        time: shortClock(timing.weekly.time),
+        timeZone: timing.weekly.time_zone,
+        weekdays: [...timing.weekly.weekdays],
+      }
+    case 'every':
+      return {
+        ...base,
+        kind: 'every',
+        hours: String(Math.max(1, Math.round((timing.every_seconds / 3_600) * 100) / 100)),
+      }
+    case 'after':
+      return { ...base, kind: 'after', minutes: String(Math.max(1, Math.round(timing.after_seconds / 60))) }
+    case 'at':
+      if (typeof timing.at === 'string') return { ...base, kind: 'at' }
+      return {
+        ...base,
+        kind: 'at',
+        date: timing.at.date,
+        time: shortClock(timing.at.time),
+        timeZone: timing.at.time_zone,
+      }
+    case 'cron':
+      return { ...base, kind: 'cron', cron: timing.cron.expression, timeZone: timing.cron.time_zone }
+    case 'rrule':
+      return { ...base, kind: 'rrule', rrule: timing.rrule }
+  }
+}
+
+/** Hydrates an editable timing form from a stored schedule catalog/view entry. */
+export function formFromScheduleEntry(entry: MobileScheduleEntry, fallbackZone: string): TimingForm {
+  const base = defaultForm(entry.timeZone ?? fallbackZone)
+  switch (entry.kind) {
+    case 'daily':
+      return { ...base, kind: 'daily', time: shortClock(entry.time) }
+    case 'weekly':
+      return {
+        ...base,
+        kind: 'weekly',
+        time: shortClock(entry.time),
+        weekdays: entry.weekdays && entry.weekdays.length > 0 ? [...entry.weekdays] : [1],
+      }
+    case 'every':
+      return {
+        ...base,
+        kind: 'every',
+        hours:
+          entry.everySeconds === undefined
+            ? '6'
+            : String(Math.max(1, Math.round((entry.everySeconds / 3_600) * 100) / 100)),
+      }
+    case 'after':
+      return {
+        ...base,
+        kind: 'after',
+        minutes: entry.afterSeconds === undefined ? '30' : String(Math.max(1, Math.round(entry.afterSeconds / 60))),
+      }
+    case 'at': {
+      const parsed = Date.parse(entry.scheduledAt)
+      if (Number.isNaN(parsed)) return { ...base, kind: 'at' }
+      const d = new Date(parsed)
+      const yyyy = d.getFullYear()
+      const mm = String(d.getMonth() + 1).padStart(2, '0')
+      const dd = String(d.getDate()).padStart(2, '0')
+      const hh = String(d.getHours()).padStart(2, '0')
+      const min = String(d.getMinutes()).padStart(2, '0')
+      return { ...base, kind: 'at', date: `${yyyy}-${mm}-${dd}`, time: `${hh}:${min}` }
+    }
+    case 'cron':
+      return { ...base, kind: 'cron', cron: entry.expression ?? '0 9 * * *' }
+    case 'rrule':
+      return { ...base, kind: 'rrule', rrule: entry.rrule ?? 'FREQ=DAILY' }
+    default:
+      return base
+  }
 }

@@ -436,16 +436,58 @@ export type MobileFeedbackDeleteResult =
       | { code: 'version-conflict'; current: MobileFeedbackItem | null }
     >
 
+/** Durable Session inbox delivery acknowledgment returned by schedule catalog/view/history. */
+export interface MobileScheduleDeliveryReceipt {
+  scheduledAt: string
+  deliveredAt: string
+  messageId: string
+  targetSessionId: string
+}
+
+/** Saved inbox delivery with its immutable sent prompt when recorded by the Host. */
+export interface MobileScheduleDeliveryRecord extends MobileScheduleDeliveryReceipt {
+  prompt?: string
+}
+
+/** One newest-first page of saved deliveries returned by `/v1/schedules/:id/history`. */
+export interface MobileScheduleHistoryPage {
+  id: string
+  records: MobileScheduleDeliveryRecord[]
+  earlierRecordsUnavailable: boolean
+  earlierRecordsPruned: boolean
+  retention: { days: number; records: number }
+  nextBefore?: string
+}
+
 /** Read-only task catalog and optimistic update reference owned by the desktop schedule service. */
 export interface MobileScheduleEntry {
   id: string
+  kind?: 'after' | 'at' | 'every' | 'daily' | 'weekly' | 'cron' | 'rrule'
   title: string
   prompt: string
   status: 'active' | 'paused' | 'ended'
   scheduledAt: string
+  createdAt?: string
   updatedAt?: string
+  time?: string
+  timeZone?: string
+  weekdays?: number[]
+  everySeconds?: number
+  afterSeconds?: number
+  expression?: string
+  rrule?: string
   target: { kind: 'session' | 'new_once'; sessionId: string } | { kind: 'new' }
   executionActive?: boolean
+  deliveryFloorEndsAt?: string
+  lastDelivery?: MobileScheduleDeliveryReceipt
+}
+
+/** Atomic patch payload forwarded to `/v1/schedules/:id/edit`. */
+export interface MobileSchedulePatch {
+  title?: string
+  prompt?: string
+  timing?: MobileScheduleTiming
+  active?: boolean
 }
 
 /** Timing rule the phone offers when creating an automation. */
