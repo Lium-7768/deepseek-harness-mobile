@@ -1,3 +1,4 @@
+import { useConversationDisclosure } from './conversation-disclosure'
 import { conversationRowKey } from './conversation-flow'
 import type { NativeIconName } from '@/components/native-icon'
 import { NativeIcon } from '@/components/native-icon'
@@ -6,6 +7,7 @@ import type { NativeProcessRow, ProcessActivity } from '@/components/session-pro
 import { t as message } from '@/locale'
 import type { AppTheme } from '@/theme'
 import { useAppTheme, useThemedStyles } from '@/theme/hooks'
+import { memo } from 'react'
 import { Pressable, StyleSheet, Text, View } from 'react-native'
 
 type Props = {
@@ -18,8 +20,8 @@ type Props = {
    * The list recycles rows, so a step's disclosure cannot live in the row's own
    * state: scrolling it out of view and back would silently collapse it.
    */
-  expanded: boolean
-  onToggle: (rowKey: string) => void
+  expanded?: boolean
+  onToggle?: (rowKey: string) => void
 }
 
 /**
@@ -33,9 +35,21 @@ type Props = {
  * @param props - The step's summary, its rows, and the row renderer.
  * @returns The collapsed or expanded step.
  */
-export function NativeProcessGroup({ expanded, item, onToggle, renderRow }: Props): React.JSX.Element {
+export const NativeProcessGroup = memo(function NativeProcessGroup({
+  expanded,
+  item,
+  onToggle,
+  renderRow,
+}: Props): React.JSX.Element {
   const theme = useAppTheme()
   const s = useThemedStyles(makeStyles)
+  const disclosureKey = item.running ? `closed:${item.rowKey}` : item.rowKey
+  const [storedFlag, toggleStored] = useConversationDisclosure(disclosureKey)
+  const isExpanded = expanded ?? (item.running ? !storedFlag : storedFlag)
+  const handleToggle = () => {
+    if (onToggle) onToggle(item.rowKey)
+    else toggleStored()
+  }
   // A later step of the running Turn continues under the Turn's one header.
   if (item.header === false)
     return (
@@ -49,17 +63,17 @@ export function NativeProcessGroup({ expanded, item, onToggle, renderRow }: Prop
     <View style={s.container}>
       <Pressable
         android_ripple={{ borderless: false }}
-        accessibilityLabel={expanded ? message('process.collapse') : message('process.expand')}
+        accessibilityLabel={isExpanded ? message('process.collapse') : message('process.expand')}
         accessibilityRole="button"
-        accessibilityState={{ expanded }}
+        accessibilityState={{ expanded: isExpanded }}
         hitSlop={8}
-        onPress={() => onToggle(item.rowKey)}
-        style={({ pressed }) => [s.header, expanded && s.headerOpen, pressed && s.pressed]}
+        onPress={handleToggle}
+        style={({ pressed }) => [s.header, isExpanded && s.headerOpen, pressed && s.pressed]}
       >
         <View style={s.leading}>
           <NativeIcon
             color={theme.colors.inkTertiary}
-            name={expanded ? 'chevron-up-outline' : activityIcon(item.activity)}
+            name={isExpanded ? 'chevron-up-outline' : activityIcon(item.activity)}
             size={14}
           />
         </View>
@@ -67,7 +81,7 @@ export function NativeProcessGroup({ expanded, item, onToggle, renderRow }: Prop
           {item.title}
         </Text>
       </Pressable>
-      {expanded ? (
+      {isExpanded ? (
         <View style={s.body}>
           {item.rows.map((row, index) => (
             <View key={conversationRowKey(row, index)}>{renderRow(row)}</View>
@@ -76,7 +90,7 @@ export function NativeProcessGroup({ expanded, item, onToggle, renderRow }: Prop
       ) : null}
     </View>
   )
-}
+})
 
 /** The desktop's step-process glyph for one activity. */
 function activityIcon(activity: ProcessActivity): NativeIconName {

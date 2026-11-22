@@ -185,9 +185,10 @@ export function projectNativeConversationRows(items: readonly SharedEventItem[])
             continue
           }
         }
-        rows.push({ kind, rowKey: `stream:${blockKey}`, text, ...(sourceSeq === undefined ? {} : { sourceSeq }) })
-        streamingRowByBlock.set(blockKey, rows.length - 1)
         const settledKey = `${stepKey}:${kind}`
+        const rowKey = !settledRowByStep.has(settledKey) ? `step:${settledKey}` : `stream:${blockKey}`
+        rows.push({ kind, rowKey, text, ...(sourceSeq === undefined ? {} : { sourceSeq }) })
+        streamingRowByBlock.set(blockKey, rows.length - 1)
         if (!settledRowByStep.has(settledKey)) settledRowByStep.set(settledKey, rows.length - 1)
       }
       continue
@@ -253,18 +254,28 @@ export function projectNativeConversationRows(items: readonly SharedEventItem[])
                 ...eventTime(event),
               }
             : {}
+        const stepRowKey = stepKey === undefined ? undefined : `step:${stepKey}:${kind}`
         if (slot !== undefined) {
-          // The settled row stands where the step streamed it, but reports the settled
-          // event's own sequence so later projections order it by the durable record.
+          // The settled row stands where the step streamed it, keeping the deterministic
+          // `step:<turn>:<step>:<kind>` key so FlatList updates the mounted cell in place
+          // even after `sessionWindow` compacts away the streaming deltas.
+          const stableKey = rows[slot]?.rowKey ?? stepRowKey
           rows[slot] = {
             kind,
+            ...(stableKey === undefined ? {} : { rowKey: stableKey }),
             text,
             ...(sourceSeq === undefined ? {} : { sourceSeq }),
             ...extra,
           } as NativeConversationRow
           continue
         }
-        rows.push({ kind, text, ...(sourceSeq === undefined ? {} : { sourceSeq }), ...extra } as NativeConversationRow)
+        rows.push({
+          kind,
+          ...(stepRowKey === undefined ? {} : { rowKey: stepRowKey }),
+          text,
+          ...(sourceSeq === undefined ? {} : { sourceSeq }),
+          ...extra,
+        } as NativeConversationRow)
         if (stepKey !== undefined) settledRowByStep.set(`${stepKey}:${kind}`, rows.length - 1)
       }
       continue

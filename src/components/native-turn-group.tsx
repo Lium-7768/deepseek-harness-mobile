@@ -1,3 +1,4 @@
+import { useConversationDisclosure } from './conversation-disclosure'
 import { conversationRowKey } from './conversation-flow'
 import { NativeIcon } from '@/components/native-icon'
 import type { NativeTurnRow } from '@/components/session-turn-logic'
@@ -9,8 +10,8 @@ import { Pressable, StyleSheet, Text, View } from 'react-native'
 
 type Props = {
   item: NativeTurnRow
-  expanded: boolean
-  onToggle: (rowKey: string) => void
+  expanded?: boolean
+  onToggle?: (rowKey: string) => void
   /** Renders one member row the control reveals. */
   renderRow: (row: NativeTurnRow['rows'][number]) => React.JSX.Element
 }
@@ -32,7 +33,13 @@ type Props = {
 function NativeTurnGroupView({ expanded, item, onToggle, renderRow }: Props): React.JSX.Element {
   const theme = useAppTheme()
   const s = useThemedStyles(makeStyles)
-  const open = item.locked || expanded
+  const [storedExpanded, toggleStored] = useConversationDisclosure(item.rowKey)
+  const isExpanded = expanded ?? storedExpanded
+  const open = item.locked || isExpanded
+  const handleToggle = () => {
+    if (onToggle) onToggle(item.rowKey)
+    else toggleStored()
+  }
   return (
     <View style={s.container}>
       <Pressable
@@ -42,7 +49,7 @@ function NativeTurnGroupView({ expanded, item, onToggle, renderRow }: Props): Re
         accessibilityState={{ disabled: item.locked, expanded: open }}
         disabled={item.locked}
         hitSlop={6}
-        onPress={() => onToggle(item.rowKey)}
+        onPress={handleToggle}
         style={({ pressed }) => [s.header, pressed && s.pressed]}
       >
         <Text numberOfLines={1} style={s.label}>

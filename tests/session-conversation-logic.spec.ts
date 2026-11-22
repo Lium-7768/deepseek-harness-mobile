@@ -123,30 +123,40 @@ describe('projectNativeConversationRows', () => {
         },
       ]),
     ).toEqual([
-      { kind: 'reasoning', rowKey: 'stream:3:2:reasoning:0', sourceSeq: 1, text: '分析中' },
-      { kind: 'assistant', rowKey: 'stream:3:2:assistant:1', sourceSeq: 3, text: '正在处理。' },
+      { kind: 'reasoning', rowKey: 'step:3:2:reasoning', sourceSeq: 1, text: '分析中' },
+      { kind: 'assistant', rowKey: 'step:3:2:assistant', sourceSeq: 3, text: '正在处理。' },
     ])
   })
 
-  it('replaces same-step streaming deltas with the durable assistant message once settled', () => {
-    expect(
-      projectNativeConversationRows([
-        {
-          seq: 1,
-          event: {
-            type: 'assistant/chunk',
-            data: { turn: 3, step: 2, chunk: { type: 'text-delta', index: 0, text: '临时' } },
-          },
+  it('replaces same-step streaming deltas with the durable assistant message while keeping the row key stable', () => {
+    const streaming = projectNativeConversationRows([
+      {
+        seq: 1,
+        event: {
+          type: 'assistant/chunk',
+          data: { turn: 3, step: 2, chunk: { type: 'text-delta', index: 0, text: '临时' } },
         },
-        {
-          seq: 2,
-          event: {
-            type: 'assistant/message',
-            data: { turn: 3, step: 2, message: { content: [{ type: 'text', text: '最终正文。' }] } },
-          },
+      },
+    ])
+    const settled = projectNativeConversationRows([
+      {
+        seq: 1,
+        event: {
+          type: 'assistant/chunk',
+          data: { turn: 3, step: 2, chunk: { type: 'text-delta', index: 0, text: '临时' } },
         },
-      ]),
-    ).toEqual([{ kind: 'assistant', sourceSeq: 2, text: '最终正文。', turn: 3 }])
+      },
+      {
+        seq: 2,
+        event: {
+          type: 'assistant/message',
+          data: { turn: 3, step: 2, message: { content: [{ type: 'text', text: '最终正文。' }] } },
+        },
+      },
+    ])
+    expect(settled).toEqual([
+      { kind: 'assistant', rowKey: streaming[0]?.rowKey, sourceSeq: 2, text: '最终正文。', turn: 3 },
+    ])
   })
 
   it("keeps each step's prose ahead of that step's tool rows in a multi-step Turn", () => {

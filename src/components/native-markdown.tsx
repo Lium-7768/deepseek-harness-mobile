@@ -18,7 +18,7 @@ import { useAppTheme, useThemedStyles } from '@/theme/hooks'
 import { MONOSPACE_FONT } from '@/theme/platform'
 import { FIXED_GEOMETRY_FONT_CAP } from '@/theme/text-scale'
 import * as Clipboard from 'expo-clipboard'
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { memo, useEffect, useMemo, useRef, useState } from 'react'
 import {
   useWindowDimensions,
   AccessibilityInfo,
@@ -84,7 +84,7 @@ function inline(text: string, key: string, styles: ReturnType<typeof makeStyles>
   if (cursor < text.length) out.push(<Text key={`${key}-tail`}>{text.slice(cursor)}</Text>)
   return out.length ? out : [<Text key={`${key}-all`}>{text}</Text>]
 }
-export function NativeMarkdown({
+export const NativeMarkdown = memo(function NativeMarkdown({
   markdown,
   onCopyCode,
 }: {
@@ -220,7 +220,7 @@ export function NativeMarkdown({
       })}
     </View>
   )
-}
+})
 /**
  * Renders one markdown table.
  *

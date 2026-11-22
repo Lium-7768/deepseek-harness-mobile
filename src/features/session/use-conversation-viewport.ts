@@ -53,17 +53,20 @@ export interface ConversationViewport<Row> {
   pinToLatest: (options?: { scroll?: boolean }) => void
   /** Begin a reader gesture: hold the sticky answer until the gesture settles. */
   beginReaderScroll: () => void
-  /** Settle a reader gesture, after its momentum tail. */
+  /** Extend a reader gesture into its momentum tail, ignoring programmatic scrolls. */
+  beginMomentumScroll: () => void
+  /** Settle a reader gesture, after its drag or momentum tail. */
   settleReaderScroll: (event: NativeSyntheticEvent<NativeScrollEvent>) => void
+  /** Settle momentum only when it followed a reader drag, never a programmatic scroll. */
+  settleMomentumScroll: (event: NativeSyntheticEvent<NativeScrollEvent>) => void
   /** Feed one measurement from the list. */
   handleScroll: (event: NativeSyntheticEvent<NativeScrollEvent>) => void
   /** Whether the reader has left the newest message. */
   isAwayFromLatest: () => boolean
-  /** Record that the reader picked a row away from the newest message. */
   /** Tell the viewport the reader's own send is landing, so growth is followed briefly. */
   noteSend: () => void
   /** Reset for a different conversation. */
-  resetForSession: (sessionId: string | undefined, messageCount: number) => void
+  resetForSession: (sessionId: string | undefined) => void
   /** Answer a content measurement, applying a remembered offset when one is pending. */
   handleContentSizeChange: (height: number) => void
   /**
@@ -120,10 +123,18 @@ export function useConversationViewport<Row>({
   /** Closed after a page lands; opened once the reader scrolls back out of the runway. */
   const awaitingOlderRearm = useRef(false)
   const restoreTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const messageCountRef = useRef(messageCount)
   const [showReturnToLatest, setShowReturnToLatest] = useState(false)
   const [unseenCount, setUnseenCount] = useState(0)
   const rememberPosition = useReadingPositionStore((state) => state.remember)
   const forgetPosition = useReadingPositionStore((state) => state.forget)
+
+  useEffect(() => {
+    messageCountRef.current = messageCount
+    if (nearLatest.current || unseenBaseline.current === undefined) return
+    const arrived = messageCount - unseenBaseline.current
+    setUnseenCount(arrived > 0 ? arrived : 0)
+  }, [messageCount])
 
   const pinToLatest = useCallback(
     ({ scroll = false }: { scroll?: boolean } = {}): void => {
@@ -139,41 +150,44 @@ export function useConversationViewport<Row>({
     [forgetPosition, sessionId],
   )
 
-  const applyProximity = useCallback(
-    (event: NativeScrollEvent, releaseLatch: boolean): void => {
-      // A measurement taken while the reader's own send is still landing trails the new
-      // content, so releasing the answer there would strand the reply above the viewport.
-      if (
-        shouldReleaseFollowOnScroll({
-          readerScrolling: releaseLatch,
-          sendFollowWindowOpen: Date.now() < sendFollowUntil.current,
-        })
+  const applyProximity = useCallback((event: NativeScrollEvent, releaseLatch: boolean): void => {
+    // A measurement taken while the reader's own send is still landing trails the new
+    // content, so releasing the answer there would strand the reply above the viewport.
+    if (
+      shouldReleaseFollowOnScroll({
+        readerScrolling: releaseLatch,
+        sendFollowWindowOpen: Date.now() < sendFollowUntil.current,
+      })
+    )
+      nearLatest.current = isNearLatestMessage(
+        event.contentSize.height,
+        event.layoutMeasurement.height,
+        uprightOffset(event),
       )
-        nearLatest.current = isNearLatestMessage(
-          event.contentSize.height,
-          event.layoutMeasurement.height,
-          uprightOffset(event),
-        )
-      // The control mirrors the answer, not this measurement: content that grows under a
-      // programmatic move must not advertise a return that lands nowhere.
-      setShowReturnToLatest(shouldShowReturnToLatest({ hasMessages: messageCount > 0, nearLatest: nearLatest.current }))
-      if (nearLatest.current) {
-        unseenBaseline.current = undefined
-        setUnseenCount(0)
-      } else if (unseenBaseline.current === undefined) {
-        // The baseline is the row count when the reader left, so the badge counts what
-        // arrived since rather than the size of the whole transcript.
-        unseenBaseline.current = messageCount
-      }
-    },
-    [messageCount],
-  )
+    const count = messageCountRef.current
+    // The control mirrors the answer, not this measurement: content that grows under a
+    // programmatic move must not advertise a return that lands nowhere.
+    setShowReturnToLatest(shouldShowReturnToLatest({ hasMessages: count > 0, nearLatest: nearLatest.current }))
+    if (nearLatest.current) {
+      unseenBaseline.current = undefined
+      setUnseenCount(0)
+    } else if (unseenBaseline.current === undefined) {
+      // The baseline is the row count when the reader left, so the badge counts what
+      // arrived since rather than the size of the whole transcript.
+      unseenBaseline.current = count
+    }
+  }, [])
 
   const beginReaderScroll = useCallback((): void => {
     if (readerIdleTimer.current) clearTimeout(readerIdleTimer.current)
     readerIdleTimer.current = null
     readerScrolling.current = true
   }, [])
+
+  const beginMomentumScroll = useCallback((): void => {
+    if (!readerScrolling.current) return
+    beginReaderScroll()
+  }, [beginReaderScroll])
 
   const settleReaderScroll = useCallback(
     (event: NativeSyntheticEvent<NativeScrollEvent>): void => {
@@ -189,12 +203,20 @@ export function useConversationViewport<Row>({
           rememberPosition(sessionId, {
             contentHeight: settled.contentHeight,
             offsetY: settled.offsetY,
-            rows: messageCount,
+            rows: messageCountRef.current,
           })
         }
       }, READER_SCROLL_TAIL_MS)
     },
-    [applyProximity, forgetPosition, messageCount, rememberPosition, sessionId],
+    [applyProximity, forgetPosition, rememberPosition, sessionId],
+  )
+
+  const settleMomentumScroll = useCallback(
+    (event: NativeSyntheticEvent<NativeScrollEvent>): void => {
+      if (!readerScrolling.current) return
+      settleReaderScroll(event)
+    },
+    [settleReaderScroll],
   )
 
   const handleScroll = useCallback(
@@ -214,6 +236,10 @@ export function useConversationViewport<Row>({
 
   const isAtHistoryRunway = useCallback(
     (state: { hasMore: boolean; loading: boolean; exhausted: boolean }): boolean => {
+      // Never auto-trigger older-history loads while resting at the bottom (offsetY <= 0)
+      // of a short transcript before the reader has dragged up toward older messages.
+      if (metrics.current.contentHeight <= 0) return false
+      if (metrics.current.offsetY <= 0 && !readerScrolling.current) return false
       const offset = metrics.current.uprightOffset
       // Leaving the runway re-opens it, so the next approach is a new request rather than
       // the echo of the one just answered.
@@ -240,7 +266,7 @@ export function useConversationViewport<Row>({
   }, [pinToLatest])
 
   const resetForSession = useCallback(
-    (nextSessionId: string | undefined, count: number): void => {
+    (nextSessionId: string | undefined): void => {
       nearLatest.current = true
       setShowReturnToLatest(false)
       unseenBaseline.current = undefined
@@ -262,7 +288,6 @@ export function useConversationViewport<Row>({
         pendingRestore.current = null
         pinToLatest({ scroll: true })
       }, RESTORE_WAIT_MS)
-      void count
     },
     [pinToLatest],
   )
@@ -292,7 +317,9 @@ export function useConversationViewport<Row>({
     unseenCount,
     pinToLatest,
     beginReaderScroll,
+    beginMomentumScroll,
     settleReaderScroll,
+    settleMomentumScroll,
     handleScroll,
     isAwayFromLatest,
     isAtHistoryRunway,

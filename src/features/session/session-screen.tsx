@@ -95,6 +95,13 @@ const gapStyles: Record<number, { paddingTop: number }> = {
 /** Events one older page may add; enough for a screen or two of history per press. */
 const OLDER_PAGE_EVENTS = 400
 
+type InvertedRowEntry = {
+  key: string
+  row: NativeRow
+  gap: number
+  closing: boolean
+}
+
 export default function SessionScreen(): React.JSX.Element {
   const theme = useAppTheme()
   const s = useThemedStyles(makeSessionStyles)
@@ -227,14 +234,16 @@ export default function SessionScreen(): React.JSX.Element {
   const sourceItems = useMemo(() => mergeEventItems(olderItems, recentWindow.items), [olderItems, recentWindow])
   const messages = useMemo(() => projectNativeConversationRows(sourceItems), [sourceItems])
   const messageCount = messages.length
-  const viewport = useConversationViewport<NativeRow>({ sessionId, messageCount })
+  const viewport = useConversationViewport<InvertedRowEntry>({ sessionId, messageCount })
   const {
     listRef,
     showReturnToLatest,
     unseenCount,
     pinToLatest,
     beginReaderScroll,
+    beginMomentumScroll,
     settleReaderScroll,
+    settleMomentumScroll,
     handleScroll,
     isAwayFromLatest,
     isAtHistoryRunway,
@@ -313,10 +322,11 @@ export default function SessionScreen(): React.JSX.Element {
     setOlderItems([])
     setOlderHasMore(undefined)
     exhaustedOlderHistory.current = false
-    // The viewport restores its own reading position: where the reader left this
-    // conversation, or the newest message for one they have not opened.
-    resetForSession(sessionId, messageCount)
-  }, [messageCount, resetForSession, sessionId])
+    // The viewport restores its own reading position once per session open, never on
+    // subsequent message arrivals (putting messageCount here wiped loaded older history
+    // and re-armed the 1200ms restore jump on every new row).
+    resetForSession(sessionId)
+  }, [resetForSession, sessionId])
 
   const runningTurnStartedAt = useMemo(() => activeTurnStartedAt(sourceItems), [sourceItems])
   const spans = useMemo(() => turnSpans(sourceItems), [sourceItems])
@@ -381,7 +391,16 @@ export default function SessionScreen(): React.JSX.Element {
    * they are reading history does not move what they are looking at. That is the whole
    * reason for the inversion: no code has to chase the content height.
    */
-  const invertedRows = useMemo(() => [...displayRows].reverse(), [displayRows])
+  const closingBlocks = useMemo(() => closingAssistantSequences(displayRows), [displayRows])
+  const invertedEntries = useMemo<InvertedRowEntry[]>(() => {
+    const reversed = [...displayRows].reverse()
+    return reversed.map((row, index) => ({
+      key: conversationRowKey(row, index),
+      row,
+      gap: conversationFlowGap(row, reversed[index + 1]),
+      closing: row.kind === 'assistant' && row.sourceSeq !== undefined && closingBlocks.has(row.sourceSeq),
+    }))
+  }, [closingBlocks, displayRows])
   const eventBySeq = useMemo(
     () =>
       new Map(sourceItems.flatMap((item) => (typeof item.seq === 'number' ? [[item.seq, item.event] as const] : []))),
@@ -391,17 +410,14 @@ export default function SessionScreen(): React.JSX.Element {
   // Unstable list props re-render every mounted cell. The reader's own scroll
   // updates `showReturnToLatest`, so an inline renderItem re-rendered the whole
   // conversation on every scroll frame; these callbacks and the event lookup keep
-  // their identity across those renders.
+  // their identity across streaming chunks and scroll renders.
   const eventBySeqRef = useRef(eventBySeq)
-  eventBySeqRef.current = eventBySeq
+  useEffect(() => {
+    eventBySeqRef.current = eventBySeq
+  }, [eventBySeq])
   const getEvent = useCallback(
     (seq: number | undefined) => (seq === undefined ? undefined : eventBySeqRef.current.get(seq)),
     [],
-  )
-  const closingBlocks = useMemo(() => closingAssistantSequences(displayRows), [displayRows])
-  const isClosingBlock = useCallback(
-    (row: NativeConversationRow) => row.sourceSeq !== undefined && closingBlocks.has(row.sourceSeq),
-    [closingBlocks],
   )
   // The desktop quotes by selecting text in the draft editor. A phone cannot select
   // across a scrolling list reliably, so the row offers the same Markdown blockquote
@@ -420,7 +436,7 @@ export default function SessionScreen(): React.JSX.Element {
     [sessionId],
   )
   const renderRow = useCallback(
-    (row: NativeConversationRow) =>
+    (row: NativeConversationRow, closing = false) =>
       row.kind === 'deliverables' ? (
         <NativeDeliverablesRow files={row.files} />
       ) : row.kind === 'turn-trigger' ? (
@@ -428,7 +444,7 @@ export default function SessionScreen(): React.JSX.Element {
       ) : (
         <MessageRow
           api={client}
-          compact={row.kind === 'assistant' && !isClosingBlock(row)}
+          compact={row.kind === 'assistant' && !closing}
           event={getEvent(row.sourceSeq)}
           item={row}
           onBranch={branchFromMessage}
@@ -442,15 +458,11 @@ export default function SessionScreen(): React.JSX.Element {
           showActions
         />
       ),
-    [branchFromMessage, client, getEvent, isClosingBlock, quoteIntoDraft, sessionId],
+    [branchFromMessage, client, getEvent, quoteIntoDraft, sessionId],
   )
-  // A step's rows sit behind one collapsed header, the way the desktop groups a
-  // step instead of printing a row per call.
-  // Open steps live here, not in the row: the list recycles rows, so a disclosure
-  // held by the row would collapse whenever it scrolled out of view and back.
+  // Open steps live in ConversationDisclosureContext, not in the row: the list recycles
+  // rows, so a disclosure held by the row would collapse whenever it scrolled out of view.
   const [openSteps, setOpenSteps] = useState<ReadonlySet<string>>(() => new Set())
-  const openStepsRef = useRef(openSteps)
-  openStepsRef.current = openSteps
   const toggleStep = useCallback((rowKey: string) => {
     setOpenSteps((current) => {
       const next = new Set(current)
@@ -459,22 +471,10 @@ export default function SessionScreen(): React.JSX.Element {
       return next
     })
   }, [])
-  const renderGroupRow = useCallback((row: NativeConversationRow) => renderRow(row), [renderRow])
-  // A running step is open unless the reader closed it, so its disclosure is tracked
-  // under the `closed:` key; a settled step is tracked under its own.
-  const toggleProcessStep = useCallback((key: string) => toggleStep(`closed:${key}`), [toggleStep])
+  const renderGroupRow = useCallback((row: NativeConversationRow) => renderRow(row, false), [renderRow])
   const renderStep = useCallback(
-    (row: NativeProcessRow) => (
-      <NativeProcessGroup
-        expanded={
-          row.running ? !openStepsRef.current.has(`closed:${row.rowKey}`) : openStepsRef.current.has(row.rowKey)
-        }
-        item={row}
-        onToggle={row.running ? toggleProcessStep : toggleStep}
-        renderRow={renderGroupRow}
-      />
-    ),
-    [renderGroupRow, toggleProcessStep, toggleStep],
+    (row: NativeProcessRow) => <NativeProcessGroup item={row} renderRow={renderGroupRow} />,
+    [renderGroupRow],
   )
   // A Turn's control reveals its rows directly. A step inside it would add a
   // second disclosure whose label repeats the first member it holds, so the
@@ -485,37 +485,30 @@ export default function SessionScreen(): React.JSX.Element {
       row.kind === 'process' ? (
         <View style={s.processMembers}>
           {row.rows.map((member, index) => (
-            <View key={conversationRowKey(member, index)}>{renderRow(member)}</View>
+            <View key={conversationRowKey(member, index)}>{renderRow(member, false)}</View>
           ))}
         </View>
       ) : (
-        renderRow(row)
+        renderRow(row, false)
       ),
     [renderRow, s.processMembers],
   )
   const renderItem = useCallback(
-    ({ item, index }: { item: NativeRow; index: number }) => {
+    ({ item }: { item: InvertedRowEntry }) => {
+      const { row, gap, closing } = item
       const content =
-        item.kind === 'turn' ? (
-          <NativeTurnGroup
-            expanded={openStepsRef.current.has(item.rowKey)}
-            item={item}
-            onToggle={toggleStep}
-            renderRow={renderTurnMember}
-          />
-        ) : item.kind === 'process' ? (
-          renderStep(item)
+        row.kind === 'turn' ? (
+          <NativeTurnGroup item={row} renderRow={renderTurnMember} />
+        ) : row.kind === 'process' ? (
+          renderStep(row)
         ) : (
-          renderRow(item)
+          renderRow(row, closing)
         )
-      return <View style={gapStyles[conversationFlowGap(item, invertedRows[index + 1])]}>{content}</View>
+      return <View style={gapStyles[gap]}>{content}</View>
     },
-    // `displayRows` is read through `rowsRef`: listing it here gave the callback a new
-    // identity on every content change, which made FlatList re-render every visible cell
-    // and re-measure the ones whose content had just grown.
-    [invertedRows, renderRow, renderStep, renderTurnMember, toggleStep],
+    [renderRow, renderStep, renderTurnMember],
   )
-  const keyExtractor = useCallback((item: NativeRow, index: number) => conversationRowKey(item, index), [])
+  const keyExtractor = useCallback((item: InvertedRowEntry) => item.key, [])
   const disclosures = useMemo(() => ({ expanded: openSteps, toggle: toggleStep }), [openSteps, toggleStep])
   useEffect(() => {
     setOpenSteps(new Set())
@@ -571,7 +564,10 @@ export default function SessionScreen(): React.JSX.Element {
   const queuedCount = queue.data?.items.filter((item) => item.placement === 'queued').length ?? 0
   const plan = planFromProjection(history.data?.projections?.values)
   const reportedStatus = events.data?.status ?? message('conversation.connecting')
-  const running = reportedStatus === 'running' || activeSession?.running === true || runningTurnStartedAt !== undefined
+  const running =
+    reportedStatus === 'running' ||
+    runningTurnStartedAt !== undefined ||
+    (events.data === undefined && activeSession?.running === true)
   const status = running ? 'running' : reportedStatus
   // The last turn's own transition, per session: switching into an idle conversation
   // must not buzz for a completion the reader never watched.
@@ -602,6 +598,58 @@ export default function SessionScreen(): React.JSX.Element {
       : streamStatus === 'connecting'
         ? 'connecting'
         : status
+
+  const listHeader = useMemo(
+    () => (
+      <>
+        {/* A question the Turn is waiting on outranks its clock: the reader
+            is the blocker, and the row opens the screen that answers it. */}
+        <NativeQuestionPromptRow
+          onOpen={() => router.push(`/session/${sessionId}/interactions`)}
+          questions={pendingQuestions}
+        />
+        {status === 'running' ? (
+          <View style={s.turnStatusSlot}>
+            <NativeTurnStatus startedAt={runningTurnStartedAt} />
+          </View>
+        ) : null}
+      </>
+    ),
+    [pendingQuestions, runningTurnStartedAt, s.turnStatusSlot, sessionId, status],
+  )
+  const listFooter = useMemo(
+    () => (
+      <ConversationLeadingBlocks
+        hasMoreHistory={hasMoreHistory}
+        interruptingId={interruptSubagent.isPending ? interruptSubagent.variables : undefined}
+        jobs={jobs.data?.items ?? []}
+        olderState={{ failed: loadOlder.isError, pending: loadOlder.isPending }}
+        onInterruptSubagent={interruptSubagentHandler}
+        onLoadOlder={loadOlderManually}
+        onOpenSubagent={openSubagent}
+        showOlderControl={!history.isPending && displayRows.length > 0}
+        sourceItems={sourceItems}
+        subagents={subagents.data?.entries ?? []}
+        tasks={boardTasks}
+      />
+    ),
+    [
+      boardTasks,
+      displayRows.length,
+      hasMoreHistory,
+      history.isPending,
+      interruptSubagent.isPending,
+      interruptSubagent.variables,
+      interruptSubagentHandler,
+      jobs.data?.items,
+      loadOlder.isError,
+      loadOlder.isPending,
+      loadOlderManually,
+      openSubagent,
+      sourceItems,
+      subagents.data?.entries,
+    ],
+  )
 
   return (
     <ConversationDisclosureContext.Provider value={disclosures}>
@@ -664,11 +712,7 @@ export default function SessionScreen(): React.JSX.Element {
                   style={s.listView}
                   ref={listRef}
                   inverted
-                  data={invertedRows}
-                  // The open-step set lives in a ref so a disclosure toggle cannot change
-                  // the identity of the render callbacks; `extraData` is the signal that
-                  // tells the list those rows need re-rendering.
-                  extraData={openSteps}
+                  data={invertedEntries}
                   keyExtractor={keyExtractor}
                   // A long session can hold hundreds of rows; bound the first paint and
                   // the batch size so opening one does not mount every row at once.
@@ -695,36 +739,8 @@ export default function SessionScreen(): React.JSX.Element {
                     />
                   }
                   showsVerticalScrollIndicator={false}
-                  ListFooterComponent={
-                    <ConversationLeadingBlocks
-                      hasMoreHistory={hasMoreHistory}
-                      interruptingId={interruptSubagent.isPending ? interruptSubagent.variables : undefined}
-                      jobs={jobs.data?.items ?? []}
-                      olderState={{ failed: loadOlder.isError, pending: loadOlder.isPending }}
-                      onInterruptSubagent={interruptSubagentHandler}
-                      onLoadOlder={loadOlderManually}
-                      onOpenSubagent={openSubagent}
-                      showOlderControl={!history.isPending && displayRows.length > 0}
-                      sourceItems={sourceItems}
-                      subagents={subagents.data?.entries ?? []}
-                      tasks={boardTasks}
-                    />
-                  }
-                  ListHeaderComponent={
-                    <>
-                      {/* A question the Turn is waiting on outranks its clock: the reader
-                          is the blocker, and the row opens the screen that answers it. */}
-                      <NativeQuestionPromptRow
-                        onOpen={() => router.push(`/session/${sessionId}/interactions`)}
-                        questions={pendingQuestions}
-                      />
-                      {status === 'running' ? (
-                        <View style={s.turnStatusSlot}>
-                          <NativeTurnStatus startedAt={runningTurnStartedAt} />
-                        </View>
-                      ) : null}
-                    </>
-                  }
+                  ListFooterComponent={listFooter}
+                  ListHeaderComponent={listHeader}
                   ListEmptyComponent={
                     history.isPending ? (
                       <SkeletonConversation />
@@ -733,8 +749,8 @@ export default function SessionScreen(): React.JSX.Element {
                     )
                   }
                   onContentSizeChange={(_width: number, height: number) => handleContentSizeChange(height)}
-                  onMomentumScrollBegin={beginReaderScroll}
-                  onMomentumScrollEnd={settleReaderScroll}
+                  onMomentumScrollBegin={beginMomentumScroll}
+                  onMomentumScrollEnd={settleMomentumScroll}
                   onScroll={(event: NativeSyntheticEvent<NativeScrollEvent>) => {
                     handleScroll(event)
                     // Reaching for older history should not need a second press on the
