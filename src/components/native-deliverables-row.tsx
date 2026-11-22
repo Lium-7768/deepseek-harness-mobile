@@ -7,7 +7,8 @@ import type { AppTheme } from '@/theme'
 import { useAppTheme, useThemedStyles } from '@/theme/hooks'
 import * as Clipboard from 'expo-clipboard'
 import { useState } from 'react'
-import { Pressable, ScrollView, StyleSheet, Text } from 'react-native'
+import { StyleSheet, Text, View } from 'react-native'
+import { Pressable, ScrollView } from 'react-native'
 
 /**
  * Renders the files a turn produced as one row under it.
@@ -51,25 +52,38 @@ export function NativeDeliverablesRow({
       </Pressable>
       <NativeAnchoredPanel onClose={() => setOpen(false)} open={open}>
         <ScrollView contentContainerStyle={s.sheet}>
-          {files.map((file) => (
-            <Pressable
-              android_ripple={{ borderless: false }}
-              accessibilityLabel={format('conversation.copyDeliverable', { path: file.path })}
-              accessibilityRole="button"
-              key={file.path}
-              onPress={() => copy(file.path)}
-              style={({ pressed }) => [s.file, pressed && s.pressed]}
-            >
-              <Text numberOfLines={1} style={s.path}>
-                {file.path.split('/').at(-1) ?? file.path}
-              </Text>
-              {file.description === undefined ? null : (
-                <Text numberOfLines={2} style={s.description}>
-                  {file.description}
-                </Text>
-              )}
-            </Pressable>
-          ))}
+          {files.map((file) => {
+            const slash = file.path.lastIndexOf('/')
+            const fileName = slash >= 0 ? file.path.slice(slash + 1) : file.path
+            const dirPath = slash > 0 ? file.path.slice(0, slash) : undefined
+            return (
+              <Pressable
+                android_ripple={{ borderless: false }}
+                accessibilityLabel={format('conversation.copyDeliverable', { path: file.path })}
+                accessibilityRole="button"
+                key={file.path}
+                onPress={() => copy(file.path)}
+                style={({ pressed }) => [s.file, pressed && s.pressed]}
+              >
+                <View style={s.fileCopy}>
+                  <Text numberOfLines={1} style={s.path}>
+                    {fileName}
+                  </Text>
+                  {dirPath === undefined ? null : (
+                    <Text numberOfLines={1} style={s.dirPath}>
+                      {dirPath}
+                    </Text>
+                  )}
+                  {file.description === undefined ? null : (
+                    <Text numberOfLines={2} style={s.description}>
+                      {file.description}
+                    </Text>
+                  )}
+                </View>
+                <NativeIcon name="copy-outline" size={15} color={theme.colors.inkTertiary} />
+              </Pressable>
+            )
+          })}
         </ScrollView>
       </NativeAnchoredPanel>
     </>
@@ -88,8 +102,17 @@ const makeStyles = (theme: AppTheme) =>
     },
     label: { color: theme.colors.inkMuted, flex: 1, fontSize: 13, lineHeight: 20 },
     sheet: { gap: 2, paddingBottom: 8, paddingHorizontal: 4, paddingTop: 4 },
-    file: { gap: 2, minHeight: 44, paddingHorizontal: 12, paddingVertical: 8 },
+    file: {
+      alignItems: 'center',
+      flexDirection: 'row',
+      gap: 10,
+      minHeight: 44,
+      paddingHorizontal: 12,
+      paddingVertical: 8,
+    },
+    fileCopy: { flex: 1, gap: 2, minWidth: 0 },
     path: { color: theme.colors.ink, fontSize: 14, lineHeight: 20 },
+    dirPath: { color: theme.colors.inkTertiary, fontSize: 12, lineHeight: 16 },
     description: { color: theme.colors.inkMuted, fontSize: 12, lineHeight: 18 },
     pressed: { opacity: 0.62 },
   })

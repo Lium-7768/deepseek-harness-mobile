@@ -133,6 +133,7 @@ export const settings = {
   pluginsLoadFailed: '插件配置加载失败，请稍后重试。',
   pluginsReadOnlyNote: '移动端不安装、卸载或任意修改插件。下列配置命名空间仅用于确认桌面端已加载的能力。',
   searchPlugins: '搜索插件',
+  clearPluginSearch: '清除搜索',
   noPluginMatches: '没有匹配的插件。',
   namespacesTitle: '桌面端配置命名空间',
   namespacesDescription: '插件的完整配置表单和敏感字段只在桌面端提供。',

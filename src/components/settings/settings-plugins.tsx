@@ -6,7 +6,7 @@ import { useConnectionStore } from '@/state/connection'
 import { useAppTheme, useThemedStyles } from '@/theme/hooks'
 import { useQuery } from '@tanstack/react-query'
 import { memo, useState } from 'react'
-import { FlatList, Text, TextInput, View } from 'react-native'
+import { FlatList, Pressable, Text, TextInput, View } from 'react-native'
 
 import { pluginLabel } from '@/components/settings/settings-labels'
 import { CenteredState, ErrorState } from '@/components/settings/settings-shared'
@@ -62,6 +62,17 @@ export function PluginSettings({
               style={styles.pluginSearchInput}
               value={query}
             />
+            {query === '' ? null : (
+              <Pressable
+                accessibilityLabel={message('settings.clearPluginSearch')}
+                accessibilityRole="button"
+                hitSlop={8}
+                onPress={() => setQuery('')}
+                style={styles.pluginSearchClear}
+              >
+                <NativeIcon name="close-outline" size={14} color={theme.colors.inkTertiary} />
+              </Pressable>
+            )}
           </View>
         </>
       }

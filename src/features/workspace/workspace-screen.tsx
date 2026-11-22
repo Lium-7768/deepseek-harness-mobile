@@ -23,6 +23,7 @@ import { useConnectionStore } from '@/state/connection'
 import { useSessionSelectionStore } from '@/state/session-selection'
 import type { AppTheme } from '@/theme'
 import { useAppTheme, useThemedStyles } from '@/theme/hooks'
+import { MONOSPACE_FONT } from '@/theme/platform'
 import type { MobileAgentPresetEntry, MobilePromptContent } from '@/types/mobile'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { router, useNavigation } from 'expo-router'
@@ -170,9 +171,10 @@ export default function WorkspaceScreen(): React.JSX.Element {
               collapses to one line and gives the space back to the draft. */}
               {selectedSession === undefined ? (
                 <View style={s.hero}>
-                  <NativeBrandMark size={26} />
+                  <NativeBrandMark size={34} />
                   <View style={s.heroLine}>
                     <Text style={s.heroTitle}>{message('workspace.heroTitle')}</Text>
+                    <Text style={s.previewBadge}>{message('workspace.heroPreview')}</Text>
                   </View>
                 </View>
               ) : null}
@@ -315,18 +317,34 @@ const makeStyles = (theme: AppTheme) =>
   StyleSheet.create({
     canvas: { flex: 1 },
     startScroll: { flexGrow: 1, justifyContent: 'center', paddingVertical: 24 },
-    // `--dsh-composer-card-max-width` is clamp(680..920) + 32 = 952, the same column the
+    // `--dsh-composer-card-max-width` is clamp(680..880) + 32 = 912, the same column the
     // composer caps at; a narrower panel here would make the hero and its composer
     // disagree about where the column ends.
-    startPanel: { alignSelf: 'center', width: '100%', maxWidth: 952, gap: 12, paddingBottom: 24 },
+    startPanel: { alignSelf: 'center', width: '100%', maxWidth: 912, gap: 12, paddingBottom: 24 },
     hidden: { display: 'none' },
     // `FQzohq_composerStack`: 16pt between the identity block and the composer.
     summary: { gap: 16, paddingTop: 16 },
-    // The desktop's new-session hero: brand mark, 26px/500 headline, and the
-    // preview badge on one row (ui-conversation EmptyHero).
-    // `_wOI4G_root`/`headline`: a 32pt row inset 24pt, the mark ahead of the title.
-    hero: { alignItems: 'center', flexDirection: 'row', gap: 12, minHeight: 32, paddingHorizontal: 24 },
-    heroLine: { flexWrap: 'wrap', rowGap: 4, alignItems: 'center', flexDirection: 'row', flexShrink: 1, gap: 7 },
+    // The desktop's new-session hero: 34px brand mark, 26px/500 centered headline,
+    // and the preview badge on one row (ui-conversation EmptyHero / HeroShell).
+    hero: {
+      alignItems: 'center',
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      columnGap: 10,
+      justifyContent: 'center',
+      minHeight: 32,
+      paddingHorizontal: 24,
+      rowGap: 12,
+    },
+    heroLine: {
+      flexWrap: 'wrap',
+      rowGap: 4,
+      alignItems: 'center',
+      justifyContent: 'center',
+      flexDirection: 'row',
+      flexShrink: 1,
+      columnGap: 7,
+    },
     heroTitle: {
       flexShrink: 1,
       color: theme.colors.ink,
@@ -334,6 +352,22 @@ const makeStyles = (theme: AppTheme) =>
       fontWeight: '500',
       letterSpacing: 0,
       lineHeight: 32,
+    },
+    previewBadge: {
+      alignSelf: 'flex-start',
+      backgroundColor: theme.colors.accentSoft,
+      borderColor: theme.colors.interactiveHover,
+      borderRadius: theme.radius.pill,
+      borderWidth: StyleSheet.hairlineWidth,
+      color: theme.colors.accentSoftText,
+      fontFamily: MONOSPACE_FONT,
+      fontSize: 12,
+      fontWeight: '500',
+      lineHeight: 18,
+      marginTop: 2,
+      overflow: 'hidden',
+      paddingHorizontal: 7,
+      paddingTop: 1,
     },
     // `FQzohq_heroWorkspaceRow`: pills, not fields, 28pt tall at 13/500.
     controls: {

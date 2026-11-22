@@ -704,6 +704,7 @@ export default function SessionScreen(): React.JSX.Element {
                       onInterruptSubagent={interruptSubagentHandler}
                       onLoadOlder={loadOlderManually}
                       onOpenSubagent={openSubagent}
+                      showOlderControl={!history.isPending && displayRows.length > 0}
                       sourceItems={sourceItems}
                       subagents={subagents.data?.entries ?? []}
                       tasks={boardTasks}

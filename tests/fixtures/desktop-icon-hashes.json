@@ -233,6 +233,12 @@
     "regular": "1f6dc48a831b24cfe886849f8693b5d98317677c3b65bb46ab888f0d5c161ddf",
     "medium": "200501d14885325f21842234d628759abaa51cf3968d0f2b7c4581231d1a8ddb"
   },
+  "nowrap-fill": {
+    "size": 16,
+    "aspect": [1, 1],
+    "regular": "995163e35694c13c5d6469dbb964e5a6e6ef548bd9e2685a8540d45fbbc74c9c",
+    "medium": "995163e35694c13c5d6469dbb964e5a6e6ef548bd9e2685a8540d45fbbc74c9c"
+  },
   "paper-plane-outline": {
     "size": 14,
     "aspect": [1, 1],
@@ -388,5 +394,11 @@
     "aspect": [1, 1],
     "regular": "cdb3afb044bb99ac339f6e8e5b3e13f1366f5125aa69500a217c193c65946d0b",
     "medium": "46d48c6ac0eb0afe8d55628cf1df43c120c113845bac945181f92daedbf3810e"
+  },
+  "wrap-fill": {
+    "size": 16,
+    "aspect": [1, 1],
+    "regular": "30fd8226acff2e8b2be5bd329e211c020a0c8cc618271f623fd4c8d5252d23b3",
+    "medium": "30fd8226acff2e8b2be5bd329e211c020a0c8cc618271f623fd4c8d5252d23b3"
   }
 }

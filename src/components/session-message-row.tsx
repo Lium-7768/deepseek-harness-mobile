@@ -32,7 +32,7 @@ import { useAppTheme, useThemedStyles } from '@/theme/hooks'
 import { FIXED_GEOMETRY_FONT_CAP } from '@/theme/text-scale'
 import * as Clipboard from 'expo-clipboard'
 import { memo, useEffect, useRef, useState } from 'react'
-import { AccessibilityInfo, Pressable, Text, View } from 'react-native'
+import { AccessibilityInfo, Pressable, Text, View, useWindowDimensions } from 'react-native'
 
 export const MessageRow = memo(function MessageRow({
   item,
@@ -161,8 +161,12 @@ export const MessageRow = memo(function MessageRow({
 function NativeTurnUsage({ usage }: { usage: TurnUsage }): React.JSX.Element {
   const theme = useAppTheme()
   const s = useThemedStyles(makeSessionStyles)
+  const { width } = useWindowDimensions()
   const [open, setOpen] = useState(false)
   const anchor = useRef<View>(null)
+  // `TurnUsagePanel.module.css` (`@media (max-width: 480px)`): collapse to the 28pt
+  // icon button below 480pt so the inline token text never squeezes the trailing clock.
+  const compact = width < 480
   return (
     <>
       <View collapsable={false} ref={anchor}>
@@ -177,11 +181,11 @@ function NativeTurnUsage({ usage }: { usage: TurnUsage }): React.JSX.Element {
           <NativeIcon name="database-outline" size={15} color={theme.colors.inkTertiary} />
         </Pressable>
       </View>
-      {/* The desktop prints the reading beside the glyph (`用量 2.9M tok`); an icon
-          alone would make the reader tap to learn what it counts. */}
-      <Text numberOfLines={1} style={s.actionUsage}>
-        {format('conversation.usageLabel', { total: formatStatisticsTokens(usage.totalTokens) })}
-      </Text>
+      {compact ? null : (
+        <Text numberOfLines={1} style={s.actionUsage}>
+          {format('conversation.usageLabel', { total: formatStatisticsTokens(usage.totalTokens) })}
+        </Text>
+      )}
       <NativeAnchoredPanel anchorRef={anchor} onClose={() => setOpen(false)} open={open}>
         {[
           { label: message('conversation.usageTotal'), value: formatStatisticsTokens(usage.totalTokens) },

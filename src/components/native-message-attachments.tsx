@@ -133,7 +133,7 @@ function NativeMessageAttachment({
               onPress={() => setOpen(false)}
               style={styles.closeButton}
             >
-              <NativeIcon name="close-outline" size={22} color={theme.colors.textOnAccent} />
+              <NativeIcon name="close-outline" size={22} color={theme.colors.onScrim} />
             </Pressable>
             <Image
               accessibilityLabel={label}
@@ -155,7 +155,7 @@ function NativeMessageAttachment({
                 onPress={() => void share()}
                 style={({ pressed }) => [styles.shareButton, pressed && styles.pressed]}
               >
-                <NativeIcon name="link-outline" size={16} color={theme.colors.textOnAccent} />
+                <NativeIcon name="link-outline" size={16} color={theme.colors.onScrim} />
                 <Text style={styles.shareText}>
                   {sharing ? message('attachment.preparing') : message('attachment.share')}
                 </Text>
@@ -271,7 +271,7 @@ const makeStyles = (theme: AppTheme) =>
       maxWidth: '100%',
       width: '100%',
     },
-    caption: { color: theme.colors.textOnAccent, flex: 1, fontSize: 13, lineHeight: 20 },
+    caption: { color: theme.colors.onScrim, flex: 1, fontSize: 13, lineHeight: 20 },
     shareButton: {
       alignItems: 'center',
       borderColor: theme.colors.borderOnMedia,
@@ -282,6 +282,6 @@ const makeStyles = (theme: AppTheme) =>
       minHeight: 34,
       paddingHorizontal: 11,
     },
-    shareText: { color: theme.colors.textOnAccent, fontSize: 12, fontWeight: '600', lineHeight: 18 },
+    shareText: { color: theme.colors.onScrim, fontSize: 12, fontWeight: '600', lineHeight: 18 },
     pressed: { opacity: 0.65 },
   })

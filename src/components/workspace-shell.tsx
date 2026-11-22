@@ -21,6 +21,7 @@ type DrawerNavigation = { openDrawer: () => void }
 
 type WorkspaceShellProps = {
   title?: string
+  titleVariant?: 'header' | 'panel'
   titleLeading?: React.ReactNode
   titleAccessory?: React.ReactNode
   titleAccessibilityLabel?: string
@@ -49,6 +50,7 @@ type WorkspaceShellProps = {
 export function WorkspaceShell({
   children,
   title,
+  titleVariant = 'header',
   titleLeading,
   titleAccessory,
   titleAccessibilityLabel,
@@ -79,7 +81,7 @@ export function WorkspaceShell({
   const titleContent = (
     <View style={s.titleGroup}>
       {titleLeading ? <View style={s.titleLeading}>{titleLeading}</View> : null}
-      <Text maxFontSizeMultiplier={1.4} numberOfLines={1} style={s.title}>
+      <Text maxFontSizeMultiplier={1.4} numberOfLines={1} style={[s.title, titleVariant === 'panel' && s.panelTitle]}>
         {title ?? 'DeepSeek Harness'}
       </Text>
       {titleAccessory}
@@ -192,8 +194,10 @@ const makeStyles = (theme: AppTheme) =>
     titleGroup: { alignItems: 'center', flex: 1, flexDirection: 'row', minWidth: 0 },
     titleLeading: { alignItems: 'center', marginRight: 7 },
     // The Web header prints its breadcrumb and title at 14/500 on a 20px line
-    // (ConversationRoot.module.css `.crumbs`).
+    // (ConversationRoot.module.css `.crumbs`). Panel sheets (SettingsRoot `.navTitle`)
+    // print 16/500 on a 24px line.
     title: { color: theme.colors.ink, flexShrink: 1, fontSize: 14, fontWeight: '500', lineHeight: 20 },
+    panelTitle: { fontSize: 16, lineHeight: 24 },
     // The trailing cluster yields before the title does: its own children shrink in
     // turn (a long preset name ellipsizes), so a long session title and a long preset
     // name can never overlap.

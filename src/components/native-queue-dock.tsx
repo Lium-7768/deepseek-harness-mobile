@@ -237,7 +237,7 @@ const makeStyles = (theme: AppTheme) =>
     // `QueueDock .header`: gap 10 in a 36-tall row. The collapsed header is the
     // only control here, so it carries hitSlop for its own touch target.
     header: { alignItems: 'center', flexDirection: 'row', gap: 10, minHeight: 36 },
-    headerText: { color: theme.colors.inkMuted, flex: 1, fontSize: 13, fontWeight: '500', lineHeight: 20 },
+    headerText: { color: theme.colors.inkMuted, flex: 1, fontSize: 13, fontWeight: '500', lineHeight: 24 },
     scroll: { maxHeight: 180 },
     list: { gap: 4 },
     // A queued row keeps the desktop's 36 too; its action buttons reach 44

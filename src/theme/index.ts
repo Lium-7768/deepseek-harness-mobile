@@ -67,9 +67,9 @@ const shape = {
     headerWithMetaHeight: 71,
     tabHeight: 35,
     composerRadius: 20,
-    // The desktop's send control is a 34px accent circle inside the composer
-    // (ui-conversation InputBar); the panel radius around it is 28px.
-    sendButton: 34,
+    // The desktop's send control is a 32px accent circle inside the composer
+    // (ui-conversation InputBar); native hit slop keeps the touch target larger.
+    sendButton: 32,
     controlHeight: 36,
   },
   touch: { iconButton: 44, compactIconButton: 36, controlHeight: 40, minTarget: 44 },

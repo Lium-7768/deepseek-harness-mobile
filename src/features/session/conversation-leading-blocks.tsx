@@ -37,6 +37,7 @@ export function ConversationLeadingBlocks({
   onLoadOlder,
   onOpenSubagent,
   onInterruptSubagent,
+  showOlderControl = true,
 }: {
   tasks: TeamTask[]
   sourceItems: SharedEventItem[]
@@ -48,6 +49,7 @@ export function ConversationLeadingBlocks({
   onLoadOlder: () => void
   onOpenSubagent: (entry: MobileSubagentEntry) => void
   onInterruptSubagent: (entry: MobileSubagentEntry) => void
+  showOlderControl?: boolean
 }): React.JSX.Element {
   return (
     <>
@@ -60,7 +62,7 @@ export function ConversationLeadingBlocks({
         onOpenSubagent={onOpenSubagent}
         onInterruptSubagent={onInterruptSubagent}
       />
-      <LoadOlderControl hasMore={hasMoreHistory} onLoad={onLoadOlder} state={olderState} />
+      {showOlderControl ? <LoadOlderControl hasMore={hasMoreHistory} onLoad={onLoadOlder} state={olderState} /> : null}
     </>
   )
 }

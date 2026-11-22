@@ -750,8 +750,8 @@ const makeStyles = (theme: AppTheme) =>
     // 16px side clearance and 4px below.
     wrap: { backgroundColor: theme.colors.canvas, paddingBottom: 4, paddingHorizontal: theme.spacing.lg },
     // `--dsh-composer-card-max-width` caps the column at the chat width plus 32
-    // (clamp 680..920 + 32 = 952); a phone never reaches it, a tablet would.
-    constrained: { alignSelf: 'center', maxWidth: 952, width: '100%' },
+    // (clamp 680..880 + 32 = 912); a phone never reaches it, a tablet would.
+    constrained: { alignSelf: 'center', maxWidth: 912, width: '100%' },
     stack: { flexDirection: 'column', gap: 6 },
     footer: { flexDirection: 'column' },
     // `ComposerAttachments .rail`: `2px 10px 0` with a -6 bottom pull, so the
@@ -829,15 +829,15 @@ const makeStyles = (theme: AppTheme) =>
       paddingHorizontal: 8,
       paddingTop: 2,
     },
-    // Desktop 28pt circle; hitSlop={8} provides a 44pt native touch target.
+    // Desktop 32pt circle; hitSlop={8} provides a 48pt native touch target.
     add: {
       alignItems: 'center',
       backgroundColor: theme.colors.surfaceMuted,
       borderRadius: theme.radius.pill,
-      height: 28,
+      height: 32,
       flexShrink: 0,
       justifyContent: 'center',
-      width: 28,
+      width: 32,
     },
     iconDisabled: { opacity: 0.5 },
     // `wqMmtW_tools` / `wqMmtW_modes`: 8px apart inside the left cluster.

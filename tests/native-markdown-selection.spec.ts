@@ -85,6 +85,39 @@ describe('native markdown selection', () => {
     expect(selectableTexts(renderer).map(textOf).join('')).toContain('reserved row')
     await act(async () => undefined)
   })
+
+  it('groups code-block header actions on the right, wraps by default like desktop, and aligns body padding', async () => {
+    const renderer = await render(createElement(NativeMarkdown, { markdown: '```bash\necho hi\n```' }))
+    const icons = renderer.container.queryAll((node) => node.type === 'Icon')
+    // Wrapped by default (`CodeBlock.tsx` `localWrapped = true`): button offers nowrap toggle.
+    expect(icons.some((icon) => icon.props.name === 'nowrap-fill')).toBe(true)
+    const header = renderer.container.queryAll(
+      (node) => node.type === 'View' && node.props.style?.justifyContent === 'space-between',
+    )[0]!
+    // Two direct header children: language label on the left, trailing actions container on the right.
+    expect(header.children).toHaveLength(2)
+    expect(renderer.container.queryAll((node) => node.type === 'ScrollView')).toHaveLength(0)
+
+    const unwrapButton = renderer.container.queryAll(
+      (node) => node.type === 'Pressable' && node.props.accessibilityLabel === '取消自动换行',
+    )[0]!
+    await act(async () => {
+      unwrapButton.props.onPress()
+    })
+    const bodyScroll = renderer.container.queryAll((node) => node.type === 'ScrollView')[0]!
+    expect(bodyScroll.props.contentContainerStyle?.paddingHorizontal).toBe(header.props.style?.paddingLeft)
+    await act(async () => undefined)
+  })
+
+  it('aligns collapsed hidden-lines hint with the 22pt code body edge', async () => {
+    const longCode = Array.from({ length: 20 }, (_, i) => `echo line ${i}`).join('\n')
+    const renderer = await render(createElement(NativeMarkdown, { markdown: `\`\`\`bash\n${longCode}\n\`\`\`` }))
+    const hint = renderer.container.queryAll(
+      (node) => node.type === 'Text' && String(node.props.children).includes('还有 4 行'),
+    )[0]!
+    expect(hint.props.style?.paddingHorizontal).toBe(22)
+    await act(async () => undefined)
+  })
 })
 
 describe('tool and status content selection', () => {

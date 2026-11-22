@@ -375,9 +375,10 @@ function NativeCodeBlock({
   const theme = useAppTheme()
   const styles = useThemedStyles(makeStyles)
   const [expanded, setExpanded] = useState(false)
-  // The desktop's `codeBlock.wrap` toggle: a long line otherwise only scrolls sideways,
-  // which a phone cannot follow while reading.
-  const [wrapped, setWrapped] = useState(false)
+  // Matches desktop `CodeBlock.tsx` (`localWrapped = true`): long lines wrap by default
+  // so mobile readers can read commands without sideways scrolling, while the toggle still
+  // switches to horizontal scroll when column alignment matters.
+  const [wrapped, setWrapped] = useState(true)
   const tokens = useMemo(() => highlightCode(text, language), [text, language])
   const lineCount = text.split('\n').length
   const collapsible = lineCount > 16
@@ -385,49 +386,53 @@ function NativeCodeBlock({
     <View style={[styles.codeCard, { marginTop: spacing }]}>
       <View style={styles.codeHeader}>
         <Text style={styles.codeLanguage}>{language || message('markdown.code')}</Text>
-        {copiedSize === undefined ? null : (
-          <Text ellipsizeMode="tail" numberOfLines={1} style={styles.copySize}>
-            {copiedSize}
-          </Text>
-        )}
-        <Pressable
-          android_ripple={{ borderless: false }}
-          accessibilityRole="button"
-          accessibilityLabel={wrapped ? message('markdown.unwrapCode') : message('markdown.wrapCode')}
-          accessibilityState={{ selected: wrapped }}
-          hitSlop={8}
-          onPress={() => setWrapped((value) => !value)}
-          style={styles.copyButton}
-        >
-          <NativeIcon
-            name="chevrons-up-down-outline"
-            size={16}
-            color={wrapped ? theme.colors.ink : theme.colors.inkMuted}
-          />
-        </Pressable>
-        <Pressable
-          android_ripple={{ borderless: false }}
-          accessibilityRole="button"
-          accessibilityLabel={
-            copied
-              ? (copiedSize ?? message('markdown.copied'))
-              : failed
-                ? message('markdown.copyFailedTitle')
-                : message('markdown.copyCode')
-          }
-          hitSlop={8}
-          onPress={onCopy}
-          style={styles.copyButton}
-        >
-          <NativeIcon
-            name={copied ? 'check-outline' : 'copy-outline'}
-            size={16}
-            color={copied ? theme.colors.codeSuccess : failed ? theme.colors.danger : theme.colors.inkMuted}
-          />
-        </Pressable>
+        {/* `CodeToolbar .actions`: trailing controls stay grouped on the right edge
+            instead of spacing evenly across the header. */}
+        <View style={styles.codeActions}>
+          {copiedSize === undefined ? null : (
+            <Text ellipsizeMode="tail" numberOfLines={1} style={styles.copySize}>
+              {copiedSize}
+            </Text>
+          )}
+          <Pressable
+            android_ripple={{ borderless: false }}
+            accessibilityRole="button"
+            accessibilityLabel={wrapped ? message('markdown.unwrapCode') : message('markdown.wrapCode')}
+            accessibilityState={{ selected: wrapped }}
+            hitSlop={8}
+            onPress={() => setWrapped((value) => !value)}
+            style={styles.copyButton}
+          >
+            <NativeIcon
+              name={wrapped ? 'nowrap-fill' : 'wrap-fill'}
+              size={14}
+              color={wrapped ? theme.colors.ink : theme.colors.inkMuted}
+            />
+          </Pressable>
+          <Pressable
+            android_ripple={{ borderless: false }}
+            accessibilityRole="button"
+            accessibilityLabel={
+              copied
+                ? (copiedSize ?? message('markdown.copied'))
+                : failed
+                  ? message('markdown.copyFailedTitle')
+                  : message('markdown.copyCode')
+            }
+            hitSlop={8}
+            onPress={onCopy}
+            style={styles.copyButton}
+          >
+            <NativeIcon
+              name={copied ? 'check-outline' : 'copy-outline'}
+              size={14}
+              color={copied ? theme.colors.codeSuccess : failed ? theme.colors.danger : theme.colors.inkMuted}
+            />
+          </Pressable>
+        </View>
       </View>
       {wrapped ? (
-        <View style={styles.codeBody}>
+        <View style={collapsible ? styles.codeBodyCollapsible : styles.codeBody}>
           <Text selectable numberOfLines={collapsible && !expanded ? 16 : undefined} style={styles.codeText}>
             {tokens.map((token, index) => (
               <Text key={index} style={{ color: codeTokenColor(theme, token.kind) }}>
@@ -441,7 +446,7 @@ function NativeCodeBlock({
           horizontal
           nestedScrollEnabled
           showsHorizontalScrollIndicator
-          contentContainerStyle={styles.codeBody}
+          contentContainerStyle={collapsible ? styles.codeBodyCollapsible : styles.codeBody}
         >
           <Text selectable numberOfLines={collapsible && !expanded ? 16 : undefined} style={styles.codeText}>
             {tokens.map((token, index) => (
@@ -528,7 +533,7 @@ const makeStyles = (theme: AppTheme) =>
       minWidth: 12,
     },
     rule: {
-      backgroundColor: theme.colors.border,
+      backgroundColor: theme.colors.borderL2,
       height: StyleSheet.hairlineWidth,
     },
     // CodeBlock.module.css: 16px radius, a 9/14 banner strip, and a 16px body.
@@ -539,12 +544,14 @@ const makeStyles = (theme: AppTheme) =>
       alignItems: 'center',
       backgroundColor: theme.colors.codeBanner,
       flexDirection: 'row',
+      gap: 12,
       justifyContent: 'space-between',
       paddingBottom: 8,
-      paddingHorizontal: 18,
       paddingLeft: 22,
+      paddingRight: 18,
       paddingTop: 10,
     },
+    codeActions: { alignItems: 'center', flexDirection: 'row', flexShrink: 1, gap: 4, minWidth: 0 },
     // `CodeCard.module.css .language`: the banner label is label-tertiary, not the code's
     // own foreground; the copy action beside it is label-secondary.
     codeLanguage: {
@@ -562,10 +569,11 @@ const makeStyles = (theme: AppTheme) =>
     },
     // The confirmation shares the header's 24pt row, so the card height is unchanged
     // while the size comes and goes.
-    copySize: { color: theme.colors.inkMuted, flexShrink: 1, fontSize: 11, lineHeight: 24, marginLeft: 'auto' },
-    // `CodeCard.module.css .body`: 6px 22px 20px, so the last line clears the card's
-    // rounded bottom instead of sitting 22px off it.
-    codeBody: { paddingBottom: 16, paddingHorizontal: 16, paddingTop: 8 },
+    copySize: { color: theme.colors.inkMuted, flexShrink: 1, fontSize: 11, lineHeight: 24, marginRight: 4 },
+    // `CodeCard.module.css .body`: 6px 22px 20px, aligning its leading text edge with
+    // the header's 22px inset and keeping the last line clear of the rounded bottom.
+    codeBody: { paddingBottom: 20, paddingHorizontal: 22, paddingTop: 6 },
+    codeBodyCollapsible: { paddingBottom: 6, paddingHorizontal: 22, paddingTop: 6 },
     codeText: {
       color: theme.colors.codeForeground,
       flexShrink: 0,
@@ -586,7 +594,7 @@ const makeStyles = (theme: AppTheme) =>
       color: theme.colors.inkMuted,
       fontSize: 12,
       lineHeight: 18,
-      paddingHorizontal: 12,
+      paddingHorizontal: 22,
       paddingTop: 4,
     },
     codeToggleText: { color: theme.colors.accent, fontSize: 12, fontWeight: '500' },

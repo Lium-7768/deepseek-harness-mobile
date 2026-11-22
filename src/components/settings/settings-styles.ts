@@ -76,8 +76,9 @@ export const makeSettingsStyles = (theme: AppTheme) =>
       gap: 10,
       minHeight: 44,
       paddingLeft: 12,
-      paddingRight: 34,
+      paddingRight: 8,
     },
+    pluginSearchClear: { alignItems: 'center', height: 32, justifyContent: 'center', width: 32 },
     pluginSearchInput: {
       color: theme.colors.ink,
       flex: 1,
@@ -110,8 +111,25 @@ export const makeSettingsStyles = (theme: AppTheme) =>
       paddingVertical: 1,
     },
     // Panel heading: the Web's models and presets pages print 16/500 on a 24px
-    // line, the plugins page 18/600 (`T4WTQq_heading`).
-    sectionTitle: { color: theme.colors.ink, fontSize: 20, fontWeight: '600', lineHeight: 28 },
+    // line (`AgentPresetSection .title`, `PresetGuideDialog`), while the plugins
+    // page uses 18/600.
+    sectionTitle: { color: theme.colors.ink, fontSize: 16, fontWeight: '500', lineHeight: 24 },
+    presetDetailId: {
+      color: theme.colors.inkTertiary,
+      fontFamily: MONOSPACE_FONT,
+      fontSize: 12,
+      lineHeight: 18,
+    },
+    presetRowId: {
+      color: theme.colors.inkTertiary,
+      fontFamily: MONOSPACE_FONT,
+      fontSize: 11,
+      lineHeight: 20,
+      marginLeft: 'auto',
+    },
+    presetGuideSheet: { gap: 8, padding: 16 },
+    presetGuideHeading: { color: theme.colors.ink, fontSize: 14, fontWeight: '500', lineHeight: 22, marginTop: 4 },
+    presetGuideBody: { color: theme.colors.inkMuted, fontSize: 13, lineHeight: 20 },
     // `XzvN5G_card`: radius 20, hairline `settings-card-stroke` outline on the
     // card fill, the main block padded 14/16/12 and the footer under a divider.
     // `cardMain`: 14px 16px 12px, 12pt between the head row and the body.
@@ -133,15 +151,13 @@ export const makeSettingsStyles = (theme: AppTheme) =>
     readOnlyTitle: { color: theme.colors.ink, flexShrink: 1, fontSize: theme.typography.body, fontWeight: '400' },
     readOnlyDetail: { color: theme.colors.inkTertiary, fontSize: 12, lineHeight: 18 },
     optionSelected: { backgroundColor: theme.colors.surfaceActive, borderColor: theme.colors.accent },
-    // `AgentPresetSection.module.css .groupHead`: 12/600, tertiary, uppercase
-    // with .06em tracking. Chinese has no case, so only the tracking carries.
+    // `AgentPresetSection.module.css .groupHead`: 12/500, tertiary.
     groupTitle: {
       color: theme.colors.inkTertiary,
       fontSize: theme.typography.caption,
-      fontWeight: '600',
-      letterSpacing: 0.72,
+      fontWeight: '500',
       lineHeight: 18,
-      marginHorizontal: theme.spacing.sm,
+      marginTop: 8,
     },
     cardHeader: {
       alignItems: 'center',

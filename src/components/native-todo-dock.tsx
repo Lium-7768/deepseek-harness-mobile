@@ -115,8 +115,8 @@ const makeStyles = (theme: AppTheme) =>
     body: { flexDirection: 'column', gap: 8, paddingHorizontal: 12, paddingVertical: 6 },
     // `.header`: one row 10px apart with the chevron trailing.
     header: { alignItems: 'center', flexDirection: 'row', gap: 10, minWidth: 0 },
-    // `.lead`: a 14pt glyph slot in the tertiary tone.
-    lead: { alignItems: 'center', justifyContent: 'center', width: 14 },
+    // `.lead`: a 16pt glyph slot in the tertiary tone, matching `.glyph` below.
+    lead: { alignItems: 'center', justifyContent: 'center', width: 16 },
     // `.title`: 13/24 medium in the primary tone, never shrinks.
     title: { color: theme.colors.ink, flexShrink: 0, fontSize: 13, fontWeight: '500', lineHeight: 24 },
     // `.progress`: 13/20 regular tertiary, absorbs the remaining width.

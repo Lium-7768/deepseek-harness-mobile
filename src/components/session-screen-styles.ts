@@ -115,7 +115,8 @@ export const makeSessionStyles = (theme: AppTheme) =>
     // The stack itself is right-aligned on the Web (`align-items: flex-end` on a column
     // child of a full-width row); without `alignSelf` the capped row sits at the left
     // edge and leaves the whole remainder empty on the right.
-    userRow: { alignItems: 'flex-end', alignSelf: 'flex-end', gap: theme.spacing.sm, maxWidth: '70.2%' },
+    // `MessageItem .userRow`: 6pt between the user stack and its trailing actions.
+    userRow: { alignItems: 'flex-end', alignSelf: 'flex-end', gap: 6, maxWidth: '70.2%' },
     userBubble: {
       alignSelf: 'flex-end',
       backgroundColor: theme.colors.userBubble,

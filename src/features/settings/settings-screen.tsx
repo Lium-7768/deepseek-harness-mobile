@@ -58,6 +58,7 @@ export default function SettingsScreen(): React.JSX.Element {
       rightAction={<SettingsClose />}
       showMenu={false}
       title={message('settings.title')}
+      titleVariant="panel"
       titleLeading={null}
     >
       {connection === undefined ? (

@@ -148,9 +148,10 @@ export function NativeMenuPanel({
 
 const makeStyles = (theme: AppTheme) =>
   StyleSheet.create({
-    // `ui-primitives Menu`: menu fill, r12, prominent elevation.
+    // `ui-primitives Menu`: menu fill, r12, prominent elevation. Outer `NativeAnchoredPanel`
+    // owns the viewport-relative `maxHeight`, so a multi-group sheet (e.g. `DrawerViewMenu`)
+    // is never clipped by a fixed 480pt ceiling while taller viewports still fit all groups.
     menu: {
-      maxHeight: 480,
       flexShrink: 1,
       minHeight: 0,
       paddingHorizontal: 6,
