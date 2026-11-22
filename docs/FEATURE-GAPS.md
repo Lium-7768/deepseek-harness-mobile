@@ -1,16 +1,9 @@
 # Desktop features the phone does not have
 
-What the desktop client offers, what exists on the phone today, and what each
-missing surface would cost. Counts come from this tree:
-
-- desktop UI packages: 58 under `packages/client/ui-*`
-- phone routes: 14 files under `app/`
-- mobile gateway routes: 39 (14 literal, 25 parametric) in
-  `~/code/deepseek/dsh-mobile-bridge/src/gateway/mobile-gateway.ts`
-
-The gateway is the constraint, not the UI. A surface whose data it already
-serves costs interface work; one it does not serve needs a new route first, and
-that route widens what a public URL can reach.
+This reference summarizes desktop capabilities, the corresponding phone coverage,
+and the work or security review needed for missing surfaces. Gateway routes are
+owned by the separate `dsh-mobile-bridge` repository; every added route expands what
+a paired phone can reach over its public URL.
 
 ## Already on the phone
 
@@ -18,33 +11,38 @@ Sessions (list, create, rename, archive, fork, search, running), conversation an
 composer, queue and steering, background jobs, goals, child subagents, message
 feedback, trajectory, image attachments, pending interactions (approval,
 questions, plan review), model and agent-preset pickers, permission presets,
-settings (general, models, plugins inventory, presets), workspaces (rename,
-delete), light and dark appearance, live events over SSE, session-log export to
-the share sheet, file-change diffs inside tool cards, and the release line in
-General settings.
+slash-command and skill triggers, settings (general, models, read-only plugin
+inventory, presets), workspaces (rename, delete), light and dark appearance, live
+events over SSE, session-log export to the share sheet, file-change diffs inside
+tool cards, scheduled-task create/view/edit/run/history/pause/resume/delete with
+catalog search, status filters, and starter recommendations, and the release line
+in General settings.
 
 ## Missing, and worth building
 
-| Feature | Desktop package | Gateway today | Cost |
-| --- | --- | --- | --- |
-| File explorer | `sidebar-files` | No file routes | **New routes + interface** — list, read, download. The largest single widening of the public surface, because a file route reaches the whole project tree |
-| Slash commands | `commands`, `input-trigger` | No command-list route | **New route + interface** — list commands, then send one through the existing message route |
-| Skills | `skill` | No route | **New route + interface** — list installed skills, attach one to a turn |
-| Scheduled turns | `schedule` | Catalog and pause/resume/delete routes | Native task list and controls are implemented; creating/editing a schedule remains a separate interface |
+| Feature              | Desktop package | Gateway today                       | Cost                                                                                                                                                      |
+| -------------------- | --------------- | ----------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| File explorer        | `sidebar-files` | No file routes                      | **New routes + interface** — list, read, download. The largest single widening of the public surface, because a file route reaches the whole project tree |
+| Deliverables browser | `deliverables`  | Message-level deliverable rows only | **New routes + interface** — current transcript rows do not provide the desktop's full file browsing and preview surface                                  |
 
-Each remaining row needs a new public route before any interface work, and every
-new route widens what a paired phone can reach on a public URL.
+## Missing task-manager workflows
 
-## Missing, and a poor fit for a phone
+The phone now covers searching the task catalog, filtering by status, starter
+recommendations, viewing task details, editing title/prompt/timing with Host
+`updatedAt` CAS, running a task now with confirmation, reading paginated delivery
+history, creating/pausing/resuming/deleting tasks, and opening a task's target
+Session. Only bulk removal of ended tasks (`schedule/deleteInactive`) is not yet
+forwarded by the mobile gateway.
 
-| Feature | Desktop package | Why it is awkward |
-| --- | --- | --- |
-| Terminal | `sidebar-terminal` | A PTY over a phone keyboard, on a public URL that already executes code |
-| Document preview | `sidebar-documentpreview` | Depends on the file explorer; PDF and Office rendering on a small screen |
-| Browser preview | `sidebar-browser` | Needs a remote viewport stream |
-| Workflow runs | `workflow-run` | The graph editor has no touch equivalent |
-| Plugin management | `plugin-manager`, `plugin-market`, `settings-plugin-inventory` | Installing plugins from a phone changes what the desktop executes; a mistap is expensive |
-| Deliverables | `deliverables` | Rich file surfaces, same dependency as the explorer |
+## Deferred: poor fit or high risk on a phone
+
+| Feature                      | Desktop package                                                | Why it is deferred                                                                                     |
+| ---------------------------- | -------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------ |
+| Terminal                     | `sidebar-terminal`                                             | A PTY over a phone keyboard expands remote process controls on a public URL that already executes code |
+| Document preview             | `sidebar-documentpreview`                                      | Depends on file access; PDF and Office rendering need a phone-specific review                          |
+| Browser preview              | `sidebar-browser`                                              | Needs a remote viewport stream                                                                         |
+| Workflow runs                | `workflow-run`                                                 | The graph editor has no touch interaction model                                                        |
+| Plugin management and market | `plugin-manager`, `plugin-market`, `settings-plugin-inventory` | Installing plugins changes what the paired desktop executes; a mistap is expensive                     |
 
 ## Desktop-only by nature
 
@@ -84,13 +82,8 @@ and is not treated as one, matching the desktop.
 **Release line.** General settings prints 当前版本：<version> from the manifest, the
 same position the desktop gives it, so a support report names the build in hand.
 
-## If the ordering is yours to set
+## Suggested order
 
-1. **File explorer** — the most useful remaining capability, and the one to design
-   most carefully, because it decides what a stolen password can read.
-2. **Slash commands and skills** — cheap once a list route exists, and they make
-   the phone a usable way to drive a long turn.
-3. **Scheduled turns** — the last of the desktop's unattended surfaces, and the one
-   whose request needs the most care: a schedule created from a phone runs on the
-   desktop.
-4. Everything else — only with a concrete reason.
+1. **File explorer** — useful on a phone, but file access must be scoped before adding routes because it reaches project contents.
+2. **Deliverables browser** — can build on an approved file-access design and adds a focused way to retrieve outputs.
+3. Everything else — only with a concrete product need and an explicit security and touch-interaction review.
