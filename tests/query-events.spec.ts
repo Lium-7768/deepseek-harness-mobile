@@ -2,7 +2,7 @@ import { QueryClient } from '@tanstack/react-query'
 import { expect, it, vi } from 'vitest'
 import { queryKeys } from '@/api/query-keys'
 import { applyMobileStreamEvent } from '@/sync/query-events'
-import type { MobileStreamEvent, SessionEventsPayload } from '@/types/mobile'
+import type { MobileStreamEvent, SessionEventItem, SessionEventsPayload } from '@/types/mobile'
 
 it('refreshes the shared session list key after desktop workspace changes', () => {
   const client = new QueryClient()
@@ -166,6 +166,48 @@ it('applies a pushed reading-state frame to the notice tracker', async () => {
     },
   })
   expect(seen).toEqual(['a:true', 'b:false'])
+  spy.mockRestore()
+  client.clear()
+})
+
+it('notifies noteSessionFailed on turn/end error and invalidates history on turn/error', async () => {
+  const notices = await import('@/state/completion-notices')
+  const failures: Array<{ detail: string | undefined; sessionId: string }> = []
+  const spy = vi.spyOn(notices, 'noteSessionFailed').mockImplementation(async (sessionId, detail) => {
+    failures.push({ sessionId, detail })
+  })
+  const client = new QueryClient()
+  const historyKey = queryKeys.sessionHistory('s')
+  client.setQueryData(historyKey, { items: [] })
+  applyMobileStreamEvent(client, {
+    contractVersion: 1,
+    eventId: 'turn-end-err',
+    type: 'session/event',
+    sessionId: 's',
+    seq: 10,
+    payload: {
+      event: {
+        type: 'turn/end',
+        data: { turn: 1, reason: { kind: 'error', error: { message: '上游连接中断' } } },
+      },
+    },
+  })
+  expect(failures).toEqual([{ sessionId: 's', detail: '上游连接中断' }])
+  expect(client.getQueryState(historyKey)?.isInvalidated).toBe(true)
+  client.setQueryData(historyKey, { items: [] })
+  applyMobileStreamEvent(client, {
+    contractVersion: 1,
+    eventId: 'turn-err',
+    type: 'session/event',
+    sessionId: 's',
+    seq: 11,
+    payload: { event: { type: 'turn/error', data: { error: { message: '超时' } } } },
+  })
+  expect(failures).toEqual([
+    { sessionId: 's', detail: '上游连接中断' },
+    { sessionId: 's', detail: '超时' },
+  ])
+  expect(client.getQueryState(historyKey)?.isInvalidated).toBe(true)
   spy.mockRestore()
   client.clear()
 })

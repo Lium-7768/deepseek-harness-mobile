@@ -1,10 +1,4 @@
-import {
-  awaySummary,
-  type NoticeKind,
-  noticeContent,
-  noticeIdentifier,
-  shouldNotice,
-} from '@/components/notification-content'
+import { awaySummary, type NoticeKind, noticeContent, noticeIdentifier, shouldNotice } from './notification-content'
 import { showSnackbar } from '@/state/snackbar'
 import { t as message } from '@/locale'
 
@@ -24,6 +18,16 @@ import { t as message } from '@/locale'
  * refused notification must never disturb the transcript.
  */
 
+type NotificationsEngine = typeof import('expo-notifications')
+let notificationsEngine: Promise<NotificationsEngine> | undefined
+
+function loadNotifications(): Promise<NotificationsEngine> {
+  notificationsEngine ??= import('expo-notifications').catch((error) => {
+    notificationsEngine = undefined
+    throw error
+  })
+  return notificationsEngine
+}
 let granted = false
 let asked = false
 /** Set once the handler and the banner actions are registered. */
@@ -63,33 +67,36 @@ let appActive = true
  * action.
  */
 export async function prepareNotifications(): Promise<void> {
-  if (prepared) return
-  prepared = true
   try {
-    const engine = await import('expo-notifications')
-    engine.setNotificationHandler({
-      handleNotification: () =>
-        Promise.resolve({
-          // The tone is the point: the reader learns that a turn needs them without
-          // looking at the screen.
-          shouldPlaySound: true,
-          shouldSetBadge: false,
-          shouldShowBanner: true,
-          shouldShowList: true,
-        }),
-    })
-    await engine.setNotificationCategoryAsync('completion-ask', [
-      {
-        identifier: 'open',
-        buttonTitle: message('completion.openAction'),
-        // The banner's own tap already opens the app; the action exists so the reader
-        // can open the conversation without dismissing the rest of Notification Centre.
-        options: { opensAppToForeground: true },
-      },
-    ])
-    await engine.setNotificationCategoryAsync('completion-approve', [
-      { identifier: 'open', buttonTitle: message('completion.openAction'), options: { opensAppToForeground: true } },
-    ])
+    const engine = await loadNotifications()
+    if (!prepared) {
+      prepared = true
+      engine.setNotificationHandler({
+        handleNotification: () =>
+          Promise.resolve({
+            // The tone is the point: the reader learns that a turn needs them without
+            // looking at the screen.
+            shouldPlaySound: true,
+            shouldSetBadge: false,
+            shouldShowBanner: true,
+            shouldShowList: true,
+          }),
+      })
+      await engine.setNotificationCategoryAsync('completion-ask', [
+        {
+          identifier: 'open',
+          buttonTitle: message('completion.openAction'),
+          // The banner's own tap already opens the app; the action exists so the reader
+          // can open the conversation without dismissing the rest of Notification Centre.
+          options: { opensAppToForeground: true },
+        },
+      ])
+      await engine.setNotificationCategoryAsync('completion-approve', [
+        { identifier: 'open', buttonTitle: message('completion.openAction'), options: { opensAppToForeground: true } },
+      ])
+    }
+    const existing = await engine.getPermissionsAsync()
+    if (existing.granted) granted = true
   } catch {
     // Without the handler the app still works; it simply cannot post notices.
   }
@@ -155,6 +162,7 @@ export function noteSessionList(
     if (session.completionUnread === undefined) continue
     if (session.completionUnread) hostUnread.add(session.sessionId)
     else hostUnread.delete(session.sessionId)
+    unseen.delete(session.sessionId)
   }
   void pushBadge()
   for (const session of sessions) {
@@ -188,6 +196,7 @@ export function noteInteractionRequested(sessionId: string, kind: 'approve' | 'a
  * @param detail - The failure's message, when the event carried one.
  */
 export async function noteSessionFailed(sessionId: string, detail: string | undefined): Promise<void> {
+  running.delete(sessionId)
   if (!isWatched(sessionId)) unseen.add(sessionId)
   await present('failed', sessionId, detail)
   void pushBadge()
@@ -221,7 +230,7 @@ export async function requestCompletionPermission(): Promise<boolean> {
   asked = true
   try {
     await prepareNotifications()
-    const engine = await import('expo-notifications')
+    const engine = await loadNotifications()
     const existing = await engine.getPermissionsAsync()
     const result = existing.granted ? existing : await engine.requestPermissionsAsync()
     granted = result.granted
@@ -311,7 +320,7 @@ async function present(kind: NoticeKind, sessionId: string, detail?: string): Pr
   if (last !== undefined && now - last < KIND_QUIET_MS) return
   lastPresentedAt.set(kind, now)
   try {
-    const engine = await import('expo-notifications')
+    const engine = await loadNotifications()
     await engine.scheduleNotificationAsync({
       // Posting under a stable identifier replaces the conversation's previous notice of
       // the same kind instead of stacking a second banner for one turn.
@@ -335,7 +344,7 @@ function unreadSessions(): Set<string> {
 
 async function pushBadge(): Promise<void> {
   try {
-    const engine = await import('expo-notifications')
+    const engine = await loadNotifications()
     await engine.setBadgeCountAsync(unreadSessions().size)
   } catch {
     // The icon badge is decoration; losing it changes nothing about the session.
@@ -346,6 +355,7 @@ async function pushBadge(): Promise<void> {
 export function resetCompletionNotices(): void {
   running.clear()
   unseen.clear()
+  hostUnread.clear()
   titles.clear()
   lastPresentedAt.clear()
   visibleSessionId = undefined

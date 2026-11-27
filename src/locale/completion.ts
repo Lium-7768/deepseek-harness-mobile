@@ -29,6 +29,4 @@ export const completion = {
   permissionDenied: '通知权限未开启，完成时不会有提醒',
   /** Action offered on a question or approval banner. */
   openAction: '打开',
-  /** Notification Centre section title for these notices. */
-  channelName: '任务进度',
 } as const

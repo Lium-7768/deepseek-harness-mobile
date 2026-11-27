@@ -11,6 +11,7 @@ import { create } from 'zustand'
 interface SessionSelectionState {
   selectedSessionId?: string
   clearSelection(): Promise<void>
+  reset(): void
   restoreSelection(connection: MobileConnection, sessionIds: readonly string[]): Promise<void>
   selectSession(connection: MobileConnection, sessionId: string): Promise<void>
   selectSessionForRoute(sessionId: string): void
@@ -20,7 +21,13 @@ interface SessionSelectionState {
 export const useSessionSelectionStore = create<SessionSelectionState>((set) => ({
   selectedSessionId: undefined,
   async clearSelection(): Promise<void> {
-    await clearStoredSessionSelection()
+    try {
+      await clearStoredSessionSelection()
+    } finally {
+      set({ selectedSessionId: undefined })
+    }
+  },
+  reset(): void {
     set({ selectedSessionId: undefined })
   },
   async restoreSelection(connection: MobileConnection, sessionIds: readonly string[]): Promise<void> {

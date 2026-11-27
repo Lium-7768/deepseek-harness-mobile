@@ -57,4 +57,11 @@ describe('snackbar queue limit', () => {
     expect(useSnackbarStore.getState().current?.text).toBe('one')
     expect(useSnackbarStore.getState().queued.map((entry) => entry.text)).toEqual(['three', 'four'])
   })
+  it('clears both the visible and queued messages on connection reset', () => {
+    showSnackbar('one')
+    showSnackbar('two')
+    useSnackbarStore.getState().clear()
+    expect(useSnackbarStore.getState().current).toBeUndefined()
+    expect(useSnackbarStore.getState().queued).toHaveLength(0)
+  })
 })

@@ -1,5 +1,10 @@
 import { queryKeys } from '@/api/query-keys'
-import { noteInteractionRequested, noteReadState, noteSessionRunning } from '@/state/completion-notices'
+import {
+  noteInteractionRequested,
+  noteReadState,
+  noteSessionFailed,
+  noteSessionRunning,
+} from '@/state/completion-notices'
 import type { MobileStreamEvent, SessionEventItem, SessionEventsPayload } from '@/types/mobile'
 import type { QueryClient } from '@tanstack/react-query'
 import { LIVE_WINDOW_LIMIT, sessionWindow } from './session-window'
@@ -7,14 +12,17 @@ import { LIVE_WINDOW_LIMIT, sessionWindow } from './session-window'
 export function applyMobileStreamEvent(queryClient: QueryClient, event: MobileStreamEvent): void {
   const sessionId = event.sessionId
   switch (event.type) {
-    case 'session/event':
+    case 'session/event': {
       if (sessionId === undefined || event.payload.event === undefined) return
       appendSessionEvent(queryClient, sessionId, event)
+      const failure = turnFailureNotice(event.payload.event)
+      if (failure.failed) void noteSessionFailed(sessionId, failure.detail)
       if (isGoalEvent(event.payload.event))
         void queryClient.invalidateQueries({ queryKey: queryKeys.sessionGoal(sessionId) })
-      if (isGoalEvent(event.payload.event) || isTurnEnd(event.payload.event))
+      if (isGoalEvent(event.payload.event) || isTurnEnd(event.payload.event) || failure.failed)
         void queryClient.invalidateQueries({ queryKey: queryKeys.sessionHistory(sessionId) })
       return
+    }
     case 'session/queue':
       if (sessionId === undefined || !Array.isArray(event.payload.items)) return
       queryClient.setQueryData(queryKeys.sessionQueue(sessionId), { items: event.payload.items })
@@ -142,6 +150,37 @@ function isSessionListQuery(queryKey: readonly unknown[]): boolean {
 function isTurnEnd(value: unknown): boolean {
   if (value === null || typeof value !== 'object' || Array.isArray(value)) return false
   return (value as Record<string, unknown>).type === 'turn/end'
+}
+
+function turnFailureNotice(value: unknown): { failed: boolean; detail?: string } {
+  if (value === null || typeof value !== 'object' || Array.isArray(value)) return { failed: false }
+  const event = value as Record<string, unknown>
+  const data =
+    event.data !== null && typeof event.data === 'object' && !Array.isArray(event.data)
+      ? (event.data as Record<string, unknown>)
+      : event
+  if (event.type === 'turn/error') {
+    const err =
+      data.error !== null && typeof data.error === 'object' ? (data.error as Record<string, unknown>) : undefined
+    const detail =
+      typeof err?.message === 'string' ? err.message : typeof data.message === 'string' ? data.message : undefined
+    return { failed: true, ...(detail === undefined ? {} : { detail }) }
+  }
+  if (event.type === 'turn/end') {
+    const reason =
+      data.reason !== null && typeof data.reason === 'object' && !Array.isArray(data.reason)
+        ? (data.reason as Record<string, unknown>)
+        : undefined
+    if (reason?.kind === 'error') {
+      const err =
+        reason.error !== null && typeof reason.error === 'object' && !Array.isArray(reason.error)
+          ? (reason.error as Record<string, unknown>)
+          : undefined
+      const detail = typeof err?.message === 'string' ? err.message : undefined
+      return { failed: true, ...(detail === undefined ? {} : { detail }) }
+    }
+  }
+  return { failed: false }
 }
 
 /** The first question in a `question/requested` payload, for the notice's detail line. */

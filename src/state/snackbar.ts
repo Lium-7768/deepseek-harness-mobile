@@ -14,6 +14,7 @@ interface SnackbarState {
   queued: readonly SnackbarMessage[]
   show(message: Omit<SnackbarMessage, 'id'>): void
   dismiss(id: number): void
+  clear(): void
 }
 
 /** Milliseconds a message stays before it yields to the next one. */
@@ -55,6 +56,9 @@ export const useSnackbarStore = create<SnackbarState>((set, get) => ({
     if (state.current?.id !== id) return
     const [next, ...rest] = state.queued
     set({ current: next, queued: rest })
+  },
+  clear() {
+    set({ current: undefined, queued: [] })
   },
 }))
 

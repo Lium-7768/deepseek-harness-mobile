@@ -7,6 +7,8 @@ export type { AppearancePreference } from './appearance-logic'
 
 const APPEARANCE_KEY = 'dsh-mobile-appearance-v1'
 
+let initializing: Promise<void> | undefined
+
 interface AppearanceState {
   preference: AppearancePreference
   initialized: boolean
@@ -27,11 +29,20 @@ export const useAppearanceStore = create<AppearanceState>((set, get) => ({
   preference: 'system',
   async initialize(): Promise<void> {
     if (get().initialized) return
-    const encoded = await AsyncStorage.getItem(APPEARANCE_KEY).catch(() => null)
-    set({ initialized: true, preference: isAppearancePreference(encoded) ? encoded : 'system' })
+    if (initializing !== undefined) return initializing
+    initializing = AsyncStorage.getItem(APPEARANCE_KEY)
+      .catch(() => null)
+      .then((encoded) => {
+        if (get().initialized) return
+        set({ initialized: true, preference: isAppearancePreference(encoded) ? encoded : 'system' })
+      })
+      .finally(() => {
+        initializing = undefined
+      })
+    return initializing
   },
   async setPreference(preference: AppearancePreference): Promise<void> {
-    set({ preference })
+    set({ initialized: true, preference })
     await AsyncStorage.setItem(APPEARANCE_KEY, preference).catch(() => undefined)
   },
 }))

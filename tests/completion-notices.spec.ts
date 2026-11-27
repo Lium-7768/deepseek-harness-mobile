@@ -17,9 +17,11 @@ vi.mock('@/state/snackbar', () => ({ showSnackbar: vi.fn() }))
 import {
   noteInteractionRequested,
   noteReadState,
+  noteSessionFailed,
   noteSessionList,
   noteSessionRead,
   noteSessionRunning,
+  prepareNotifications,
   requestCompletionPermission,
   resetCompletionNotices,
   setVisibleSession,
@@ -262,4 +264,72 @@ it('treats an absent flag as "this gateway cannot tell", not as read', async () 
     noteSessionList([{ sessionId: 'from-host', completionUnread: false }])
   })
   expect(badge.mock.calls.at(-1)?.[0]).toBe(0)
+})
+
+describe('second-pass notification regressions', () => {
+  beforeEach(() => {
+    vi.useFakeTimers()
+    resetCompletionNotices()
+  })
+  afterEach(async () => {
+    await cleanup()
+    vi.useRealTimers()
+    vi.clearAllMocks()
+  })
+
+  it('hydrates existing OS permission on cold launch during prepareNotifications', async () => {
+    await act(async () => {
+      await prepareNotifications()
+    })
+    await act(async () => {
+      await finish('cold-start')
+    })
+    expect(scheduleNotificationAsync).toHaveBeenCalledTimes(1)
+  })
+
+  it('clears local unseen count when the session list reports the session read', async () => {
+    const engine = await import('expo-notifications')
+    await act(async () => {
+      await requestCompletionPermission()
+    })
+    await act(async () => {
+      await finish('local-unseen')
+      await vi.advanceTimersByTimeAsync(0)
+    })
+    const badge = engine.setBadgeCountAsync as unknown as { mock: { calls: [number][] } }
+    expect(badge.mock.calls.at(-1)?.[0]).toBe(1)
+    await act(async () => {
+      noteSessionList([{ sessionId: 'local-unseen', completionUnread: false }])
+      await vi.advanceTimersByTimeAsync(0)
+    })
+    expect(badge.mock.calls.at(-1)?.[0]).toBe(0)
+  })
+
+  it('clears hostUnread when resetCompletionNotices runs on disconnect', async () => {
+    const engine = await import('expo-notifications')
+    await act(async () => {
+      noteReadState([{ sessionId: 'old-host', completionUnread: true }])
+      await vi.advanceTimersByTimeAsync(0)
+    })
+    const badge = engine.setBadgeCountAsync as unknown as { mock: { calls: [number][] } }
+    expect(badge.mock.calls.at(-1)?.[0]).toBe(1)
+    await act(async () => {
+      resetCompletionNotices()
+      await vi.advanceTimersByTimeAsync(0)
+    })
+    expect(badge.mock.calls.at(-1)?.[0]).toBe(0)
+  })
+
+  it('suppresses a duplicate done notice after noteSessionFailed handles a failed turn', async () => {
+    await act(async () => {
+      await requestCompletionPermission()
+    })
+    await act(async () => {
+      noteSessionRunning('failed-turn', true)
+      await noteSessionFailed('failed-turn', '模型超时')
+      noteSessionRunning('failed-turn', false)
+    })
+    expect(scheduleNotificationAsync).toHaveBeenCalledTimes(1)
+    expect(scheduleNotificationAsync.mock.calls[0]![0].content.sound).toBe('fail.wav')
+  })
 })

@@ -18,7 +18,10 @@ import { SessionDrawer } from '@/components/session-drawer'
 import { drawerWidthForViewport } from '@/components/session-drawer-logic'
 import { StartupGate } from '@/components/startup-gate'
 import { useNativeQueryFocus } from '@/hooks/use-native-query-focus'
-import { prepareNotifications } from '@/state/completion-notices'
+import { prepareNotifications, resetCompletionNotices } from '@/state/completion-notices'
+import { useReadingPositionStore } from '@/state/reading-positions'
+import { useSessionSelectionStore } from '@/state/session-selection'
+import { useSnackbarStore } from '@/state/snackbar'
 import { useConnectionStore } from '@/state/connection'
 import { mobileConnectionScope } from '@/state/connection-scope'
 import { useAppTheme } from '@/theme/hooks'
@@ -97,12 +100,16 @@ export default function RootLayout(): React.JSX.Element {
 function ConnectionQueries({ children }: { children: React.ReactNode }): React.JSX.Element {
   const [queryClient] = useState(createMobileQueryClient)
   useNativeQueryFocus()
-  useEffect(
-    () => () => {
+  useEffect(() => {
+    void prepareNotifications()
+    return () => {
       queryClient.clear()
       useComposerDraftStore.getState().clear()
-    },
-    [queryClient],
-  )
+      useReadingPositionStore.getState().clear()
+      useSessionSelectionStore.getState().reset()
+      useSnackbarStore.getState().clear()
+      resetCompletionNotices()
+    }
+  }, [queryClient])
   return <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
 }

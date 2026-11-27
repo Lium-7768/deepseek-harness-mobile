@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { MobileEventStreamError, requiresRePair } from '@/components/mobile-sync-bridge-logic'
+import { MobileEventStreamError, requiresRePair } from '@/sync/errors'
 
 describe('mobile event stream authentication recovery', () => {
   it('requires a new pairing only for unauthorized stream responses', () => {

@@ -183,7 +183,7 @@ describe('native sync lifecycle', () => {
   it('parses CRLF frames split across chunks and accepts comment heartbeats', async () => {
     const onEvent = vi.fn()
     const onActivity = vi.fn()
-    const body = new ReadableStream<Uint8Array>({
+    const body = new ReadableStream<Uint8Array<ArrayBuffer>>({
       start(c) {
         for (const chunk of [': heartbeat\r', '\n\r\n', `data: ${ready}\r`, '\n\r', '\n'])
           c.enqueue(encoder.encode(chunk))
@@ -201,5 +201,71 @@ describe('native sync lifecycle', () => {
     expect(onEvent).toHaveBeenCalledTimes(1)
     expect(onEvent.mock.calls[0][0].type).toBe('gateway/ready')
     expect(onActivity).toHaveBeenCalledTimes(5)
+  })
+
+  it('triggers onUnauthorized and stops reconnecting when hydration fails with 401', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (url: string) =>
+        url.endsWith('/running')
+          ? new Response(JSON.stringify({ contractVersion: 1, data: { sessionIds: ['one'] } }))
+          : new Response(JSON.stringify({ error: { code: 'unauthorized', message: 'revoked' } }), { status: 401 }),
+      ),
+    )
+    const onUnauthorized = vi.fn()
+    const fetchStream = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      body: new ReadableStream({
+        start(c) {
+          c.enqueue(encoder.encode(`data: ${ready}\n\n`))
+        },
+      }),
+    })
+    stop = startMobileSync({
+      connection,
+      queryClient: new QueryClient(),
+      fetchStream,
+      setStatus: vi.fn(),
+      markEvent: vi.fn(),
+      onUnauthorized,
+    })
+    await vi.advanceTimersByTimeAsync(0)
+    expect(onUnauthorized).toHaveBeenCalledTimes(1)
+    await vi.advanceTimersByTimeAsync(10_000)
+    expect(fetchStream).toHaveBeenCalledTimes(1)
+  })
+
+  it('skips a vanished 404 session during hydration without tearing down the stream', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (url: string) =>
+        url.endsWith('/running')
+          ? new Response(JSON.stringify({ contractVersion: 1, data: { sessionIds: ['gone'] } }))
+          : new Response(JSON.stringify({ error: { code: 'session-not-found', message: 'missing' } }), { status: 404 }),
+      ),
+    )
+    const setStatus = vi.fn()
+    const fetchStream = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      body: new ReadableStream({
+        start(c) {
+          c.enqueue(encoder.encode(`data: ${ready}\n\n`))
+        },
+      }),
+    })
+    stop = startMobileSync({
+      connection,
+      queryClient: new QueryClient(),
+      fetchStream,
+      setStatus,
+      markEvent: vi.fn(),
+      onUnauthorized: vi.fn(),
+    })
+    await vi.advanceTimersByTimeAsync(0)
+    expect(setStatus).toHaveBeenLastCalledWith('connected')
+    await vi.advanceTimersByTimeAsync(5_000)
+    expect(fetchStream).toHaveBeenCalledTimes(1)
   })
 })

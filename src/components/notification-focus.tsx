@@ -13,7 +13,15 @@ export function NotificationFocus(): null {
   const pathname = usePathname()
   useEffect(() => {
     const match = /^\/session\/([^/]+)$/.exec(pathname)
-    setVisibleSession(match === null ? undefined : decodeURIComponent(match[1]!))
+    setVisibleSession(match === null ? undefined : decodeSessionSegment(match[1]!))
   }, [pathname])
   return null
+}
+
+function decodeSessionSegment(segment: string): string {
+  try {
+    return decodeURIComponent(segment)
+  } catch {
+    return segment
+  }
 }

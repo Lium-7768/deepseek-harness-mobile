@@ -5,7 +5,7 @@ import {
   noticeIdentifier,
   shouldNotice,
   type NoticeKind,
-} from '../src/components/notification-content.ts'
+} from '../src/state/notification-content.ts'
 
 const KINDS: NoticeKind[] = ['ask', 'approve', 'done', 'failed', 'plan']
 

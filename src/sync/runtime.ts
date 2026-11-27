@@ -1,8 +1,9 @@
-import { MobileApi, mobileAuthorization } from '@/api/mobile-api'
+import { MobileApi, MobileApiError, mobileAuthorization } from '@/api/mobile-api'
 import { queryKeys } from '@/api/query-keys'
-import type { MobileConnection, MobileSyncStatus, SessionEventItem, SessionEventsPayload } from '@/types/mobile'
+import type { MobileConnection, MobileSyncStatus, SessionEventsPayload } from '@/types/mobile'
 import type { QueryClient } from '@tanstack/react-query'
 import { requiresRePair } from './errors'
+import { mergeEventItems } from './event-items'
 import { consumeEventStream, type StreamFetch } from './event-stream'
 import { applyMobileStreamEvent } from './query-events'
 import { sessionWindow } from './session-window'
@@ -50,6 +51,16 @@ export function startMobileSync(options: SyncOptions): () => void {
         reconnect()
       }, delay)
     }
+    const failUnauthorized = (): void => {
+      clearTimeout(watchdog)
+      if (!valid()) return
+      stopped = true
+      controller.abort()
+      setStatus('disconnected')
+      options.onUnauthorized()
+    }
+    const isUnauthorized = (error: unknown): boolean =>
+      requiresRePair(error) || (error instanceof MobileApiError && error.kind === 'credentials')
     const reconnect = (): void => {
       clearTimeout(watchdog)
       if (stopped || active !== controller || retry !== undefined) return
@@ -69,7 +80,7 @@ export function startMobileSync(options: SyncOptions): () => void {
         const subscription = await api.createSessionSubscription(sessionId, cursor)
         if (!valid()) return
         queryClient.setQueryData<SessionEventsPayload>(queryKeys.sessionEvents(sessionId), (current) => {
-          const window = sessionWindow(mergeItems(current?.items ?? [], subscription.snapshot.items))
+          const window = sessionWindow(mergeEventItems(current?.items ?? [], subscription.snapshot.items))
           return {
             ...current,
             since: Math.max(current?.since ?? 0, subscription.snapshotSeq),
@@ -91,9 +102,16 @@ export function startMobileSync(options: SyncOptions): () => void {
         if (!valid()) return
         subscribed.add(sessionId)
         void queryClient.invalidateQueries({ queryKey: queryKeys.sessionHistory(sessionId) })
-      } catch {
+      } catch (error) {
+        if (!valid()) return
+        if (isUnauthorized(error)) {
+          failUnauthorized()
+          return
+        }
+        // A session that disappeared before subscription does not invalidate the shared stream.
+        if (error instanceof MobileApiError && error.kind === 'session-not-found') return
         // An incomplete snapshot/activation must be retried through a new stream, never marked subscribed.
-        if (valid()) reconnect()
+        reconnect()
       } finally {
         pending.delete(sessionId)
       }
@@ -127,8 +145,10 @@ export function startMobileSync(options: SyncOptions): () => void {
                 await Promise.allSettled(ids.slice(start, start + HYDRATE_CONCURRENCY).map((id) => hydrate(id)))
               }
             })
-            .catch(() => {
-              if (valid()) reconnect()
+            .catch((error) => {
+              if (!valid()) return
+              if (isUnauthorized(error)) failUnauthorized()
+              else reconnect()
             })
         }
         if (event.type === 'host/session-status' && event.sessionId && event.payload.running === true)
@@ -144,12 +164,8 @@ export function startMobileSync(options: SyncOptions): () => void {
       })
       .catch((error) => {
         if (!valid()) return
-        if (requiresRePair(error)) {
-          stopped = true
-          controller.abort()
-          setStatus('disconnected')
-          options.onUnauthorized()
-        } else reconnect()
+        if (isUnauthorized(error)) failUnauthorized()
+        else reconnect()
       })
       .finally(() => clearTimeout(watchdog))
   }
@@ -160,10 +176,4 @@ export function startMobileSync(options: SyncOptions): () => void {
     active?.abort()
     setStatus('disconnected')
   }
-}
-
-function mergeItems(existing: SessionEventItem[], incoming: SessionEventItem[]): SessionEventItem[] {
-  const items = new Map<number | SessionEventItem, SessionEventItem>()
-  for (const item of [...existing, ...incoming]) items.set(item.seq ?? item, item)
-  return [...items.values()].sort((a, b) => (a.seq ?? 0) - (b.seq ?? 0))
 }
