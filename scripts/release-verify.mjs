@@ -23,11 +23,14 @@ const iosVersions = xcodeLines
   .filter(line => line.includes('MARKETING_VERSION = '))
   .map(line => line.split(' = ')[1].replace(';', ''))
 const uniqueIosVersions = [...new Set(iosVersions)].join(',')
+const plistMatch = read('ios/DeepSeekHarness/Info.plist').match(/<key>CFBundleShortVersionString<\/key>\s*<string>([^<]+)<\/string>/)
+const iosPlistVersion = plistMatch ? plistMatch[1] : ''
 const values = [
   ['package.json', packageVersion],
   ['app.json', appVersion],
   ['android/app/build.gradle', androidVersion],
   ['ios/DeepSeekHarness.xcodeproj/project.pbxproj', uniqueIosVersions],
+  ['ios/DeepSeekHarness/Info.plist', iosPlistVersion],
 ]
 for (const [label, actual] of values) {
   if (actual !== version) {

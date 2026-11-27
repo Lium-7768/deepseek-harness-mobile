@@ -24,17 +24,25 @@
     },
     "plugins": [
       "expo-router",
-      "expo-secure-store",
+      [
+        "expo-secure-store",
+        {
+          "faceIDPermission": false
+        }
+      ],
       [
         "expo-image-picker",
         {
-          "photosPermission": "允许 DeepSeek Harness 访问照片，以便将图片作为消息附件发送给当前会话。"
+          "photosPermission": "允许 DeepSeek Harness 访问照片，以便将图片作为消息附件发送给当前会话。",
+          "microphonePermission": false
         }
       ],
       [
         "expo-camera",
         {
-          "cameraPermission": "允许 DeepSeek Harness 使用相机扫描桌面端配对二维码或拍照作为会话附件。"
+          "cameraPermission": "允许 DeepSeek Harness 使用相机扫描桌面端配对二维码或拍照作为会话附件。",
+          "microphonePermission": false,
+          "recordAudioAndroid": false
         }
       ],
       "expo-sharing",

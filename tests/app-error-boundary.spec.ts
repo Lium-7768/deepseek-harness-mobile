@@ -35,9 +35,9 @@ afterEach(async () => {
 })
 
 describe('app error boundary', () => {
-  const texts = (renderer: ReturnType<typeof render>): string[] =>
+  const texts = (renderer: Awaited<ReturnType<typeof render>>): string[] =>
     renderer.container.queryAll((node) => node.type === 'Text').map((node) => String(node.props.children))
-  const reload = (renderer: ReturnType<typeof render>) =>
+  const reload = (renderer: Awaited<ReturnType<typeof render>>) =>
     renderer.container.queryAll((node) => node.props.accessibilityLabel === '重新加载')[0]!
 
   it('renders the children when nothing throws', async () => {

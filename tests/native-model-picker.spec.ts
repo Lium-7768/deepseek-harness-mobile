@@ -42,7 +42,7 @@ vi.mock('@/theme/hooks', async () => {
 vi.mock('@/components/native-icon', () => ({ NativeIcon: 'Icon' }))
 vi.mock('@/components/native-anchored-panel', async () => {
   const { createElement } = await import('react')
-  return { NativeAnchoredPanel: (props: unknown) => createElement('Panel', props) }
+  return { NativeAnchoredPanel: (props: Record<string, unknown>) => createElement('Panel', props) }
 })
 import { NativeModelPicker } from '@/components/native-model-picker'
 import { NativeEffortSlider } from '@/components/native-effort-slider'

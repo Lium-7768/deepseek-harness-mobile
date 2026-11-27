@@ -60,6 +60,7 @@ jobs:
       - run: pnpm audit --prod
       - run: pnpm test
       - run: pnpm typecheck
+      - run: pnpm lint
       - run: pnpm exec expo export --platform ios --output-dir dist/release/ios-export
       - run: pnpm exec expo export --platform android --output-dir dist/release/android-export
       - name: Create release manifest

@@ -1,3 +1,4 @@
+import appConfig from '../../app.json'
 import { format, t as message } from '@/locale'
 import { isGoalRef, isGoalView } from '@/api/goal-payload'
 import type {
@@ -909,7 +910,7 @@ function accountClientMetadata(): { version: string; locale: string; timezoneOff
     locale: Intl.DateTimeFormat().resolvedOptions().locale,
     // `getTimezoneOffset` counts minutes west of UTC; the Host expects the same sign.
     timezoneOffsetSeconds: -new Date().getTimezoneOffset() * 60,
-    version: '0.1.0',
+    version: appConfig.expo.version,
   }
 }
 
