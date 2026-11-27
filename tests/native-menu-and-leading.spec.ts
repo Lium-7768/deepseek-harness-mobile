@@ -27,6 +27,9 @@ vi.mock('@/components/native-anchored-panel', async () => {
 })
 
 import { NativeMenuPanel } from '@/components/native-menu-panel'
+import { NativeMentionMenu } from '@/components/native-mention-menu'
+import { NativeSessionCatalogSheet } from '@/components/native-session-catalog-sheet'
+import { t as message } from '@/locale'
 import { ConversationLeadingBlocks } from '@/features/session/conversation-leading-blocks'
 
 afterEach(cleanup)
@@ -77,6 +80,52 @@ describe('NativeMenuPanel viewport sizing', () => {
       (node) => node.type === 'View' && node.props.style?.paddingVertical === 8,
     )[0]!
     expect(menu.props.style.maxHeight).toBeUndefined()
+    await act(async () => undefined)
+  })
+})
+
+describe('NativeMentionMenu debounce loading state', () => {
+  it('shows loading instead of empty while the initial lookup debounce is pending', async () => {
+    const lookup = vi.fn(() => new Promise<{ files: []; sessions: [] }>(() => undefined))
+    const renderer = await render(
+      createElement(NativeMentionMenu, {
+        text: '@app',
+        caret: 4,
+        lookup,
+        onClose: vi.fn(),
+        onPick: vi.fn(),
+      }),
+    )
+    const texts = renderer.container
+      .queryAll((node) => node.type === 'Text')
+      .map((node) => [].concat(node.props.children as never).join(''))
+    expect(texts).toContain(message('mention.loading'))
+    expect(texts).not.toContain(message('mention.empty'))
+    await act(async () => undefined)
+  })
+})
+
+describe('NativeSessionCatalogSheet localization', () => {
+  it('localizes diagnostic reasons and failed/stopping job statuses', async () => {
+    const renderer = await render(
+      createElement(NativeSessionCatalogSheet, {
+        open: true,
+        onClose: vi.fn(),
+        onOpenSubagent: vi.fn(),
+        subagents: [{ kind: 'diagnostic', id: 'child-1', reason: 'corrupt' }],
+        jobs: [
+          { id: 'j1', kind: 'shell', label: 'build', status: 'failed', startedAt: 1_700_000_000_000 },
+          { id: 'j2', kind: 'shell', label: 'watch', status: 'stopping', startedAt: 1_700_000_000_000 },
+        ],
+      }),
+    )
+    const texts = renderer.container
+      .queryAll((node) => node.type === 'Text')
+      .map((node) => [].concat(node.props.children as never).join(''))
+    expect(texts.some((t) => t.includes('记录损坏'))).toBe(true)
+    expect(texts.some((t) => t.includes('corrupt'))).toBe(false)
+    expect(texts).toContain('已失败')
+    expect(texts).toContain('正在停止')
     await act(async () => undefined)
   })
 })

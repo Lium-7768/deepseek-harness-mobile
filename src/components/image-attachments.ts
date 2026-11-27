@@ -22,21 +22,27 @@ export async function prepareAttachment(asset: {
 }): Promise<DraftImage> {
   const engine = await import('expo-image-manipulator')
   const context = engine.ImageManipulator.manipulate(asset.uri)
-  const target = resizeTargetFor(asset.width ?? 0, asset.height ?? 0)
-  if (target !== undefined) context.resize({ width: target.width })
-  const rendered = await context.renderAsync()
-  const saved = await rendered.saveAsync({
-    base64: true,
-    compress: ATTACHMENT_QUALITY,
-    format: engine.SaveFormat.JPEG,
-  })
-  if (saved.base64 === undefined) throw new Error('image-encode-missing')
-  return {
-    bytes: base64Bytes(saved.base64),
-    data: saved.base64,
-    mediaType: 'image/jpeg',
-    ...(asset.name === undefined ? {} : { name: asset.name }),
-    uri: saved.uri,
+  let rendered: Awaited<ReturnType<typeof context.renderAsync>> | undefined
+  try {
+    const target = resizeTargetFor(asset.width ?? 0, asset.height ?? 0)
+    if (target !== undefined) context.resize({ width: target.width })
+    rendered = await context.renderAsync()
+    const saved = await rendered.saveAsync({
+      base64: true,
+      compress: ATTACHMENT_QUALITY,
+      format: engine.SaveFormat.JPEG,
+    })
+    if (saved.base64 === undefined) throw new Error('image-encode-missing')
+    return {
+      bytes: base64Bytes(saved.base64),
+      data: saved.base64,
+      mediaType: 'image/jpeg',
+      ...(asset.name === undefined ? {} : { name: asset.name }),
+      uri: saved.uri,
+    }
+  } finally {
+    rendered?.release?.()
+    context.release?.()
   }
 }
 

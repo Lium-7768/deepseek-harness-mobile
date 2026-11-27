@@ -93,6 +93,7 @@ export function SessionHeaderActions({
         <NativeIcon name="ellipsis-outline" size={18} color={theme.colors.inkMuted} />
       </Pressable>
       <NativeMenuPanel
+        actionMenu
         groups={[{ options: menu.map(({ onSelect: _onSelect, ...row }) => row) }]}
         onClose={() => setMenuOpen(false)}
         onSelect={(value) => {

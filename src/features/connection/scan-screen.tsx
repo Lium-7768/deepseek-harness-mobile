@@ -10,8 +10,11 @@ import type { MobilePairingQrPayload } from '@/types/mobile'
 import { CameraView, useCameraPermissions } from 'expo-camera'
 import { router } from 'expo-router'
 import { useEffect, useRef, useState } from 'react'
-import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native'
+import { ActivityIndicator, Linking, Pressable, StyleSheet, Text, View } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
+
+/** Cooldown before re-attempting the exact same failed QR payload, preventing camera frame floods. */
+const FAILED_SCAN_COOLDOWN_MS = 2_000
 
 /** Scans a desktop-created one-time pairing QR code and persists only the redeemed device credential. */
 export default function ScanPairingScreen(): React.JSX.Element {
@@ -22,12 +25,15 @@ export default function ScanPairingScreen(): React.JSX.Element {
   const [error, setError] = useState('')
   const [redeeming, setRedeeming] = useState(false)
   const scanLocked = useRef(false)
+  const lastFailed = useRef<{ at: number; data: string } | undefined>(undefined)
   const request = useRef<AbortController | undefined>(undefined)
   useEffect(() => () => request.current?.abort(), [])
   const setConnection = useConnectionStore((state) => state.setConnection)
 
   const scan = async (data: string): Promise<void> => {
     if (scanLocked.current || redeeming) return
+    const previous = lastFailed.current
+    if (previous !== undefined && previous.data === data && Date.now() - previous.at < FAILED_SCAN_COOLDOWN_MS) return
     scanLocked.current = true
     setError('')
     setRedeeming(true)
@@ -37,14 +43,16 @@ export default function ScanPairingScreen(): React.JSX.Element {
       const payload = parsePairingPayload(data)
       const connection = await redeemMobilePairing(payload, { signal: controller.signal })
       if (controller.signal.aborted) return
+      lastFailed.current = undefined
       await setConnection(connection)
       router.replace('/workspace')
     } catch (value) {
       if (controller.signal.aborted) return
+      lastFailed.current = { at: Date.now(), data }
       setError(mobileErrorMessage(value, message('scan.invalidCode')))
       scanLocked.current = false
     } finally {
-      setRedeeming(false)
+      if (!controller.signal.aborted) setRedeeming(false)
     }
   }
 
@@ -79,7 +87,7 @@ export default function ScanPairingScreen(): React.JSX.Element {
             <NativeActionButton
               label={message('scan.allowCamera')}
               icon="link-outline"
-              onPress={() => void requestPermission()}
+              onPress={() => void (permission.canAskAgain === false ? Linking.openSettings() : requestPermission())}
               style={styles.fullWidth}
             />
           </View>

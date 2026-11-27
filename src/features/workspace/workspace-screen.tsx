@@ -5,7 +5,7 @@ import { NativeBrandMark } from '@/components/native-brand-mark'
 import { NativeIcon } from '@/components/native-icon'
 import { NativeEmptyState } from '@/components/native-empty-state'
 import { NativeMenuPanel } from '@/components/native-menu-panel'
-import { requireClient } from '@/components/route-params'
+import { requireClient, withErrorContext } from '@/components/route-params'
 import { agentPresetLabel, agentPresetName, readPermissionSelect } from '@/components/session-composer-logic'
 import {
   selectedSessionTarget,
@@ -19,13 +19,14 @@ import { ErrorNotice } from '@/components/session-screen-state'
 import { WorkspaceShell } from '@/components/workspace-shell'
 import { workspaceKeyboardVerticalOffset } from '@/components/workspace-shell-logic'
 import { format, t as message } from '@/locale'
+import { requestCompletionPermission } from '@/state/completion-notices'
 import { useConnectionStore } from '@/state/connection'
 import { useSessionSelectionStore } from '@/state/session-selection'
 import type { AppTheme } from '@/theme'
 import { useAppTheme, useThemedStyles } from '@/theme/hooks'
 import { MONOSPACE_FONT } from '@/theme/platform'
-import type { MobileAgentPresetEntry, MobilePromptContent } from '@/types/mobile'
-import { useQuery, useQueryClient } from '@tanstack/react-query'
+import type { MobileAgentPresetEntry, MobilePromptContent, SessionEventsPayload } from '@/types/mobile'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { router, useNavigation } from 'expo-router'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Alert, KeyboardAvoidingView, ScrollView, Platform, Pressable, StyleSheet, Text, View } from 'react-native'
@@ -118,13 +119,51 @@ export default function WorkspaceScreen(): React.JSX.Element {
       Alert.alert(message('workspace.newSessionFailedTitle'), mobileErrorMessage(error, message('common.retry')))
     }
   }
+  const sendMutation = useMutation({
+    mutationFn: async ({
+      content,
+      targetConnection,
+      targetSessionId,
+    }: {
+      content: MobilePromptContent
+      targetConnection: NonNullable<typeof connection>
+      targetSessionId: string
+    }) => {
+      await new MobileApi(targetConnection).sendMessage(targetSessionId, content)
+      return targetSessionId
+    },
+    onSuccess: (targetSessionId) => {
+      void requestCompletionPermission()
+      queryClient.setQueryData<SessionEventsPayload>(queryKeys.sessionEvents(targetSessionId), (current) => ({
+        ...current,
+        since: current?.since ?? 0,
+        items: current?.items ?? [],
+        status: 'running',
+      }))
+      void Promise.all([
+        queryClient.invalidateQueries({ queryKey: queryKeys.sessionHistory(targetSessionId) }),
+        queryClient.invalidateQueries({ queryKey: queryKeys.sessionEvents(targetSessionId) }),
+        queryClient.invalidateQueries({ queryKey: queryKeys.sessionQueue(targetSessionId) }),
+        queryClient.invalidateQueries({ queryKey: queryKeys.sessionJobs(targetSessionId) }),
+      ])
+      router.push({ pathname: '/session/[sessionId]', params: { sessionId: targetSessionId } })
+    },
+    onError: (error) =>
+      Alert.alert(
+        message('conversation.sendFailedTitle'),
+        withErrorContext(message('conversation.sendFailedBody'), error),
+      ),
+  })
   const send = async (content: MobilePromptContent): Promise<void> => {
     if (selectedSession === undefined || !connection) {
       Alert.alert(message('workspace.pickSession'), message('workspace.pickSessionFirst'))
-      return
+      throw new Error(message('workspace.pickSessionFirst'))
     }
-    await new MobileApi(connection).sendMessage(selectedSession.sessionId, content)
-    router.push({ pathname: '/session/[sessionId]', params: { sessionId: selectedSession.sessionId } })
+    await sendMutation.mutateAsync({
+      content,
+      targetConnection: connection,
+      targetSessionId: selectedSession.sessionId,
+    })
   }
 
   return (
@@ -227,7 +266,8 @@ export default function WorkspaceScreen(): React.JSX.Element {
               permissionLocked={selections.permissionLocked}
               permissions={readPermissionSelect(selectedSessionHistory.data?.projections?.values.permissions)}
               sessionId={selectedSession?.sessionId}
-              disabled={!connection || sessions.isFetching || sessions.isError || selectedSession === undefined}
+              sending={sendMutation.isPending}
+              disabled={!connection || sessions.isPending || sessions.isError || selectedSession === undefined}
             />
           </View>
         </ScrollView>

@@ -49,8 +49,14 @@ export function NativeAnchoredPanel({
     }
     if (!viewportRef.current) return
     viewportRef.current.measureInWindow((viewportX, viewportY) => {
-      anchorRef.current?.measureInWindow((x, y, width, height) => {
-        setAnchor(width > 0 && height > 0 ? { x: x - viewportX, y: y - viewportY, width, height } : undefined)
+      const node = anchorRef.current
+      if (!node) {
+        setAnchor(undefined)
+        setMeasured(true)
+        return
+      }
+      node.measureInWindow((x, y, w, h) => {
+        setAnchor(w > 0 && h > 0 ? { x: x - viewportX, y: y - viewportY, width: w, height: h } : undefined)
         setMeasured(true)
       })
     })

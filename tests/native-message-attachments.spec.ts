@@ -23,6 +23,9 @@ vi.mock('@/components/native-icon', () => ({ NativeIcon: 'Icon' }))
 vi.mock('expo-image', () => ({ Image: 'ExpoImage' }))
 vi.mock('expo-file-system', () => ({ File: vi.fn(), Paths: { cache: '/tmp' } }))
 vi.mock('expo-sharing', () => ({ isAvailableAsync: vi.fn(async () => true), shareAsync: vi.fn() }))
+vi.mock('react-native-safe-area-context', () => ({
+  useSafeAreaInsets: () => ({ top: 59, bottom: 34, left: 0, right: 0 }),
+}))
 
 import { darkTheme } from '@/theme'
 import { NativeMessageAttachments } from '@/components/native-message-attachments'
@@ -97,9 +100,21 @@ describe('NativeMessageAttachments dark overlay contrast', () => {
       (node) => node.type === 'Text' && node.props.children === '分享或保存',
     )[0]!
 
+    const closeButton = renderer.container.queryAll(
+      (node) => node.type === 'Pressable' && node.props.accessibilityLabel === '关闭图片预览',
+    )[0]!
+    const footer = renderer.container.queryAll(
+      (node) =>
+        node.type === 'View' &&
+        Array.isArray(node.props.style) &&
+        node.props.style.some((s: Record<string, unknown>) => s && 'paddingBottom' in s),
+    )[0]!
+
     expect(closeIcon.props.color).toBe(darkTheme.colors.onScrim)
     expect(shareIcon.props.color).toBe(darkTheme.colors.onScrim)
     expect(caption.props.style.color).toBe(darkTheme.colors.onScrim)
     expect(shareLabel.props.style.color).toBe(darkTheme.colors.onScrim)
+    expect(closeButton.props.style).toEqual(expect.arrayContaining([expect.objectContaining({ right: 16, top: 67 })]))
+    expect(footer.props.style).toEqual(expect.arrayContaining([expect.objectContaining({ paddingBottom: 34 })]))
   })
 })

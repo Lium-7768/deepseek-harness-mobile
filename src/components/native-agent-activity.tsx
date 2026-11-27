@@ -14,7 +14,7 @@ type MobileChildSubagentEntry = Extract<MobileSubagentEntry, { kind: 'child' }>
 type MobileDiagnosticReason = Extract<MobileSubagentEntry, { kind: 'diagnostic' }>['reason']
 
 /** Maps the Host's diagnostic token onto the localized reason the row prints. */
-function diagnosticReason(reason: MobileDiagnosticReason): string {
+export function diagnosticReason(reason: MobileDiagnosticReason): string {
   if (reason === 'corrupt') return message('activity.subagentReasonCorrupt')
   if (reason === 'unsupported') return message('activity.subagentReasonUnsupported')
   return message('activity.subagentReasonUnavailable')

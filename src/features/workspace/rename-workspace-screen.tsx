@@ -11,7 +11,7 @@ import type { AppTheme } from '@/theme'
 import { useAppTheme, useThemedStyles } from '@/theme/hooks'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { router, useLocalSearchParams } from 'expo-router'
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Alert, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
@@ -24,10 +24,14 @@ export default function RenameWorkspaceScreen(): React.JSX.Element {
     workspaceId?: string | string[]
   }>()
   const workspaceId = firstParam(rawWorkspaceId)
+  const routeTitle = firstParam(rawTitle)
   const connection = useConnectionStore((value) => value.connection)
   const queryClient = useQueryClient()
   const insets = useSafeAreaInsets()
-  const [title, setTitle] = useState(firstParam(rawTitle) ?? '')
+  const [title, setTitle] = useState(routeTitle ?? '')
+  useEffect(() => {
+    setTitle(routeTitle ?? '')
+  }, [routeTitle, workspaceId])
   const client = useMemo(() => (connection ? new MobileApi(connection) : undefined), [connection])
   const rename = useMutation({
     mutationFn: async () => {

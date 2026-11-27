@@ -71,12 +71,6 @@ export const composer = {
   stop: '停止当前任务',
   stopping: '正在停止当前任务',
 
-  /** `{label}` is the current permission preset's name. */
-  selectPermission: '选择权限：{label}',
-  permissionLocked: '工作区写入权限由桌面端控制',
-  /** `{label}` is the current agent mode's name. */
-  selectMode: '选择智能体模式：{label}',
-  modeNeedsSession: '智能体模式需先选择会话',
   /** `{label}` is the current model's name. */
   selectModel: '选择模型：{label}',
   modelNeedsSession: '模型需先选择会话',

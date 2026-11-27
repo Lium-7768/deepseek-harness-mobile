@@ -1,8 +1,8 @@
 import { format, t as message } from '@/locale'
+import type { SessionOrder } from '@/types/drawer'
 import type { MobileWorkspace, SessionSummary } from '@/types/mobile'
 
-/** The two session ordering modes supported by the drawer model. */
-export type SessionOrder = 'manual' | 'updated'
+export type { SessionOrder }
 
 /** A row rendered by the drawer's workspace and session tree. */
 export type SessionDrawerRow =

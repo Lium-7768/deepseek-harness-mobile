@@ -152,7 +152,7 @@ export function SessionItem({
         accessibilityLabel={format('drawer.openSession', { title })}
         accessibilityState={{ selected }}
         delayLongPress={350}
-        onLongPress={() => setMenuOpen(true)}
+        onLongPress={blank ? undefined : () => setMenuOpen(true)}
         onPress={onPress}
         hitSlop={{ top: 6, bottom: 6 }}
         style={({ pressed }) => [

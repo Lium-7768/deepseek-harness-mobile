@@ -75,7 +75,11 @@ const byLabel = (renderer: RenderResult, label: string) =>
 /** Test instances expose `.parent`; walk it so an ancestor can be asserted by identity. */
 const parentsOf = (node: { parent: unknown } | null): unknown[] => {
   const trail: unknown[] = []
-  for (let current = node?.parent ?? null; current !== null; current = (current as { parent: unknown }).parent) {
+  for (
+    let current: unknown = node?.parent ?? null;
+    current !== null;
+    current = (current as { parent: unknown }).parent
+  ) {
     trail.push(current)
   }
   return trail
@@ -139,5 +143,31 @@ describe('composer attachments', () => {
     // The desktop `.remove` carries no ring of its own.
     expect(resolvedStyle(remove)).not.toHaveProperty('borderWidth')
     expect(remove.props.hitSlop).toBe(12)
+  })
+
+  it('reports count overflow once without falsely flagging trimmed items as over byte budget', async () => {
+    mocks.pick.mockResolvedValue({
+      assets: Array.from({ length: 6 }, (_, index) => ({
+        base64: 'AAAA',
+        fileName: `shot-${index}.png`,
+        mimeType: 'image/png',
+        uri: `file:///shot-${index}.png`,
+      })),
+      canceled: false,
+    })
+    const renderer = await render(
+      createElement(WorkspaceComposer, {
+        onSend: noop,
+        placeholder: 'Ask anything',
+      } as never),
+    )
+    await act(() => fireEvent.press(byLabel(renderer, '添加图片或选择操作')))
+    await act(() => fireEvent.press(byLabel(renderer, '文件')))
+    const buttons = mocks.alert.mock.calls[0]![2] as Array<{ text: string; onPress?: () => void }>
+    mocks.alert.mockClear()
+    await act(() => buttons.find((button) => button.text === '从照片库选择')!.onPress!())
+    // Only the count-overflow alert fires; no spurious size-budget alert follows.
+    expect(mocks.alert).toHaveBeenCalledTimes(1)
+    expect(mocks.alert.mock.calls[0]![0]).toBe('无法添加图片')
   })
 })

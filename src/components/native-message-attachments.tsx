@@ -11,6 +11,7 @@ import * as Sharing from 'expo-sharing'
 import { useMemo, useState } from 'react'
 import { Image } from 'expo-image'
 import { ActivityIndicator, Alert, Modal, Pressable, StyleSheet, Text, View } from 'react-native'
+import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
 type Props = {
   api: MobileApi
@@ -54,6 +55,7 @@ function NativeMessageAttachment({
 }): React.JSX.Element {
   const theme = useAppTheme()
   const styles = useThemedStyles(makeStyles)
+  const insets = useSafeAreaInsets()
   const [open, setOpen] = useState(false)
   const [sharing, setSharing] = useState(false)
   const image = useQuery({
@@ -131,7 +133,10 @@ function NativeMessageAttachment({
               accessibilityRole="button"
               accessibilityLabel={message('attachment.closePreview')}
               onPress={() => setOpen(false)}
-              style={styles.closeButton}
+              style={[
+                styles.closeButton,
+                { right: Math.max(insets.right + 16, 16), top: Math.max(insets.top + 8, 16) },
+              ]}
             >
               <NativeIcon name="close-outline" size={22} color={theme.colors.onScrim} />
             </Pressable>
@@ -142,7 +147,7 @@ function NativeMessageAttachment({
               source={{ uri }}
               style={styles.fullImage}
             />
-            <View style={styles.previewFooter}>
+            <View style={[styles.previewFooter, { paddingBottom: Math.max(insets.bottom, 16) }]}>
               <Text numberOfLines={1} style={styles.caption}>
                 {label}
               </Text>
@@ -258,16 +263,14 @@ const makeStyles = (theme: AppTheme) =>
       height: theme.touch.iconButton,
       justifyContent: 'center',
       position: 'absolute',
-      right: 16,
-      top: 58,
       width: theme.touch.iconButton,
+      zIndex: 2,
     },
     fullImage: { flex: 1, width: '100%' },
     previewFooter: {
       alignItems: 'center',
       flexDirection: 'row',
       gap: 10,
-      marginBottom: 16,
       maxWidth: '100%',
       width: '100%',
     },

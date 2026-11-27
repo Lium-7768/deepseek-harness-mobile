@@ -1,4 +1,4 @@
-import type { DrawerViewPreferences } from '@/components/drawer-view-logic'
+import type { DrawerViewPreferences } from '@/types/drawer'
 import { File, Paths } from 'expo-file-system'
 import { create } from 'zustand'
 

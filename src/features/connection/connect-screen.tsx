@@ -21,11 +21,13 @@ export default function ConnectScreen(): React.JSX.Element {
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
   const [saving, setSaving] = useState(false)
+  const submitting = useRef(false)
   const request = useRef<AbortController | undefined>(undefined)
   useEffect(() => () => request.current?.abort(), [])
   const setConnection = useConnectionStore((state) => state.setConnection)
   const connect = async (): Promise<void> => {
-    if (saving) return
+    if (submitting.current || saving) return
+    submitting.current = true
     setError('')
     const controller = new AbortController()
     request.current = controller
@@ -42,7 +44,8 @@ export default function ConnectScreen(): React.JSX.Element {
       if (controller.signal.aborted) return
       setError(mobileErrorMessage(value, message('connect.failed')))
     } finally {
-      setSaving(false)
+      submitting.current = false
+      if (!controller.signal.aborted) setSaving(false)
     }
   }
   return (

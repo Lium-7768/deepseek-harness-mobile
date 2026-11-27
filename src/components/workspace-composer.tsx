@@ -172,11 +172,14 @@ export function WorkspaceComposer({
   const [mentionMenuDismissed, setMentionMenuDismissed] = useState(false)
   const [draftImages, setDraftImages] = useState<DraftImage[]>([])
   const modelTriggerRef = useRef<View>(null)
+  const sendingRef = useRef(false)
   const hasContent = text.trim() !== '' || draftImages.length > 0
   const action = composerPrimaryAction({ cancelling, disabled, hasText: hasContent, offline, running, sending })
   const send = async (): Promise<void> => {
     const value = text.trim()
-    if (action.kind !== 'send' || action.disabled || !hasContent) return
+    if (sendingRef.current || action.kind !== 'send' || action.disabled || !hasContent) return
+    sendingRef.current = true
+    const sentImages = new Set(draftImages)
     const content: MobilePromptContent = [
       ...(value ? [{ type: 'text' as const, text: value }] : []),
       ...draftImages.map(({ data, mediaType, name }) => ({
@@ -190,9 +193,11 @@ export function WorkspaceComposer({
       tapFeedback()
       await onSend(content)
       useComposerDraftStore.getState().clearSentDraft(draftKey, text)
-      setDraftImages([])
+      setDraftImages((current) => current.filter((image) => !sentImages.has(image)))
     } catch {
       // The request owner presents the error; keeping the draft makes retry safe.
+    } finally {
+      sendingRef.current = false
     }
   }
   /**
@@ -218,8 +223,9 @@ export function WorkspaceComposer({
           skipped: assets.length - room,
         }),
       )
+    const sliced = assets.slice(0, room)
     const prepared = await Promise.all(
-      assets.slice(0, room).map((asset) =>
+      sliced.map((asset) =>
         prepareAttachment({
           ...(asset.width === null ? {} : { width: asset.width }),
           ...(asset.height === null ? {} : { height: asset.height }),
@@ -234,7 +240,7 @@ export function WorkspaceComposer({
       return
     }
     const accepted: DraftImage[] = []
-    let skipped = assets.length - usable.length
+    let skipped = sliced.length - usable.length
     for (const image of usable) {
       if (attachmentsWithinBudget([...draftImages, ...accepted, image])) accepted.push(image)
       else skipped += 1
@@ -756,7 +762,14 @@ const makeStyles = (theme: AppTheme) =>
     footer: { flexDirection: 'column' },
     // `ComposerAttachments .rail`: `2px 10px 0` with a -6 bottom pull, so the
     // thumbnails sit closer to the draft than the card's own 12px gap.
-    previewRow: { flexDirection: 'row', gap: 10, marginBottom: -6, paddingHorizontal: 10, paddingTop: 2 },
+    previewRow: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      gap: 10,
+      marginBottom: -6,
+      paddingHorizontal: 10,
+      paddingTop: 2,
+    },
     // The encoded size sits at the end of the rail, level with the thumbnails' baseline:
     // it answers the only question a phone can raise about an attachment before sending.
     previewSize: {

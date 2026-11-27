@@ -27,7 +27,7 @@ import type {
 } from '@/types/mobile'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { router, useLocalSearchParams } from 'expo-router'
-import { memo, useState } from 'react'
+import { memo, useCallback, useMemo, useState } from 'react'
 import {
   Alert,
   FlatList,
@@ -72,7 +72,7 @@ export default function InteractionsScreen(): React.JSX.Element {
   const insets = useSafeAreaInsets()
   useRouteSessionSelection(typeof sessionId === 'string' ? sessionId : undefined)
   const connection = useConnectionStore((state) => state.connection)
-  const client = connection === undefined ? undefined : new MobileApi(connection)
+  const client = useMemo(() => (connection === undefined ? undefined : new MobileApi(connection)), [connection])
   const queryClient = useQueryClient()
   const interactions = useQuery({
     queryKey: queryKeys.sessionInteractions(sessionId),
@@ -96,6 +96,18 @@ export default function InteractionsScreen(): React.JSX.Element {
         withErrorContext(message('interactions.respondFailedBody'), error),
       ),
   })
+  const respondMutate = respond.mutate
+  const handleRespond = useCallback<RespondHandler>(
+    (rpcId, result) => respondMutate({ rpcId, result }),
+    [respondMutate],
+  )
+  const keyExtractor = useCallback((interaction: PendingInteraction) => interaction.rpcId, [])
+  const renderInteraction = useCallback(
+    ({ item }: { item: PendingInteraction }) => (
+      <InteractionCard interaction={item} submitting={respond.isPending} onRespond={handleRespond} />
+    ),
+    [handleRespond, respond.isPending],
+  )
   const listState = interactionListState({
     hasConnection: connection !== undefined,
     hasSessionId: typeof sessionId === 'string' && sessionId.length > 0,
@@ -129,14 +141,8 @@ export default function InteractionsScreen(): React.JSX.Element {
         <FlatList
           style={styles.container}
           data={interactions.data?.items ?? []}
-          keyExtractor={(interaction) => interaction.rpcId}
-          renderItem={({ item }) => (
-            <InteractionCard
-              interaction={item}
-              submitting={respond.isPending}
-              onRespond={(rpcId, result) => respond.mutate({ rpcId, result })}
-            />
-          )}
+          keyExtractor={keyExtractor}
+          renderItem={renderInteraction}
           contentContainerStyle={styles.listContent}
           keyboardDismissMode="on-drag"
           keyboardShouldPersistTaps="handled"

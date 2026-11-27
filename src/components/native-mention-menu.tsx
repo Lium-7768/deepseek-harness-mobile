@@ -52,8 +52,9 @@ export function NativeMentionMenu({
       return
     }
     const abort = new AbortController()
+    setLoading(true)
+    setFailed(false)
     const timer = setTimeout(() => {
-      setLoading(true)
       lookup(query, abort.signal)
         .then((payload) => {
           if (abort.signal.aborted) return

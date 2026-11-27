@@ -183,18 +183,21 @@ export function SessionDrawer(props: DrawerContentComponentProps): React.JSX.Ele
    * with no other way to recover short of restarting the app.
    */
   const syncSessions = async (): Promise<void> => {
+    if (syncing) return
     setSyncing(true)
     const startedAt = Date.now()
     useMobileSyncStore.getState().restartStream()
     try {
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: queryKeys.sessionList() }),
+        queryClient.invalidateQueries({ queryKey: queryKeys.sessionGoal() }),
         queryClient.invalidateQueries({ queryKey: queryKeys.sessionHistory() }),
         queryClient.invalidateQueries({ queryKey: queryKeys.sessionEvents() }),
         queryClient.invalidateQueries({ queryKey: queryKeys.sessionQueue() }),
         queryClient.invalidateQueries({ queryKey: queryKeys.sessionJobs() }),
         queryClient.invalidateQueries({ queryKey: queryKeys.sessionInteractions() }),
         queryClient.invalidateQueries({ queryKey: queryKeys.sessionSubagents() }),
+        queryClient.invalidateQueries({ queryKey: queryKeys.subagentHistory() }),
       ])
     } finally {
       // A local refresh answers in tens of milliseconds; without a floor the
@@ -549,15 +552,7 @@ export function SessionDrawer(props: DrawerContentComponentProps): React.JSX.Ele
                     <ActivityIndicator color={theme.colors.accent} style={styles.emptyState} />
                   ) : (
                     <Text style={styles.emptyState}>
-                      {query.isError
-                        ? message('drawer.sessionsLoadFailed')
-                        : searchActive && contentSearch.isPending
-                          ? message('drawer.searching')
-                          : searchActive && contentSearch.isError
-                            ? message('drawer.searchFailed')
-                            : searchActive
-                              ? message('drawer.noSearchResults')
-                              : message('drawer.noSessions')}
+                      {query.isError ? message('drawer.sessionsLoadFailed') : message('drawer.noSessions')}
                     </Text>
                   )
                 ) : (
@@ -590,7 +585,8 @@ export function SessionDrawer(props: DrawerContentComponentProps): React.JSX.Ele
                             <NativeListRow
                               title={message('drawer.renameWorkspace')}
                               accessibilityRole="button"
-                              onPress={() =>
+                              onPress={() => {
+                                closeDrawer()
                                 router.push({
                                   pathname: '/workspace/[workspaceId]/rename',
                                   params: {
@@ -598,7 +594,7 @@ export function SessionDrawer(props: DrawerContentComponentProps): React.JSX.Ele
                                     title: item.workspace?.title ?? item.label,
                                   },
                                 })
-                              }
+                              }}
                               right={<NativeIcon name="edit-outline" size={18} color={theme.colors.inkMuted} />}
                             />
                             <NativeListRow
@@ -659,7 +655,8 @@ export function SessionDrawer(props: DrawerContentComponentProps): React.JSX.Ele
                           onArchive={() => void confirmArchive(item.session)}
                           onExport={() => void exportSession(item.session)}
                           onFork={() => void forkSession(item.session.sessionId)}
-                          onRename={() =>
+                          onRename={() => {
+                            closeDrawer()
                             router.push({
                               pathname: '/session/[sessionId]/rename',
                               params: {
@@ -667,7 +664,7 @@ export function SessionDrawer(props: DrawerContentComponentProps): React.JSX.Ele
                                 title: item.session.title ?? message('session.untitled'),
                               },
                             })
-                          }
+                          }}
                           session={item.session}
                           selected={item.session.sessionId === currentSessionId}
                           onPress={() => openSession(item.session.sessionId)}

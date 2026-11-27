@@ -2,16 +2,15 @@ import {
   sessionRows,
   visibleWorkspaceRows,
   workspaceForSession,
-  type SessionOrder,
   sessionDisplayTitle,
   sessionVisible,
   sortSessions,
   workspaceLabel,
 } from '@/components/session-drawer-logic'
+import type { ArchivedFilter, DrawerGrouping, DrawerViewPreferences } from '@/types/drawer'
 import type { MobileSessionSearchItem, MobileWorkspace, SessionSummary } from '@/types/mobile'
 
-export type DrawerGrouping = 'workspace' | 'workspace-tree' | 'flat'
-export type ArchivedFilter = 'default' | 'show' | 'only'
+export type { ArchivedFilter, DrawerGrouping, DrawerViewPreferences }
 export type DrawerSearchResult = { session: SessionSummary; workspace: string; snippet?: string; archived: boolean }
 
 /** Mirrors the desktop query boundary without splitting a UTF-16 surrogate pair. */
@@ -121,13 +120,6 @@ export function workspaceHierarchy(
 export function reconcileDrawerOrder(saved: readonly string[], members: readonly string[]): string[] {
   const allowed = new Set(members)
   return [...new Set([...saved.filter((id) => allowed.has(id)), ...members])]
-}
-
-export type DrawerViewPreferences = {
-  groupBy: DrawerGrouping
-  orderBy: SessionOrder
-  archivedFilter: ArchivedFilter
-  orders: Record<string, string[]>
 }
 
 /** Derive row ordering and tree indentation without adding local state to desktop sessions. */

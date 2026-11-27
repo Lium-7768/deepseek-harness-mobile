@@ -1,3 +1,4 @@
+import { diagnosticReason, jobStatusLabel } from '@/components/native-agent-activity'
 import { NativeAnchoredPanel } from '@/components/native-anchored-panel'
 import { NativeIcon } from '@/components/native-icon'
 import type { MobileJobView, MobileSubagentEntry } from '@/types/mobile'
@@ -97,7 +98,7 @@ export function NativeSessionCatalogSheet({
                 <View key={entry.id} style={s.row}>
                   <NativeIcon name="warning-outline" size={14} color={theme.colors.warningText} />
                   <Text numberOfLines={2} style={[s.meta, s.diagnostic]}>
-                    {format('activity.subagentDiagnostic', { name: entry.id, reason: entry.reason })}
+                    {format('activity.subagentDiagnostic', { name: entry.id, reason: diagnosticReason(entry.reason) })}
                   </Text>
                 </View>
               ))}
@@ -118,13 +119,7 @@ export function NativeSessionCatalogSheet({
                       {job.label}
                     </Text>
                   </View>
-                  <Text style={[s.status, isRunning(job.status) && s.statusLive]}>
-                    {message(
-                      job.status === 'running' || job.status === 'queued'
-                        ? 'activity.jobRunning'
-                        : 'activity.jobFinished',
-                    )}
-                  </Text>
+                  <Text style={[s.status, isRunning(job.status) && s.statusLive]}>{jobStatusLabel(job.status)}</Text>
                 </View>
               ))}
             </View>

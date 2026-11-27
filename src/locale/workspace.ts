@@ -17,7 +17,6 @@ export const workspace = {
   heroPreview: '预览版',
   pickSession: '选择会话',
   pickSessionFirst: '请先选择一个会话后再发送。',
-  currentSession: '当前会话',
   /** `{title}` is the selected session's display title. */
   currentSessionNamed: '当前会话：{title}',
 

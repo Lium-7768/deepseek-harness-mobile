@@ -44,6 +44,10 @@ export default function RenameSessionScreen(): React.JSX.Element {
   })
   const currentTitle = sessions.data?.items.find((item) => item.sessionId === sessionId)?.title
   useEffect(() => {
+    setEdited(false)
+    setTitle(routeTitle ?? '')
+  }, [routeTitle, sessionId])
+  useEffect(() => {
     if (!edited && currentTitle !== undefined) setTitle(currentTitle)
   }, [currentTitle, edited])
   const rename = useMutation({
@@ -57,7 +61,7 @@ export default function RenameSessionScreen(): React.JSX.Element {
       await queryClient.invalidateQueries({
         queryKey: queryKeys.sessionList(connection?.gatewayUrl, connection?.deviceId),
       })
-      backToSession(typeof rawSessionId === 'string' ? rawSessionId : undefined)
+      backToSession(sessionId)
     },
     onError: (error) => Alert.alert(message('rename.failedTitle'), mobileErrorMessage(error, message('common.retry'))),
   })
@@ -70,7 +74,7 @@ export default function RenameSessionScreen(): React.JSX.Element {
           accessibilityRole="button"
           accessibilityLabel={message('common.back')}
           hitSlop={8}
-          onPress={() => backToSession(typeof rawSessionId === 'string' ? rawSessionId : undefined)}
+          onPress={() => backToSession(sessionId)}
           style={styles.back}
         >
           <NativeIcon name="chevron-left-outline" color={theme.colors.ink} size={20} />
