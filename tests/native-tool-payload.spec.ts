@@ -83,4 +83,37 @@ describe('tool payload fold', () => {
     expect(scrollers).toHaveLength(0)
     await act(async () => undefined)
   })
+
+  it('renders desktop-exact tool titles and non-zero exit code badges', async () => {
+    const titled = await render(
+      createElement(NativeToolCard, {
+        row: {
+          kind: 'tool',
+          sourceSeq: 2,
+          state: 'completed',
+          toolName: 'list_subagent_models',
+          output: 'ok',
+        },
+      }),
+    )
+    const flowRow = titled.container.queryAll((node) => node.type === 'FlowRow')[0]
+    expect(flowRow?.props.title).toBe('查看可用模型')
+
+    const failedExit = await render(
+      createElement(NativeToolCard, {
+        row: {
+          kind: 'tool',
+          sourceSeq: 3,
+          state: 'completed',
+          toolName: 'bash',
+          toolInput: JSON.stringify({ command: 'exit 2' }),
+          output: 'boom\n[exit code: 2]',
+        },
+      }),
+    )
+    const exitRow = failedExit.container.queryAll((node) => node.type === 'FlowRow')[0]
+    expect(exitRow?.props.tone).toBe('danger')
+    expect(exitRow?.props.trailing).toBeTruthy()
+    await act(async () => undefined)
+  })
 })

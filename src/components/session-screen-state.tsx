@@ -1,3 +1,4 @@
+import type { PerformanceUsageMode } from '@/components/chat-presentation-policy'
 import { NativeActionButton } from '@/components/native-action-button'
 import { NativeContextMeter } from '@/components/native-context-meter'
 import { NativeIcon } from '@/components/native-icon'
@@ -114,20 +115,22 @@ export function ConnectionStatus({
  */
 export function SessionDock({
   items,
+  performanceUsage = 'detailed',
   projectionValues,
 }: {
   items: SharedEventItem[]
+  performanceUsage?: PerformanceUsageMode
   projectionValues: Record<string, unknown> | undefined
 }): React.JSX.Element {
   const s = useThemedStyles(makeSessionStyles)
-  const pills = sessionStatisticsPills(projectionValues, items)
+  const pills = sessionStatisticsPills(projectionValues, items, performanceUsage)
   const meter = contextMeterPanel(projectionValues)
   return (
     <View style={s.dock}>
       {pills.map((pill) => (
         <NativeStatisticsPill
-          key={pill.label}
-          panel={sessionStatisticPanel(pill.kind, projectionValues, items)}
+          key={pill.kind}
+          panel={sessionStatisticPanel(pill.kind, projectionValues, items, performanceUsage)}
           pill={pill}
         />
       ))}

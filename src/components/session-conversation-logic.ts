@@ -1,6 +1,19 @@
 import { format, t as message } from '@/locale'
 import type { SharedEventItem } from '@/shared/dsh-presentation'
 
+/** Producer-declared context presentation forms supported by both desktop and mobile. */
+export type KnownContextForm = 'instructions' | 'catalog' | 'snapshot' | 'notice' | 'relay' | 'recall'
+
+/** Structured tool-set changes carried by a logged context injection. */
+export type ContextToolChanges = {
+  readonly added: readonly string[]
+  readonly removed: readonly string[]
+  readonly single?: {
+    readonly type: 'tool-addition' | 'tool-removal'
+    readonly toolName: string
+  }
+}
+
 export type NativeConversationRow =
   | {
       kind: 'user' | 'assistant'
@@ -16,6 +29,8 @@ export type NativeConversationRow =
   | {
       kind: 'reasoning'
       text: string
+      /** True while streaming deltas arrive before the durable assistant message settles. */
+      running?: boolean
       rowKey?: string
       sourceSeq?: number
     }
@@ -23,6 +38,8 @@ export type NativeConversationRow =
       callId?: string
       kind: 'tool'
       output?: string
+      /** True while tool-call arguments are still streaming before dispatch. */
+      preparing?: true
       rowKey?: string
       sourceSeq?: number
       state: 'completed' | 'failed' | 'running'
@@ -80,13 +97,22 @@ export type NativeConversationRow =
   | {
       /**
        * Logged context the model received: a time snapshot, the runtime context, the
-       * skill catalog, project instructions, a model switch or a repeated-call notice.
-       * The desktop draws these as `上下文注入 · <producer>` disclosures rather than as
-       * anything the reader typed.
+       * skill catalog, project instructions, a developer message, or a cross-session recall.
+       * Desktop draws these as `上下文注入 · <producer>` disclosures inside step groups.
        */
       kind: 'context'
-      /** The source that produced it, e.g. `time-context`. */
+      /** The source that produced it, e.g. `time-context` or recalled session labels. */
       producer: string
+      /** Distinguishes cross-session recall and system prompts from ordinary context injections. */
+      role?: 'inject' | 'recall' | 'system'
+      /** Producer-declared structured presentation form; omitted renders the opaque body. */
+      form?: KnownContextForm
+      /** Raw durable source record for structured context-body presentation and opaque fields. */
+      source?: Readonly<Record<string, unknown>>
+      /** Raw durable content blocks in model order, including unknown merge-extensible blocks. */
+      contentBlocks?: readonly Readonly<Record<string, unknown>>[]
+      /** Structured tool-set changes when every content block is a tool addition or removal. */
+      toolChanges?: ContextToolChanges
       /** A change's own heading, when the source is not a plain injection. */
       title?: string
       /** Producer-declared one-line summary, when the source carries one. */
@@ -101,18 +127,17 @@ export type NativeConversationRow =
       trigger: NativeTurnTrigger
       /** The waking notification's own text, shown on demand. */
       text?: string
+      /** Raw durable source record for notice-body rendering. */
+      source?: Readonly<Record<string, unknown>>
+      /** Raw durable content blocks in model order. */
+      contentBlocks?: readonly Readonly<Record<string, unknown>>[]
+      /** Recorded event timestamp for the trigger card header. */
+      time?: number
       rowKey?: string
       sourceSeq?: number
     }
 
-/**
- * A non-human message that began a Turn.
- *
- * The desktop draws one of these above the Turn's disclosure so the reader knows
- * why the assistant spoke. Injection bookkeeping (`time-context`, `runtime-context`,
- * `skill-catalog`, instructions, reminders) is deliberately absent: it is not a
- * trigger, and printing it would bury the turns that were.
- */
+/** A non-human message that began a Turn. */
 export type NativeTurnTrigger =
   | 'agent'
   | 'approval'
@@ -133,42 +158,167 @@ export type NativeTurnTrigger =
   | 'webhook'
 
 type EventRecord = Record<string, unknown>
-type ContentBlock = { type?: unknown; text?: unknown; toolName?: unknown }
+type ContentBlock = Record<string, unknown> & { type?: unknown; text?: unknown; toolName?: unknown }
+
+const KNOWN_CONTEXT_FORMS: ReadonlySet<string> = new Set([
+  'instructions',
+  'catalog',
+  'snapshot',
+  'notice',
+  'relay',
+  'recall',
+])
 
 /**
  * Projects desktop durable session events into ordered native conversation rows.
  *
  * The projection deliberately preserves the same durable distinctions the desktop
  * conversation uses: assistant prose and reasoning are separate, a tool call is
- * updated by its correlated result, and model retries remain expandable rows.
+ * updated by its correlated result, developer/context injections retain their
+ * structured form and source metadata, and model retries remain expandable rows.
  *
  * @param items - Gateway history and SSE events ordered by durable sequence.
  * @returns Native rows derived only from desktop session events.
  */
+function isSortedBySeq(items: readonly SharedEventItem[]): boolean {
+  for (let i = 1; i < items.length; i += 1) {
+    if ((items[i - 1]?.seq ?? 0) > (items[i]?.seq ?? 0)) return false
+  }
+  return true
+}
+
 export function projectNativeConversationRows(items: readonly SharedEventItem[]): NativeConversationRow[] {
-  const orderedItems = [...items].sort((left, right) => (left.seq ?? 0) - (right.seq ?? 0))
+  const orderedItems = isSortedBySeq(items)
+    ? items
+    : [...items].sort((left, right) => (left.seq ?? 0) - (right.seq ?? 0))
   const turnUsage = turnUsageByTurn(orderedItems)
   const rows: NativeConversationRow[] = []
+  const removedIndices = new Set<number>()
   const toolRowByCallId = new Map<string, number>()
+  const runningToolIndicesByTurn = new Map<number, number[]>()
+  const recordTurnTool = (turn: number | undefined, rowIndex: number): void => {
+    if (turn === undefined) return
+    const list = runningToolIndicesByTurn.get(turn)
+    if (list === undefined) runningToolIndicesByTurn.set(turn, [rowIndex])
+    else list.push(rowIndex)
+  }
   const commandRowByCommandId = new Map<string, number>()
   const streamingRowByBlock = new Map<string, number>()
+  const streamingRowsByStepKind = new Map<string, number[]>()
+  const streamingReasoningIndicesByTurn = new Map<number, number[]>()
+  const streamingReasoningByStep = new Map<string, Array<{ blockIndex: number; rowIndex: number }>>()
+  const settleStepReasoning = (stepKey: string | undefined, keepBlockIndex?: number): void => {
+    if (stepKey === undefined) return
+    const entries = streamingReasoningByStep.get(stepKey)
+    if (entries === undefined) return
+    const remaining: Array<{ blockIndex: number; rowIndex: number }> = []
+    for (const entry of entries) {
+      if (keepBlockIndex !== undefined && entry.blockIndex === keepBlockIndex) {
+        remaining.push(entry)
+        continue
+      }
+      const existing = rows[entry.rowIndex]
+      if (existing?.kind === 'reasoning' && existing.running === true) {
+        const { running: _running, ...settledReasoning } = existing
+        rows[entry.rowIndex] = settledReasoning
+      }
+    }
+    if (remaining.length === 0) streamingReasoningByStep.delete(stepKey)
+    else streamingReasoningByStep.set(stepKey, remaining)
+  }
   // The first row each step streamed for a kind, so its settled message replaces that row
   // in place instead of appending a second copy at the end of the Turn.
   const settledRowByStep = new Map<string, number>()
+  // Consecutive retries of one step fold into a single row, matching desktop `retry.ts`.
+  const retryRowByStep = new Map<string, number>()
+  let sawSystemPrompt = false
   for (const item of orderedItems) {
     const event = item.event
     const type = stringField(event.type)
     const data = recordField(event.data) ?? event
     const sourceSeq = item.seq
+    if (type === 'system/message') {
+      const text = textFromMessage(data)
+      if (text !== undefined) {
+        rows.push({
+          kind: 'context',
+          producer: 'system-prompt',
+          role: 'system',
+          title: message(sawSystemPrompt ? 'conversation.systemPromptUpdate' : 'conversation.systemPrompt'),
+          text,
+          ...(sourceSeq === undefined ? {} : { sourceSeq }),
+        })
+        sawSystemPrompt = true
+      }
+      continue
+    }
+    if (type === 'developer/message') {
+      const nested = recordField(data.message) ?? data
+      const context = contextRowOf(nested, sourceSeq, true)
+      if (context !== undefined) rows.push(context)
+      continue
+    }
     if (type === 'assistant/chunk') {
       const stepKey = eventStepKey(data)
+      const turn = numberField(data.turn)
       const chunk = recordField(data.chunk)
       const chunkType = stringField(chunk?.type)
       const index = numberField(chunk?.index)
-      const text = stringField(chunk?.text)
-      // A settled step's chunks are kept: they carry the order the step ran in, and the
-      // settled message below replaces each of them where it stands. Dropping them put
-      // every tool row of a multi-step Turn ahead of all of its prose.
+      const text = typeof chunk?.text === 'string' && chunk.text.length > 0 ? chunk.text : undefined
+      if (stepKey !== undefined && index !== undefined && chunkType !== 'reasoning-delta') {
+        settleStepReasoning(stepKey)
+      }
+      if (chunkType === 'tool-call-delta') {
+        settleStepReasoning(stepKey)
+        const callId = stringField(chunk?.id)
+        const delta = typeof chunk?.argumentsDelta === 'string' ? chunk.argumentsDelta : ''
+        if (callId !== undefined) {
+          const existingIndex = toolRowByCallId.get(callId)
+          if (existingIndex !== undefined) {
+            const existing = rows[existingIndex]
+            if (existing?.kind === 'tool' && existing.preparing === true) {
+              const nextInput = `${existing.toolInput ?? ''}` + delta
+              rows[existingIndex] = { ...existing, ...(nextInput === '' ? {} : { toolInput: nextInput }) }
+            }
+          } else {
+            const toolName = stringField(chunk?.name)
+            if (toolName !== undefined) {
+              rows.push({
+                kind: 'tool',
+                callId,
+                preparing: true,
+                state: 'running',
+                toolName,
+                ...(delta === '' ? {} : { toolInput: delta }),
+                ...(sourceSeq === undefined ? {} : { sourceSeq }),
+              })
+              toolRowByCallId.set(callId, rows.length - 1)
+              recordTurnTool(turn, rows.length - 1)
+            }
+          }
+        }
+        continue
+      }
+      if (chunkType === 'block-end') {
+        const block = recordField(chunk?.block)
+        if (stringField(block?.type) === 'tool-call') {
+          const callId = stringField(block?.id)
+          const existingIndex = callId === undefined ? undefined : toolRowByCallId.get(callId)
+          if (existingIndex !== undefined) {
+            const existing = rows[existingIndex]
+            if (existing?.kind === 'tool' && existing.preparing === true) {
+              const nextName = stringField(block?.name) ?? existing.toolName
+              const nextArgs = fieldText(block?.arguments) ?? existing.toolInput
+              rows[existingIndex] = {
+                ...existing,
+                toolName: nextName,
+                ...(nextArgs === undefined ? {} : { toolInput: nextArgs }),
+              }
+            }
+          }
+        }
+        continue
+      }
       if (
         stepKey !== undefined &&
         index !== undefined &&
@@ -176,6 +326,7 @@ export function projectNativeConversationRows(items: readonly SharedEventItem[])
         (chunkType === 'reasoning-delta' || chunkType === 'text-delta')
       ) {
         const kind = chunkType === 'reasoning-delta' ? 'reasoning' : 'assistant'
+        if (kind === 'reasoning') settleStepReasoning(stepKey, index)
         const blockKey = `${stepKey}:${kind}:${index}`
         const rowIndex = streamingRowByBlock.get(blockKey)
         if (rowIndex !== undefined) {
@@ -187,8 +338,30 @@ export function projectNativeConversationRows(items: readonly SharedEventItem[])
         }
         const settledKey = `${stepKey}:${kind}`
         const rowKey = !settledRowByStep.has(settledKey) ? `step:${settledKey}` : `stream:${blockKey}`
-        rows.push({ kind, rowKey, text, ...(sourceSeq === undefined ? {} : { sourceSeq }) })
+        if (kind === 'reasoning') {
+          rows.push({
+            kind,
+            rowKey,
+            running: true,
+            text,
+            ...(sourceSeq === undefined ? {} : { sourceSeq }),
+          })
+          const stepList = streamingReasoningByStep.get(stepKey)
+          if (stepList === undefined)
+            streamingReasoningByStep.set(stepKey, [{ blockIndex: index, rowIndex: rows.length - 1 }])
+          else stepList.push({ blockIndex: index, rowIndex: rows.length - 1 })
+          if (turn !== undefined) {
+            const list = streamingReasoningIndicesByTurn.get(turn)
+            if (list === undefined) streamingReasoningIndicesByTurn.set(turn, [rows.length - 1])
+            else list.push(rows.length - 1)
+          }
+        } else {
+          rows.push({ kind, rowKey, text, ...(sourceSeq === undefined ? {} : { sourceSeq }) })
+        }
         streamingRowByBlock.set(blockKey, rows.length - 1)
+        const stepKindList = streamingRowsByStepKind.get(settledKey)
+        if (stepKindList === undefined) streamingRowsByStepKind.set(settledKey, [rows.length - 1])
+        else stepKindList.push(rows.length - 1)
         if (!settledRowByStep.has(settledKey)) settledRowByStep.set(settledKey, rows.length - 1)
       }
       continue
@@ -197,19 +370,20 @@ export function projectNativeConversationRows(items: readonly SharedEventItem[])
       const trigger = turnTriggerOf(data)
       if (trigger !== undefined) {
         const text = textFromMessage(data)
+        const source = recordField(data.source)
+        const blocks = messageBlocks(data)
         rows.push({
           kind: 'turn-trigger',
           trigger,
           ...(text === undefined ? {} : { text }),
+          ...(source === undefined ? {} : { source }),
+          ...(blocks.length > 0 ? { contentBlocks: blocks } : {}),
+          ...eventTime(event),
           ...(sourceSeq === undefined ? {} : { sourceSeq }),
         })
         continue
       }
-      // Only a human turn is a user bubble. Runtime context, the skill catalog, the
-      // time snapshot, agent instructions, and compaction checkpoints are logged as
-      // user-role messages too, and the desktop renders them as context, not as what
-      // the reader typed.
-      const context = contextRowOf(data, sourceSeq)
+      const context = contextRowOf(data, sourceSeq, false)
       if (context !== undefined) {
         rows.push(context)
         continue
@@ -226,10 +400,8 @@ export function projectNativeConversationRows(items: readonly SharedEventItem[])
       continue
     }
     if (type === 'assistant/message') {
-      // The settled message is authoritative for its own step, so it replaces the rows
-      // that step streamed rather than appending new ones. Appending put the whole step's
-      // prose after its tool rows; replacing keeps the order the step ran in.
       const stepKey = eventStepKey(data)
+      settleStepReasoning(stepKey)
       const settled = {
         reasoning: messageBlocks(data)
           .flatMap((block) => (block.type === 'reasoning' && typeof block.text === 'string' ? [block.text.trim()] : []))
@@ -256,9 +428,6 @@ export function projectNativeConversationRows(items: readonly SharedEventItem[])
             : {}
         const stepRowKey = stepKey === undefined ? undefined : `step:${stepKey}:${kind}`
         if (slot !== undefined) {
-          // The settled row stands where the step streamed it, keeping the deterministic
-          // `step:<turn>:<step>:<kind>` key so FlatList updates the mounted cell in place
-          // even after `sessionWindow` compacts away the streaming deltas.
           const stableKey = rows[slot]?.rowKey ?? stepRowKey
           rows[slot] = {
             kind,
@@ -267,6 +436,13 @@ export function projectNativeConversationRows(items: readonly SharedEventItem[])
             ...(sourceSeq === undefined ? {} : { sourceSeq }),
             ...extra,
           } as NativeConversationRow
+          // Remove any secondary streamed blocks of the same step & kind so the settled message never duplicates them.
+          const streamed = stepKey === undefined ? undefined : streamingRowsByStepKind.get(`${stepKey}:${kind}`)
+          if (streamed !== undefined) {
+            for (const rowIndex of streamed) {
+              if (rowIndex !== slot) removedIndices.add(rowIndex)
+            }
+          }
           continue
         }
         rows.push({
@@ -281,11 +457,9 @@ export function projectNativeConversationRows(items: readonly SharedEventItem[])
       continue
     }
     if (type === 'tool/call') {
+      settleStepReasoning(eventStepKey(data))
       const callId = stringField(data.callId)
       const toolName = stringField(data.name) ?? message('session.toolCall')
-      // The desktop prefers a command's own description ("Wait for Deploy to finish")
-      // over the command line: the call carries it inside its arguments, not on the
-      // event, so the row reads the same on both clients.
       const summary = fieldText(data.description) ?? argumentDescription(data.arguments)
       const row: NativeConversationRow = {
         kind: 'tool',
@@ -297,8 +471,19 @@ export function projectNativeConversationRows(items: readonly SharedEventItem[])
         ...(summary === undefined ? {} : { summary }),
         ...(sourceSeq === undefined ? {} : { sourceSeq }),
       }
+      const preparingIndex = callId === undefined ? undefined : toolRowByCallId.get(callId)
+      if (preparingIndex !== undefined && rows[preparingIndex]?.kind === 'tool') {
+        const previous = rows[preparingIndex]
+        rows[preparingIndex] = {
+          ...row,
+          ...(previous.rowKey === undefined ? {} : { rowKey: previous.rowKey }),
+          ...(previous.sourceSeq === undefined ? {} : { sourceSeq: previous.sourceSeq }),
+        }
+        continue
+      }
       rows.push(row)
       if (callId !== undefined) toolRowByCallId.set(callId, rows.length - 1)
+      recordTurnTool(numberField(data.turn), rows.length - 1)
       continue
     }
     if (type === 'tool/result') {
@@ -308,8 +493,6 @@ export function projectNativeConversationRows(items: readonly SharedEventItem[])
         if (rowIndex !== undefined) {
           const existing = rows[rowIndex]
           if (existing?.kind === 'tool') {
-            // The Host records a call's metadata on its result, not on its call, so the
-            // path a write touched arrives with the output that closed it.
             const resultMeta = metaOf(data)
             rows[rowIndex] = {
               ...existing,
@@ -334,14 +517,34 @@ export function projectNativeConversationRows(items: readonly SharedEventItem[])
     if (type === 'llm/retry') {
       const failure = recordField(data.failure)
       const retry = numberField(data.retry) ?? 1
-      rows.push({
+      const stepKey = eventStepKey(data)
+      const nextRow: NativeConversationRow = {
         delayMs: numberField(data.delayMs) ?? 0,
         failureMessage: stringField(failure?.message) ?? message('session.modelRequestFailed'),
         kind: 'retry',
         maxRetries: numberField(data.maxRetries) ?? retry,
         retry,
         ...(sourceSeq === undefined ? {} : { sourceSeq }),
-      })
+      }
+      const existingIndex =
+        stepKey !== undefined
+          ? retryRowByStep.get(stepKey)
+          : rows.length > 0 && rows[rows.length - 1]?.kind === 'retry'
+            ? rows.length - 1
+            : undefined
+      if (existingIndex !== undefined) {
+        const existing = rows[existingIndex]
+        if (existing?.kind === 'retry') {
+          rows[existingIndex] = {
+            ...nextRow,
+            ...(existing.rowKey === undefined ? {} : { rowKey: existing.rowKey }),
+            ...(existing.sourceSeq === undefined ? {} : { sourceSeq: existing.sourceSeq }),
+          }
+          continue
+        }
+      }
+      rows.push(nextRow)
+      if (stepKey !== undefined) retryRowByStep.set(stepKey, rows.length - 1)
       continue
     }
     if (type === 'command/run') {
@@ -402,8 +605,38 @@ export function projectNativeConversationRows(items: readonly SharedEventItem[])
       continue
     }
     if (type === 'turn/end') {
+      const turn = numberField(data.turn)
       const reason = recordField(data.reason)
       const kind = stringField(reason?.kind)
+      if (turn !== undefined) {
+        const openReasoning = streamingReasoningIndicesByTurn.get(turn)
+        if (openReasoning !== undefined) {
+          for (const rowIndex of openReasoning) {
+            const existing = rows[rowIndex]
+            if (existing?.kind === 'reasoning' && existing.running === true) {
+              const { running: _running, ...settledReasoning } = existing
+              rows[rowIndex] = settledReasoning
+            }
+          }
+          streamingReasoningIndicesByTurn.delete(turn)
+        }
+        const openTools = runningToolIndicesByTurn.get(turn)
+        if (openTools !== undefined) {
+          const interruptedTurn = kind === 'aborted' || kind === 'interrupted' || kind === 'error'
+          for (const rowIndex of openTools) {
+            const existing = rows[rowIndex]
+            if (
+              existing?.kind === 'tool' &&
+              existing.state === 'running' &&
+              (existing.preparing === true || interruptedTurn)
+            ) {
+              const { preparing: _preparing, ...restTool } = existing
+              rows[rowIndex] = { ...restTool, state: interruptedTurn ? 'failed' : 'completed' }
+            }
+          }
+          runningToolIndicesByTurn.delete(turn)
+        }
+      }
       if (kind === 'error') {
         const failure = displayFailure(recordField(reason?.error))
         rows.push({
@@ -421,15 +654,10 @@ export function projectNativeConversationRows(items: readonly SharedEventItem[])
       continue
     }
   }
-  return rows
+  return removedIndices.size === 0 ? rows : rows.filter((_, index) => !removedIndices.has(index))
 }
 
-/**
- * Finds the durable start time of the currently open turn for the native running footer.
- *
- * @param items - Ordered session events.
- * @returns The latest unclosed turn start time, if any.
- */
+/** Finds the durable start time of the currently open turn for the native running footer. */
 export function activeTurnStartedAt(items: readonly SharedEventItem[]): number | undefined {
   const openTurns = new Map<number, number>()
   for (const item of items) {
@@ -445,15 +673,6 @@ export function activeTurnStartedAt(items: readonly SharedEventItem[]): number |
   return [...openTurns.values()].at(-1)
 }
 
-/**
- * Mirrors the desktop displayFailure mapping for turn-level LLM failures.
- *
- * Provider AUTH messages may echo a masked or partially preserved credential;
- * keep the raw diagnostic in the Session log, but never retain it in UI state.
- *
- * @param failure - The `LlmFailure` carried by `turn/end` reason.error.
- * @returns A code and a model-safe message for the turn error row.
- */
 function displayFailure(failure: unknown): { code?: string; message: string } {
   if (failure === null || typeof failure !== 'object') return { message: String(failure) }
   const record = failure as { code?: unknown; message?: unknown }
@@ -488,9 +707,6 @@ function eventStepKey(data: EventRecord): string | undefined {
 }
 
 function messageBlocks(data: EventRecord): ContentBlock[] {
-  // A settled assistant message nests the role payload under `message`; a durable
-  // `user/message` carries `content` on its data directly. Reading only the nested
-  // form dropped every human turn from the conversation.
   const message = recordField(data.message)
   const content = message === undefined ? data.content : message.content
   return Array.isArray(content)
@@ -500,113 +716,168 @@ function messageBlocks(data: EventRecord): ContentBlock[] {
     : []
 }
 
-/**
- * Classifies a user-role message that a machine sent to wake the agent.
- *
- * @param data - The message payload.
- * @returns The trigger family, or undefined for a message the reader typed or one
- * that only carries injection bookkeeping.
- */
-/**
- * Injection sources the transcript shows, and the producers the desktop draws with them.
- *
- * Approval, goal, job, subagent and schedule sources are absent on purpose: each one
- * already owns a row (the trigger line, the goal bar, the activity card, the subagent
- * page), and printing its bookkeeping as well would say the same thing twice.
- */
-const CONTEXT_PRODUCERS: ReadonlySet<string> = new Set([
-  'agent-instructions',
-  'model-selection',
-  'repeat-tool-reminder',
-  'runtime-context',
-  'skill-catalog',
-  'time-context',
-])
+/** Collect distinct non-empty string fields from an array member on a durable source. */
+function collectSourceStrings(source: EventRecord | undefined, member: string, field: string): string[] {
+  const list = source?.[member]
+  if (!Array.isArray(list)) return []
+  const seen: string[] = []
+  for (const entry of list) {
+    const value = stringField(recordField(entry)?.[field])
+    if (value !== undefined && !seen.includes(value)) seen.push(value)
+  }
+  return seen
+}
+
+function contextFormOf(source: EventRecord | undefined): KnownContextForm | undefined {
+  const form = stringField(source?.form)
+  return form !== undefined && KNOWN_CONTEXT_FORMS.has(form) ? (form as KnownContextForm) : undefined
+}
 
 /**
- * Reads a tool-set change out of an injection's content blocks.
- *
- * The desktop titles a single change by its tool (`已添加工具：<name>`) and a batch as
- * `工具已更新` with the two counts beside it, so the reader learns what changed
- * without expanding.
- *
- * @param data - The `user/message` payload.
- * @returns A context row carrying the change, or `undefined` when the message is not one.
+ * Reads a tool-set change out of a context injection's content blocks.
+ * Matches desktop `ContextInjectionRow.tsx`: applies when every content block is a tool addition or removal.
  */
-function toolChangeOf(data: EventRecord): NativeConversationRow | undefined {
-  const blocks = messageBlocks(data).filter((block) => block.type === 'tool-addition' || block.type === 'tool-removal')
-  if (blocks.length === 0) return undefined
-  const added = blocks.flatMap((block) => (block.type === 'tool-addition' ? [stringField(block.toolName)] : []))
-  const removed = blocks.flatMap((block) => (block.type === 'tool-removal' ? [stringField(block.toolName)] : []))
+function toolChangeOf(
+  blocks: readonly ContentBlock[],
+): Extract<NativeConversationRow, { kind: 'context' }> | undefined {
+  if (blocks.length === 0 || !blocks.every((block) => block.type === 'tool-addition' || block.type === 'tool-removal'))
+    return undefined
+  const added = blocks.flatMap((block) => {
+    const name = block.type === 'tool-addition' ? stringField(block.toolName) : undefined
+    return name === undefined ? [] : [name]
+  })
+  const removed = blocks.flatMap((block) => {
+    const name = block.type === 'tool-removal' ? stringField(block.toolName) : undefined
+    return name === undefined ? [] : [name]
+  })
   const single = blocks.length === 1 ? blocks[0] : undefined
-  const name = single === undefined ? undefined : stringField(single.toolName)
-  if (single !== undefined && name !== undefined)
+  const singleName = single === undefined ? undefined : stringField(single.toolName)
+  if (single !== undefined && singleName !== undefined) {
+    const singleType = single.type === 'tool-addition' ? 'tool-addition' : 'tool-removal'
     return {
       kind: 'context',
       title:
-        single.type === 'tool-addition'
-          ? format('conversation.toolAdded', { name })
-          : format('conversation.toolRemoved', { name }),
+        singleType === 'tool-addition'
+          ? format('conversation.toolAdded', { name: singleName })
+          : format('conversation.toolRemoved', { name: singleName }),
       producer: 'tools',
+      toolChanges: { added, removed, single: { type: singleType, toolName: singleName } },
       text: '',
     }
-  const addedCount = added.filter((entry) => entry !== undefined).length
-  const removedCount = removed.filter((entry) => entry !== undefined).length
+  }
+  const addedCount = added.length
+  const removedCount = removed.length
   const summary =
     addedCount > 0 && removedCount > 0
       ? format('conversation.toolsChanged', { added: addedCount, removed: removedCount })
       : addedCount > 0
         ? format('conversation.toolsAddedCount', { count: addedCount })
         : format('conversation.toolsRemovedCount', { count: removedCount })
-  return { kind: 'context', producer: 'tools', summary, text: '' }
+  const details = [
+    ...(added.length > 0 ? [format('conversation.toolsAdded', { names: added.join(', ') })] : []),
+    ...(removed.length > 0 ? [format('conversation.toolsRemoved', { names: removed.join(', ') })] : []),
+  ].join('\n')
+  return {
+    kind: 'context',
+    producer: 'tools',
+    title: message('conversation.toolsUpdated'),
+    summary,
+    toolChanges: { added, removed },
+    text: details,
+  }
 }
 
 /**
- * Builds a context row for a logged injection, or `undefined` for anything else.
- *
- * @param data - The `user/message` payload.
- * @param sourceSeq - Durable sequence of the owning event, for stable row keys.
- * @returns The context row, when the message is an injection this transcript shows.
+ * Builds a context row for a logged non-user injection or developer message, mirroring
+ * desktop `message.ts` and `event-projection.ts`.
  */
-function contextRowOf(data: EventRecord, sourceSeq: number | undefined): NativeConversationRow | undefined {
-  const source = recordField(data.source)
+function contextRowOf(
+  data: EventRecord,
+  sourceSeq: number | undefined,
+  allowMissingSource: boolean,
+): NativeConversationRow | undefined {
+  const nestedMessage = recordField(data.message)
+  const source = recordField(data.source) ?? recordField(nestedMessage?.source)
   const producer = stringField(source?.kind)
-  if (producer === undefined || !CONTEXT_PRODUCERS.has(producer)) return undefined
-  const tools = toolChangeOf(data)
-  if (tools !== undefined) return { ...tools, ...(sourceSeq === undefined ? {} : { sourceSeq }) }
+  if (producer === 'compact-checkpoint' || producer === 'user') return undefined
+  if (!allowMissingSource && producer === undefined) return undefined
+  const blocks = messageBlocks(data)
+  const tools = toolChangeOf(blocks)
+  if (tools !== undefined) {
+    return {
+      ...tools,
+      ...(source === undefined ? {} : { source }),
+      contentBlocks: blocks,
+      ...(sourceSeq === undefined ? {} : { sourceSeq }),
+    }
+  }
   const text = textFromMessage(data)
   const summary = stringField(source?.summary)
-  if (text === undefined && summary === undefined) return undefined
+  const form = contextFormOf(source)
+  const hasNonTextBlock = blocks.some((block) => block.type !== 'text')
+  const hasSourceBody =
+    form !== undefined || (source !== undefined && Object.keys(source).some((key) => key !== 'kind'))
+  if (text === undefined && summary === undefined && !hasNonTextBlock && !hasSourceBody) return undefined
+  let role: 'recall' | undefined
+  let producerLabel = producer ?? ''
+  if (producer === 'session-reference') {
+    role = 'recall'
+    const labels = collectSourceStrings(source, 'references', 'label')
+    if (labels.length > 0) producerLabel = labels.join(', ')
+  } else if (producer === 'agent-instructions') {
+    const paths = collectSourceStrings(source, 'changes', 'path')
+    if (paths.length > 0) producerLabel = paths.join(', ')
+  } else if (producer === 'skill-invocation') {
+    producerLabel = stringField(source?.name) ?? producer
+  }
   return {
     kind: 'context',
-    producer,
+    producer: producerLabel,
+    ...(role === undefined ? {} : { role }),
+    ...(form === undefined ? {} : { form }),
+    ...(source === undefined ? {} : { source }),
+    ...(blocks.length > 0 ? { contentBlocks: blocks } : {}),
     ...(summary === undefined ? {} : { summary }),
     text: text ?? summary ?? '',
     ...(sourceSeq === undefined ? {} : { sourceSeq }),
   }
 }
 
+/** One provider/model route that contributed a billed request attempt in a Turn. */
+export interface TurnTokenUsageRoute {
+  provider: string
+  model: string
+}
+
 /** Token accounting for one Turn, summed the way the desktop's token meter sums attempts. */
 export interface TurnTokenUsage {
-  /** Billed requests (assistant messages) that reported usage. */
   calls: number
   inputTokens: number
   outputTokens: number
   totalTokens: number
+  cacheReadTokens?: number
+  cacheWriteTokens?: number
+  reasoningTokens?: number
+  routes?: readonly TurnTokenUsageRoute[]
 }
 
-/**
- * Sums each Turn's assistant-message usage.
- *
- * Every billed request reports its own figures, and the desktop's meter adds the
- * attempts of one Turn together, so the phone adds the messages of one Turn the same
- * way. Turns whose messages carry no usage stay absent rather than reading as zero.
- *
- * @param items - Durable events in sequence order.
- * @returns Per-turn totals, keyed by Turn number.
- */
+type TurnUsageAccumulator = {
+  calls: number
+  inputTokens: number
+  outputTokens: number
+  totalTokens: number
+  cacheReadTokens: number
+  allCacheRead: boolean
+  cacheWriteTokens: number
+  allCacheWrite: boolean
+  reasoningTokens: number
+  allReasoning: boolean
+  routes: Map<string, TurnTokenUsageRoute>
+  allRoutes: boolean
+}
+
 function turnUsageByTurn(items: readonly SharedEventItem[]): Map<number, TurnTokenUsage> {
-  const totals = new Map<number, TurnTokenUsage>()
+  const accumulators = new Map<number, TurnUsageAccumulator>()
   for (const item of items) {
     if (stringField(item.event.type) !== 'assistant/message') continue
     const data = recordField(item.event.data) ?? item.event
@@ -615,13 +886,55 @@ function turnUsageByTurn(items: readonly SharedEventItem[]): Map<number, TurnTok
     if (turn === undefined || usage === undefined) continue
     const input = numberField(usage.inputTokens) ?? 0
     const output = numberField(usage.outputTokens) ?? 0
-    const total = numberField(usage.totalTokens) ?? input + output
-    const current = totals.get(turn) ?? { calls: 0, inputTokens: 0, outputTokens: 0, totalTokens: 0 }
+    const cacheRead = numberField(usage.cacheReadTokens)
+    const cacheWrite = numberField(usage.cacheWriteTokens)
+    const reasoning = numberField(usage.reasoningTokens)
+    const total = numberField(usage.totalTokens) ?? input + (cacheRead ?? 0) + (cacheWrite ?? 0) + output
+    const msgSource = recordField(recordField(data.message)?.source)
+    const provider = stringField(msgSource?.provider) ?? stringField(data.provider)
+    const model = stringField(msgSource?.model) ?? stringField(data.model)
+    const current: TurnUsageAccumulator = accumulators.get(turn) ?? {
+      calls: 0,
+      inputTokens: 0,
+      outputTokens: 0,
+      totalTokens: 0,
+      cacheReadTokens: 0,
+      allCacheRead: true,
+      cacheWriteTokens: 0,
+      allCacheWrite: true,
+      reasoningTokens: 0,
+      allReasoning: true,
+      routes: new Map<string, TurnTokenUsageRoute>(),
+      allRoutes: true,
+    }
+    current.calls += 1
+    current.inputTokens += input
+    current.outputTokens += output
+    current.totalTokens += total
+    if (cacheRead !== undefined) current.cacheReadTokens += cacheRead
+    else current.allCacheRead = false
+    if (cacheWrite !== undefined) current.cacheWriteTokens += cacheWrite
+    else current.allCacheWrite = false
+    if (reasoning !== undefined) current.reasoningTokens += reasoning
+    else current.allReasoning = false
+    if (provider !== undefined && model !== undefined) {
+      current.routes.set(`${provider} ${model}`, { provider, model })
+    } else {
+      current.allRoutes = false
+    }
+    accumulators.set(turn, current)
+  }
+  const totals = new Map<number, TurnTokenUsage>()
+  for (const [turn, acc] of accumulators) {
     totals.set(turn, {
-      calls: current.calls + 1,
-      inputTokens: current.inputTokens + input,
-      outputTokens: current.outputTokens + output,
-      totalTokens: current.totalTokens + total,
+      calls: acc.calls,
+      inputTokens: acc.inputTokens,
+      outputTokens: acc.outputTokens,
+      totalTokens: acc.totalTokens,
+      ...(acc.allCacheRead ? { cacheReadTokens: acc.cacheReadTokens } : {}),
+      ...(acc.allCacheWrite ? { cacheWriteTokens: acc.cacheWriteTokens } : {}),
+      ...(acc.allReasoning ? { reasoningTokens: acc.reasoningTokens } : {}),
+      ...(acc.allRoutes && acc.routes.size > 0 ? { routes: [...acc.routes.values()] } : {}),
     })
   }
   return totals
@@ -636,8 +949,6 @@ function turnTriggerOf(data: EventRecord): NativeTurnTrigger | undefined {
     case 'schedule':
       return 'schedule'
     case 'subagent-settled':
-      // The desktop names how the subagent ended; an unreadable reason stays generic
-      // rather than implying success.
       switch (stringField(source?.stopReason)) {
         case 'completed':
           return 'subagentCompleted'
@@ -671,12 +982,7 @@ function turnTriggerOf(data: EventRecord): NativeTurnTrigger | undefined {
   }
 }
 
-/**
- * Names one waking trigger for the transcript and the exported log.
- *
- * @param trigger - The classified family.
- * @returns The localized label.
- */
+/** Names one waking trigger for the transcript and the exported log. */
 export function triggerText(trigger: NativeTurnTrigger): string {
   switch (trigger) {
     case 'agent':
@@ -731,12 +1037,6 @@ function textFromMessage(data: EventRecord): string | undefined {
   return text || undefined
 }
 
-/**
- * Reads the files a `deliverables/presented` event handed the reader.
- *
- * @param data - The event payload.
- * @returns One entry per path the Host recorded, dropping anything unreadable.
- */
 function presentedFiles(data: EventRecord): { path: string; description?: string }[] {
   const files = data.files
   if (!Array.isArray(files)) return []
@@ -788,19 +1088,12 @@ function numberField(value: unknown): number | undefined {
   return typeof value === 'number' && Number.isFinite(value) ? value : undefined
 }
 
-/**
- * Reads a tool call's own one-line description from its arguments.
- *
- * @param value - The call's `arguments`, a JSON string or an object.
- * @returns The trimmed description, or `undefined` when the call carries none.
- */
 function argumentDescription(value: unknown): string | undefined {
   let args: unknown = value
   if (typeof value === 'string') {
     try {
       args = JSON.parse(value) as unknown
     } catch {
-      // A non-JSON argument string has no fields to read.
       return undefined
     }
   }
@@ -819,7 +1112,6 @@ function fieldText(value: unknown): string | undefined {
   }
 }
 
-/** Argument fields a tool row shows, in the order the desktop prefers them. */
 const TOOL_ARGUMENT_FIELDS = [
   'command',
   'file_path',
@@ -831,22 +1123,6 @@ const TOOL_ARGUMENT_FIELDS = [
   'description',
 ] as const
 
-/**
- * One-line argument for a tool row: what the call acted on.
- *
- * The desktop prints the call's own argument after the verb (`运行命令 · ls -la`,
- * `读取图片 · /tmp/shot.png`), not the tool's internal name, so the row keeps
- * meaning when the projection carries no description.
- *
- * @param toolInput - The call's raw `arguments` text, usually a JSON object.
- * @returns The preferred argument, or the raw input when it is not JSON.
- */
-/**
- * The `meta` object a tool event carries, when it carries a usable one.
- *
- * @param data - The event's data record.
- * @returns The metadata, or undefined when the event has none.
- */
 function metaOf(data: Record<string, unknown>): Record<string, unknown> | undefined {
   const meta = data.meta
   if (meta === null || typeof meta !== 'object' || Array.isArray(meta)) return undefined
@@ -869,16 +1145,12 @@ export function toolArgument(toolInput: string | undefined): string | undefined 
     const value = record[field]
     if (typeof value === 'string' && value.trim()) return collapseLine(value)
   }
-  // Any other call shape: the first string it carries still names what it did.
   for (const value of Object.values(record)) {
     if (typeof value === 'string' && value.trim()) return collapseLine(value)
   }
-  // Nothing happened in words (an empty or numeric-only argument object), so
-  // the row falls back to the tool name rather than printing JSON at the reader.
   return undefined
 }
 
-/** Squeeze an argument onto one line so a row's single line stays informative. */
 function collapseLine(value: string): string {
   return value.replace(/\s+/g, ' ').trim()
 }

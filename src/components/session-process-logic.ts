@@ -1,49 +1,28 @@
+import type { ChatPresentationPolicy } from '@/components/chat-presentation-policy'
+import { isHiddenReasoning, latestReasoningDetail, normalizeLiveDetail } from '@/components/reasoning-text'
 import type { NativeConversationRow } from '@/components/session-conversation-logic'
+import type {
+  NativeDisplayRow,
+  NativeProcessRow,
+  ProcessActivity,
+  RunningProcessActivity,
+  TurnSpan,
+} from '@/components/conversation-types'
 import { format, t as message } from '@/locale'
 
-/**
- * Activity a step row stands for, named the way the desktop's `stepProcess`
- * labels name it.
- */
-export type ProcessActivity =
-  | 'thinking'
-  | 'read'
-  | 'readImage'
-  | 'write'
-  | 'search'
-  | 'edit'
-  | 'commands'
-  | 'code'
-  | 'webSearch'
-  | 'webFetch'
-  | 'subagents'
-  | 'plan'
-  | 'questions'
-  | 'tools'
+export type { NativeDisplayRow, NativeProcessRow, ProcessActivity, RunningProcessActivity }
 
-/** One collapsible step: its reasoning and tool rows behind a single header. */
-export type NativeProcessRow = {
-  activity: ProcessActivity
-  /** Most activities this step performed, in first-seen order, capped at three. */
-  activities: readonly ProcessActivity[]
-  kind: 'process'
-  /** Rows the disclosure reveals. */
-  rows: readonly NativeConversationRow[]
-  /**
-   * Whether the row draws a step header. The desktop keeps the running Turn
-   * flat: one header names the current activity, and the later steps of that
-   * same Turn continue under it without a header of their own.
-   */
-  header?: false
-  running: boolean
-  rowKey: string
-  sourceSeq?: number
-  /** Header text: the live activity while running, the summary once settled. */
-  title: string
+export interface ProcessActivityCount {
+  readonly kind: Exclude<ProcessActivity, 'thinking'>
+  readonly count: number
 }
 
-/** A conversation row as the list renders it: a step group or a plain row. */
-export type NativeDisplayRow = NativeProcessRow | NativeConversationRow
+export interface ProcessActivitySummary {
+  readonly counts: readonly ProcessActivityCount[]
+  readonly running?: RunningProcessActivity
+  readonly runningDetail: string
+  readonly preparing?: true
+}
 
 const RUNNING_KEYS = {
   thinking: 'process.runningThinking',
@@ -60,7 +39,24 @@ const RUNNING_KEYS = {
   plan: 'process.runningPlan',
   questions: 'process.runningQuestions',
   tools: 'process.runningTools',
+  context: 'process.runningThinking',
 } as const satisfies Record<ProcessActivity, string>
+
+const PREPARE_KEYS = {
+  read: 'process.prepareRead',
+  readImage: 'process.prepareReadImage',
+  write: 'process.prepareWrite',
+  search: 'process.prepareSearch',
+  edit: 'process.prepareEdit',
+  commands: 'process.prepareCommands',
+  code: 'process.prepareCode',
+  webSearch: 'process.prepareWebSearch',
+  webFetch: 'process.prepareWebFetch',
+  subagents: 'process.prepareSubagents',
+  plan: 'process.preparePlan',
+  questions: 'process.prepareQuestions',
+  tools: 'process.prepareTools',
+} as const satisfies Record<RunningProcessActivity, string>
 
 const DONE_KEYS = {
   thinking: 'process.doneThinking',
@@ -77,20 +73,38 @@ const DONE_KEYS = {
   plan: 'process.donePlan',
   questions: 'process.doneQuestions',
   tools: 'process.doneTools',
+  context: 'process.doneContext',
 } as const satisfies Record<ProcessActivity, string>
 
-/**
- * Names the activity one step row stands for.
- * @param row - Reasoning or tool row inside a step.
- * @returns The desktop's activity name for that row.
- */
-export function processActivity(row: NativeConversationRow): ProcessActivity {
-  if (row.kind === 'reasoning') return 'thinking'
-  if (row.kind !== 'tool') return 'tools'
-  // The desktop's own table, exact names first: a heuristic on the name alone put
-  // `todo_write` under tools and `ask_user_question` under nothing at all.
-  const name = row.toolName.toLowerCase()
-  const exact: Partial<Record<string, ProcessActivity>> = {
+/** Ordered detail keys matching desktop `process-activity.ts` `LIVE_TOOL_DETAIL_KEYS`. */
+const LIVE_TOOL_DETAIL_KEYS = [
+  'title',
+  'description',
+  'objective',
+  'task',
+  'task_name',
+  'name',
+  'question',
+  'questions',
+  'prompt',
+  'message',
+  'command',
+  'cmd',
+  'queries',
+  'query',
+  'pattern',
+  'url',
+  'uri',
+  'file_path',
+  'path',
+  'target',
+  'action',
+  'status',
+] as const
+
+function toolActivity(toolName: string): RunningProcessActivity {
+  const name = toolName.toLowerCase()
+  const exact: Partial<Record<string, RunningProcessActivity>> = {
     read: 'read',
     read_image: 'readImage',
     write: 'write',
@@ -101,6 +115,7 @@ export function processActivity(row: NativeConversationRow): ProcessActivity {
     exec_command: 'commands',
     write_stdin: 'commands',
     run_code: 'code',
+    cua_run_code: 'code',
     web_search: 'webSearch',
     web_fetch: 'webFetch',
     todo_write: 'plan',
@@ -127,32 +142,129 @@ export function processActivity(row: NativeConversationRow): ProcessActivity {
   return 'tools'
 }
 
-/** Whether a row belongs behind a step header. */
-function isStepRow(row: NativeConversationRow): boolean {
-  return row.kind === 'reasoning' || row.kind === 'tool'
+/**
+ * Names the activity one step row stands for.
+ * @param row - Reasoning, context, or tool row inside a step.
+ * @returns The desktop activity name for that row.
+ */
+export function processActivity(row: NativeConversationRow): ProcessActivity {
+  if (row.kind === 'reasoning') return 'thinking'
+  if (row.kind === 'context') return 'context'
+  if (row.kind !== 'tool') return 'tools'
+  return toolActivity(row.toolName)
+}
+
+/** Whether a row joins a desktop step process run (`groupTree === undefined`). */
+export function isStepRow(row: NativeConversationRow): boolean {
+  return (
+    row.kind === 'reasoning' ||
+    row.kind === 'tool' ||
+    row.kind === 'context' ||
+    row.kind === 'command' ||
+    row.kind === 'compaction'
+  )
+}
+
+function normalizeValueDetail(value: unknown): string {
+  if (typeof value === 'string') return normalizeLiveDetail(value)
+  if (Array.isArray(value) && value.every((item) => typeof item === 'string')) {
+    return normalizeLiveDetail(value.join(', '))
+  }
+  return ''
+}
+
+function questionDetail(value: unknown): string {
+  if (!Array.isArray(value)) return ''
+  for (const item of value) {
+    if (item === null || typeof item !== 'object') continue
+    const detail = normalizeValueDetail((item as Record<string, unknown>).question)
+    if (detail !== '') return detail
+  }
+  return ''
+}
+
+function liveToolDetail(toolName: string, toolInput: string | undefined): string {
+  if (toolInput !== undefined && toolInput.trim() !== '') {
+    try {
+      const parsed = JSON.parse(toolInput) as unknown
+      if (parsed !== null && typeof parsed === 'object' && !Array.isArray(parsed)) {
+        const record = parsed as Record<string, unknown>
+        for (const key of LIVE_TOOL_DETAIL_KEYS) {
+          if (!(key in record)) continue
+          const detail = key === 'questions' ? questionDetail(record[key]) : normalizeValueDetail(record[key])
+          if (detail !== '') return detail
+        }
+      }
+    } catch {
+      // Non-JSON tool input falls through to the tool name below.
+    }
+  }
+  return normalizeLiveDetail(toolName)
 }
 
 /**
- * Summarises a settled step the way the desktop's `processTitle` does: the
- * distinct activities in first-seen order, phrased as completed actions.
- *
- * Two activities read as one clause (`运行了代码并执行了命令`) and a shared `已`
- * prefix is dropped from the second; three or more become a comma list. Beyond
- * three, the summary trails with 等 instead of growing a list.
- *
- * @param rows - Step rows behind the header.
- * @returns The settled header text.
+ * Ranks tool categories by distinct call count (ties broken by first appearance),
+ * matching desktop `process-activity.ts`. Context-only groups report `context`;
+ * reasoning and mixed context add no count when tools exist.
+ */
+export function summarizeProcessActivity(rows: readonly NativeConversationRow[]): ProcessActivitySummary {
+  const counts = new Map<Exclude<ProcessActivity, 'thinking'>, number>()
+  const seenCallIds = new Set<string>()
+  let running: RunningProcessActivity | undefined
+  let preparing = false
+  let runningDetail = ''
+  for (const row of rows) {
+    if (row.kind !== 'tool') continue
+    if (row.callId !== undefined) {
+      if (seenCallIds.has(row.callId)) continue
+      seenCallIds.add(row.callId)
+    }
+    const kind = toolActivity(row.toolName)
+    counts.set(kind, (counts.get(kind) ?? 0) + 1)
+    if (row.state === 'running') {
+      running = kind
+      preparing = row.preparing === true
+      runningDetail =
+        row.summary !== undefined && row.summary.trim() !== ''
+          ? normalizeLiveDetail(row.summary)
+          : liveToolDetail(row.toolName, row.toolInput)
+    }
+  }
+  if (running === undefined) {
+    for (let index = rows.length - 1; index >= 0; index -= 1) {
+      const row = rows[index]
+      if (row?.kind !== 'reasoning' || row.running !== true) continue
+      const detail = latestReasoningDetail(row.text)
+      if (detail !== '') {
+        runningDetail = detail
+        break
+      }
+    }
+  }
+  if (rows.length > 0 && rows.every((row) => row.kind === 'context')) {
+    counts.set('context', rows.length)
+  }
+  const ranked: ProcessActivityCount[] = [...counts]
+    .map(([kind, count]) => ({ kind, count }))
+    .sort((left, right) => right.count - left.count)
+  return {
+    counts: ranked,
+    ...(running === undefined ? {} : { running }),
+    ...(preparing ? { preparing: true as const } : {}),
+    runningDetail,
+  }
+}
+
+/**
+ * Summarises a settled step the way the desktop `step-process.ts` `processTitle` does:
+ * top three tool/context categories ranked by call count descending, falling back to
+ * `已完成分析` when only reasoning (or non-tool/non-context rows) ran.
  */
 export function processTitle(rows: readonly NativeConversationRow[]): string {
-  const activities: ProcessActivity[] = []
-  for (const row of rows) {
-    const activity = processActivity(row)
-    if (!activities.includes(activity)) activities.push(activity)
-  }
-  const labels = activities.slice(0, 3).map((activity) => message(DONE_KEYS[activity] as 'process.doneThinking'))
+  const summary = summarizeProcessActivity(rows)
+  const labels = summary.counts.slice(0, 3).map(({ kind }) => message(DONE_KEYS[kind] as 'process.doneThinking'))
   const first = labels[0]
   if (first === undefined) return message('process.doneThinking')
-  // Labels are sentence-shaped, so a trailing one loses its capital in scripts that have one.
   const continuation = (label: string): string => label.charAt(0).toLowerCase() + label.slice(1)
   const second = labels[1]
   if (second === undefined) return first
@@ -165,37 +277,60 @@ export function processTitle(rows: readonly NativeConversationRow[]): string {
     })
   }
   const title = [first, ...labels.slice(1).map(continuation)].join(message('process.comma'))
-  return activities.length > 3 ? format('process.more', { title }) : title
+  return summary.counts.length > 3 ? format('process.more', { title }) : title
 }
 
 /** Names the activity the running Turn is performing right now. */
-export function runningProcessTitle(rows: readonly NativeConversationRow[]): string {
-  for (let index = rows.length - 1; index >= 0; index -= 1) {
-    const row = rows[index]
-    if (row === undefined || !isStepRow(row)) continue
-    return message(RUNNING_KEYS[processActivity(row)] as 'process.runningThinking')
+function liveActivityLabel(activity: ProcessActivity, preparing: boolean): string {
+  if (preparing) {
+    const key = activity === 'thinking' || activity === 'context' ? 'tools' : activity
+    return message(PREPARE_KEYS[key] as 'process.prepareTools')
   }
-  return message('process.runningThinking')
+  return message(RUNNING_KEYS[activity] as 'process.runningThinking')
+}
+
+export function runningProcessTitle(
+  rows: readonly NativeConversationRow[],
+  options: { liveDetail?: boolean } = {},
+): string {
+  const summary = summarizeProcessActivity(rows)
+  const activity: ProcessActivity = summary.running ?? 'thinking'
+  const label = liveActivityLabel(activity, summary.preparing === true)
+  if (options.liveDetail === true && summary.runningDetail !== '') {
+    return format('process.liveWithDetail', { detail: summary.runningDetail, label })
+  }
+  return label
+}
+
+function turnOfSeq(spans: readonly TurnSpan[] | undefined, seq: number | undefined): number | undefined {
+  if (spans === undefined || seq === undefined) return undefined
+  for (const span of spans) {
+    if (seq >= span.startSeq && seq <= span.endSeq) return span.turn
+  }
+  return undefined
 }
 
 /**
- * Groups each run of consecutive reasoning and tool rows into one collapsed step
- * header, matching the desktop conversation, where a step never prints one row
- * per call.
- *
- * The running Turn is flat, as the desktop's latest Turn is: its first run
- * carries one header naming the current activity, and later runs continue
- * underneath without repeating it.
- *
- * @param rows - Flat conversation rows.
- * @param options.running - Whether the session's newest turn is still running.
- * @param options.liveTurnStartSeq - Sequence where the running Turn begins, when it is open.
- * @param options.liveTitle - Live activity name for the running Turn's single header.
- * @returns Display rows with step groups replaced by a single header row.
+ * Groups each consecutive run of step rows (`reasoning`, `tool`, `context`, `command`,
+ * `compaction`) within one Turn into a `NativeProcessRow`, matching desktop `process-groups.ts`.
  */
 export function groupProcessRows(
   rows: readonly NativeConversationRow[],
-  { liveTitle, liveTurnStartSeq, running }: { running: boolean; liveTurnStartSeq?: number; liveTitle?: string },
+  {
+    deferredTurn,
+    liveTitle,
+    liveTurnStartSeq,
+    policy,
+    running,
+    spans,
+  }: {
+    running: boolean
+    liveTurnStartSeq?: number
+    liveTitle?: string
+    policy?: ChatPresentationPolicy
+    spans?: readonly TurnSpan[]
+    deferredTurn?: number
+  },
 ): NativeDisplayRow[] {
   const display: NativeDisplayRow[] = []
   let sawLiveHeader = false
@@ -203,44 +338,65 @@ export function groupProcessRows(
   while (index < rows.length) {
     const row = rows[index]
     if (row === undefined) break
+    if (row.kind === 'reasoning' && isHiddenReasoning(row.text)) {
+      index += 1
+      continue
+    }
     if (!isStepRow(row)) {
       display.push(row)
       index += 1
       continue
     }
+    const runTurn = turnOfSeq(spans, row.sourceSeq)
     const members: NativeConversationRow[] = []
     while (index < rows.length) {
       const candidate = rows[index]
-      if (candidate === undefined || !isStepRow(candidate)) break
+      if (candidate === undefined) break
+      if (candidate.kind === 'reasoning' && isHiddenReasoning(candidate.text)) {
+        index += 1
+        continue
+      }
+      if (!isStepRow(candidate)) break
+      const candidateTurn = turnOfSeq(spans, candidate.sourceSeq)
+      if (runTurn !== undefined && candidateTurn !== undefined && candidateTurn !== runTurn) break
       members.push(candidate)
       index += 1
     }
-    const last = members[members.length - 1]
+    if (members.length === 0) continue
     const atTail = index >= rows.length
-    const live = running && atTail
-    const firstSeq = members[0]?.sourceSeq
-    const inLiveTurn = liveTurnStartSeq !== undefined && firstSeq !== undefined && firstSeq >= liveTurnStartSeq
-    const continueLiveTurn = inLiveTurn && sawLiveHeader
-    const activity = last === undefined ? 'thinking' : processActivity(last)
-    const activities: ProcessActivity[] = []
-    for (const member of members) {
-      const seen = processActivity(member)
-      if (!activities.includes(seen)) activities.push(seen)
-    }
+    const runSpan = runTurn === undefined ? undefined : spans?.find((span) => span.turn === runTurn)
+    const runTurnSettled = runSpan !== undefined && runSpan.endSeq !== Number.MAX_SAFE_INTEGER
+    const live = running && atTail && !runTurnSettled
     const firstRow = members[0]
+    const firstSeq = firstRow?.sourceSeq
+    const inLiveTurn = liveTurnStartSeq !== undefined && firstSeq !== undefined && firstSeq >= liveTurnStartSeq
+    const isDeferred = deferredTurn !== undefined && runTurn !== undefined && runTurn === deferredTurn
+    const summary = summarizeProcessActivity(members)
+    const activity: ProcessActivity = live ? (summary.running ?? 'thinking') : (summary.counts[0]?.kind ?? 'thinking')
+    const activities: ProcessActivity[] = summary.counts.map((entry) => entry.kind)
+    const flat =
+      policy?.stepGrouping === 'none' || (policy?.stepGrouping === 'history' && (inLiveTurn || isDeferred || live))
+    const continueLiveTurn = policy === undefined && inLiveTurn && sawLiveHeader
     if (inLiveTurn) sawLiveHeader = true
+    const liveBaseLabel = liveActivityLabel(activity, summary.preparing === true)
+    const liveDetail = live && policy?.liveProcessDetail === true ? summary.runningDetail : ''
+    const computedLiveTitle =
+      liveTitle ??
+      (liveDetail === ''
+        ? liveBaseLabel
+        : format('process.liveWithDetail', { detail: liveDetail, label: liveBaseLabel }))
     display.push({
       activity,
       activities,
       kind: 'process',
       rows: members,
-      // Only the group still taking rows is running; earlier groups of the live Turn
-      // have finished their own work and read as done, the way the desktop labels them.
       running: live,
+      ...(live && summary.runningDetail !== '' ? { runningDetail: summary.runningDetail } : {}),
+      ...(flat ? { flat: true } : {}),
       ...(continueLiveTurn ? { header: false as const } : {}),
       rowKey: `process:${firstRow?.rowKey ?? firstRow?.sourceSeq ?? index}`,
       ...(firstRow?.sourceSeq === undefined ? {} : { sourceSeq: firstRow.sourceSeq }),
-      title: live ? (liveTitle ?? message(RUNNING_KEYS[activity] as 'process.runningThinking')) : processTitle(members),
+      title: live ? computedLiveTitle : processTitle(members),
     })
   }
   return display

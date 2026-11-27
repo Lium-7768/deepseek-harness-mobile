@@ -7,6 +7,10 @@ it('models collapsed desktop block spacing without doubling native heading gaps'
   expect(markdownBlockGap({ kind: 'heading', level: 2, text: 'Title' }, { kind: 'paragraph', text: 'Intro' })).toBe(28)
   expect(markdownBlockGap({ kind: 'list', text: '' }, { kind: 'heading', level: 4, text: 'Title' })).toBe(8)
   expect(markdownBlockGap({ kind: 'code', text: 'const x = 1' }, { kind: 'paragraph', text: 'Text' })).toBe(16)
+  expect(markdownBlockGap({ kind: 'paragraph', text: 'B' }, { kind: 'paragraph', text: 'A' }, true)).toBe(4)
+  expect(markdownBlockGap({ kind: 'heading', level: 2, text: 'H' }, { kind: 'paragraph', text: 'A' }, true)).toBe(8)
+  expect(markdownBlockGap({ kind: 'rule', text: '' }, { kind: 'paragraph', text: 'A' }, true)).toBe(8)
+  expect(markdownBlockGap({ kind: 'paragraph', text: 'After' }, { kind: 'rule', text: '' }, true)).toBe(8)
 })
 
 it('keeps desktop file paths inert and exposes supported external links', () => {

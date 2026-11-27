@@ -1,6 +1,6 @@
-import { ConversationDisclosureContext } from '@/components/conversation-disclosure'
+import { ConversationDisclosureContext, useConversationDisclosuresState } from '@/components/conversation-disclosure'
 import { useConversationViewport } from './use-conversation-viewport'
-import { closingAssistantSequences, conversationFlowGap, conversationRowKey } from '@/components/conversation-flow'
+import { conversationRowKey } from '@/components/conversation-flow'
 import { MobileApi } from '@/api/mobile-api'
 import { ConversationLeadingBlocks } from './conversation-leading-blocks'
 import type { MobileSubagentEntry } from '@/types/mobile'
@@ -23,23 +23,14 @@ import { firstParam, withErrorContext } from '@/components/route-params'
 import { readPermissionSelect, streamDropped } from '@/components/session-composer-logic'
 import { namespaceValue, readRecord, readString } from '@/components/settings/settings-shared'
 import { planFromProjection } from '@/components/plan-logic'
-import {
-  activeTurnStartedAt,
-  projectNativeConversationRows,
-  type NativeConversationRow,
-} from '@/components/session-conversation-logic'
+import type { NativeConversationRow } from '@/components/session-conversation-logic'
 import { sessionDisplayTitle } from '@/components/session-drawer-logic'
 import { MessageRow } from '@/components/session-message-row'
-import { groupProcessRows, runningProcessTitle, type NativeProcessRow } from '@/components/session-process-logic'
+import type { NativeProcessRow } from '@/components/session-process-logic'
 import { ConnectionStatus, ErrorNotice, SessionDock, UnavailableState } from '@/components/session-screen-state'
 import { makeSessionStyles } from '@/components/session-screen-styles'
 import { olderPageAdvance, shouldRefreshFromPull, unreadCountLabel } from '@/components/session-scroll-logic'
-import {
-  foldCompletedTurns,
-  turnSpans,
-  type NativeRow,
-  type NativeTurnMemberRow,
-} from '@/components/session-turn-logic'
+import type { NativeTurnMemberRow } from '@/components/session-turn-logic'
 import { teamTasks } from '@/components/team-task-logic'
 import { SkeletonConversation } from '@/components/skeleton'
 import { ComposerDockChips, type ComposerDock } from '@/components/composer-dock-chips'
@@ -79,27 +70,25 @@ import {
 } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useSessionActions } from './use-session-actions'
+import {
+  CONVERSATION_GAP_STYLES,
+  useConversationTranscript,
+  type TranscriptListEntry,
+} from '@/hooks/use-conversation-transcript'
 import { useSessionSelections } from '@/hooks/use-session-selections'
+import { shouldMarkSessionRead, type SessionReadSnapshot } from './session-read-logic'
 import { useSessionQueries } from './use-session-queries'
-
-/** Flow gaps are one of four measured values; a stable style per value avoids a new
- * object on every row of every render, which is what defeats a row's memo comparison. */
-const gapStyles: Record<number, { paddingTop: number }> = {
-  0: { paddingTop: 0 },
-  4: { paddingTop: 4 },
-  12: { paddingTop: 12 },
-  16: { paddingTop: 16 },
-  24: { paddingTop: 24 },
-}
 
 /** Events one older page may add; enough for a screen or two of history per press. */
 const OLDER_PAGE_EVENTS = 400
 
-type InvertedRowEntry = {
-  key: string
-  row: NativeRow
-  gap: number
-  closing: boolean
+/** Finds the smallest numeric event sequence without spreading large arrays onto the call stack. */
+function minEventSeq(items: readonly SharedEventItem[]): number | undefined {
+  let minimum: number | undefined
+  for (const item of items) {
+    if (typeof item.seq === 'number' && (minimum === undefined || item.seq < minimum)) minimum = item.seq
+  }
+  return minimum
 }
 
 export default function SessionScreen(): React.JSX.Element {
@@ -110,15 +99,15 @@ export default function SessionScreen(): React.JSX.Element {
     draft?: string | string[]
   }>()
   const sessionId = firstParam(rawSessionId)
+  const sessionIdRef = useRef(sessionId)
+  sessionIdRef.current = sessionId
   const connection = useConnectionStore((state) => state.connection)
   const insets = useSafeAreaInsets()
   const client = useMemo(() => (connection ? new MobileApi(connection) : undefined), [connection])
   const submittedDraft = useRef<string | undefined>(undefined)
   /** A page that brought no rows means scrolling further cannot find more, even if the host says it has. */
   const exhaustedOlderHistory = useRef(false)
-  /** Closed after a page lands; opened once the reader scrolls back out of the runway. */
-  /** Whether the in-flight older-page request came from the button rather than the scroll. */
-  const lastOlderRequestWasManual = useRef(false)
+
   const streamStatus = useMobileSyncStore((state) => state.status)
   /** A paired client whose stream dropped: drafting stays open, sending does not. */
   const offline = streamDropped({ hasConnection: connection !== undefined, status: streamStatus })
@@ -174,15 +163,15 @@ export default function SessionScreen(): React.JSX.Element {
   const loadOlder = useMutation({
     // A deliberate press reports its failure; an automatic request near the top does not,
     // because a modal for a page the reader never asked for interrupts reading.
-    mutationFn: async ({ manual = false }: { manual?: boolean } = {}) => {
-      lastOlderRequestWasManual.current = manual
-      if (!client || !sessionId) throw new Error(message('conversation.openFromList'))
-      const source = sourceItems
-      const beforeSeq = Math.min(...source.flatMap((item) => (typeof item.seq === 'number' ? [item.seq] : [])))
-      if (!Number.isFinite(beforeSeq)) throw new Error(message('conversation.noMoreHistory'))
-      return client.sessionHistory(sessionId, { beforeSeq, maxMessages: 200 })
+    mutationFn: async ({ sessionId: targetSessionId }: { manual: boolean; sessionId: string | undefined }) => {
+      if (!client || !targetSessionId) throw new Error(message('conversation.openFromList'))
+      const beforeSeq = minEventSeq(sourceItems)
+      if (beforeSeq === undefined) throw new Error(message('conversation.noMoreHistory'))
+      const page = await client.sessionHistory(targetSessionId, { beforeSeq, maxMessages: 200 })
+      return { page, targetSessionId }
     },
-    onSuccess: (page) => {
+    onSuccess: ({ page, targetSessionId }) => {
+      if (sessionIdRef.current !== targetSessionId) return
       // Prepend anchors the reader: newer rows above the viewport add height without
       // moving what is being read, so the offset has to grow by the same amount. The
       // list's own `maintainVisibleContentPosition` is gone because its latch also
@@ -191,10 +180,10 @@ export default function SessionScreen(): React.JSX.Element {
       // The Host sizes a page by messages but ships every event behind them, so the page
       // repeats what is already loaded. Taking only the events older than the current
       // oldest moves the cursor, which is what the next press needs.
-      const oldestLoaded = Math.min(...sourceItems.flatMap((item) => (typeof item.seq === 'number' ? [item.seq] : [])))
+      const oldestLoaded = minEventSeq(sourceItems)
       const advance = olderPageAdvance({
         items: page.items,
-        oldestLoadedSeq: Number.isFinite(oldestLoaded) ? oldestLoaded : undefined,
+        oldestLoadedSeq: oldestLoaded,
         pageSize: OLDER_PAGE_EVENTS,
       })
       if (advance.exhausted) exhaustedOlderHistory.current = true
@@ -204,17 +193,20 @@ export default function SessionScreen(): React.JSX.Element {
       setOlderHasMore(advance.exhausted ? false : (page.hasMore ?? advance.items.length > 0))
       noteOlderPageLoaded()
     },
-    onError: (error) => {
+    onError: (error, variables) => {
+      if (sessionIdRef.current !== variables.sessionId) return
       // A failed page is also the end of the line for the automatic trigger: retrying it
       // would reach the Host again on every scroll and surface the same alert.
       exhaustedOlderHistory.current = true
-      if (!lastOlderRequestWasManual.current) return
+      if (!variables.manual) return
       Alert.alert(
         message('conversation.loadOlderFailedTitle'),
         withErrorContext(message('conversation.historyNotLoaded'), error),
       )
     },
   })
+  const loadOlderMutateAsync = loadOlder.mutateAsync
+  const resetLoadOlder = loadOlder.reset
   const sendMessage = useRef(send.mutate)
   sendMessage.current = send.mutate
 
@@ -222,8 +214,10 @@ export default function SessionScreen(): React.JSX.Element {
 
   useEffect(() => {
     const value = firstParam(draft)
-    if (!client || !sessionId || !value || submittedDraft.current === value) return
-    submittedDraft.current = value
+    if (!client || !sessionId || !value) return
+    const key = `${sessionId}:${value}`
+    if (submittedDraft.current === key) return
+    submittedDraft.current = key
     sendMessage.current([{ type: 'text', text: value }])
   }, [client, draft, sessionId])
 
@@ -232,9 +226,10 @@ export default function SessionScreen(): React.JSX.Element {
     [history.data?.items, events.data?.items],
   )
   const sourceItems = useMemo(() => mergeEventItems(olderItems, recentWindow.items), [olderItems, recentWindow])
-  const messages = useMemo(() => projectNativeConversationRows(sourceItems), [sourceItems])
+  const { policy, messages, displayRows, invertedEntries, runningTurnStartedAt, showRunningDivider } =
+    useConversationTranscript(sourceItems, settings.data)
   const messageCount = messages.length
-  const viewport = useConversationViewport<InvertedRowEntry>({ sessionId, messageCount })
+  const viewport = useConversationViewport<TranscriptListEntry>({ sessionId, messageCount })
   const {
     listRef,
     showReturnToLatest,
@@ -314,45 +309,21 @@ export default function SessionScreen(): React.JSX.Element {
     [interruptSubagent],
   )
   const loadOlderManually = useCallback((): void => {
-    void loadOlder.mutateAsync({ manual: true }).catch(() => undefined)
-  }, [loadOlder])
+    void loadOlderMutateAsync({ manual: true, sessionId }).catch(() => undefined)
+  }, [loadOlderMutateAsync, sessionId])
 
   useEffect(() => {
-    submittedDraft.current = undefined
+    setCatalogSheetOpen(false)
     setOlderItems([])
     setOlderHasMore(undefined)
     exhaustedOlderHistory.current = false
+    resetLoadOlder()
     // The viewport restores its own reading position once per session open, never on
     // subsequent message arrivals (putting messageCount here wiped loaded older history
     // and re-armed the 1200ms restore jump on every new row).
     resetForSession(sessionId)
-  }, [resetForSession, sessionId])
+  }, [resetForSession, resetLoadOlder, sessionId])
 
-  const runningTurnStartedAt = useMemo(() => activeTurnStartedAt(sourceItems), [sourceItems])
-  const spans = useMemo(() => turnSpans(sourceItems), [sourceItems])
-  // The running Turn is flat like the desktop's latest Turn: one header names
-  // what the agent is doing now, and later steps continue under it.
-  const liveTurnStartSeq = useMemo(() => {
-    if (runningTurnStartedAt === undefined) return undefined
-    const open = spans.find((span) => span.endSeq === Number.MAX_SAFE_INTEGER)
-    return open?.startSeq
-  }, [runningTurnStartedAt, spans])
-  const liveTitle = useMemo(
-    () => (runningTurnStartedAt === undefined ? undefined : runningProcessTitle(messages)),
-    [messages, runningTurnStartedAt],
-  )
-  const stepRows = useMemo(
-    () =>
-      groupProcessRows(messages, {
-        running: runningTurnStartedAt !== undefined,
-        ...(liveTurnStartSeq === undefined ? {} : { liveTurnStartSeq }),
-        ...(liveTitle === undefined ? {} : { liveTitle }),
-      }),
-    [liveTitle, liveTurnStartSeq, messages, runningTurnStartedAt],
-  )
-  // A settled Turn folds behind one control; an open Turn has no end sequence, so
-  // its steps keep their live headers.
-  const displayRows = useMemo(() => foldCompletedTurns(stepRows, { spans }), [spans, stepRows])
   /**
    * The shared task board, projected once per projection change.
    *
@@ -363,15 +334,7 @@ export default function SessionScreen(): React.JSX.Element {
    * transcript under the reader.
    */
   const boardTasks = useMemo(() => teamTasks(history.data?.projections?.values), [history.data?.projections?.values])
-  // The desktop owns the reading record, so opening this transcript — or a turn finishing
-  // in it — tells the Host rather than counting locally. Opening is what the Host treats
-  // as acknowledgement; the row count is what catches a turn that completed while the
-  // reader was already here, which changes no route.
-  useEffect(() => {
-    if (sessionId === undefined) return
-    noteSessionRead(sessionId)
-    void client?.markSessionRead(sessionId).catch(() => undefined)
-  }, [client, displayRows.length, sessionId])
+
   /**
    * The rows the list shows while the reader is steering it.
    *
@@ -383,6 +346,7 @@ export default function SessionScreen(): React.JSX.Element {
    */
   /** First row the viewport shows, for the turn rail's active mark. */
   const [catalogSheetOpen, setCatalogSheetOpen] = useState(false)
+  const exportingLog = useRef(false)
   /**
    * The rows in the order an inverted list renders them: newest first.
    *
@@ -391,16 +355,6 @@ export default function SessionScreen(): React.JSX.Element {
    * they are reading history does not move what they are looking at. That is the whole
    * reason for the inversion: no code has to chase the content height.
    */
-  const closingBlocks = useMemo(() => closingAssistantSequences(displayRows), [displayRows])
-  const invertedEntries = useMemo<InvertedRowEntry[]>(() => {
-    const reversed = [...displayRows].reverse()
-    return reversed.map((row, index) => ({
-      key: conversationRowKey(row, index),
-      row,
-      gap: conversationFlowGap(row, reversed[index + 1]),
-      closing: row.kind === 'assistant' && row.sourceSeq !== undefined && closingBlocks.has(row.sourceSeq),
-    }))
-  }, [closingBlocks, displayRows])
   const eventBySeq = useMemo(
     () =>
       new Map(sourceItems.flatMap((item) => (typeof item.seq === 'number' ? [[item.seq, item.event] as const] : []))),
@@ -412,9 +366,7 @@ export default function SessionScreen(): React.JSX.Element {
   // conversation on every scroll frame; these callbacks and the event lookup keep
   // their identity across streaming chunks and scroll renders.
   const eventBySeqRef = useRef(eventBySeq)
-  useEffect(() => {
-    eventBySeqRef.current = eventBySeq
-  }, [eventBySeq])
+  eventBySeqRef.current = eventBySeq
   const getEvent = useCallback(
     (seq: number | undefined) => (seq === undefined ? undefined : eventBySeqRef.current.get(seq)),
     [],
@@ -440,7 +392,14 @@ export default function SessionScreen(): React.JSX.Element {
       row.kind === 'deliverables' ? (
         <NativeDeliverablesRow files={row.files} />
       ) : row.kind === 'turn-trigger' ? (
-        <NativeTurnTriggerRow text={row.text} trigger={row.trigger} />
+        <NativeTurnTriggerRow
+          contentBlocks={row.contentBlocks}
+          rowKey={conversationRowKey(row)}
+          source={row.source}
+          text={row.text}
+          time={row.time}
+          trigger={row.trigger}
+        />
       ) : (
         <MessageRow
           api={client}
@@ -450,6 +409,7 @@ export default function SessionScreen(): React.JSX.Element {
           onBranch={branchFromMessage}
           onQuote={quoteIntoDraft}
           sessionId={sessionId}
+          settledReasoningPreview={policy.settledReasoningPreview}
           // Deliberate departure from the desktop: `MessageIconActions` renders only in
           // `TurnTailNodeView` because a pointer can drag-select any earlier block. A phone
           // cannot, and the selection handles inside a scrolling list are hard to grab, so
@@ -458,44 +418,28 @@ export default function SessionScreen(): React.JSX.Element {
           showActions
         />
       ),
-    [branchFromMessage, client, getEvent, quoteIntoDraft, sessionId],
+    [branchFromMessage, client, getEvent, policy.settledReasoningPreview, quoteIntoDraft, sessionId],
   )
   // Open steps live in ConversationDisclosureContext, not in the row: the list recycles
   // rows, so a disclosure held by the row would collapse whenever it scrolled out of view.
-  const [openSteps, setOpenSteps] = useState<ReadonlySet<string>>(() => new Set())
-  const toggleStep = useCallback((rowKey: string) => {
-    setOpenSteps((current) => {
-      const next = new Set(current)
-      if (next.has(rowKey)) next.delete(rowKey)
-      else next.add(rowKey)
-      return next
-    })
-  }, [])
+  const disclosures = useConversationDisclosuresState(sessionId)
   const renderGroupRow = useCallback((row: NativeConversationRow) => renderRow(row, false), [renderRow])
   const renderStep = useCallback(
     (row: NativeProcessRow) => <NativeProcessGroup item={row} renderRow={renderGroupRow} />,
     [renderGroupRow],
   )
-  // A Turn's control reveals its rows directly. A step inside it would add a
-  // second disclosure whose label repeats the first member it holds, so the
-  // members render flat: two levels in the transcript (Turn, then content), and
-  // one click to reach a tool's output.
+  // Mirrors desktop `TurnProcessNodeView` + `ChatGroupSeat`: expanding a historical Turn
+  // reveals its collapsible step groups (`已读取文件并修改了文件`, `已注入上下文`, etc.).
   const renderTurnMember = useCallback(
-    (row: NativeTurnMemberRow) =>
-      row.kind === 'process' ? (
-        <View style={s.processMembers}>
-          {row.rows.map((member, index) => (
-            <View key={conversationRowKey(member, index)}>{renderRow(member, false)}</View>
-          ))}
-        </View>
-      ) : (
-        renderRow(row, false)
-      ),
-    [renderRow, s.processMembers],
+    (row: NativeTurnMemberRow) => (row.kind === 'process' ? renderStep(row) : renderRow(row, false)),
+    [renderRow, renderStep],
   )
   const renderItem = useCallback(
-    ({ item }: { item: InvertedRowEntry }) => {
+    ({ item }: { item: TranscriptListEntry }) => {
       const { row, gap, closing } = item
+      if (row.kind === 'turn' && row.continuation === true) {
+        return <NativeTurnGroup gap={gap} item={row} renderRow={renderTurnMember} />
+      }
       const content =
         row.kind === 'turn' ? (
           <NativeTurnGroup item={row} renderRow={renderTurnMember} />
@@ -504,15 +448,11 @@ export default function SessionScreen(): React.JSX.Element {
         ) : (
           renderRow(row, closing)
         )
-      return <View style={gapStyles[gap]}>{content}</View>
+      return <View style={CONVERSATION_GAP_STYLES[gap]}>{content}</View>
     },
     [renderRow, renderStep, renderTurnMember],
   )
-  const keyExtractor = useCallback((item: InvertedRowEntry) => item.key, [])
-  const disclosures = useMemo(() => ({ expanded: openSteps, toggle: toggleStep }), [openSteps, toggleStep])
-  useEffect(() => {
-    setOpenSteps(new Set())
-  }, [sessionId])
+  const keyExtractor = useCallback((item: TranscriptListEntry) => item.key, [])
   /**
    * Records how far the reader is from the newest message and mirrors it into the
    * return-to-latest control.
@@ -530,30 +470,55 @@ export default function SessionScreen(): React.JSX.Element {
     subagents: (subagents.data?.entries ?? []).filter((entry) => entry.kind === 'child').length,
   }
   const headerMenu: HeaderMenuRow[] = [
+    ...(headerCounts.subagents > 0 || headerCounts.jobs > 0
+      ? [
+          {
+            icon: 'users-outline' as const,
+            label: headerCounts.subagents > 0 ? message('activity.subagents') : message('conversation.jobsTitle'),
+            onSelect: () => setCatalogSheetOpen(true),
+            value: 'catalog',
+          },
+        ]
+      : []),
     {
       icon: 'edit-outline',
       label: message('conversation.sessionMenuRename'),
-      onSelect: () => router.push(`/session/${sessionId}/rename`),
+      onSelect: () => {
+        if (sessionId === undefined) return
+        router.push({
+          pathname: '/session/[sessionId]/rename',
+          params: { sessionId, title: sessionTitle },
+        })
+      },
       value: 'rename',
     },
     {
       icon: 'archive-outline',
       label: message('conversation.sessionMenuShare'),
       onSelect: () => {
-        if (client === undefined || sessionId === undefined) return
+        if (client === undefined || sessionId === undefined || exportingLog.current) return
+        exportingLog.current = true
         // The drawer's share path: read every page of history, then hand the file to
         // the system sheet.
         void shareSessionLog(client, { sessionId, title: sessionTitle })
           .then((outcome) => {
-            if (outcome === 'unsupported') showSnackbar(message('conversation.shareUnsupported'))
+            if (outcome === 'empty') showSnackbar(message('log.emptyBody'))
+            else if (outcome === 'unsupported') showSnackbar(message('conversation.shareUnsupported'))
           })
           .catch(() => showSnackbar(message('conversation.shareFailed')))
+          .finally(() => {
+            exportingLog.current = false
+          })
       },
       value: 'share',
     },
   ]
-  const pendingQuestions = (interactions.data?.items ?? []).flatMap((item) =>
-    item.type === 'question/requested' ? item.payload.questions : [],
+  const pendingQuestions = useMemo(
+    () =>
+      (interactions.data?.items ?? []).flatMap((item) =>
+        item.type === 'question/requested' ? item.payload.questions : [],
+      ),
+    [interactions.data?.items],
   )
   const goal = goalWithActivation(
     goalFromProjection(history.data?.projections?.values),
@@ -578,6 +543,39 @@ export default function SessionScreen(): React.JSX.Element {
     if (previous === undefined || previous.sessionId !== sessionId) return
     if (previous.running && !running) doneFeedback()
   }, [running, sessionId])
+  // The desktop owns the reading record, so opening this transcript — or a turn finishing
+  // in it — tells the Host rather than counting locally. Streaming chunks while running
+  // do not re-post on every row.
+  const lastReadSnapshot = useRef<SessionReadSnapshot | undefined>(undefined)
+  useEffect(() => {
+    if (sessionId === undefined) {
+      lastReadSnapshot.current = undefined
+      return
+    }
+    const next: SessionReadSnapshot = { client, rowCount: displayRows.length, running, sessionId }
+    const shouldMark = shouldMarkSessionRead(lastReadSnapshot.current, next)
+    lastReadSnapshot.current = next
+    if (!shouldMark) return
+    noteSessionRead(sessionId)
+    void client?.markSessionRead(sessionId).catch(() => undefined)
+  }, [client, displayRows.length, running, sessionId])
+  const clearGoalEditRequest = useCallback(() => setGoalEditRequest(0), [])
+  const lookupReferences = useMemo(
+    () =>
+      client === undefined || sessionId === undefined
+        ? undefined
+        : (query: string, signal: AbortSignal) => client.withSignal(signal).sessionReferences(sessionId, query),
+    [client, sessionId],
+  )
+  const hasTodoDock = todos !== undefined && todos.length > 0
+  const hasGoalDock = goal !== undefined && goal.phase !== 'complete'
+  const hasQueueDock = queuedCount > 0
+  const effectiveOpenDock: ComposerDock | undefined =
+    (openDock === 'todo' && hasTodoDock) ||
+    (openDock === 'goal' && hasGoalDock) ||
+    (openDock === 'queue' && hasQueueDock)
+      ? openDock
+      : undefined
   const selections = useSessionSelections({
     client,
     sessionId,
@@ -605,17 +603,20 @@ export default function SessionScreen(): React.JSX.Element {
         {/* A question the Turn is waiting on outranks its clock: the reader
             is the blocker, and the row opens the screen that answers it. */}
         <NativeQuestionPromptRow
-          onOpen={() => router.push(`/session/${sessionId}/interactions`)}
+          onOpen={() => {
+            if (sessionId === undefined) return
+            router.push({ pathname: '/session/[sessionId]/interactions', params: { sessionId } })
+          }}
           questions={pendingQuestions}
         />
         {status === 'running' ? (
           <View style={s.turnStatusSlot}>
-            <NativeTurnStatus startedAt={runningTurnStartedAt} />
+            <NativeTurnStatus showDivider={showRunningDivider} startedAt={runningTurnStartedAt} />
           </View>
         ) : null}
       </>
     ),
-    [pendingQuestions, runningTurnStartedAt, s.turnStatusSlot, sessionId, status],
+    [pendingQuestions, runningTurnStartedAt, s.turnStatusSlot, sessionId, showRunningDivider, status],
   )
   const listFooter = useMemo(
     () => (
@@ -758,12 +759,12 @@ export default function SessionScreen(): React.JSX.Element {
                     // every condition, so the screen only reports what it knows.
                     if (
                       isAtHistoryRunway({
-                        hasMore: olderHasMore !== false,
+                        hasMore: hasMoreHistory && !history.isPending && displayRows.length > 0,
                         loading: loadOlder.isPending,
                         exhausted: exhaustedOlderHistory.current,
                       })
                     )
-                      void loadOlder.mutateAsync({ manual: false }).catch(() => undefined)
+                      void loadOlderMutateAsync({ manual: false, sessionId }).catch(() => undefined)
                   }}
                   onScrollBeginDrag={beginReaderScroll}
                   onScrollEndDrag={settleReaderScroll}
@@ -817,34 +818,36 @@ export default function SessionScreen(): React.JSX.Element {
                 agentPreset={activeSession?.agentPreset}
                 model={models.data?.current}
                 onOpenGoal={() => {
-                  if (goal && goal.phase !== 'complete') setGoalEditRequest((value) => value + 1)
-                  else setGoalEditorOpen(true)
+                  if (goal && goal.phase !== 'complete') {
+                    setOpenDock('goal')
+                    setGoalEditRequest((value) => value + 1)
+                  } else {
+                    setGoalEditorOpen(true)
+                  }
                 }}
                 header={
-                  openDock !== undefined ||
-                  (todos !== undefined && todos.length > 0) ||
-                  (goal !== undefined && goal.phase !== 'complete') ||
-                  queuedCount > 0 ? (
+                  hasTodoDock || hasGoalDock || hasQueueDock ? (
                     <View style={s.composerContext}>
                       <ComposerDockChips
                         goal={goal}
                         onToggle={(dock) => setOpenDock((current) => (current === dock ? undefined : dock))}
-                        open={openDock}
+                        open={effectiveOpenDock}
                         queued={queuedCount}
                         todos={todos}
                       />
-                      {openDock === 'todo' ? <NativeTodoDock todos={todos} /> : null}
-                      {openDock === 'goal' ? (
+                      {effectiveOpenDock === 'todo' ? <NativeTodoDock todos={todos} /> : null}
+                      {effectiveOpenDock === 'goal' ? (
                         <NativeGoalBar
                           goal={goal}
                           editRequest={goalEditRequest}
+                          onEditRequestHandled={clearGoalEditRequest}
                           pending={goalMutation.isPending}
                           onMutate={(action, ref, objective) =>
                             goalMutation.mutateAsync({ action, ref, objective }).then(() => undefined)
                           }
                         />
                       ) : null}
-                      {openDock === 'queue' ? (
+                      {effectiveOpenDock === 'queue' ? (
                         <NativeQueueDock
                           items={queue.data?.items ?? []}
                           onUpdate={(itemId, action) =>
@@ -861,11 +864,7 @@ export default function SessionScreen(): React.JSX.Element {
                 onCancel={() => cancel.mutate()}
                 commands={commands.data}
                 skills={skills.data}
-                lookupReferences={
-                  client === undefined || sessionId === undefined
-                    ? undefined
-                    : (query, signal) => client.withSignal(signal).sessionReferences(sessionId, query)
-                }
+                lookupReferences={lookupReferences}
                 permissions={readPermissionSelect(history.data?.projections?.values.permissions)}
                 plan={plan}
                 sessionId={sessionId}
@@ -887,7 +886,13 @@ export default function SessionScreen(): React.JSX.Element {
                 presets={presets.data?.presets}
                 // The dock stays under both tabs: hiding it on the ledger tab
                 // shortened the composer by 26pt every time the reader switched.
-                footer={<SessionDock items={sourceItems} projectionValues={history.data?.projections?.values} />}
+                footer={
+                  <SessionDock
+                    items={sourceItems}
+                    performanceUsage={policy.performanceUsage}
+                    projectionValues={history.data?.projections?.values}
+                  />
+                }
               />
             </>
           )}

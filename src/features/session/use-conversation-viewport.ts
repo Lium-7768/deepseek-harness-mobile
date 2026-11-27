@@ -267,6 +267,12 @@ export function useConversationViewport<Row>({
 
   const resetForSession = useCallback(
     (nextSessionId: string | undefined): void => {
+      if (readerIdleTimer.current) clearTimeout(readerIdleTimer.current)
+      readerIdleTimer.current = null
+      readerScrolling.current = false
+      awaitingOlderRearm.current = false
+      sendFollowUntil.current = 0
+      metrics.current = { contentHeight: 0, offsetY: 0, uprightOffset: 0, viewportHeight: 0 }
       nearLatest.current = true
       setShowReturnToLatest(false)
       unseenBaseline.current = undefined

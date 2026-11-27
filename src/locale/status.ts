@@ -23,16 +23,17 @@ export const status = {
   commandRun: '执行命令：{name}',
   /** `{name}` is the command when it could not be identified as a run. */
   commandName: '命令：{name}',
-  running: '执行中',
-  failed: '失败',
-  maxTokensNote: '已达到最大输出 token，内容可能不完整。',
+  commandTitle: '指令',
+  commandRunning: '执行中…',
+  commandDone: '已完成',
+  commandFailed: '指令失败',
+  maxTokensTitle: '已达到输出 token 上限',
+  maxTokensHint: '回答被截断，已有输出保留在对话中。发送“继续”可让模型接着输出。',
   viewCompaction: '查看压缩摘要',
-  compacted: '对话已压缩',
-  compactedBody: '历史消息已汇总。',
-  /** `{count}` collapsed messages. */
-  collapsedItems: '已折叠 {count} 条消息',
-  /** `{count}` tokens, rounded. */
-  collapsedTokens: '约 {count} tokens',
+  compacted: '上下文已压缩',
+  compactedSummary: '已压缩 {items} 条历史记录（约 {tokens} tokens）',
+  compactedExpand: '点击查看压缩摘要',
+  compactedUnavailable: '压缩摘要不可用',
   /** `{minutes}` and `{seconds}` for a duration over a minute. */
   durationMinutes: '{minutes}分{seconds}秒',
   durationSeconds: '{seconds}秒',

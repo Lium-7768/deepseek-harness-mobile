@@ -33,7 +33,12 @@ function wrapInlineCode(text: string): string {
   return text.replace(/([/_.:,;=?&-])/g, '$1\u200B')
 }
 
-function inline(text: string, key: string, styles: ReturnType<typeof makeStyles>): React.JSX.Element[] {
+function inline(
+  text: string,
+  key: string,
+  styles: ReturnType<typeof makeStyles>,
+  compact = false,
+): React.JSX.Element[] {
   const re = /(\[[^\]]+\]\([^\)]+\)|`[^`]+`|\*\*[^*]+\*\*|__[^_]+__|\*[^*]+\*|_[^_]+_)/g
   const out: React.JSX.Element[] = []
   let cursor = 0
@@ -46,7 +51,7 @@ function inline(text: string, key: string, styles: ReturnType<typeof makeStyles>
       out.push(
         <Text
           key={`${key}-l-${match.index}`}
-          style={link.url ? styles.link : undefined}
+          style={link.url ? (compact ? styles.compactLink : styles.link) : undefined}
           accessibilityRole={link.url ? 'link' : undefined}
           onPress={
             link.url
@@ -63,7 +68,7 @@ function inline(text: string, key: string, styles: ReturnType<typeof makeStyles>
       )
     } else if (token.startsWith('`'))
       out.push(
-        <Text key={`${key}-c-${match.index}`} style={styles.inlineCode}>
+        <Text key={`${key}-c-${match.index}`} style={compact ? styles.compactInlineCode : styles.inlineCode}>
           {wrapInlineCode(token.slice(1, -1))}
         </Text>,
       )
@@ -87,10 +92,14 @@ function inline(text: string, key: string, styles: ReturnType<typeof makeStyles>
 export const NativeMarkdown = memo(function NativeMarkdown({
   markdown,
   onCopyCode,
+  variant = 'default',
 }: {
   markdown: string
   onCopyCode?: (code: string) => void | Promise<void>
+  /** Compact mode mirrors desktop `MarkdownText.module.css .compact` for reasoning bodies. */
+  variant?: 'default' | 'compact'
 }): React.JSX.Element {
+  const compact = variant === 'compact'
   const styles = useThemedStyles(makeStyles)
   const [copiedIndex, setCopiedIndex] = useState<number | null>(null)
   // The phone cannot show which lines a copy took, so the block names the count.
@@ -131,7 +140,7 @@ export const NativeMarkdown = memo(function NativeMarkdown({
   return (
     <View style={styles.root}>
       {blocks.map((block, index) => {
-        const spacing = { marginTop: markdownBlockGap(block, blocks[index - 1]) }
+        const spacing = { marginTop: markdownBlockGap(block, blocks[index - 1], compact) }
         const key = `md-${index}`
         if (block.kind === 'code') {
           const copied = copiedIndex === index
@@ -153,6 +162,7 @@ export const NativeMarkdown = memo(function NativeMarkdown({
           return (
             <NativeCodeBlock
               key={key}
+              compact={compact}
               spacing={spacing.marginTop}
               copied={copied}
               copiedSize={copied === true ? copiedSize : undefined}
@@ -163,22 +173,24 @@ export const NativeMarkdown = memo(function NativeMarkdown({
             />
           )
         }
-        const content = block.kind === 'list' ? [] : inline(block.text, key, styles)
+        const content = block.kind === 'list' ? [] : inline(block.text, key, styles, compact)
         if (block.kind === 'heading')
           return (
             <Text
               key={key}
               selectable
               style={[
-                styles.heading,
+                compact ? styles.compactHeading : styles.heading,
                 spacing,
-                block.level === 1
-                  ? styles.h1
-                  : block.level === 2
-                    ? styles.h2
-                    : block.level === 3
-                      ? styles.h3
-                      : styles.h4,
+                compact
+                  ? null
+                  : block.level === 1
+                    ? styles.h1
+                    : block.level === 2
+                      ? styles.h2
+                      : block.level === 3
+                        ? styles.h3
+                        : styles.h4,
               ]}
             >
               {content}
@@ -187,20 +199,20 @@ export const NativeMarkdown = memo(function NativeMarkdown({
         if (block.kind === 'rule') return <View key={key} style={[styles.rule, spacing]} />
         if (block.kind === 'quote')
           return (
-            <View key={key} style={[styles.quote, spacing]}>
-              <Text selectable style={styles.quoteText}>
+            <View key={key} style={[styles.quote, compact && styles.compactQuote, spacing]}>
+              <Text selectable style={compact ? styles.compactQuoteText : styles.quoteText}>
                 {content}
               </Text>
             </View>
           )
         if (block.kind === 'list')
           return (
-            <View key={key} style={[styles.list, spacing]}>
+            <View key={key} style={[compact ? styles.compactList : styles.list, spacing]}>
               {(block.items ?? []).map((item, itemIndex) => (
                 <View key={`${key}-${itemIndex}`} style={styles.listRow}>
-                  <Text style={styles.marker}>{item.marker}</Text>
-                  <Text selectable style={[styles.body, styles.listBody]}>
-                    {inline(item.text, `${key}-${itemIndex}`, styles)}
+                  <Text style={compact ? styles.compactMarker : styles.marker}>{item.marker}</Text>
+                  <Text selectable style={[compact ? styles.compactBody : styles.body, styles.listBody]}>
+                    {inline(item.text, `${key}-${itemIndex}`, styles, compact)}
                   </Text>
                 </View>
               ))}
@@ -209,11 +221,11 @@ export const NativeMarkdown = memo(function NativeMarkdown({
         if (block.kind === 'table')
           return (
             <View key={key} style={spacing}>
-              <NativeTable block={block} styles={styles} />
+              <NativeTable block={block} compact={compact} styles={styles} />
             </View>
           )
         return (
-          <Text key={key} selectable style={[styles.body, spacing]}>
+          <Text key={key} selectable style={[compact ? styles.compactBody : styles.body, spacing]}>
             {content}
           </Text>
         )
@@ -233,7 +245,15 @@ export const NativeMarkdown = memo(function NativeMarkdown({
  * @param props - The parsed table and the shared markdown styles.
  * @returns The rendered table.
  */
-function NativeTable({ block, styles }: { block: Block; styles: ReturnType<typeof makeStyles> }): React.JSX.Element {
+function NativeTable({
+  block,
+  compact = false,
+  styles,
+}: {
+  block: Block
+  compact?: boolean
+  styles: ReturnType<typeof makeStyles>
+}): React.JSX.Element {
   const theme = useAppTheme()
   const header = block.header ?? []
   const rows = block.rows ?? []
@@ -286,6 +306,7 @@ function NativeTable({ block, styles }: { block: Block; styles: ReturnType<typeo
     if (columns === 1) edges.push(styles.tableCellOnly)
     return [
       styles.tableCell,
+      ...(compact ? [styles.compactTableCell] : []),
       fills ? styles.tableCellFill : styles.tableCellScroll,
       side === 'center' ? styles.tableCenter : side === 'right' ? styles.tableRight : styles.tableLeft,
       ...edges,
@@ -297,9 +318,17 @@ function NativeTable({ block, styles }: { block: Block; styles: ReturnType<typeo
         <Text
           maxFontSizeMultiplier={FIXED_GEOMETRY_FONT_CAP}
           selectable
-          style={heading ? styles.tableHeadText : styles.tableText}
+          style={
+            compact
+              ? heading
+                ? styles.compactTableHeadText
+                : styles.compactTableText
+              : heading
+                ? styles.tableHeadText
+                : styles.tableText
+          }
         >
-          {inline(row[column] ?? '', `${rowKey}-${column}`, styles)}
+          {inline(row[column] ?? '', `${rowKey}-${column}`, styles, compact)}
         </Text>
       </View>
     ))
@@ -355,6 +384,7 @@ function NativeTable({ block, styles }: { block: Block; styles: ReturnType<typeo
 }
 
 function NativeCodeBlock({
+  compact = false,
   copied,
   copiedSize,
   failed,
@@ -363,6 +393,7 @@ function NativeCodeBlock({
   onCopy,
   text,
 }: {
+  compact?: boolean
   copied: boolean
   /** Localized copy confirmation naming the moved line count. */
   copiedSize?: string
@@ -433,12 +464,18 @@ function NativeCodeBlock({
       </View>
       {wrapped ? (
         <View style={collapsible ? styles.codeBodyCollapsible : styles.codeBody}>
-          <Text selectable numberOfLines={collapsible && !expanded ? 16 : undefined} style={styles.codeText}>
-            {tokens.map((token, index) => (
-              <Text key={index} style={{ color: codeTokenColor(theme, token.kind) }}>
-                {token.text}
-              </Text>
-            ))}
+          <Text
+            selectable
+            numberOfLines={collapsible && !expanded ? 16 : undefined}
+            style={[styles.codeText, compact && styles.compactCodeText]}
+          >
+            {compact
+              ? text
+              : tokens.map((token, index) => (
+                  <Text key={index} style={{ color: codeTokenColor(theme, token.kind) }}>
+                    {token.text}
+                  </Text>
+                ))}
           </Text>
         </View>
       ) : (
@@ -448,12 +485,18 @@ function NativeCodeBlock({
           showsHorizontalScrollIndicator
           contentContainerStyle={collapsible ? styles.codeBodyCollapsible : styles.codeBody}
         >
-          <Text selectable numberOfLines={collapsible && !expanded ? 16 : undefined} style={styles.codeText}>
-            {tokens.map((token, index) => (
-              <Text key={index} style={{ color: codeTokenColor(theme, token.kind) }}>
-                {token.text}
-              </Text>
-            ))}
+          <Text
+            selectable
+            numberOfLines={collapsible && !expanded ? 16 : undefined}
+            style={[styles.codeText, compact && styles.compactCodeText]}
+          >
+            {compact
+              ? text
+              : tokens.map((token, index) => (
+                  <Text key={index} style={{ color: codeTokenColor(theme, token.kind) }}>
+                    {token.text}
+                  </Text>
+                ))}
           </Text>
         </ScrollView>
       )}
@@ -639,4 +682,24 @@ const makeStyles = (theme: AppTheme) =>
     // The phone's body is 14, so the table keeps the same one-step gap at 13.
     tableHeadText: { color: theme.colors.ink, fontSize: 13, fontWeight: '500', lineHeight: 22 },
     tableText: { color: theme.colors.ink, fontSize: 13, lineHeight: 22 },
+    // Desktop `MarkdownText.module.css .compact`: 13/20 tertiary body for expanded reasoning.
+    compactBody: { color: theme.colors.inkTertiary, flexShrink: 1, fontSize: 13, lineHeight: 20 },
+    compactHeading: { color: theme.colors.inkTertiary, fontSize: 13, fontWeight: '600', lineHeight: 20 },
+    compactLink: { color: theme.colors.inkTertiary, textDecorationLine: 'underline' },
+    compactInlineCode: {
+      backgroundColor: theme.colors.codeInline,
+      borderRadius: theme.radius.xs,
+      color: theme.colors.inkTertiary,
+      fontFamily: MONOSPACE_FONT,
+      fontSize: 13,
+      paddingHorizontal: 3,
+    },
+    compactQuote: { paddingLeft: 8 },
+    compactQuoteText: { color: theme.colors.inkTertiary, fontSize: 13, lineHeight: 20 },
+    compactList: { gap: 2 },
+    compactMarker: { color: theme.colors.inkTertiary, fontSize: 13, lineHeight: 20, minWidth: 12 },
+    compactCodeText: { color: theme.colors.inkTertiary },
+    compactTableCell: { paddingHorizontal: 8, paddingVertical: 4 },
+    compactTableHeadText: { color: theme.colors.inkTertiary, fontSize: 13, fontWeight: '600', lineHeight: 20 },
+    compactTableText: { color: theme.colors.inkTertiary, fontSize: 13, lineHeight: 20 },
   })

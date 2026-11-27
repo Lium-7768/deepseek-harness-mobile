@@ -31,10 +31,12 @@ export function NativeDeliverablesRow({
   const [open, setOpen] = useState(false)
   if (files.length === 0) return null
   const copy = (path: string): void => {
-    void Clipboard.setStringAsync(path).then(() => {
-      tapFeedback()
-      showSnackbar(message('copy.pathCopied'))
-    })
+    void Clipboard.setStringAsync(path)
+      .then(() => {
+        tapFeedback()
+        showSnackbar(message('copy.pathCopied'))
+      })
+      .catch(() => undefined)
   }
   return (
     <>
@@ -53,7 +55,7 @@ export function NativeDeliverablesRow({
       <NativeAnchoredPanel onClose={() => setOpen(false)} open={open}>
         <ScrollView contentContainerStyle={s.sheet}>
           {files.map((file) => {
-            const slash = file.path.lastIndexOf('/')
+            const slash = Math.max(file.path.lastIndexOf('/'), file.path.lastIndexOf('\\'))
             const fileName = slash >= 0 ? file.path.slice(slash + 1) : file.path
             const dirPath = slash > 0 ? file.path.slice(0, slash) : undefined
             return (

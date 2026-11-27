@@ -1,4 +1,4 @@
-import type { NativeRow } from './session-turn-logic'
+import type { NativeRow } from './conversation-types'
 
 /** Stable keys survive older-history insertion and transient response replacement. */
 export function conversationRowKey(row: NativeRow, fallback = 0): string {
@@ -12,6 +12,13 @@ export function conversationRowKey(row: NativeRow, fallback = 0): string {
 /** Spacing is owned by the flow boundary, never a negative margin in a tool component. */
 export function conversationFlowGap(row: NativeRow, previous?: NativeRow): number {
   if (!previous) return 0
+  if (row.kind === 'turn' && row.continuation === true) {
+    const first = row.rows[0]
+    return first === undefined ? 0 : conversationFlowGap(first, previous)
+  }
+  if (previous.kind === 'turn' && previous.continuation === true) {
+    return conversationFlowGap(row, previous.rows.at(-1))
+  }
   if (row.kind === 'user') return 24
   if (previous.kind === 'user' || row.kind === 'turn' || previous.kind === 'turn') return 16
   if (row.kind === 'assistant' || previous.kind === 'assistant') return 12
@@ -33,7 +40,7 @@ export function closingAssistantSequences(rows: readonly { kind: string; sourceS
   const result = new Set<number>()
   let pending: number | undefined
   for (const row of rows) {
-    if (row.kind === 'user') {
+    if (row.kind === 'user' || row.kind === 'turn-trigger') {
       if (pending !== undefined) result.add(pending)
       pending = undefined
       continue

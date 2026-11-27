@@ -1,6 +1,6 @@
 /**
  * Copy for the conversation's process group: the single row that stands in for
- * a step's reasoning and tool calls, mirroring the desktop's
+ * a step's reasoning, tool calls, and context injections, mirroring the desktop's
  * `message.stepProcess.*` wording so both clients read the same.
  */
 
@@ -22,6 +22,21 @@ export const process = {
   runningQuestions: '等待你的操作',
   runningTools: '正在调用工具',
 
+  // Preparing labels name a tool call whose arguments are still streaming.
+  prepareRead: '准备读取文件',
+  prepareReadImage: '准备读取图片',
+  prepareWrite: '准备写入文件',
+  prepareSearch: '准备搜索代码',
+  prepareEdit: '准备编辑文件',
+  prepareCommands: '准备运行命令',
+  prepareCode: '准备运行代码',
+  prepareWebSearch: '准备搜索网页',
+  prepareWebFetch: '准备访问网页',
+  prepareSubagents: '准备协调子智能体',
+  preparePlan: '准备更新计划',
+  prepareQuestions: '准备提问',
+  prepareTools: '准备调用工具',
+
   // Settled labels summarise the step by activity.
   doneThinking: '已完成分析',
   doneRead: '已读取文件',
@@ -37,7 +52,10 @@ export const process = {
   donePlan: '更新了计划',
   doneQuestions: '向用户提出了问题',
   doneTools: '已调用工具',
+  doneContext: '已注入上下文',
 
+  /** Joins a running activity label with its live task detail. */
+  liveWithDetail: '{label} · {detail}',
   /** Separates the activity labels of a step that did more than two things. */
   comma: '，',
   /** Joins exactly two activity labels, as the desktop's `stepProcess.joinTwo` does. */

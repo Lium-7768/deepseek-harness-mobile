@@ -1,14 +1,16 @@
+import { useConversationDisclosure } from './conversation-disclosure'
 import { tapFeedback } from '@/components/haptics'
-import { NativeAnchoredPanel } from '@/components/native-anchored-panel'
+import { NativeContextBody, type ContextContentBlock } from '@/components/native-context-body'
 import { NativeIcon, type NativeIconName } from '@/components/native-icon'
 import { triggerText, type NativeTurnTrigger } from '@/components/session-conversation-logic'
+import { formatMessageTime } from '@/components/session-message-logic'
 import { t as message } from '@/locale'
 import { showSnackbar } from '@/state/snackbar'
 import type { AppTheme } from '@/theme'
 import { useAppTheme, useThemedStyles } from '@/theme/hooks'
 import * as Clipboard from 'expo-clipboard'
 import { useState } from 'react'
-import { Pressable, ScrollView, StyleSheet, Text } from 'react-native'
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
 
 const TRIGGER_ICONS: Record<NativeTurnTrigger, NativeIconName> = {
   agent: 'paper-plane-outline',
@@ -33,97 +35,140 @@ const TRIGGER_ICONS: Record<NativeTurnTrigger, NativeIconName> = {
 /**
  * States what started a Turn the reader did not type.
  *
- * The desktop draws one of these above each Turn's disclosure so the assistant's
- * unprompted reply never looks spontaneous; its body holds the notification that
- * woke the agent. The phone keeps the one-line attribution and opens the body on
- * demand, because the waking notification is usually long and rarely reread.
- *
- * @param props - The trigger family and the waking notification's text.
- * @returns The row.
+ * Mirrors desktop `TurnTriggerNodeView.tsx` and `TurnTriggerNodeView.module.css`:
+ * manual `continue` receipts render as a compact inline row without card chrome,
+ * while ordinary recorded triggers render as a rounded `codeBackground` card whose
+ * header shows icon, title, clock timestamp, and chevron, expanding inline to show
+ * the explanation and a 240pt scrollable notice body.
  */
 export function NativeTurnTriggerRow({
+  contentBlocks,
+  rowKey,
+  source,
   text,
+  time,
   trigger,
 }: {
+  contentBlocks?: readonly ContextContentBlock[]
+  rowKey?: string
+  source?: Readonly<Record<string, unknown>>
   text?: string
+  time?: number
   trigger: NativeTurnTrigger
 }): React.JSX.Element {
   const theme = useAppTheme()
   const s = useThemedStyles(makeStyles)
-  const [open, setOpen] = useState(false)
+  const [localOpen, setLocalOpen] = useState(false)
+  const [storedOpen, toggleStored] = useConversationDisclosure(rowKey ?? `turn-trigger:${trigger}`)
+  const open = rowKey !== undefined ? storedOpen : localOpen
+  const toggle = rowKey !== undefined ? toggleStored : () => setLocalOpen((current) => !current)
   const label = triggerText(trigger)
-  const row = (
+  if (trigger === 'continue') {
+    return (
+      <View style={s.continuation}>
+        <NativeIcon name={TRIGGER_ICONS[trigger]} size={14} color={theme.colors.inkTertiary} />
+        <Text style={s.continuationLabel}>{label}</Text>
+      </View>
+    )
+  }
+  const hasPayload = text !== undefined || (contentBlocks !== undefined && contentBlocks.length > 0)
+  const clock = time !== undefined ? formatMessageTime(time) : undefined
+  const header = (
     <>
-      <NativeIcon name={TRIGGER_ICONS[trigger]} size={13} color={theme.colors.inkTertiary} />
+      <NativeIcon name={TRIGGER_ICONS[trigger]} size={14} color={theme.colors.inkTertiary} />
       <Text style={s.label}>{label}</Text>
+      {clock === undefined ? null : (
+        <Text numberOfLines={1} style={s.time}>
+          {clock}
+        </Text>
+      )}
+      {hasPayload ? (
+        <NativeIcon
+          name={open ? 'chevron-up-outline' : 'chevron-down-outline'}
+          size={12}
+          color={theme.colors.inkTertiary}
+        />
+      ) : null}
     </>
   )
-  if (text === undefined)
+  if (!hasPayload) {
     return (
-      <Pressable aria-hidden accessible={false} style={s.row}>
-        {row}
-      </Pressable>
+      <View style={s.root}>
+        <View style={s.header}>{header}</View>
+      </View>
     )
+  }
   return (
-    <>
+    <View style={s.root}>
       <Pressable
         android_ripple={{ borderless: false }}
         accessibilityLabel={label}
         accessibilityRole="button"
         accessibilityState={{ expanded: open }}
-        onPress={() => setOpen((current) => !current)}
-        style={({ pressed }) => [s.row, pressed && s.pressed]}
+        onPress={toggle}
+        style={({ pressed }) => [s.header, pressed && s.pressed]}
       >
-        {row}
-        <NativeIcon name="chevron-right-outline" size={13} color={theme.colors.inkTertiary} />
+        {header}
       </Pressable>
-      <NativeAnchoredPanel onClose={() => setOpen(false)} open={open}>
-        <ScrollView contentContainerStyle={s.sheet}>
-          <Text style={s.sheetTitle}>{label}</Text>
-          <Text selectable style={s.body}>
-            {text}
-          </Text>
-          <Pressable
-            accessibilityLabel={message('conversation.copyTrigger')}
-            accessibilityRole="button"
-            onPress={() => {
-              void Clipboard.setStringAsync(text).then(() => {
-                tapFeedback()
-                showSnackbar(message('copy.copiedText'))
-              })
-            }}
-            style={({ pressed }) => [s.copy, pressed && s.pressed]}
-          >
-            <NativeIcon name="copy-outline" size={15} color={theme.colors.accent} />
-            <Text style={s.copyText}>{message('copy.copyPayload')}</Text>
-          </Pressable>
-        </ScrollView>
-      </NativeAnchoredPanel>
-    </>
+      {open ? (
+        <View style={s.body}>
+          <Text style={s.explanation}>{message('conversation.triggerExplanation')}</Text>
+          <ScrollView nestedScrollEnabled style={s.contentScroll}>
+            <NativeContextBody contentBlocks={contentBlocks} form="notice" source={source ?? null} text={text ?? ''} />
+          </ScrollView>
+          {text !== undefined && text !== '' ? (
+            <Pressable
+              accessibilityLabel={message('conversation.copyTrigger')}
+              accessibilityRole="button"
+              onPress={() => {
+                void Clipboard.setStringAsync(text)
+                  .then(() => {
+                    tapFeedback()
+                    showSnackbar(message('copy.copiedText'))
+                  })
+                  .catch(() => undefined)
+              }}
+              style={({ pressed }) => [s.copy, pressed && s.pressed]}
+            >
+              <NativeIcon name="copy-outline" size={14} color={theme.colors.accent} />
+              <Text style={s.copyText}>{message('copy.copyPayload')}</Text>
+            </Pressable>
+          ) : null}
+        </View>
+      ) : null}
+    </View>
   )
 }
 
 const makeStyles = (theme: AppTheme) =>
   StyleSheet.create({
-    // `TurnTriggerNodeView .root` + `.header`: a rounded card on the code-block fill with
-    // a hairline border, `12px 16px` inside — not a bare transcript line.
-    row: {
-      alignItems: 'center',
+    // `TurnTriggerNodeView .continuation`: compact inline receipt for manual continue.
+    continuation: { alignItems: 'center', flexDirection: 'row', gap: 6, minWidth: 0, paddingVertical: 2 },
+    continuationLabel: { color: theme.colors.inkTertiary, flex: 1, fontSize: 13, lineHeight: 20 },
+    // `TurnTriggerNodeView .root` + `.header`: rounded card on codeBackground with hairline border.
+    root: {
       backgroundColor: theme.colors.codeBackground,
       borderColor: theme.colors.borderHairline,
       borderRadius: theme.radius.xl,
       borderWidth: StyleSheet.hairlineWidth,
+      minWidth: 0,
+      overflow: 'hidden',
+    },
+    header: {
+      alignItems: 'center',
       flexDirection: 'row',
       gap: 10,
       minHeight: 44,
       paddingHorizontal: 16,
       paddingVertical: 12,
     },
-    label: { color: theme.colors.inkTertiary, flex: 1, fontSize: 13, lineHeight: 20 },
+    label: { color: theme.colors.inkTertiary, flex: 1, fontSize: 14, lineHeight: 20, minWidth: 0 },
+    time: { color: theme.colors.inkTertiary, flexShrink: 0, fontSize: 12, lineHeight: 16 },
+    // `TurnTriggerNodeView .body`: 0 16px 12px 40px inline under the title.
+    body: { paddingBottom: 12, paddingLeft: 40, paddingRight: 16 },
+    explanation: { color: theme.colors.inkMuted, fontSize: 12, lineHeight: 18, marginVertical: 8 },
+    contentScroll: { maxHeight: 240 },
+    copy: { alignItems: 'center', alignSelf: 'flex-start', flexDirection: 'row', gap: 6, marginTop: 8, minHeight: 32 },
+    copyText: { color: theme.colors.accent, fontSize: 12, lineHeight: 18 },
     pressed: { opacity: 0.62 },
-    sheet: { gap: 10, padding: 16 },
-    sheetTitle: { color: theme.colors.ink, fontSize: 15, fontWeight: '600', lineHeight: 22 },
-    body: { color: theme.colors.inkMuted, fontSize: 13, lineHeight: 20 },
-    copy: { alignItems: 'center', flexDirection: 'row', gap: 6, minHeight: 40 },
-    copyText: { color: theme.colors.accent, fontSize: 14, lineHeight: 22 },
   })

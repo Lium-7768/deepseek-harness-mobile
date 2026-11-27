@@ -1,5 +1,5 @@
 import { createElement, type ReactElement } from 'react'
-import { act, render, cleanup, fireEvent, type RenderResult } from './support/native-testing'
+import { act, render, cleanup, type RenderResult } from './support/native-testing'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { MobileApi, MobileApiError } from '@/api/mobile-api'
@@ -440,6 +440,22 @@ describe('Goal edit requests', () => {
     expect(onMutate).toHaveBeenCalledExactlyOnceWith('edit', { id: 'goal', revision: 2 }, 'My unsaved draft')
   })
 
+  it('keeps the goal editor open with the user draft when saving an edit fails', async () => {
+    const onMutate = vi.fn().mockRejectedValueOnce(new Error('network down'))
+    const goal = { id: 'goal', revision: 1, objective: 'Old objective', phase: 'active' as const }
+    await mount(createElement(NativeGoalBar, { goal, pending: false, onMutate, editRequest: 1 }))
+    const input = () => renderer.container.queryAll((node) => node.type === 'TextInput')[0]!
+    await act(async () => {
+      input().props.onChangeText('Edited objective draft')
+    })
+    await act(async () => {
+      button('保存目标').props.onPress()
+    })
+    expect(onMutate).toHaveBeenCalledExactlyOnceWith('edit', { id: 'goal', revision: 1 }, 'Edited objective draft')
+    expect(renderer.container.queryAll((node) => node.type === 'TextInput')).toHaveLength(1)
+    expect(input().props.value).toBe('Edited objective draft')
+  })
+
   it('asks before clearing a goal that cannot be recovered', async () => {
     const onMutate = vi.fn().mockResolvedValue(undefined)
     const goal = { id: 'goal', revision: 1, objective: 'Review the dock', phase: 'active' as const }
@@ -459,6 +475,46 @@ describe('Goal edit requests', () => {
       confirm().props.onPress()
     })
     expect(onMutate).toHaveBeenCalledWith('clear', { id: 'goal', revision: 1 }, undefined)
+  })
+
+  it('acknowledges editRequest once so remounting after reset does not auto-reopen the editor', async () => {
+    const onMutate = vi.fn().mockResolvedValue(undefined)
+    const onEditRequestHandled = vi.fn()
+    const goal = { id: 'goal', revision: 1, objective: 'Track milestone', phase: 'active' as const }
+    await mount(
+      createElement(NativeGoalBar, {
+        goal,
+        pending: false,
+        onMutate,
+        editRequest: 1,
+        onEditRequestHandled,
+      }),
+    )
+    expect(onEditRequestHandled).toHaveBeenCalledTimes(1)
+    expect(renderer.container.queryAll((node) => node.type === 'TextInput')).toHaveLength(1)
+    await renderer.rerender(
+      createElement(NativeGoalBar, {
+        goal,
+        pending: false,
+        onMutate,
+        editRequest: 0,
+        onEditRequestHandled,
+      }),
+    )
+    // Resetting editRequest to 0 keeps the open editor visible and allows a later editRequest=1 to re-trigger.
+    expect(renderer.container.queryAll((node) => node.type === 'TextInput')).toHaveLength(1)
+    expect(onEditRequestHandled).toHaveBeenCalledTimes(1)
+    await cleanup()
+    await mount(
+      createElement(NativeGoalBar, {
+        goal,
+        pending: false,
+        onMutate,
+        editRequest: 0,
+        onEditRequestHandled,
+      }),
+    )
+    expect(renderer.container.queryAll((node) => node.type === 'TextInput')).toHaveLength(0)
   })
 })
 

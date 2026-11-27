@@ -28,6 +28,8 @@ export type ToolCall = {
   state: 'completed' | 'failed' | 'running'
 }
 
+import { format, t as message, type MessageKey } from '@/locale'
+
 /** The shape a row renders, once a tool's own fields are known. */
 export type ToolRowView =
   | { kind: 'read'; path: string; lineCount?: number; lang?: string; body?: string }
@@ -35,11 +37,11 @@ export type ToolRowView =
   | { kind: 'web'; query: string; url?: string; body?: string }
   | { kind: 'todo'; items: TodoItem[] }
   | { kind: 'question'; items: QuestionItem[]; answered: boolean }
-  | { kind: 'command'; command: string; description?: string; body?: string }
+  | { kind: 'command'; command: string; description?: string; exitCode?: number; signal?: string; body?: string }
   | { kind: 'mutation'; path: string; operation: string; body?: string }
   | { kind: 'office'; path: string; format?: string; body?: string }
   | { kind: 'image'; path: string; body?: string }
-  | { kind: 'code'; language?: string; firstLine?: string; body?: string }
+  | { kind: 'code'; description?: string; language?: string; firstLine?: string; source?: string; body?: string }
   | { kind: 'job'; jobId: string; waiting?: boolean; body?: string }
   | { kind: 'skill'; skillName: string; body?: string }
   | { kind: 'goal'; action: string; detail?: string; body?: string }
@@ -117,7 +119,97 @@ const SKILL_TOOLS = new Set(['skill', 'load_skill'])
 const GOAL_TOOLS = new Set(['update_goal', 'create_goal'])
 
 /** Tools that run a snippet rather than a shell command. */
-const CODE_TOOLS = new Set(['run_code', 'code', 'execute_code', 'eval'])
+const CODE_TOOLS = new Set(['run_code', 'cua_run_code', 'code', 'execute_code', 'eval'])
+
+/** Desktop `TOOL_TITLE_KEYS` mapping so every built-in tool names its exact action. */
+const TOOL_TITLE_KEYS: Readonly<Record<string, MessageKey>> = {
+  grep: 'tool.titleGrep',
+  glob: 'tool.titleGlob',
+  web_search: 'tool.titleWebSearch',
+  web_fetch: 'tool.titleWebFetch',
+  todo_write: 'tool.titleTodo',
+  todo: 'tool.titleTodo',
+  ask_user_question: 'tool.titleAsk',
+  request_user_input: 'tool.titleAsk',
+  create_goal: 'tool.titleCreateGoal',
+  get_goal: 'tool.titleGetGoal',
+  update_goal: 'tool.titleUpdateGoal',
+  schedule_create: 'tool.titleCreateSchedule',
+  schedule_list: 'tool.titleListSchedules',
+  schedule_view: 'tool.titleViewSchedule',
+  schedule_edit: 'tool.titleEditSchedule',
+  schedule_delete: 'tool.titleDeleteSchedule',
+  schedule_update: 'tool.titleUpdateSchedule',
+  workflow: 'tool.titleWorkflow',
+  ralph: 'tool.titleRalph',
+  subagent: 'tool.titleSubagent',
+  subagent_fork: 'tool.titleSubagentFork',
+  list_agents: 'tool.titleListAgents',
+  list_subagent_models: 'tool.titleListModels',
+  send_message: 'tool.titleSendMessage',
+  interrupt_agent: 'tool.titleInterruptAgent',
+  wait_agent: 'tool.titleWaitAgent',
+  spawn_teammate: 'tool.titleSpawnTeammate',
+  team_task_create: 'tool.titleCreateTeamTask',
+  team_task_get: 'tool.titleGetTeamTask',
+  team_task_update: 'tool.titleUpdateTeamTask',
+  team_task_list: 'tool.titleListTeamTasks',
+  job_list: 'tool.titleListJobs',
+  job_output: 'tool.titleReadJob',
+  job_kill: 'tool.titleKillJob',
+  terminal_open: 'tool.titleOpenTerminal',
+  terminal_read: 'tool.titleReadTerminal',
+  terminal_list: 'tool.titleListTerminals',
+  terminal_signal: 'tool.titleSignalTerminal',
+  terminal_close: 'tool.titleCloseTerminal',
+  lsp: 'tool.titleLsp',
+  plugin_manager: 'tool.titlePluginManager',
+  plugin_market: 'tool.titlePluginMarket',
+  skill: 'tool.titleSkill',
+  load_skill: 'tool.titleSkill',
+  office_render: 'tool.titleOfficeRender',
+  office_convert: 'tool.titleOfficeConvert',
+  office_recalculate: 'tool.titleOfficeRecalculate',
+  cordis_package_inspect: 'tool.titleInspect',
+  cordis_runtime_inspect: 'tool.titleInspect',
+  cordis_inspect: 'tool.titleInspect',
+  cordis_inspect_list: 'tool.titleInspectProviders',
+  cordis_inspect_query: 'tool.titleQueryRuntime',
+  cordis_inspect_self: 'tool.titleInspectPlugins',
+  cordis_run: 'tool.titleRunCordis',
+  cordis_stop: 'tool.titleStopCordis',
+  cordis_undefine: 'tool.titleRemoveCordis',
+  session_event_read: 'tool.titleReadEvent',
+  session_event_search: 'tool.titleSearchEvents',
+  session_event_trace: 'tool.titleTraceEvent',
+  session_search: 'tool.titleSearchSessions',
+  session_trace: 'tool.titleTraceSession',
+}
+
+/**
+ * Returns the desktop locale title key for a built-in tool name, if one exists.
+ *
+ * @param toolName - Wire tool name.
+ * @returns Exact `tool.title*` locale key, or `undefined` to fall back to the variant verb.
+ */
+export function toolTitleKey(toolName: string): MessageKey | undefined {
+  return TOOL_TITLE_KEYS[toolName]
+}
+
+/**
+ * Extracts a trailing shell exit-code or terminating-signal marker, matching desktop
+ * `terminal-card-model.ts parseExitStatus`.
+ */
+function parseShellExitStatus(text: string): { output: string; exitCode?: number; signal?: string } {
+  const signal = /(?:^|\n)\[killed by signal: ([^\]\n]+)\]$/.exec(text)
+  if (signal?.[1] !== undefined) return { output: text.slice(0, signal.index), signal: signal[1] }
+  const exit = /(?:^|\n)\[exit code: (-?\d+|null)\]$/.exec(text)
+  if (exit?.[1] !== undefined) {
+    const parsed = exit[1] === 'null' ? undefined : Number(exit[1])
+    return { output: text.slice(0, exit.index), ...(parsed === undefined ? {} : { exitCode: parsed }) }
+  }
+  return { output: text }
+}
 
 /** Tools that read one background job's output, which is named by its id. */
 const JOB_TOOLS = new Set(['job_output', 'job_kill', 'job_log'])
@@ -125,11 +217,11 @@ const JOB_TOOLS = new Set(['job_output', 'job_kill', 'job_log'])
 /** Names that identify a network read. */
 const WEB_TOOLS = new Set(['web_search', 'web_fetch', 'fetch', 'search_web'])
 /** What a mutation's recorded operation reads as in a row. */
-const MUTATION_VERB: Record<string, string> = {
-  create: '新建',
-  delete: '删除',
-  update: '修改',
-  write: '写入',
+const MUTATION_VERB: Record<string, () => string> = {
+  create: () => message('tool.actionCreate'),
+  delete: () => message('tool.actionDelete'),
+  update: () => message('tool.actionUpdate'),
+  write: () => message('tool.actionWrite'),
 }
 
 /** Names that replace a whole list, where the output is the list itself. */
@@ -377,19 +469,22 @@ export function toolRowView(call: ToolCall): ToolRowView {
 
   if (CODE_TOOLS.has(name)) {
     const code = firstString(record, ['code', 'source', 'script'])
-    if (code !== undefined) {
+    const description = firstString(record, ['description'])
+    if (code !== undefined || description !== undefined) {
       const language = firstString(record, ['language', 'lang'])
-      // A snippet's first line usually says what it does; its whole body belongs in the
-      // expanded row, where the reader asked to see it.
+      // The desktop prefers the call's own description (`SUMMARY_KEYS.code = ['description']`),
+      // falling back to the snippet's first line only when no description was supplied.
       const firstLine = code
-        .split('\n')
+        ?.split('\n')
         .find((line) => line.trim() !== '')
         ?.trim()
         .slice(0, 80)
       return {
         kind: 'code',
+        ...(description === undefined ? {} : { description }),
         ...(language === undefined ? {} : { language }),
         ...(firstLine === undefined ? {} : { firstLine }),
+        ...(code === undefined ? {} : { source: code }),
         ...(call.output ? { body: call.output } : {}),
       }
     }
@@ -416,11 +511,16 @@ export function toolRowView(call: ToolCall): ToolRowView {
     // reads in a flow where a shell invocation does not. The command stays in the view for
     // the expanded body.
     const description = firstString(record, ['description'])
+    const parsedExit =
+      call.output !== undefined && call.state !== 'running' ? parseShellExitStatus(call.output) : undefined
+    const body = parsedExit === undefined ? call.output : parsedExit.output || undefined
     return {
       kind: 'command',
       command,
       ...(description === undefined ? {} : { description }),
-      ...(call.output ? { body: call.output } : {}),
+      ...(parsedExit?.exitCode === undefined ? {} : { exitCode: parsedExit.exitCode }),
+      ...(parsedExit?.signal === undefined ? {} : { signal: parsedExit.signal }),
+      ...(body ? { body } : {}),
     }
   }
 
@@ -467,10 +567,14 @@ function countSearchHits(body: string | undefined): { hitFiles: number; hitLines
 export function describeRow(view: ToolRowView): string | undefined {
   switch (view.kind) {
     case 'read':
-      return view.lineCount === undefined ? view.path : `${view.path} · ${String(view.lineCount)} 行`
+      return view.lineCount === undefined
+        ? view.path
+        : format('tool.pathLineCount', { path: view.path, count: view.lineCount })
     case 'search': {
       const hits =
-        view.hitLines === undefined ? undefined : `${String(view.hitFiles ?? 0)} 个文件 · ${String(view.hitLines)} 处`
+        view.hitLines === undefined
+          ? undefined
+          : format('tool.searchHits', { files: view.hitFiles ?? 0, hits: view.hitLines })
       const head = view.scope === undefined ? view.pattern : `${view.pattern} · ${view.scope}`
       return hits === undefined ? head : `${head} → ${hits}`
     }
@@ -490,18 +594,19 @@ export function describeRow(view: ToolRowView): string | undefined {
     case 'command':
       return view.description ?? view.command
     case 'mutation':
-      return `${MUTATION_VERB[view.operation] ?? view.operation} · ${view.path}`
+      return `${MUTATION_VERB[view.operation]?.() ?? view.operation} · ${view.path}`
     case 'office':
       return view.format === undefined ? view.path : `${view.path} → ${view.format}`
     case 'image':
       return view.path
     case 'job':
-      return view.waiting === true ? `${view.jobId} · 等待中` : view.jobId
+      return view.waiting === true ? format('tool.jobWaiting', { jobId: view.jobId }) : view.jobId
     case 'skill':
       return view.skillName
     case 'goal':
       return view.detail === undefined ? view.action : `${view.action} · ${view.detail}`
     case 'code':
+      if (view.description !== undefined) return view.description
       return view.language === undefined ? view.firstLine : `${view.language} · ${view.firstLine ?? ''}`
     case 'generic':
       return undefined

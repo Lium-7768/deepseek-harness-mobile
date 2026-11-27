@@ -1,15 +1,29 @@
 import { MobileApi } from '@/api/mobile-api'
 import { queryKeys } from '@/api/query-keys'
+import { ConversationDisclosureContext, useConversationDisclosuresState } from '@/components/conversation-disclosure'
+import { conversationRowKey } from '@/components/conversation-flow'
+import { NativeTurnStatus } from '@/components/native-conversation-status'
+import { NativeDeliverablesRow } from '@/components/native-deliverables-row'
 import { NativeEmptyState } from '@/components/native-empty-state'
-import { ErrorNotice } from '@/components/session-screen-state'
 import { NativeIcon } from '@/components/native-icon'
+import { NativeProcessGroup } from '@/components/native-process-group'
+import { NativeTurnGroup } from '@/components/native-turn-group'
+import { NativeTurnTriggerRow } from '@/components/native-turn-trigger-row'
 import { firstParam, withErrorContext } from '@/components/route-params'
 import { backToSession } from '@/components/session-back'
-import { projectNativeConversationRows } from '@/components/session-conversation-logic'
+import type { NativeConversationRow } from '@/components/session-conversation-logic'
 import { MessageRow } from '@/components/session-message-row'
+import type { NativeProcessRow } from '@/components/session-process-logic'
+import { ErrorNotice } from '@/components/session-screen-state'
+import type { NativeTurnMemberRow } from '@/components/session-turn-logic'
 import { WorkspaceComposer } from '@/components/workspace-composer'
 import { WorkspaceShell } from '@/components/workspace-shell'
 import { workspaceKeyboardVerticalOffset } from '@/components/workspace-shell-logic'
+import {
+  CONVERSATION_GAP_STYLES,
+  useConversationTranscript,
+  type TranscriptListEntry,
+} from '@/hooks/use-conversation-transcript'
 import { useScreenActive } from '@/hooks/use-screen-active'
 import { t as message } from '@/locale'
 import { useConnectionStore } from '@/state/connection'
@@ -17,7 +31,7 @@ import type { AppTheme } from '@/theme'
 import { useAppTheme, useThemedStyles } from '@/theme/hooks'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useLocalSearchParams } from 'expo-router'
-import { useEffect, useMemo } from 'react'
+import { useCallback, useEffect, useMemo, useRef } from 'react'
 import { Alert, FlatList, KeyboardAvoidingView, Platform, Pressable, StyleSheet, Text, View } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
@@ -40,10 +54,11 @@ export default function SubagentSessionScreen(): React.JSX.Element {
   const active = useScreenActive()
   const insets = useSafeAreaInsets()
   const ready = client !== undefined && childId !== undefined && parentId !== undefined && childMode !== undefined
+  const oneShotDoneRef = useRef(false)
   const history = useQuery({
     queryKey: queryKeys.subagentHistory(parentId, childId, childMode),
     enabled: ready && active,
-    refetchInterval: active ? 2_500 : false,
+    refetchInterval: () => (active && !oneShotDoneRef.current ? 2_500 : false),
     refetchIntervalInBackground: false,
     queryFn: ({ signal }) => {
       if (!client || !parentId || !childId || !childMode) throw new Error(message('subagent.invalidAddress'))
@@ -86,7 +101,117 @@ export default function SubagentSessionScreen(): React.JSX.Element {
     onError: (error) =>
       Alert.alert(message('subagent.stopFailedTitle'), withErrorContext(message('subagent.stopFailedBody'), error)),
   })
-  const messages = useMemo(() => projectNativeConversationRows(history.data?.items ?? []), [history.data?.items])
+  const settings = useQuery({
+    queryKey: queryKeys.settings(connection?.gatewayUrl, connection?.deviceId),
+    enabled: client !== undefined && active,
+    staleTime: 60_000,
+    queryFn: ({ signal }) => {
+      if (client === undefined) throw new Error(message('subagent.invalidAddress'))
+      return client.withSignal(signal).settingsDescribe()
+    },
+  })
+  const sourceItems = useMemo(() => history.data?.items ?? [], [history.data?.items])
+  const { policy, entries, runningTurnStartedAt, showRunningDivider } = useConversationTranscript(
+    sourceItems,
+    settings.data,
+  )
+  const oneShotDone =
+    childMode === 'one-shot' &&
+    childEntry?.kind === 'child' &&
+    childEntry.activity !== 'running' &&
+    history.data !== undefined &&
+    runningTurnStartedAt === undefined
+  oneShotDoneRef.current = oneShotDone
+  const lastRunningRef = useRef<{ childId: string | undefined; running: boolean } | undefined>(undefined)
+  useEffect(() => {
+    const isRunning = runningTurnStartedAt !== undefined
+    const previous = lastRunningRef.current
+    lastRunningRef.current = { childId, running: isRunning }
+    if (
+      previous !== undefined &&
+      previous.childId === childId &&
+      previous.running &&
+      !isRunning &&
+      childMode === 'one-shot' &&
+      parentId !== undefined
+    ) {
+      void queryClient.invalidateQueries({ queryKey: queryKeys.sessionSubagents(parentId) })
+    }
+  }, [childId, childMode, parentId, queryClient, runningTurnStartedAt])
+  const disclosures = useConversationDisclosuresState(childId)
+  const renderConversationRow = useCallback(
+    (row: NativeConversationRow) =>
+      row.kind === 'deliverables' ? (
+        <NativeDeliverablesRow files={row.files} />
+      ) : row.kind === 'turn-trigger' ? (
+        <NativeTurnTriggerRow
+          contentBlocks={row.contentBlocks}
+          rowKey={conversationRowKey(row)}
+          source={row.source}
+          text={row.text}
+          time={row.time}
+          trigger={row.trigger}
+        />
+      ) : (
+        <MessageRow
+          item={row}
+          event={undefined}
+          api={undefined}
+          sessionId={childId}
+          settledReasoningPreview={policy.settledReasoningPreview}
+        />
+      ),
+    [childId, policy.settledReasoningPreview],
+  )
+  const renderStep = useCallback(
+    (row: NativeProcessRow) => <NativeProcessGroup item={row} renderRow={renderConversationRow} />,
+    [renderConversationRow],
+  )
+  const renderTurnMember = useCallback(
+    (row: NativeTurnMemberRow) => (row.kind === 'process' ? renderStep(row) : renderConversationRow(row)),
+    [renderConversationRow, renderStep],
+  )
+  const renderEntry = useCallback(
+    ({ item }: { item: TranscriptListEntry }) => {
+      const { row, gap } = item
+      if (row.kind === 'turn' && row.continuation === true) {
+        return <NativeTurnGroup gap={gap} item={row} renderRow={renderTurnMember} />
+      }
+      const content =
+        row.kind === 'turn' ? (
+          <NativeTurnGroup item={row} renderRow={renderTurnMember} />
+        ) : row.kind === 'process' ? (
+          renderStep(row)
+        ) : (
+          renderConversationRow(row)
+        )
+      return <View style={CONVERSATION_GAP_STYLES[gap]}>{content}</View>
+    },
+    [renderConversationRow, renderStep, renderTurnMember],
+  )
+  const keyExtractor = useCallback((item: TranscriptListEntry) => item.key, [])
+  const listFooter = useMemo(
+    () =>
+      runningTurnStartedAt === undefined ? null : (
+        <View style={styles.turnStatusSlot}>
+          <NativeTurnStatus showDivider={showRunningDivider} startedAt={runningTurnStartedAt} />
+        </View>
+      ),
+    [runningTurnStartedAt, showRunningDivider, styles.turnStatusSlot],
+  )
+  const listEmpty = useMemo(
+    () =>
+      history.isPending ? (
+        <NativeEmptyState icon="skill-outline" title={message('subagent.loading')} />
+      ) : (
+        <NativeEmptyState
+          description={message('subagent.noMessagesDetail')}
+          icon="skill-outline"
+          title={message('subagent.noMessages')}
+        />
+      ),
+    [history.isPending],
+  )
   const modeTitle = childMode === 'continuable' ? message('subagent.title') : message('subagent.readOnlyTitle')
   // A named child reads as itself; the mode stays as the fallback before the catalog lands.
   const title = childLabel === undefined || childLabel === '' ? modeTitle : childLabel
@@ -143,28 +268,21 @@ export default function SubagentSessionScreen(): React.JSX.Element {
               onRetry={() => void history.refetch()}
             />
           ) : null}
-          <FlatList
-            keyboardDismissMode="on-drag"
-            keyboardShouldPersistTaps="handled"
-            initialNumToRender={12}
-            maxToRenderPerBatch={8}
-            windowSize={9}
-            data={messages}
-            keyExtractor={(item, index) => `subagent-message-${item.sourceSeq ?? index}`}
-            renderItem={({ item }) => <MessageRow item={item} event={undefined} api={undefined} sessionId={childId} />}
-            contentContainerStyle={styles.list}
-            ListEmptyComponent={
-              history.isPending ? (
-                <NativeEmptyState icon="skill-outline" title={message('subagent.loading')} />
-              ) : (
-                <NativeEmptyState
-                  description={message('subagent.noMessagesDetail')}
-                  icon="skill-outline"
-                  title={message('subagent.noMessages')}
-                />
-              )
-            }
-          />
+          <ConversationDisclosureContext.Provider value={disclosures}>
+            <FlatList
+              keyboardDismissMode="on-drag"
+              keyboardShouldPersistTaps="handled"
+              initialNumToRender={12}
+              maxToRenderPerBatch={8}
+              windowSize={9}
+              data={entries}
+              keyExtractor={keyExtractor}
+              renderItem={renderEntry}
+              contentContainerStyle={styles.list}
+              ListFooterComponent={listFooter}
+              ListEmptyComponent={listEmpty}
+            />
+          </ConversationDisclosureContext.Provider>
           {childMode === 'continuable' ? (
             <WorkspaceComposer
               key={childId ?? 'workspace'}
@@ -219,22 +337,7 @@ const makeStyles = (theme: AppTheme) =>
       justifyContent: 'center',
       width: theme.touch.iconButton,
     },
-    list: { gap: theme.spacing.lg, paddingHorizontal: theme.spacing.lg, paddingVertical: theme.spacing.lg },
-    userRow: { alignItems: 'flex-end' },
-    userBubble: {
-      backgroundColor: theme.colors.userBubble,
-      borderRadius: theme.radius.xl,
-      // `MessageItem .userStack`: the smaller of `column × 0.702` and 82%, which is
-      // always the former.
-      maxWidth: '70.2%',
-      paddingHorizontal: 16,
-      paddingVertical: 10,
-    },
-    userText: { color: theme.colors.ink, fontSize: 14, lineHeight: 24 },
-    empty: { color: theme.colors.inkTertiary, paddingVertical: 24, textAlign: 'center' },
-    errorNotice: { gap: 6, padding: 12 },
-    error: { color: theme.colors.danger },
-    unavailable: { alignItems: 'center', flex: 1, gap: 12, justifyContent: 'center', padding: 28 },
-    unavailableText: { color: theme.colors.inkTertiary, fontSize: 14, lineHeight: 22, textAlign: 'center' },
+    list: { paddingHorizontal: 20, paddingVertical: theme.spacing.lg },
+    turnStatusSlot: { paddingBottom: 8, paddingTop: 16 },
     pressed: { opacity: 0.62 },
   })

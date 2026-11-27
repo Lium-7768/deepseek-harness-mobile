@@ -201,8 +201,12 @@ export function tableLayout(block: Block): TableLayout {
 }
 
 /** CSS block margins collapse on desktop; native gaps must be explicit to avoid double heading spacing. */
-export function markdownBlockGap(block: Block, previous?: Block): number {
+export function markdownBlockGap(block: Block, previous?: Block, compact = false): number {
   if (!previous) return 0
+  if (compact) {
+    if (block.kind === 'heading' || block.kind === 'rule' || previous.kind === 'rule') return 8
+    return 4
+  }
   if (block.kind === 'heading') return (block.level ?? 4) <= 3 ? 28 : 16
   if (previous.kind === 'heading' && (previous.level ?? 4) >= 4 && block.kind === 'list') return 8
   return 16

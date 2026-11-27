@@ -12,7 +12,7 @@ import { NativeListRow } from '@/components/native-list'
 import type { NativeIconName } from '@/components/native-icon'
 import { toolArgument, type NativeConversationRow } from '@/components/session-conversation-logic'
 import { toolFileChange } from '@/components/tool-diff-logic'
-import { describeRow, toolRowView } from '@/components/tool-row-view'
+import { describeRow, toolRowView, toolTitleKey } from '@/components/tool-row-view'
 import { ToolTodoList } from '@/components/native-tool-todo-list'
 import { ToolQuestionList } from '@/components/native-tool-question-list'
 import { format, t as message } from '@/locale'
@@ -99,7 +99,11 @@ export function NativeToolCard({
       ...(presentation?.text ? { summary: presentation.text } : {}),
     }
   }, [presentation, row])
-  const [icon, fallbackTitle] = useMemo(() => META[variantFor(model.toolName)], [model.toolName])
+  const [icon, variantTitle] = useMemo(() => META[variantFor(model.toolName)], [model.toolName])
+  const title = useMemo(() => {
+    const exact = toolTitleKey(model.toolName)
+    return exact === undefined ? variantTitle : message(exact)
+  }, [model.toolName, variantTitle])
   // Each tool names its own subject, the way the desktop's per-tool card models do:
   // a read reports its path and line count, a search its pattern and hits, a shell call
   // its command line. The generic argument falls back when the tool is not one of those.
@@ -114,31 +118,51 @@ export function NativeToolCard({
       }),
     [model.output, model.state, model.toolInput, model.toolName, row?.toolMeta],
   )
+  const exitLabel =
+    view.kind === 'command' && model.state !== 'running'
+      ? view.signal !== undefined
+        ? format('tool.signal', { signal: view.signal })
+        : view.exitCode !== undefined && view.exitCode !== 0
+          ? format('tool.exitCode', { code: view.exitCode })
+          : undefined
+      : undefined
+  const failed = model.state === 'failed' || exitLabel !== undefined
   const summary =
     describeRow(view) ??
     model.summary ??
     toolArgument(model.toolInput) ??
-    (model.toolName === fallbackTitle ? undefined : model.toolName)
-  const stateLabel =
-    model.state === 'completed'
+    (model.toolName === title ? undefined : model.toolName)
+  const stateLabel = failed
+    ? message('tool.stateFailed')
+    : model.state === 'completed'
       ? message('tool.stateCompleted')
-      : model.state === 'failed'
-        ? message('tool.stateFailed')
-        : message('tool.stateRunning')
+      : message('tool.stateRunning')
   // A file mutation reads better as its change than as its arguments, so the
   // diff replaces the raw input exactly where the desktop replaces it.
   const change = useMemo(() => toolFileChange(model.toolName, model.toolInput), [model.toolInput, model.toolName])
   const hasDetails = Boolean(model.toolInput || model.output)
+  const inputText = view.kind === 'code' && view.source !== undefined ? view.source : model.toolInput
   return (
     <View style={styles.root}>
       <NativeFlowRow
-        accessibilityLabel={format('tool.accessibilityLabel', { tool: summary ?? fallbackTitle, state: stateLabel })}
+        accessibilityLabel={format('tool.accessibilityLabel', { tool: summary ?? title, state: stateLabel })}
         expandable={hasDetails}
         icon={icon}
+        keepContentWhenOpen
         open={expanded}
         summary={summary}
-        title={fallbackTitle}
-        tone={model.state === 'failed' ? 'danger' : 'tertiary'}
+        title={title}
+        tone={failed ? 'danger' : 'tertiary'}
+        trailing={
+          exitLabel === undefined ? undefined : (
+            <View style={styles.exitBadge}>
+              <View style={styles.exitDot} />
+              <Text numberOfLines={1} style={styles.exitText}>
+                {exitLabel}
+              </Text>
+            </View>
+          )
+        }
         {...(hasDetails ? { onToggle: toggleExpanded } : {})}
       >
         {/* The body follows the tool. A diff replaces the arguments where the call changed
@@ -152,9 +176,9 @@ export function NativeToolCard({
         ) : view.kind === 'question' ? (
           <ToolQuestionList items={view.items} />
         ) : view.body !== undefined ? (
-          <ToolPayload label={message('tool.output')} text={view.body} failed={model.state === 'failed'} />
-        ) : model.toolInput ? (
-          <ToolPayload label={message('tool.input')} text={model.toolInput} />
+          <ToolPayload label={message('tool.output')} text={view.body} failed={failed} />
+        ) : inputText ? (
+          <ToolPayload label={message('tool.input')} text={inputText} />
         ) : null}
       </NativeFlowRow>
     </View>
@@ -324,7 +348,16 @@ const makeStyles = (theme: AppTheme) =>
   StyleSheet.create({
     root: { minWidth: 0 },
     divider: { backgroundColor: theme.colors.border, height: StyleSheet.hairlineWidth },
-    payload: { gap: 4 },
+    // Desktop `ToolRow.module.css .ioCard`: rounded code-block surface with hairline border.
+    payload: {
+      backgroundColor: theme.colors.codeBackground,
+      borderColor: theme.colors.borderHairline,
+      borderRadius: theme.radius.lg,
+      borderWidth: StyleSheet.hairlineWidth,
+      gap: 4,
+      paddingHorizontal: 14,
+      paddingVertical: 10,
+    },
     // The label, the copy size and the control share one 16pt row so the payload
     // header keeps its height while the confirmation appears and disappears.
     // A 28pt header row leaves the 16pt copy and fold controls at 44 once their
@@ -341,4 +374,17 @@ const makeStyles = (theme: AppTheme) =>
     payloadCopy: { alignItems: 'center', height: 16, justifyContent: 'center', width: 16 },
     detailText: { color: theme.colors.ink, fontFamily: MONOSPACE_FONT, fontSize: 12, lineHeight: 18 },
     failedDetailText: { color: theme.colors.danger },
+    // Desktop `ExitCodeBadge`: neutral capsule with 4×4 danger dot for non-zero exits.
+    exitBadge: {
+      alignItems: 'center',
+      backgroundColor: theme.colors.surfaceMuted,
+      borderRadius: theme.radius.pill,
+      flexDirection: 'row',
+      gap: 5,
+      marginLeft: 8,
+      paddingHorizontal: 7,
+      paddingVertical: 1,
+    },
+    exitDot: { backgroundColor: theme.colors.danger, borderRadius: 2, height: 4, width: 4 },
+    exitText: { color: theme.colors.inkTertiary, fontSize: 11, lineHeight: 16 },
   })

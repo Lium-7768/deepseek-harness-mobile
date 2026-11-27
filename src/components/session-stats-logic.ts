@@ -1,3 +1,4 @@
+import type { PerformanceUsageMode } from '@/components/chat-presentation-policy'
 import { format } from '@/locale'
 import type { SharedEventItem } from '@/shared/dsh-presentation'
 
@@ -7,6 +8,11 @@ export interface SessionStatisticsPill {
   glyph: 'database-outline' | 'gauge-outline'
   /** Which click-open panel this pill owns. */
   kind: 'time' | 'usage'
+  /** Primary reading segment (or the compact-only reading). */
+  first?: string
+  /** Optional secondary reading shown after the middot separator in detailed mode. */
+  second?: string
+  /** Full plain-text reading (`first · second` or `first`) for accessibility and text surfaces. */
   label: string
 }
 
@@ -79,18 +85,32 @@ export function formatStatisticsTokensPerSecond(tokensPerSecond: number): string
  * @param promptTokens - every prompt-side token.
  * @returns percentage text, or `undefined` when there was no prompt input.
  */
-export function formatStatisticsCacheHit(cacheReadTokens: number, promptTokens: number): string | undefined {
+export function formatStatisticsCacheHit(
+  cacheReadTokens: number,
+  promptTokens: number,
+  decimalPlaces: 0 | 1 = 0,
+): string | undefined {
   if (promptTokens <= 0) return undefined
   const missed = promptTokens - cacheReadTokens
   if (missed <= 0) return '100'
-  const rounded = Math.round((cacheReadTokens / promptTokens) * 100)
-  if (rounded < 100) return String(rounded)
-  // Below 100 by less than half a percent: spend decimals until the reading
+  const ratio = (cacheReadTokens / promptTokens) * 100
+  if (decimalPlaces === 0) {
+    const rounded = Math.round(ratio)
+    if (rounded < 100) return String(rounded)
+  } else {
+    const tenths = Math.round(ratio * 10)
+    if (tenths < 1_000) {
+      const whole = Math.floor(tenths / 10)
+      const frac = tenths % 10
+      return frac === 0 ? String(whole) : `${whole}.${frac}`
+    }
+  }
+  // Below 100 by less than half a unit: spend decimals until the reading
   // separates from a full hit.
   let places = 1
   while (places < 4) {
     const scale = 10 ** places
-    const units = Math.floor((cacheReadTokens / promptTokens) * 100 * scale)
+    const units = Math.floor(ratio * scale)
     if (units < 100 * scale) return (units / scale).toFixed(places)
     places += 1
   }
@@ -113,28 +133,49 @@ export function formatStatisticsCacheHit(cacheReadTokens: number, promptTokens: 
 export function sessionStatisticsPills(
   projectionValues: Record<string, unknown> | undefined,
   items: readonly SharedEventItem[],
+  mode: PerformanceUsageMode = 'detailed',
 ): SessionStatisticsPill[] {
   const stats = readSessionStats(projectionValues?.sessionStats) ?? fallbackSessionStats(items)
   const usage = readTokenUsage(projectionValues?.tokenUsage)
   const groups: SessionStatisticsPill[] = []
-  if (stats.steps > 0) {
-    // The chip states the counts only: the decode speed already sits in its own
-    // panel, and a second reading pushed the chip into the context meter's room.
+  const speed =
+    stats.decodeMs > 0
+      ? formatStatisticsTokensPerSecond(stats.decodeTokens / (stats.decodeMs / 1_000)) + ' tok/s'
+      : undefined
+  if (mode === 'compact') {
+    if (speed !== undefined) {
+      groups.push({ glyph: 'gauge-outline', kind: 'time', first: speed, label: speed })
+    }
+  } else if (stats.steps > 0) {
+    const counts = format('session.statsCounts', { turns: stats.turns, steps: stats.steps })
     groups.push({
       glyph: 'gauge-outline',
       kind: 'time',
-      label: format('session.statsCounts', { turns: stats.turns, steps: stats.steps }),
+      first: counts,
+      ...(speed === undefined ? {} : { second: speed }),
+      label: speed === undefined ? counts : counts + ' · ' + speed,
     })
   }
   if (usage !== undefined) {
     const input = usage.uncachedInputTokens + usage.cacheReadTokens + usage.cacheWriteTokens
     const total = input + usage.outputTokens
     if (total > 0) {
-      groups.push({
-        glyph: 'database-outline',
-        kind: 'usage',
-        label: format('session.statsTokens', { count: formatStatisticsTokens(total) }),
-      })
+      const cacheHit = formatStatisticsCacheHit(usage.cacheReadTokens, input)
+      const cacheHitText = cacheHit === undefined ? undefined : format('session.statsCacheHit', { percent: cacheHit })
+      if (mode === 'compact') {
+        if (cacheHitText !== undefined) {
+          groups.push({ glyph: 'database-outline', kind: 'usage', first: cacheHitText, label: cacheHitText })
+        }
+      } else {
+        const totalText = format('session.statsTokens', { count: formatStatisticsTokens(total) })
+        groups.push({
+          glyph: 'database-outline',
+          kind: 'usage',
+          first: totalText,
+          ...(cacheHitText === undefined ? {} : { second: cacheHitText }),
+          label: cacheHitText === undefined ? totalText : totalText + ' · ' + cacheHitText,
+        })
+      }
     }
   }
   return groups
@@ -156,7 +197,9 @@ export function sessionStatisticPanel(
   kind: 'time' | 'usage',
   projectionValues: Record<string, unknown> | undefined,
   items: readonly SharedEventItem[],
+  mode: PerformanceUsageMode = 'detailed',
 ): SessionStatisticPanel | undefined {
+  if (mode === 'compact') return undefined
   if (kind === 'time') {
     const stats = readSessionStats(projectionValues?.sessionStats) ?? fallbackSessionStats(items)
     if (stats.steps === 0) return undefined
@@ -177,10 +220,9 @@ export function sessionStatisticPanel(
       })
     }
     if (rows.length === 0) return undefined
-    // The panel's headline is what its rows total: the chip's counts describe a
-    // different question than the durations below them.
+    // Matches desktop StatsPills: the counts head the dialog so a cut-off reading stays complete.
     return {
-      headline: formatStatisticsDuration(stats.llmMs + stats.toolMs),
+      headline: format('session.statsCounts', { turns: stats.turns, steps: stats.steps }),
       rows,
       title: format('session.statsDialogTitle', {}),
     }
@@ -210,7 +252,7 @@ export function sessionStatisticPanel(
     value: format('session.statsTokens', { count: formatExactStatisticsTokens(usage.outputTokens) }),
   })
   return {
-    headline: format('session.statsTokens', { count: formatStatisticsTokens(input + usage.outputTokens) }),
+    headline: format('session.statsTokens', { count: formatExactStatisticsTokens(input + usage.outputTokens) }),
     rows,
     title: format('session.statsUsageTitle', {}),
   }

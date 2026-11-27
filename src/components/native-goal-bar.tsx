@@ -16,10 +16,12 @@ export function NativeGoalBar({
   pending,
   onMutate,
   editRequest = 0,
+  onEditRequestHandled,
 }: {
   goal: MobileGoalView | undefined
   pending: boolean
   editRequest?: number
+  onEditRequestHandled?: () => void
   onMutate: (action: 'edit' | 'pause' | 'resume' | 'clear', ref: MobileGoalRef, objective?: string) => Promise<void>
 }): React.JSX.Element | null {
   const theme = useAppTheme()
@@ -48,8 +50,11 @@ export function NativeGoalBar({
   useEffect(() => {
     if (editRequest === lastEditRequest.current) return
     lastEditRequest.current = editRequest
-    if (editRequest > 0 && goal && goal.phase !== 'complete') setEditing(true)
-  }, [editRequest, goal])
+    if (editRequest > 0) {
+      if (goal && goal.phase !== 'complete') setEditing(true)
+      onEditRequestHandled?.()
+    }
+  }, [editRequest, goal, onEditRequestHandled])
   const state = goalDockState(goal)
   if (goal === undefined || state === undefined || goal.id === clearedId) return null
   const currentGoal = goal
@@ -65,8 +70,9 @@ export function NativeGoalBar({
       if (!mounted.current || goalId.current !== currentGoal.id) return
       if (action === 'edit') setEditing(false)
       if (action === 'clear') setClearedId(currentGoal.id)
-    } catch {
-      // The session mutation presents the error; keep the draft available to retry.
+    } catch (error) {
+      // The session mutation presents the error; rethrow so the editor retains its draft for retry.
+      throw error
     } finally {
       inFlight.current = false
       if (mounted.current) setWorking(false)
@@ -144,7 +150,7 @@ export function NativeGoalBar({
         onClose={() => setMenuOpen(false)}
         onSelect={(value) => {
           setMenuOpen(false)
-          if (value === 'toggle' && state.action !== undefined) void run(state.action)
+          if (value === 'toggle' && state.action !== undefined) void run(state.action).catch(() => undefined)
           else if (value === 'edit') setEditing(true)
           else if (value === 'clear') setConfirmingClear(true)
         }}
@@ -165,7 +171,7 @@ export function NativeGoalBar({
         onCancel={() => setConfirmingClear(false)}
         onConfirm={() => {
           setConfirmingClear(false)
-          void run('clear')
+          void run('clear').catch(() => undefined)
         }}
         open={confirmingClear}
         title={message('activity.clearGoal')}

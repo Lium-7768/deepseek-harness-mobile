@@ -17,7 +17,11 @@ import { NativeMessageAttachments } from '@/components/native-message-attachment
 import { userReferences } from '@/components/user-references'
 import { NativeMessageFeedback } from '@/components/native-message-feedback'
 import { NativeToolCard } from '@/components/native-tool-card'
-import { formatStatisticsTokens } from '@/components/session-stats-logic'
+import {
+  formatExactStatisticsTokens,
+  formatStatisticsCacheHit,
+  formatStatisticsTokens,
+} from '@/components/session-stats-logic'
 import { format } from '@/locale'
 import { type NativeConversationRow, type TurnTokenUsage as TurnUsage } from '@/components/session-conversation-logic'
 import {
@@ -34,10 +38,15 @@ import * as Clipboard from 'expo-clipboard'
 import { memo, useEffect, useRef, useState } from 'react'
 import { AccessibilityInfo, Pressable, Text, View, useWindowDimensions } from 'react-native'
 
+const copyCodeBlock = async (code: string): Promise<void> => {
+  await Clipboard.setStringAsync(code)
+}
+
 export const MessageRow = memo(function MessageRow({
   item,
   compact = false,
   onBranch,
+  settledReasoningPreview = true,
   showActions = true,
   event,
   api,
@@ -47,6 +56,7 @@ export const MessageRow = memo(function MessageRow({
   item: NativeConversationRow
   /** Forks the session at this row's message; the drawer owns the same action. */
   onBranch?: (sourceSeq: number) => void
+  settledReasoningPreview?: boolean
   showActions?: boolean
   /** Mid-turn block: the copy control only, without the clock, rating and branch action. */
   compact?: boolean
@@ -108,7 +118,8 @@ export const MessageRow = memo(function MessageRow({
         />
       </View>
     )
-  if (item.kind === 'reasoning') return <NativeReasoningRow row={item} />
+  if (item.kind === 'reasoning')
+    return <NativeReasoningRow row={item} settledReasoningPreview={settledReasoningPreview} />
   if (item.kind === 'retry') return <NativeRetryRow row={item} />
   if (item.kind === 'turn-error') return <NativeTurnErrorRow row={item} />
   if (item.kind === 'turn-max-tokens') return <NativeTurnMaxTokensRow />
@@ -126,12 +137,7 @@ export const MessageRow = memo(function MessageRow({
     )
   return (
     <View style={s.assistantRow}>
-      <NativeMarkdown
-        markdown={item.text}
-        onCopyCode={async (code) => {
-          await Clipboard.setStringAsync(code)
-        }}
-      />
+      <NativeMarkdown markdown={item.text} onCopyCode={copyCodeBlock} />
       {attachments}
       {showActions ? (
         <MessageActions
@@ -187,20 +193,71 @@ function NativeTurnUsage({ usage }: { usage: TurnUsage }): React.JSX.Element {
         </Text>
       )}
       <NativeAnchoredPanel anchorRef={anchor} onClose={() => setOpen(false)} open={open}>
-        {[
-          { label: message('conversation.usageTotal'), value: formatStatisticsTokens(usage.totalTokens) },
-          { label: message('conversation.usageInput'), value: formatStatisticsTokens(usage.inputTokens) },
-          { label: message('conversation.usageOutput'), value: formatStatisticsTokens(usage.outputTokens) },
-          { label: message('conversation.usageCalls'), value: String(usage.calls) },
-        ].map((row) => (
-          <View key={row.label} style={s.usageRow}>
-            <Text style={s.usageLabel}>{row.label}</Text>
-            <Text style={s.usageValue}>{row.value}</Text>
+        <View style={s.usagePanel}>
+          <View style={s.usageHeader}>
+            <View style={s.usageHeaderLabel}>
+              <NativeIcon name="database-outline" size={14} color={theme.colors.ink} />
+              <Text style={s.usageTitle}>{message('conversation.usageTitle')}</Text>
+            </View>
+            <Text style={s.usageHeadline}>
+              {format('session.statsTokens', { count: formatExactStatisticsTokens(usage.totalTokens) })}
+            </Text>
           </View>
-        ))}
+          <View style={s.usageRule} />
+          <View style={s.usageDetails}>
+            {buildTurnUsageRows(usage).map((row) => (
+              <View key={row.label} style={s.usageRow}>
+                <Text style={s.usageLabel}>{row.label}</Text>
+                <Text style={s.usageValue}>{row.value}</Text>
+              </View>
+            ))}
+          </View>
+        </View>
       </NativeAnchoredPanel>
     </>
   )
+}
+
+function buildTurnUsageRows(usage: TurnUsage): { label: string; value: string }[] {
+  const rows: { label: string; value: string }[] = []
+  const exactTokens = (count: number) => format('session.statsTokens', { count: formatExactStatisticsTokens(count) })
+  if (usage.routes !== undefined && usage.routes.length > 0) {
+    rows.push({
+      label: message('conversation.usageModel'),
+      value: usage.routes.map((route) => `${route.provider}/${route.model}`).join(', '),
+    })
+  }
+  if (usage.cacheReadTokens !== undefined) {
+    const cacheHit = formatStatisticsCacheHit(
+      usage.cacheReadTokens,
+      Math.max(0, usage.totalTokens - usage.outputTokens),
+      1,
+    )
+    if (cacheHit !== undefined) {
+      rows.push({ label: message('conversation.usageCacheHit'), value: `${cacheHit}%` })
+    }
+  }
+  const hasCacheBuckets = usage.cacheReadTokens !== undefined || usage.cacheWriteTokens !== undefined
+  rows.push({
+    label: hasCacheBuckets ? message('conversation.usageUncachedInput') : message('conversation.usageInput'),
+    value: exactTokens(usage.inputTokens),
+  })
+  if (usage.cacheReadTokens !== undefined) {
+    rows.push({ label: message('conversation.usageCacheRead'), value: exactTokens(usage.cacheReadTokens) })
+  }
+  if (usage.cacheWriteTokens !== undefined) {
+    rows.push({ label: message('conversation.usageCacheWrite'), value: exactTokens(usage.cacheWriteTokens) })
+  }
+  const reasoningTail =
+    usage.reasoningTokens !== undefined
+      ? format('conversation.usageReasoning', { tokens: exactTokens(usage.reasoningTokens) })
+      : ''
+  rows.push({
+    label: message('conversation.usageOutput'),
+    value: `${exactTokens(usage.outputTokens)}${reasoningTail}`,
+  })
+  rows.push({ label: message('conversation.usageCalls'), value: String(usage.calls) })
+  return rows
 }
 
 export function MessageActions({

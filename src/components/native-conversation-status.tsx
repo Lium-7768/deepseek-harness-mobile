@@ -1,6 +1,8 @@
 import { useConversationDisclosure } from './conversation-disclosure'
 import { conversationRowKey } from './conversation-flow'
 import { NativeFlowRow } from '@/components/native-flow-row'
+import { NativeMarkdown } from '@/components/native-markdown'
+import { isHiddenReasoning, reasoningSummary, reasoningText } from '@/components/reasoning-text'
 import { NativeIcon } from '@/components/native-icon'
 import type { NativeConversationRow } from '@/components/session-conversation-logic'
 import { format, t as message } from '@/locale'
@@ -8,7 +10,7 @@ import type { AppTheme } from '@/theme'
 import { useAppTheme, useThemedStyles } from '@/theme/hooks'
 import { MONOSPACE_FONT } from '@/theme/platform'
 import { useEffect, useMemo, useState } from 'react'
-import { Pressable, StyleSheet, Text, View } from 'react-native'
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
 
 type ReasoningRow = Extract<NativeConversationRow, { kind: 'reasoning' }>
 type RetryRow = Extract<NativeConversationRow, { kind: 'retry' }>
@@ -23,22 +25,32 @@ type CompactionRow = Extract<NativeConversationRow, { kind: 'compaction' }>
  * @param props.row - Durable assistant reasoning projection.
  * @returns Expandable native Think row.
  */
-export function NativeReasoningRow({ row }: { row: ReasoningRow }): React.JSX.Element {
-  const s = useThemedStyles(makeStyles)
+export function NativeReasoningRow({
+  row,
+  settledReasoningPreview = true,
+}: {
+  row: ReasoningRow
+  /** Matches desktop `ChatPresentationPolicy.settledReasoningPreview` (`false` in compact mode). */
+  settledReasoningPreview?: boolean
+}): React.JSX.Element | null {
   const [expanded, toggleExpanded] = useConversationDisclosure(conversationRowKey(row))
-  const summary = useMemo(() => row.text.trim().split('\n')[0] ?? '', [row.text])
+  const displayText = useMemo(() => reasoningText(row.text), [row.text])
+  const hidden = useMemo(() => isHiddenReasoning(row.text), [row.text])
+  const running = row.running === true
+  const summary = useMemo(() => reasoningSummary(displayText, running), [displayText, running])
+  if (hidden || displayText.trim() === '') return null
+  const visibleSummary = running || settledReasoningPreview ? summary : undefined
   return (
     <NativeFlowRow
       accessibilityLabel={message('status.viewThink')}
       icon="think-outline"
+      keepContentWhenOpen={false}
       open={expanded}
       onToggle={toggleExpanded}
-      summary={summary}
+      summary={visibleSummary}
       title={message('status.think')}
     >
-      <Text selectable style={s.disclosureBody}>
-        {row.text}
-      </Text>
+      <NativeMarkdown markdown={displayText} variant="compact" />
     </NativeFlowRow>
   )
 }
@@ -121,119 +133,113 @@ export function NativeTurnErrorRow({ row }: { row: TurnErrorRow }): React.JSX.El
   )
 }
 
+function firstNonEmptyLine(text: string): string {
+  for (const line of text.split(/\r?\n/)) {
+    const trimmed = line.trim()
+    if (trimmed !== '') return trimmed
+  }
+  return text.trim()
+}
+
 /**
- * Renders a durable command invocation as an expandable row.
+ * Renders a durable command invocation matching desktop `GenericCommandCard`:
+ * a 24pt `NativeFlowRow` with leading icon swap, dot separator, status/output
+ * summary, and a bordered monospace scrollport for output text.
  *
  * @param props.row - Desktop command/run + command/done projection.
  * @returns Native command row.
  */
 export function NativeCommandRow({ row }: { row: CommandRow }): React.JSX.Element {
-  const theme = useAppTheme()
   const s = useThemedStyles(makeStyles)
   const [expanded, toggleExpanded] = useConversationDisclosure(conversationRowKey(row))
+  const title = row.name.trim() !== '' ? row.name : message('status.commandTitle')
+  const body = row.text !== undefined && row.text.trim() !== '' ? row.text : undefined
+  const isError = row.state === 'error'
+  const summary =
+    row.state === 'running'
+      ? message('status.commandRunning')
+      : body !== undefined
+        ? firstNonEmptyLine(body)
+        : isError
+          ? message('status.commandFailed')
+          : message('status.commandDone')
   return (
-    <View style={s.command}>
-      <Pressable
-        android_ripple={{ borderless: false }}
-        hitSlop={8}
-        accessibilityRole="button"
-        accessibilityLabel={
-          row.state === 'running'
-            ? format('status.commandRun', { name: row.name })
-            : format('status.commandName', { name: row.name })
-        }
-        accessibilityState={{ expanded }}
-        onPress={toggleExpanded}
-        style={({ pressed }) => [s.commandHeader, pressed && s.pressed]}
-      >
-        <NativeIcon name="code-outline" size={14} color={theme.colors.inkMuted} />
-        <Text numberOfLines={1} selectable style={s.commandName}>
-          {row.name}
-        </Text>
-        {row.state === 'running' ? <Text style={s.commandRunning}>{message('status.running')}</Text> : null}
-        {row.state === 'error' ? <Text style={s.commandError}>{message('status.failed')}</Text> : null}
-        <NativeIcon
-          name={expanded ? 'chevron-up-outline' : 'chevron-down-outline'}
-          size={16}
-          color={theme.colors.inkFaint}
-        />
-      </Pressable>
-      {expanded && row.text ? (
-        <Text selectable style={s.commandBody}>
-          {row.text}
-        </Text>
-      ) : null}
-    </View>
+    <NativeFlowRow
+      accessibilityLabel={
+        row.state === 'running'
+          ? format('status.commandRun', { name: title })
+          : format('status.commandName', { name: title })
+      }
+      expandable={body !== undefined}
+      icon="code-outline"
+      keepContentWhenOpen
+      onToggle={toggleExpanded}
+      open={expanded && body !== undefined}
+      summary={summary}
+      title={title}
+      tone={isError ? 'danger' : 'tertiary'}
+    >
+      {body !== undefined ? (
+        <ScrollView nestedScrollEnabled style={s.commandBodyScroll} contentContainerStyle={s.commandBodyContent}>
+          <Text selectable style={[s.commandBodyText, isError && s.commandBodyError]}>
+            {body}
+          </Text>
+        </ScrollView>
+      ) : undefined}
+    </NativeFlowRow>
   )
 }
 
 /**
- * Renders a durable max-tokens turn boundary as an informative notice.
+ * Renders a durable max-tokens turn boundary matching desktop `TurnMaxTokensItem`:
+ * a 10pt warning dot, bold warning title, and muted continuation hint inline.
  *
- * @param props.row - Desktop turn/end max-tokens projection.
  * @returns Native max-tokens notice.
  */
 export function NativeTurnMaxTokensRow(): React.JSX.Element {
-  const theme = useAppTheme()
   const s = useThemedStyles(makeStyles)
   return (
-    <View style={s.maxTokens}>
-      <NativeIcon name="warning-triangle-outline" size={14} color={theme.colors.warningText} />
-      <Text style={s.maxTokensText}>{message('status.maxTokensNote')}</Text>
+    <View style={s.error}>
+      <View style={s.warningDot} />
+      <View style={s.errorCopy}>
+        <Text selectable style={s.errorMessage}>
+          <Text style={s.maxTokensTitle}>{message('status.maxTokensTitle')}</Text> {message('status.maxTokensHint')}
+        </Text>
+      </View>
     </View>
   )
 }
 
 /**
- * Renders a durable compaction checkpoint summarizing shadowed history.
+ * Renders a durable compaction checkpoint matching desktop `CompactionItem`:
+ * a 24pt `NativeFlowRow` with leading icon swap, dot separator, shadowed item
+ * and token counts, and an indented compact-Markdown summary body.
  *
  * @param props.row - Desktop compaction/summary projection.
  * @returns Native compaction notice.
  */
 export function NativeCompactionRow({ row }: { row: CompactionRow }): React.JSX.Element {
-  const theme = useAppTheme()
-  const s = useThemedStyles(makeStyles)
   const [expanded, toggleExpanded] = useConversationDisclosure(conversationRowKey(row))
+  const expandable = row.summary.trim() !== ''
+  const summary =
+    row.shadowedItemCount !== undefined && row.shadowedTokenCount !== undefined
+      ? format('status.compactedSummary', { items: row.shadowedItemCount, tokens: row.shadowedTokenCount })
+      : expandable
+        ? message('status.compactedExpand')
+        : message('status.compactedUnavailable')
   return (
-    <View style={s.compaction}>
-      <Pressable
-        android_ripple={{ borderless: false }}
-        hitSlop={8}
-        accessibilityRole="button"
-        accessibilityLabel={message('status.viewCompaction')}
-        accessibilityState={{ expanded }}
-        onPress={toggleExpanded}
-        style={({ pressed }) => [s.compactionHeader, pressed && s.pressed]}
-      >
-        <NativeIcon name="data-outline" size={14} color={theme.colors.inkMuted} />
-        <Text style={s.compactionTitle}>{message('status.compacted')}</Text>
-        <Text numberOfLines={1} selectable style={s.compactionSummary}>
-          {row.summary || message('status.compactedBody')}
-        </Text>
-        <NativeIcon
-          name={expanded ? 'chevron-up-outline' : 'chevron-down-outline'}
-          size={16}
-          color={theme.colors.inkFaint}
-        />
-      </Pressable>
-      {expanded ? (
-        <View style={s.compactionDetails}>
-          {row.shadowedItemCount !== undefined ? (
-            <Text style={s.compactionDetail}>{format('status.collapsedItems', { count: row.shadowedItemCount })}</Text>
-          ) : null}
-          {row.shadowedTokenCount !== undefined ? (
-            <Text style={s.compactionDetail}>
-              {format('status.collapsedTokens', { count: row.shadowedTokenCount })}
-            </Text>
-          ) : null}
-          {row.summary ? (
-            <Text selectable style={s.compactionBody}>
-              {row.summary}
-            </Text>
-          ) : null}
-        </View>
-      ) : null}
-    </View>
+    <NativeFlowRow
+      accessibilityLabel={message('status.viewCompaction')}
+      expandable={expandable}
+      icon="data-outline"
+      keepContentWhenOpen
+      onToggle={toggleExpanded}
+      open={expanded && expandable}
+      summary={summary}
+      title={message('status.compacted')}
+    >
+      {expandable ? <NativeMarkdown markdown={row.summary} variant="compact" /> : undefined}
+    </NativeFlowRow>
   )
 }
 
@@ -241,32 +247,40 @@ export function NativeCompactionRow({ row }: { row: CompactionRow }): React.JSX.
  * Mirrors the desktop running-turn footer outside Markdown and tool rows.
  *
  * @param props.startedAt - Durable `turn/start` time when available.
+ * @param props.showDivider - Draws desktop `ChatView .runningDivider` above the status when output precedes it.
  * @returns Native live turn status.
  */
-export function NativeTurnStatus({ startedAt }: { startedAt?: number }): React.JSX.Element {
+export function NativeTurnStatus({
+  startedAt,
+  showDivider = false,
+}: {
+  startedAt?: number
+  showDivider?: boolean
+}): React.JSX.Element {
   const s = useThemedStyles(makeStyles)
   const [mountedAt] = useState(() => Date.now())
   const anchor = startedAt ?? mountedAt
   const [elapsed, setElapsed] = useState(() => Math.max(0, Date.now() - anchor))
   useEffect(() => {
+    setElapsed(Math.max(0, Date.now() - anchor))
     const timer = setInterval(() => setElapsed(Math.max(0, Date.now() - anchor)), 1_000)
     return () => clearInterval(timer)
   }, [anchor])
-  // The desktop prints one string — `深度求索中，用时 10 分 38 秒 ···` — as soon as the
-  // Turn's start time is durable; without one it drops only the duration. The clock
-  // used to wait 15 seconds here, so a short Turn read as a bare label with no time.
   const label =
     startedAt === undefined
       ? message('status.deepDiving')
       : format('status.deepDivingFor', { duration: formatDuration(Math.max(1_000, elapsed)) })
   return (
-    <View accessibilityLiveRegion="polite" style={s.turnStatus}>
-      <NativeIcon name="whale-tail" size={14} color={s.turnStatusText.color} />
-      {/* One line, whatever the clock says: a wrapped duration changes the footer's
-          height once a minute, and the footer sits inside the scroll view. */}
-      <Text numberOfLines={1} style={s.turnStatusText}>
-        {label}
-      </Text>
+    <View style={s.turnStatusWrap}>
+      {showDivider ? <View style={s.turnStatusDivider} /> : null}
+      <View accessibilityLiveRegion="polite" style={s.turnStatus}>
+        <NativeIcon name="whale-tail" size={14} color={s.turnStatusText.color} />
+        {/* One line, whatever the clock says: a wrapped duration changes the footer's
+            height once a minute, and the footer sits inside the scroll view. */}
+        <Text numberOfLines={1} style={s.turnStatusText}>
+          {label}
+        </Text>
+      </View>
     </View>
   )
 }
@@ -297,8 +311,6 @@ const formatDuration = formatDurationLabel
 
 const makeStyles = (theme: AppTheme) =>
   StyleSheet.create({
-    // The expanded Think body: markdown-like reading at the secondary size.
-    disclosureBody: { color: theme.colors.ink, fontSize: 13, lineHeight: 20 },
     // `MessageItem .retryRow`: one 13/20 tertiary line, chevron 7pt after the text.
     retry: { gap: 4 },
     retryHeader: { alignItems: 'center', alignSelf: 'flex-start', flexDirection: 'row', gap: 7, paddingVertical: 2 },
@@ -311,50 +323,32 @@ const makeStyles = (theme: AppTheme) =>
     retryDetail: { color: theme.colors.inkTertiary, fontSize: 13, lineHeight: 18 },
     error: { alignItems: 'flex-start', flexDirection: 'row', gap: 8, paddingVertical: 2 },
     errorDot: { backgroundColor: theme.colors.danger, borderRadius: 5, height: 10, marginTop: 5, width: 10 },
+    warningDot: { backgroundColor: theme.colors.warning, borderRadius: 5, height: 10, marginTop: 5, width: 10 },
     errorCopy: { flex: 1, gap: 2 },
     errorTitle: { color: theme.colors.danger, fontSize: 13, fontWeight: '600', lineHeight: 20 },
+    maxTokensTitle: { color: theme.colors.warningText, fontSize: 13, fontWeight: '600', lineHeight: 20 },
     errorMessage: { color: theme.colors.inkMuted, fontSize: 13, lineHeight: 20 },
     errorCode: { color: theme.colors.inkTertiary, fontFamily: MONOSPACE_FONT, fontSize: 11, lineHeight: 16 },
-    command: { gap: 4 },
-    // `GenericCommandCard .summary`: 13/24 inside the shared 24pt disclosure header.
-    commandHeader: { alignItems: 'center', flexDirection: 'row', gap: 6, minHeight: 24, paddingHorizontal: 1 },
-    commandName: { color: theme.colors.ink, flex: 1, fontSize: 13, fontWeight: '500', lineHeight: 24 },
-    commandRunning: { color: theme.colors.accentText, fontSize: 11, lineHeight: 16 },
-    commandError: { color: theme.colors.danger, fontSize: 11, lineHeight: 16 },
-    commandBody: {
-      backgroundColor: theme.colors.surfaceMuted,
-      borderRadius: theme.radius.control,
-      color: theme.colors.inkMuted,
-      fontFamily: MONOSPACE_FONT,
-      fontSize: 11,
-      lineHeight: 16,
-      marginLeft: 20,
-      padding: theme.spacing.sm,
+    // `GenericCommandCard .body`: bordered code-block scrollport capped at 260pt.
+    commandBodyScroll: {
+      backgroundColor: theme.colors.codeBackground,
+      borderColor: theme.colors.borderHairline,
+      borderRadius: theme.radius.lg,
+      borderWidth: StyleSheet.hairlineWidth,
+      maxHeight: 260,
     },
-    maxTokens: {
-      alignItems: 'center',
-      backgroundColor: theme.colors.warningSoft,
-      borderRadius: theme.radius.control,
-      flexDirection: 'row',
-      gap: 6,
-      padding: theme.spacing.sm,
+    commandBodyContent: { paddingHorizontal: 16, paddingVertical: 12 },
+    commandBodyText: { color: theme.colors.ink, fontFamily: MONOSPACE_FONT, fontSize: 11, lineHeight: 16 },
+    commandBodyError: { color: theme.colors.danger },
+    // `ChatView .running` + `.runningDivider`: 12/22 tabular deep-diving label on a 28pt row.
+    turnStatusWrap: { gap: 8 },
+    turnStatusDivider: { backgroundColor: theme.colors.borderHairline, height: StyleSheet.hairlineWidth },
+    turnStatus: { alignItems: 'center', flexDirection: 'row', gap: 6, minHeight: 28 },
+    turnStatusText: {
+      color: theme.colors.inkDeepDiving,
+      fontSize: 12,
+      fontVariant: ['tabular-nums'],
+      lineHeight: 22,
     },
-    maxTokensText: { color: theme.colors.warningText, flex: 1, fontSize: 13, lineHeight: 20 },
-    compaction: { gap: 4 },
-    compactionHeader: { alignItems: 'center', flexDirection: 'row', gap: 6, minHeight: 30, paddingHorizontal: 1 },
-    compactionTitle: { color: theme.colors.inkTertiary, fontSize: 13, lineHeight: 24 },
-    compactionSummary: { color: theme.colors.inkTertiary, flex: 1, fontSize: 13, lineHeight: 24 },
-    compactionDetails: {
-      backgroundColor: theme.colors.surfaceMuted,
-      borderRadius: theme.radius.control,
-      gap: 4,
-      marginLeft: 20,
-      padding: theme.spacing.sm,
-    },
-    compactionDetail: { color: theme.colors.inkTertiary, fontSize: 11, fontWeight: '500', lineHeight: 16 },
-    compactionBody: { color: theme.colors.inkTertiary, fontSize: 13, lineHeight: 20 },
-    // `ChatView .running`: 12/22 in the deep-diving label colour, 6pt after the glyph.
-    turnStatus: { alignItems: 'center', flexDirection: 'row', gap: 6, paddingVertical: 4 },
-    turnStatusText: { color: theme.colors.inkDeepDiving, fontSize: 12, lineHeight: 22 },
     pressed: { opacity: 0.62 },
   })

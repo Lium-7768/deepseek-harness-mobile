@@ -1,6 +1,5 @@
 import { describe, expect, it } from 'vitest'
 import { closingAssistantSequences, conversationFlowGap, conversationRowKey } from '@/components/conversation-flow'
-import type { NativeConversationRow } from '@/components/session-conversation-logic'
 import { foldCompletedTurns, turnSpans } from '@/components/session-turn-logic'
 import { groupProcessRows } from '@/components/session-process-logic'
 import { projectNativeConversationRows } from '@/components/session-conversation-logic'
@@ -87,6 +86,19 @@ describe('complete conversation flow', () => {
     expect(conversationFlowGap(retry, retry)).toBe(4)
     expect(conversationFlowGap(answer, retry)).toBe(12)
     expect(conversationFlowGap({ kind: 'user', text: 'next' }, answer)).toBe(24)
+    const continuation = {
+      kind: 'turn' as const,
+      controlKey: 'turn:1',
+      continuation: true,
+      failed: false,
+      locked: false,
+      rowKey: 'turn:1:part:1',
+      title: '已完成，用时 1秒',
+      rows: [retry],
+    }
+    expect(conversationFlowGap(continuation, answer)).toBe(12)
+    expect(conversationFlowGap(answer, continuation)).toBe(12)
+    expect(conversationFlowGap({ kind: 'user', text: 'next' }, continuation)).toBe(24)
   })
 })
 
@@ -110,5 +122,15 @@ describe('closing assistant blocks', () => {
 
   it('marks nothing in a conversation that only holds prompts', () => {
     expect([...closingAssistantSequences([{ kind: 'user', sourceSeq: 1 }])]).toEqual([])
+  })
+
+  it('flushes the previous closing assistant block when a turn-trigger starts a new turn', () => {
+    const rows = [
+      { kind: 'user', sourceSeq: 1 },
+      { kind: 'assistant', sourceSeq: 2 },
+      { kind: 'turn-trigger', sourceSeq: 3 },
+      { kind: 'assistant', sourceSeq: 4 },
+    ]
+    expect([...closingAssistantSequences(rows)].sort((a, b) => a - b)).toEqual([2, 4])
   })
 })

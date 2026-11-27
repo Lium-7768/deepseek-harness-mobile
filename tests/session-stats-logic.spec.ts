@@ -28,6 +28,10 @@ describe('session statistics logic', () => {
     expect(formatStatisticsCacheHit(1_000, 1_000)).toBe('100')
     expect(formatStatisticsCacheHit(0, 0)).toBeUndefined()
     expect(formatStatisticsCacheHit(99_960, 100_000)).not.toBe('100')
+    expect(formatStatisticsCacheHit(500, 1_000, 1)).toBe('50')
+    expect(formatStatisticsCacheHit(505, 1_000, 1)).toBe('50.5')
+    expect(formatStatisticsCacheHit(1_000, 1_000, 1)).toBe('100')
+    expect(formatStatisticsCacheHit(99_990, 100_000, 1)).toBe('99.9')
   })
 
   it('prints the two desktop pills: counts with throughput, then tokens with cache hit', () => {
@@ -52,11 +56,47 @@ describe('session statistics logic', () => {
       },
       [],
     )
-    // The chips state one reading each; the throughput and the cache hit live in
-    // the panels, which is where a reader goes for them.
     expect(pills).toEqual([
-      { glyph: 'gauge-outline', kind: 'time', label: '41 轮 79 步' },
-      { glyph: 'database-outline', kind: 'usage', label: '3.5M tok' },
+      {
+        glyph: 'gauge-outline',
+        kind: 'time',
+        first: '41 轮 79 步',
+        second: '147 tok/s',
+        label: '41 轮 79 步 · 147 tok/s',
+      },
+      {
+        glyph: 'database-outline',
+        kind: 'usage',
+        first: '3.5M tok',
+        second: '缓存命中 94%',
+        label: '3.5M tok · 缓存命中 94%',
+      },
+    ])
+    const compactPills = sessionStatisticsPills(
+      {
+        sessionStats: {
+          turns: 41,
+          steps: 79,
+          llmMs: 379_000,
+          toolMs: 12_200,
+          ttftMs: 266_500,
+          ttftSteps: 41,
+          decodeMs: 528_000,
+          decodeTokens: 77_616,
+        },
+        tokenUsage: {
+          uncachedInputTokens: 192_000,
+          cacheReadTokens: 3_000_000,
+          cacheWriteTokens: 8_000,
+          outputTokens: 250_000,
+        },
+      },
+      [],
+      'compact',
+    )
+    expect(compactPills).toEqual([
+      { glyph: 'gauge-outline', kind: 'time', first: '147 tok/s', label: '147 tok/s' },
+      { glyph: 'database-outline', kind: 'usage', first: '缓存命中 94%', label: '缓存命中 94%' },
     ])
     const time = sessionStatisticPanel(
       'time',
@@ -74,7 +114,27 @@ describe('session statistics logic', () => {
       },
       [],
     )
+    expect(time?.headline).toBe('41 轮 79 步')
     expect(time?.rows.map((row) => `${row.label} ${row.value}`)).toContain('输出速度（TPS） 147 tok/s')
+    expect(
+      sessionStatisticPanel(
+        'time',
+        {
+          sessionStats: {
+            turns: 1,
+            steps: 1,
+            llmMs: 1_000,
+            toolMs: 0,
+            ttftMs: 0,
+            ttftSteps: 0,
+            decodeMs: 1_000,
+            decodeTokens: 10,
+          },
+        },
+        [],
+        'compact',
+      ),
+    ).toBeUndefined()
     const usage = sessionStatisticPanel(
       'usage',
       {
@@ -87,6 +147,7 @@ describe('session statistics logic', () => {
       },
       [],
     )
+    expect(usage?.headline).toBe('3,450,000 tok')
     expect(usage?.rows[0]).toEqual({ label: '缓存命中', value: '94%' })
   })
 
@@ -128,7 +189,9 @@ describe('session statistics logic', () => {
       },
       [],
     )
-    expect(pills).toEqual([{ glyph: 'gauge-outline', kind: 'time', label: '1 轮 1 步' }])
+    expect(pills).toEqual([
+      { glyph: 'gauge-outline', kind: 'time', first: '1 轮 1 步', second: '0 tok/s', label: '1 轮 1 步 · 0 tok/s' },
+    ])
     const panel = sessionStatisticPanel(
       'time',
       {

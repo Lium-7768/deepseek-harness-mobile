@@ -59,8 +59,8 @@ export function NativeTodoDock({ todos }: { todos: TodoItem[] | undefined }): Re
         {expanded ? (
           <ScrollView style={s.scroll}>
             <View style={s.list}>
-              {todos.map((todo) => (
-                <View key={todo.content} style={s.item}>
+              {todos.map((todo, index) => (
+                <View key={`${index}-${todo.content}`} style={s.item}>
                   <View accessibilityLabel={todoStatusLabel(todo.status)} accessibilityRole="image" style={s.glyph}>
                     <TodoMarker status={todo.status} />
                   </View>

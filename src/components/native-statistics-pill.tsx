@@ -45,9 +45,22 @@ export function NativeStatisticsPill({
         onPress={() => setOpen((current) => !current)}
         style={({ pressed }) => [s.pill, open && s.pillOpen, pressed && interactive && s.pressed]}
       >
-        <NativeIcon name={pill.glyph} size={14} color={theme.colors.inkTertiary} />
-        <Text maxFontSizeMultiplier={FIXED_GEOMETRY_FONT_CAP} numberOfLines={1} style={s.text}>
-          {pill.label}
+        <NativeIcon name={pill.glyph} size={12} color={theme.colors.inkTertiary} />
+        <Text
+          ellipsizeMode="tail"
+          maxFontSizeMultiplier={FIXED_GEOMETRY_FONT_CAP}
+          numberOfLines={1}
+          style={[s.text, open && s.textOpen]}
+        >
+          {pill.first !== undefined && pill.second !== undefined ? (
+            <>
+              {pill.first}
+              <Text style={s.sep}>{' · '}</Text>
+              {pill.second}
+            </>
+          ) : (
+            pill.label
+          )}
         </Text>
       </Pressable>
       {/* Anchored above its own chip: the reading being explained sits in the dock,
@@ -89,14 +102,22 @@ const makeStyles = (theme: AppTheme) =>
       borderRadius: theme.radius.sm,
       flexDirection: 'row',
       flexShrink: 1,
-      gap: 6,
+      gap: 4,
       minWidth: 0,
-      paddingHorizontal: 8,
+      paddingHorizontal: 4,
       paddingVertical: 1,
     },
     // `button.pill[aria-expanded='true']`: the hover fill and secondary tone.
     pillOpen: { backgroundColor: theme.colors.floatingHover },
-    text: { ...textStyle(theme, 'label', 'tertiary'), flexShrink: 1, minWidth: 0 },
+    text: {
+      ...textStyle(theme, 'eyebrow', 'tertiary'),
+      flexShrink: 1,
+      fontVariant: ['tabular-nums'],
+      lineHeight: 20,
+      minWidth: 0,
+    },
+    textOpen: { color: theme.colors.inkMuted },
+    sep: { color: theme.colors.inkFaint },
     // `stat-dialog.module.css .panel`: menu surface, r12, 16px padding, prominent
     // elevation, 12/18 secondary text.
     scroll: { flexShrink: 1 },
@@ -105,13 +126,24 @@ const makeStyles = (theme: AppTheme) =>
     title: { flexDirection: 'row', gap: 16, justifyContent: 'space-between', marginBottom: 8 },
     titleLabel: { alignItems: 'center', flexDirection: 'row', flexShrink: 1, gap: 6, minWidth: 0 },
     titleText: { color: theme.colors.ink, fontSize: 12, fontWeight: '500', lineHeight: 18 },
-    titleValue: { color: theme.colors.ink, fontSize: 12, fontWeight: '500', lineHeight: 18 },
+    titleValue: {
+      color: theme.colors.ink,
+      fontSize: 12,
+      fontVariant: ['tabular-nums'],
+      fontWeight: '500',
+      lineHeight: 18,
+    },
     // `.titleRule`: a hairline under the heading.
     titleRule: { backgroundColor: theme.colors.borderL3, height: StyleSheet.hairlineWidth, marginBottom: 10 },
     // `.details`: 6px between rows, label 76pt-min column then value.
     details: { gap: 6 },
     row: { flexDirection: 'row', gap: 16 },
     rowLabel: { ...textStyle(theme, 'caption', 'tertiary'), flexShrink: 1, minWidth: 76 },
-    rowValue: { ...textStyle(theme, 'caption', 'secondary'), flex: 1, textAlign: 'right' },
+    rowValue: {
+      ...textStyle(theme, 'caption', 'secondary'),
+      flex: 1,
+      fontVariant: ['tabular-nums'],
+      textAlign: 'right',
+    },
     pressed: { opacity: 0.62 },
   })

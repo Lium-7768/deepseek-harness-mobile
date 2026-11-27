@@ -1,5 +1,5 @@
 import { createElement } from 'react'
-import { act, render, cleanup, fireEvent, type RenderResult } from './support/native-testing'
+import { render, cleanup } from './support/native-testing'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
 vi.mock('react-native', () => ({
@@ -35,8 +35,6 @@ const resolvedStyle = (node: { props: Record<string, unknown> }): Record<string,
     typeof style === 'function' ? (style as (state: { pressed: boolean }) => unknown)({ pressed: false }) : style
   return Object.assign({}, ...(Array.isArray(flattened) ? flattened : [flattened])) as Record<string, unknown>
 }
-const byLabel = (renderer: RenderResult, label: string) =>
-  renderer.container.queryAll((node) => node.props.accessibilityLabel === label)[0]!
 
 afterEach(cleanup)
 

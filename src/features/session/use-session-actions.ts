@@ -31,15 +31,19 @@ export function useSessionActions(
    * @param command - The client call to make.
    * @returns The command's result.
    */
-  const run = <T>(command: (api: MobileApi, sessionId: string) => Promise<T>): Promise<T> => {
-    if (!client || !sessionId) return Promise.reject(new Error(message('conversation.openFromList')))
-    return command(client, sessionId)
+  const run = async <T>(
+    command: (api: MobileApi, targetSessionId: string) => Promise<T>,
+  ): Promise<{ sessionId: string; value: T }> => {
+    if (!client || !sessionId) throw new Error(message('conversation.openFromList'))
+    const targetSessionId = sessionId
+    const value = await command(client, targetSessionId)
+    return { sessionId: targetSessionId, value }
   }
   const branch = useMutation({
     mutationFn: (atSeq: number) => {
       return run((api, id) => api.forkSession(id, atSeq))
     },
-    onSuccess: (created) => {
+    onSuccess: ({ value: created }) => {
       void queryClient.invalidateQueries({ queryKey: queryKeys.sessionList() })
       router.push({ pathname: '/session/[sessionId]', params: { sessionId: created.sessionId } })
     },
@@ -53,7 +57,7 @@ export function useSessionActions(
     mutationFn: (content: MobilePromptContent) => {
       return run((api, id) => api.sendMessage(id, content, busyMode()))
     },
-    onSuccess: () => {
+    onSuccess: ({ sessionId: targetSessionId }) => {
       tapFeedback()
       // The first accepted send is the first moment a completion notice could matter,
       // and the only moment iOS offers the permission prompt without an explanation gap.
@@ -61,18 +65,18 @@ export function useSessionActions(
       // The reader's own prompt is the one row a send must reveal: without this
       // the list stays where it was and a prompt sent from the phone is only
       // found by scrolling.
-      onSent()
-      queryClient.setQueryData<SessionEventsPayload>(queryKeys.sessionEvents(sessionId), (current) => ({
+      if (targetSessionId === sessionId) onSent()
+      queryClient.setQueryData<SessionEventsPayload>(queryKeys.sessionEvents(targetSessionId), (current) => ({
         ...current,
         since: current?.since ?? 0,
         items: current?.items ?? [],
         status: 'running',
       }))
       void Promise.all([
-        queryClient.invalidateQueries({ queryKey: queryKeys.sessionHistory(sessionId) }),
-        queryClient.invalidateQueries({ queryKey: queryKeys.sessionEvents(sessionId) }),
-        queryClient.invalidateQueries({ queryKey: queryKeys.sessionQueue(sessionId) }),
-        queryClient.invalidateQueries({ queryKey: queryKeys.sessionJobs(sessionId) }),
+        queryClient.invalidateQueries({ queryKey: queryKeys.sessionHistory(targetSessionId) }),
+        queryClient.invalidateQueries({ queryKey: queryKeys.sessionEvents(targetSessionId) }),
+        queryClient.invalidateQueries({ queryKey: queryKeys.sessionQueue(targetSessionId) }),
+        queryClient.invalidateQueries({ queryKey: queryKeys.sessionJobs(targetSessionId) }),
       ])
     },
     onError: (error, content) =>
@@ -92,16 +96,17 @@ export function useSessionActions(
     mutationFn: ({ itemId, action }: { itemId: string; action: Record<string, unknown> }) => {
       return run((api, id) => api.updateQueue(id, itemId, action))
     },
-    onSuccess: () => void queryClient.invalidateQueries({ queryKey: queryKeys.sessionQueue(sessionId) }),
+    onSuccess: ({ sessionId: targetSessionId }) =>
+      void queryClient.invalidateQueries({ queryKey: queryKeys.sessionQueue(targetSessionId) }),
   })
   const cancel = useMutation({
     mutationFn: () => {
       return run((api, id) => api.cancelSession(id))
     },
-    onSuccess: () => {
+    onSuccess: ({ sessionId: targetSessionId }) => {
       warnFeedback()
-      void queryClient.invalidateQueries({ queryKey: queryKeys.sessionEvents(sessionId) })
-      void queryClient.invalidateQueries({ queryKey: queryKeys.sessionHistory(sessionId) })
+      void queryClient.invalidateQueries({ queryKey: queryKeys.sessionEvents(targetSessionId) })
+      void queryClient.invalidateQueries({ queryKey: queryKeys.sessionHistory(targetSessionId) })
     },
     onError: (error) =>
       Alert.alert(
@@ -121,12 +126,12 @@ export function useSessionActions(
     }) => {
       return run((api, id) => api.mutateGoal(id, action, ref, objective === undefined ? {} : { objective }))
     },
-    onSuccess: (result, { action }) => {
-      if (action === 'clear') queryClient.setQueryData(queryKeys.sessionGoal(sessionId), { goal: null })
-      else if (isGoalView(result)) queryClient.setQueryData(queryKeys.sessionGoal(sessionId), { goal: result })
+    onSuccess: ({ sessionId: targetSessionId, value: result }, { action }) => {
+      if (action === 'clear') queryClient.setQueryData(queryKeys.sessionGoal(targetSessionId), { goal: null })
+      else if (isGoalView(result)) queryClient.setQueryData(queryKeys.sessionGoal(targetSessionId), { goal: result })
       return Promise.all([
-        queryClient.invalidateQueries({ queryKey: queryKeys.sessionHistory(sessionId) }),
-        queryClient.invalidateQueries({ queryKey: queryKeys.sessionGoal(sessionId) }),
+        queryClient.invalidateQueries({ queryKey: queryKeys.sessionHistory(targetSessionId) }),
+        queryClient.invalidateQueries({ queryKey: queryKeys.sessionGoal(targetSessionId) }),
       ]).then(() => undefined)
     },
     onError: (error) =>
@@ -139,10 +144,10 @@ export function useSessionActions(
     mutationFn: (objective: string) => {
       return run((api, id) => api.createGoal(id, objective))
     },
-    onSuccess: () =>
+    onSuccess: ({ sessionId: targetSessionId }) =>
       Promise.all([
-        queryClient.invalidateQueries({ queryKey: queryKeys.sessionHistory(sessionId) }),
-        queryClient.invalidateQueries({ queryKey: queryKeys.sessionGoal(sessionId) }),
+        queryClient.invalidateQueries({ queryKey: queryKeys.sessionHistory(targetSessionId) }),
+        queryClient.invalidateQueries({ queryKey: queryKeys.sessionGoal(targetSessionId) }),
       ]).then(() => undefined),
     onError: (error) =>
       Alert.alert(
@@ -154,7 +159,8 @@ export function useSessionActions(
     mutationFn: (childSessionId: string) => {
       return run((api, id) => api.interruptSubagent(id, childSessionId))
     },
-    onSuccess: () => void queryClient.invalidateQueries({ queryKey: queryKeys.sessionSubagents(sessionId) }),
+    onSuccess: ({ sessionId: targetSessionId }) =>
+      void queryClient.invalidateQueries({ queryKey: queryKeys.sessionSubagents(targetSessionId) }),
     onError: (error) =>
       Alert.alert(
         message('conversation.subagentStopFailedTitle'),

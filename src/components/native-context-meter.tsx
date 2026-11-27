@@ -5,7 +5,7 @@ import type { AppTheme } from '@/theme'
 import { useAppTheme, useThemedStyles } from '@/theme/hooks'
 import { FIXED_GEOMETRY_FONT_CAP } from '@/theme/text-scale'
 import { textStyle } from '@/theme/text'
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
 import { SvgXml } from 'react-native-svg'
 
@@ -28,6 +28,10 @@ export function NativeContextMeter({ panel }: { panel: ContextMeterPanel | undef
   const theme = useAppTheme()
   const s = useThemedStyles(makeStyles)
   const [open, setOpen] = useState(false)
+  const anchorRef = useRef<View>(null)
+  useEffect(() => {
+    if (panel === undefined && open) setOpen(false)
+  }, [open, panel])
   if (panel === undefined) return null
   const reading = `${panel.percent}%`
   // Legend swatch tints, in `ContextMeter` bar-segment order.
@@ -40,10 +44,12 @@ export function NativeContextMeter({ panel }: { panel: ContextMeterPanel | undef
 <circle cx="7" cy="7" r="${RADIUS}" stroke="${theme.colors.borderL3}" stroke-width="2"/>
 <circle cx="7" cy="7" r="${RADIUS}" stroke="${theme.colors.inkTertiary}" stroke-width="2" stroke-linecap="round" stroke-dasharray="${(CIRCUMFERENCE * panel.percent) / 100} ${CIRCUMFERENCE}" transform="rotate(-90 7 7)"/>
 </svg>`
-  const total = panel.rows.reduce((sum, row) => sum + row.share, 0)
+  const visibleRows = panel.rows.filter((row) => row.share > 0)
+  const total = visibleRows.reduce((sum, row) => sum + row.share, 0)
   return (
     <>
       <Pressable
+        ref={anchorRef}
         android_ripple={{ borderless: false }}
         accessibilityLabel={format('session.contextUsed', { percent: panel.percent })}
         accessibilityRole="button"
@@ -52,12 +58,12 @@ export function NativeContextMeter({ panel }: { panel: ContextMeterPanel | undef
         onPress={() => setOpen((current) => !current)}
         style={({ pressed }) => [s.trigger, open && s.triggerOpen, pressed && s.pressed]}
       >
-        <SvgXml accessibilityElementsHidden height={14} width={14} xml={xml} />
+        <SvgXml accessibilityElementsHidden height={12} width={12} xml={xml} />
         <Text maxFontSizeMultiplier={FIXED_GEOMETRY_FONT_CAP} numberOfLines={1} style={s.text}>
           {reading}
         </Text>
       </Pressable>
-      <NativeAnchoredPanel onClose={() => setOpen(false)} open={open}>
+      <NativeAnchoredPanel anchorRef={anchorRef} onClose={() => setOpen(false)} open={open}>
         <ScrollView contentContainerStyle={s.panel} style={s.scroll}>
           <View style={s.header}>
             <Text style={s.headline}>{format('session.contextUsedLabel', {})}</Text>
@@ -65,17 +71,22 @@ export function NativeContextMeter({ panel }: { panel: ContextMeterPanel | undef
             <Text style={s.figures}>{panel.figures}</Text>
           </View>
           {/* `.bar` holds the track; the coloured run spans only the occupancy
-              reading, and each part is proportional inside it
-              (`width: percent * share / total`). */}
+              reading, and zero-width parts are dropped so 0% never paints a bar. */}
           <View style={s.bar}>
-            <View style={[s.fillRun, { width: `${panel.percent}%` }]}>
-              {panel.rows.map((row) => (
-                <View
-                  key={row.tone}
-                  style={[s.segment, { backgroundColor: tones[row.tone], flexGrow: total > 0 ? row.share : 0 }]}
-                />
-              ))}
-            </View>
+            {panel.percent > 0 ? (
+              <View style={[s.fillRun, { width: `${panel.percent}%` }]}>
+                {total > 0 ? (
+                  visibleRows.map((row) => (
+                    <View
+                      key={row.tone}
+                      style={[s.segment, { backgroundColor: tones[row.tone], flexGrow: row.share }]}
+                    />
+                  ))
+                ) : (
+                  <View style={[s.segment, { backgroundColor: theme.colors.inkTertiary, flexGrow: 1 }]} />
+                )}
+              </View>
+            ) : null}
           </View>
           <View style={s.rows}>
             {panel.rows.map((row) => (
@@ -102,12 +113,16 @@ const makeStyles = (theme: AppTheme) =>
       borderRadius: theme.radius.sm,
       flexDirection: 'row',
       flexShrink: 0,
-      gap: 6,
-      paddingHorizontal: 8,
+      gap: 4,
+      paddingHorizontal: 4,
       paddingVertical: 1,
     },
     triggerOpen: { backgroundColor: theme.colors.floatingHover },
-    text: textStyle(theme, 'body', 'tertiary'),
+    text: {
+      ...textStyle(theme, 'eyebrow', 'tertiary'),
+      fontVariant: ['tabular-nums'],
+      lineHeight: 20,
+    },
     // `ContextMeter .panel`: menu surface, r12, 12px padding, 12/20 secondary.
     scroll: { flexShrink: 1 },
     panel: { padding: 12 },

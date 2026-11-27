@@ -1,43 +1,58 @@
-import { useConversationDisclosure } from './conversation-disclosure'
-import { conversationRowKey } from './conversation-flow'
+import { ConversationDisclosureContext, useConversationDisclosure } from './conversation-disclosure'
+import { conversationFlowGap, conversationRowKey } from './conversation-flow'
 import { NativeIcon } from '@/components/native-icon'
-import type { NativeTurnRow } from '@/components/session-turn-logic'
+import { collectTurnDescendantKeys, type NativeTurnRow } from '@/components/session-turn-logic'
 import { t as message } from '@/locale'
 import type { AppTheme } from '@/theme'
 import { useAppTheme, useThemedStyles } from '@/theme/hooks'
-import { memo } from 'react'
+import { MONOSPACE_FONT } from '@/theme/platform'
+import { memo, useContext } from 'react'
 import { Pressable, StyleSheet, Text, View } from 'react-native'
 
 type Props = {
   item: NativeTurnRow
   expanded?: boolean
+  /** Outer flow spacing owned by continuation segments so collapsed continuations take zero height. */
+  gap?: number
   onToggle?: (rowKey: string) => void
   /** Renders one member row the control reveals. */
   renderRow: (row: NativeTurnRow['rows'][number]) => React.JSX.Element
 }
 
 /**
- * Renders one completed Turn as a single control.
- *
- * The desktop folds a settled Turn's reasoning, tool calls, and retries behind a
- * 33pt row reading `已完成，用时 8分52秒`; the Assistant's replies stay visible
- * below it, and the row ends in a hairline. This is the native form of that row,
- * with individual tool and reasoning disclosures inside.
- *
- * A failed or stopped Turn keeps its content open and drops the chevron: there
- * is nothing the reader could collapse.
- *
- * @param props - The Turn, its open state, and the member renderer.
- * @returns The collapsed or expanded Turn.
+ * Renders one completed Turn control mirroring desktop TurnProcessNodeView:
+ * 33pt header with hairline bottom border, tabular monospace duration digits, and 16pt spacing into the revealed body.
+ * Continuation segments share the headed control key and render only when the Turn is open.
+ * Closing the Turn resets all inner step/reasoning/tool/context disclosures to collapsed.
  */
-function NativeTurnGroupView({ expanded, item, onToggle, renderRow }: Props): React.JSX.Element {
+function NativeTurnGroupView({ expanded, gap = 0, item, onToggle, renderRow }: Props): React.JSX.Element | null {
   const theme = useAppTheme()
   const s = useThemedStyles(makeStyles)
-  const [storedExpanded, toggleStored] = useConversationDisclosure(item.rowKey)
+  const disclosures = useContext(ConversationDisclosureContext)
+  const disclosureKey = item.controlKey ?? item.rowKey
+  const [storedExpanded, toggleStored] = useConversationDisclosure(disclosureKey, item.defaultOpen === true)
   const isExpanded = expanded ?? storedExpanded
   const open = item.locked || isExpanded
+  if (item.continuation === true) {
+    if (!open) return null
+    return (
+      <View style={[s.container, gap > 0 ? { paddingTop: gap } : undefined]}>
+        {item.rows.map((row, index) => {
+          const rowGap = index === 0 ? 0 : conversationFlowGap(row, item.rows[index - 1])
+          return (
+            <View key={conversationRowKey(row, index)} style={rowGap > 0 ? { paddingTop: rowGap } : undefined}>
+              {renderRow(row)}
+            </View>
+          )
+        })}
+      </View>
+    )
+  }
   const handleToggle = () => {
-    if (onToggle) onToggle(item.rowKey)
+    if (open && !item.locked) {
+      disclosures?.collapseMany?.(item.descendantKeys ?? collectTurnDescendantKeys(item.rows))
+    }
+    if (onToggle) onToggle(disclosureKey)
     else toggleStored()
   }
   return (
@@ -52,9 +67,20 @@ function NativeTurnGroupView({ expanded, item, onToggle, renderRow }: Props): Re
         onPress={handleToggle}
         style={({ pressed }) => [s.header, pressed && s.pressed]}
       >
-        <Text numberOfLines={1} style={s.label}>
-          {item.title}
-        </Text>
+        {item.durationParts !== undefined ? (
+          <Text numberOfLines={1} style={s.label}>
+            {message('turn.tookPrefix') + ' '}
+            {item.durationParts.map((part, index) => (
+              <Text key={index} style={part.numeric ? s.durationNumber : undefined}>
+                {part.text}
+              </Text>
+            ))}
+          </Text>
+        ) : (
+          <Text numberOfLines={1} style={s.label}>
+            {item.title}
+          </Text>
+        )}
         {item.locked ? null : (
           <NativeIcon
             color={theme.colors.inkTertiary}
@@ -65,9 +91,14 @@ function NativeTurnGroupView({ expanded, item, onToggle, renderRow }: Props): Re
       </Pressable>
       {open ? (
         <View style={s.body}>
-          {item.rows.map((row, index) => (
-            <View key={conversationRowKey(row, index)}>{renderRow(row)}</View>
-          ))}
+          {item.rows.map((row, index) => {
+            const rowGap = index === 0 ? 0 : conversationFlowGap(row, item.rows[index - 1])
+            return (
+              <View key={conversationRowKey(row, index)} style={rowGap > 0 ? { paddingTop: rowGap } : undefined}>
+                {renderRow(row)}
+              </View>
+            )
+          })}
         </View>
       ) : null}
     </View>
@@ -76,9 +107,7 @@ function NativeTurnGroupView({ expanded, item, onToggle, renderRow }: Props): Re
 
 const makeStyles = (theme: AppTheme) =>
   StyleSheet.create({
-    container: { marginBottom: 2 },
-    // `ph4WDG_root`: 33pt tall at 14/400 on a 24px line, trailing 8pt of pad and
-    // a hairline under the row.
+    container: { minWidth: 0 },
     header: {
       alignItems: 'center',
       borderBottomColor: theme.colors.borderL2,
@@ -89,16 +118,9 @@ const makeStyles = (theme: AppTheme) =>
       paddingBottom: 8,
     },
     label: { color: theme.colors.inkTertiary, flexShrink: 1, fontSize: 14, lineHeight: 24 },
-    body: { paddingBottom: 6, paddingTop: 8, gap: 4 },
+    durationNumber: { fontFamily: MONOSPACE_FONT, fontVariant: ['tabular-nums'] },
+    body: { paddingTop: 16 },
     pressed: { opacity: 0.62 },
   })
 
-/**
- * One Turn in a scrolling transcript.
- *
- * Memoized because a transcript re-renders on every streamed chunk: without it each
- * chunk rebuilt every mounted Turn, and a Turn carries its own disclosure and header.
- * The props are compared by identity, which is why the caller keeps `onToggle` and
- * `renderRow` stable.
- */
 export const NativeTurnGroup = memo(NativeTurnGroupView)

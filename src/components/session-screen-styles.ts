@@ -17,7 +17,7 @@ export const makeSessionStyles = (theme: AppTheme) =>
       maxWidth: '100%',
       minHeight: 28,
     },
-    actionRowAssistant: { alignSelf: 'flex-start' },
+    actionRowAssistant: { alignSelf: 'flex-start', marginLeft: -6 },
     actionRowUser: { alignSelf: 'flex-end' },
     // The Web prints the user's own time at 13/24 in the action row and the
     // assistant tail time at 12/24 (`MessageItem` `.time` / `.endInfo`).
@@ -28,16 +28,41 @@ export const makeSessionStyles = (theme: AppTheme) =>
     actionTimeUser: { fontSize: 13, paddingRight: 12 },
     // `.timeEnd` inherits the actions row's `label-tertiary`; only its offset differs.
     actionTimeEnd: { marginLeft: 8 },
-    // The Turn-usage panel's `dt`/`dd` rows, one line each like the desktop's dialog.
-    usageRow: {
+    // Desktop `TurnUsagePanel` + `stat-dialog.module.css` layout.
+    usagePanel: { padding: 14 },
+    usageHeader: {
       alignItems: 'center',
       flexDirection: 'row',
-      gap: 24,
+      gap: 16,
       justifyContent: 'space-between',
-      paddingVertical: 6,
+      marginBottom: 8,
     },
-    usageLabel: { color: theme.colors.inkMuted, fontSize: 13, lineHeight: 20 },
-    usageValue: { color: theme.colors.ink, fontSize: 13, fontVariant: ['tabular-nums'], lineHeight: 20 },
+    usageHeaderLabel: { alignItems: 'center', flexDirection: 'row', flexShrink: 1, gap: 6, minWidth: 0 },
+    usageTitle: { color: theme.colors.ink, fontSize: 12, fontWeight: '500', lineHeight: 18 },
+    usageHeadline: {
+      color: theme.colors.ink,
+      fontSize: 12,
+      fontWeight: '500',
+      fontVariant: ['tabular-nums'],
+      lineHeight: 18,
+    },
+    usageRule: { backgroundColor: theme.colors.borderL3, height: StyleSheet.hairlineWidth, marginBottom: 10 },
+    usageDetails: { gap: 6 },
+    usageRow: {
+      alignItems: 'flex-start',
+      flexDirection: 'row',
+      gap: 16,
+      justifyContent: 'space-between',
+    },
+    usageLabel: { color: theme.colors.inkTertiary, flexShrink: 1, fontSize: 12, lineHeight: 18, minWidth: 76 },
+    usageValue: {
+      color: theme.colors.inkMuted,
+      flex: 1,
+      fontSize: 12,
+      fontVariant: ['tabular-nums'],
+      lineHeight: 18,
+      textAlign: 'right',
+    },
     // The copy confirmation names what reached the clipboard; it shares the clock's
     // 12/24 slot so the action row keeps its height while the label comes and goes.
     actionCopySize: { color: theme.colors.inkTertiary, flexShrink: 1, fontSize: 12, lineHeight: 24, minWidth: 0 },
@@ -152,10 +177,12 @@ export const makeSessionStyles = (theme: AppTheme) =>
     // height whether or not the projections have landed yet.
     dock: {
       alignItems: 'center',
+      alignSelf: 'stretch',
       flexDirection: 'row',
-      gap: 12,
+      flexWrap: 'nowrap',
+      gap: 4,
       justifyContent: 'center',
-      maxWidth: '100%',
+      marginHorizontal: -6,
       minHeight: 22,
       paddingTop: 4,
     },

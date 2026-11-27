@@ -262,3 +262,52 @@ describe('the tools that name one subject each', () => {
     expect(toolRowView(call('get_goal', {}))).toMatchObject({ kind: 'generic' })
   })
 })
+
+describe('desktop parity for code descriptions, shell exits, and exact tool titles', () => {
+  it('prefers the call description over the first line of code for run_code and cua_run_code', () => {
+    const view = toolRowView(
+      call('run_code', {
+        description: 'Inspect available models',
+        code: 'const r = await tools.bash({ command: "ls" })',
+        language: 'ts',
+      }),
+    )
+    expect(view).toMatchObject({
+      kind: 'code',
+      description: 'Inspect available models',
+      source: 'const r = await tools.bash({ command: "ls" })',
+    })
+    expect(describeRow(view)).toBe('Inspect available models')
+
+    const cua = toolRowView(call('cua_run_code', { description: 'Capture desktop window', code: 'inspect(1)' }))
+    expect(cua).toMatchObject({ kind: 'code', description: 'Capture desktop window' })
+    expect(describeRow(cua)).toBe('Capture desktop window')
+  })
+
+  it('extracts shell exit code and signal markers and strips them from the command body', () => {
+    const exited = toolRowView({
+      toolName: 'bash',
+      toolInput: JSON.stringify({ command: 'false' }),
+      output: 'permission denied\n[exit code: 1]',
+      state: 'completed',
+    })
+    expect(exited).toMatchObject({ kind: 'command', exitCode: 1, body: 'permission denied' })
+
+    const signaled = toolRowView({
+      toolName: 'bash',
+      toolInput: JSON.stringify({ command: 'sleep 60' }),
+      output: 'started\n[killed by signal: SIGTERM]',
+      state: 'completed',
+    })
+    expect(signaled).toMatchObject({ kind: 'command', signal: 'SIGTERM', body: 'started' })
+  })
+
+  it('maps built-in tools to their desktop title keys', async () => {
+    const { toolTitleKey } = await import('../src/components/tool-row-view')
+    expect(toolTitleKey('grep')).toBe('tool.titleGrep')
+    expect(toolTitleKey('list_subagent_models')).toBe('tool.titleListModels')
+    expect(toolTitleKey('schedule_create')).toBe('tool.titleCreateSchedule')
+    expect(toolTitleKey('office_render')).toBe('tool.titleOfficeRender')
+    expect(toolTitleKey('unknown_custom_tool')).toBeUndefined()
+  })
+})

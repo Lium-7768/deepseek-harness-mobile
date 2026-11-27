@@ -10,12 +10,15 @@ vi.mock('react-native', () => ({
   AppState: { currentState: 'active', addEventListener: () => ({ remove: () => undefined }) },
   Platform: { OS: 'ios' },
   StyleSheet: { create: (styles: unknown) => styles, hairlineWidth: 1 },
+  Pressable: 'Pressable',
+  ScrollView: 'ScrollView',
   Text: 'Text',
   View: 'View',
 }))
 vi.mock('@/components/native-icon', () => ({ NativeIcon: 'Icon' }))
 vi.mock('@/components/native-brand-mark', () => ({ NativeBrandMark: 'BrandMark' }))
 vi.mock('@/components/native-flow-row', () => ({ NativeFlowRow: 'FlowRow' }))
+vi.mock('@/components/native-markdown', () => ({ NativeMarkdown: 'Markdown' }))
 vi.mock('@/components/native-tool-card', () => ({ NativeToolCard: 'ToolCard' }))
 
 import { formatDurationLabel } from '@/components/native-conversation-status'

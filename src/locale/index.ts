@@ -39,7 +39,6 @@ import { status } from './status'
 import { subagent } from './subagent'
 import { todo } from './todo'
 import { tool } from './tool'
-import { trajectory } from './trajectory'
 import { turn } from './turn'
 import { workbench } from './workbench'
 import { workspace } from './workspace'
@@ -47,7 +46,6 @@ import { workspace } from './workspace'
 /** Copy shared by more than one screen. */
 const common = {
   cancel: '取消',
-  save: '保存',
   retry: '请稍后重试。',
   /** Every screen's back control: it returns to whatever opened it. */
   back: '返回',
@@ -97,7 +95,6 @@ const areas = {
   subagent,
   todo,
   tool,
-  trajectory,
   turn,
   workbench,
   workspace,
