@@ -5,7 +5,7 @@ import { t as message } from '@/locale'
 import { useConnectionStore } from '@/state/connection'
 import { useAppTheme, useThemedStyles } from '@/theme/hooks'
 import { useQuery } from '@tanstack/react-query'
-import { memo, useState } from 'react'
+import { memo, useMemo, useState } from 'react'
 import { FlatList, Pressable, Text, TextInput, View } from 'react-native'
 
 import { pluginLabel } from '@/components/settings/settings-labels'
@@ -20,7 +20,7 @@ export function PluginSettings({
   const styles = useThemedStyles(makeSettingsStyles)
   const theme = useAppTheme()
   const [query, setQuery] = useState('')
-  const client = new MobileApi(connection)
+  const client = useMemo(() => new MobileApi(connection), [connection])
   const settings = useQuery({
     queryKey: queryKeys.settings(connection.gatewayUrl, connection.deviceId),
     queryFn: ({ signal }) => client.withSignal(signal).settingsDescribe(),
@@ -47,6 +47,8 @@ export function PluginSettings({
     <FlatList
       contentContainerStyle={styles.pluginList}
       data={visible}
+      keyboardDismissMode="on-drag"
+      keyboardShouldPersistTaps="handled"
       keyExtractor={(item) => item.ns}
       ListHeaderComponent={
         <>

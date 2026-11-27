@@ -1,5 +1,16 @@
 import { MobileApi, mobileErrorMessage } from '@/api/mobile-api'
 import { queryKeys } from '@/api/query-keys'
+import {
+  COLLAPSE_TIMINGS,
+  FOLDED_REPLIES,
+  PERFORMANCE_USAGE_MODES,
+  TRANSCRIPT_VIEW_MODES,
+  readChatPresentationPolicy,
+  type CollapseTiming,
+  type FoldedReplies,
+  type PerformanceUsageMode,
+  type TranscriptViewMode,
+} from '@/components/chat-presentation-policy'
 import { NativeIcon } from '@/components/native-icon'
 import { agentPresetDescription, agentPresetName } from '@/components/session-composer-logic'
 import { format, t as message } from '@/locale'
@@ -8,7 +19,7 @@ import { useConnectionStore } from '@/state/connection'
 import { useAppTheme, useThemedStyles } from '@/theme/hooks'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import Constants from 'expo-constants'
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { Alert, Pressable, ScrollView, Text, View } from 'react-native'
 
 import { ConfirmSheet } from '@/components/confirm-sheet'
@@ -19,6 +30,7 @@ import {
   PERMISSION_CHOICES,
   QueryErrorNotice,
   SettingsFieldRow,
+  mergeSettingsNamespace,
   namespace,
   namespaceValue,
   permissionLabel,
@@ -35,7 +47,7 @@ export function GeneralSettings({
 }): React.JSX.Element {
   const palette = useAppTheme()
   const styles = useThemedStyles(makeSettingsStyles)
-  const client = new MobileApi(connection)
+  const client = useMemo(() => new MobileApi(connection), [connection])
   const queryClient = useQueryClient()
   const settings = useQuery({
     queryKey: queryKeys.settings(connection.gatewayUrl, connection.deviceId),
@@ -55,6 +67,21 @@ export function GeneralSettings({
     presets.data?.presets.find((item) => item.isDefault)?.id
   const busyEnter =
     readString(readRecord(namespaceValue(settings.data, 'ui-conversation'))?.busyEnter) === 'steer' ? 'steer' : 'queue'
+  const chatPolicy = readChatPresentationPolicy(settings.data)
+  const transcriptViewLabel = (mode: TranscriptViewMode): string =>
+    mode === 'compact'
+      ? message('settings.transcriptViewCompact')
+      : mode === 'standard'
+        ? message('settings.transcriptViewStandard')
+        : mode === 'verbose'
+          ? message('settings.transcriptViewVerbose')
+          : message('settings.transcriptViewDetailed')
+  const collapseTimingLabel = (timing: CollapseTiming): string =>
+    timing === 'next-input' ? message('settings.collapseTimingNextInput') : message('settings.collapseTimingCompletion')
+  const foldedRepliesLabel = (replies: FoldedReplies): string =>
+    replies === 'final' ? message('settings.foldedRepliesFinal') : message('settings.foldedRepliesAll')
+  const performanceUsageLabel = (mode: PerformanceUsageMode): string =>
+    mode === 'compact' ? message('settings.performanceUsageCompact') : message('settings.performanceUsageDetailed')
   const permissionDefault =
     readString(readRecord(namespaceValue(settings.data, 'permission'))?.defaultPreset) ?? 'workspace-write'
   // The phone renders its own stored preference: the desktop value describes the
@@ -68,10 +95,10 @@ export function GeneralSettings({
     setSaving(true)
     void client
       .settingsUpdate({ ns, patch, ...(descriptor === undefined ? {} : { expectedRevision: descriptor.revision }) })
-      .then(() => {
-        void queryClient.invalidateQueries({
-          queryKey: queryKeys.settings(connection.gatewayUrl, connection.deviceId),
-        })
+      .then((updated) => {
+        const key = queryKeys.settings(connection.gatewayUrl, connection.deviceId)
+        queryClient.setQueryData(key, (current: typeof settings.data) => mergeSettingsNamespace(current, updated))
+        void queryClient.invalidateQueries({ queryKey: key })
         Alert.alert(message('settings.savedTitle'), success)
       })
       .catch((error) =>
@@ -210,6 +237,68 @@ export function GeneralSettings({
                 ],
                 onSelect: (choice) =>
                   save('ui-conversation', { busyEnter: choice }, message('settings.enterBehaviorSaved')),
+              })
+            }
+          />
+          <SettingsFieldRow
+            label={message('settings.transcriptView')}
+            description={message('settings.transcriptViewDetail')}
+            disabled={!writable || saving}
+            value={transcriptViewLabel(chatPolicy.mode)}
+            onPress={() =>
+              setPicker({
+                title: message('settings.transcriptView'),
+                value: chatPolicy.mode,
+                options: TRANSCRIPT_VIEW_MODES.map((mode) => ({ value: mode, label: transcriptViewLabel(mode) })),
+                onSelect: (choice) =>
+                  save('ui-chat', { transcriptView: choice }, message('settings.transcriptViewSaved')),
+              })
+            }
+          />
+          <SettingsFieldRow
+            label={message('settings.collapseTiming')}
+            description={message('settings.collapseTimingDetail')}
+            disabled={!writable || saving}
+            value={collapseTimingLabel(chatPolicy.collapseTiming)}
+            onPress={() =>
+              setPicker({
+                title: message('settings.collapseTiming'),
+                value: chatPolicy.collapseTiming,
+                options: COLLAPSE_TIMINGS.map((timing) => ({ value: timing, label: collapseTimingLabel(timing) })),
+                onSelect: (choice) =>
+                  save('ui-chat', { collapseTiming: choice }, message('settings.collapseTimingSaved')),
+              })
+            }
+          />
+          {chatPolicy.mode === 'verbose' ? null : (
+            <SettingsFieldRow
+              label={message('settings.foldedReplies')}
+              description={message('settings.foldedRepliesDetail')}
+              disabled={!writable || saving}
+              value={foldedRepliesLabel(chatPolicy.foldedReplies)}
+              onPress={() =>
+                setPicker({
+                  title: message('settings.foldedReplies'),
+                  value: chatPolicy.foldedReplies,
+                  options: FOLDED_REPLIES.map((replies) => ({ value: replies, label: foldedRepliesLabel(replies) })),
+                  onSelect: (choice) =>
+                    save('ui-chat', { foldedReplies: choice }, message('settings.foldedRepliesSaved')),
+                })
+              }
+            />
+          )}
+          <SettingsFieldRow
+            label={message('settings.performanceUsage')}
+            description={message('settings.performanceUsageDetail')}
+            disabled={!writable || saving}
+            value={performanceUsageLabel(chatPolicy.performanceUsage)}
+            onPress={() =>
+              setPicker({
+                title: message('settings.performanceUsage'),
+                value: chatPolicy.performanceUsage,
+                options: PERFORMANCE_USAGE_MODES.map((mode) => ({ value: mode, label: performanceUsageLabel(mode) })),
+                onSelect: (choice) =>
+                  save('ui-chat', { performanceUsage: choice }, message('settings.performanceUsageSaved')),
               })
             }
           />

@@ -10,7 +10,7 @@ import { NativeActionButton } from '@/components/native-action-button'
 import { presetGuideIntro } from '@/components/settings/settings-labels'
 import { useQuery } from '@tanstack/react-query'
 import { router } from 'expo-router'
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { Pressable, ScrollView, Text, View } from 'react-native'
 
 import { CenteredState, ErrorState, ReadOnlySetting } from '@/components/settings/settings-shared'
@@ -26,7 +26,7 @@ export function PresetSettings({
   const theme = useAppTheme()
   const styles = useThemedStyles(makeSettingsStyles)
   const [guideOpen, setGuideOpen] = useState(false)
-  const client = new MobileApi(connection)
+  const client = useMemo(() => new MobileApi(connection), [connection])
   const presets = useQuery({
     queryKey: queryKeys.agentPresets(connection.gatewayUrl, connection.deviceId),
     queryFn: ({ signal }) => client.withSignal(signal).agentPresets(),

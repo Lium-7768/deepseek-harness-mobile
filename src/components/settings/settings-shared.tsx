@@ -2,11 +2,9 @@ import { usesStackedFields } from '@/components/native-layout'
 import { mobileErrorMessage } from '@/api/mobile-api'
 import { NativeActionButton } from '@/components/native-action-button'
 import { NativeIcon } from '@/components/native-icon'
-import { NativeSection } from '@/components/native-list'
 import { NativeRunningRing } from '@/components/native-running-ring'
 import { NativeMenuPanel } from '@/components/native-menu-panel'
 import { type NativeModelSelection } from '@/components/native-model-selection'
-import { NativeSelectionRow } from '@/components/native-selection'
 import { format, t as message } from '@/locale'
 import { useAppTheme, useThemedStyles } from '@/theme/hooks'
 import type { MobileSettingsNamespaceView, MobileSettingsPayload } from '@/types/mobile'
@@ -151,46 +149,6 @@ export function SettingsValueRow({ label, value }: { label: string; value: strin
   )
 }
 
-export function OptionSection({
-  title,
-  description,
-  children,
-}: {
-  title: string
-  description: string
-  children: React.ReactNode
-}): React.JSX.Element {
-  return (
-    <NativeSection description={description} title={title}>
-      {children}
-    </NativeSection>
-  )
-}
-
-export function OptionRow({
-  label,
-  description,
-  selected,
-  disabled,
-  onPress,
-}: {
-  label: string
-  description: string
-  selected: boolean
-  disabled: boolean
-  onPress: () => void
-}): React.JSX.Element {
-  return (
-    <NativeSelectionRow
-      description={description}
-      disabled={disabled}
-      onPress={onPress}
-      selected={selected}
-      title={label}
-    />
-  )
-}
-
 export function ReadOnlySetting({
   title,
   value,
@@ -272,6 +230,21 @@ export function namespace(
   return payload?.namespaces.find((item) => item.ns === ns)
 }
 
+/** Merges one updated settings namespace view (value and revision) into the cached payload. */
+export function mergeSettingsNamespace(
+  payload: MobileSettingsPayload | undefined,
+  updated: MobileSettingsNamespaceView | undefined,
+): MobileSettingsPayload | undefined {
+  if (payload === undefined || updated === undefined || typeof updated.ns !== 'string') return payload
+  const exists = payload.namespaces.some((item) => item.ns === updated.ns)
+  return {
+    ...payload,
+    namespaces: exists
+      ? payload.namespaces.map((item) => (item.ns === updated.ns ? updated : item))
+      : [...payload.namespaces, updated],
+  }
+}
+
 export function namespaceValue(payload: MobileSettingsPayload | undefined, ns: string): unknown {
   return namespace(payload, ns)?.value
 }
@@ -291,10 +264,4 @@ export function readModelSelection(value: unknown): NativeModelSelection | undef
   const provider = readString(record?.provider)
   const model = readString(record?.model)
   return provider === undefined || model === undefined ? undefined : { provider, model }
-}
-
-export function themeLabel(value: string): string {
-  if (value === 'dark') return message('settings.themeDark')
-  if (value === 'system') return message('settings.themeSystem')
-  return message('settings.themeLight')
 }

@@ -31,13 +31,13 @@ export function AccountSettings({
   const client = useMemo(() => new MobileApi(connection), [connection])
   const profile = useQuery({
     queryKey: queryKeys.accountProfile(connection.gatewayUrl, connection.deviceId),
-    queryFn: () => client.accountProfile(),
+    queryFn: ({ signal }) => client.withSignal(signal).accountProfile(),
     retry: false,
     staleTime: 30_000,
   })
   const balance = useQuery({
     queryKey: queryKeys.accountBalance(connection.gatewayUrl, connection.deviceId),
-    queryFn: () => client.accountBalance(),
+    queryFn: ({ signal }) => client.withSignal(signal).accountBalance(),
     enabled: profile.data !== null && profile.data !== undefined,
     retry: false,
     staleTime: 30_000,
@@ -50,8 +50,7 @@ export function AccountSettings({
           onRetry={() => void profile.refetch()}
           text={mobileErrorMessage(profile.error, message('settings.loadFailed'))}
         />
-      ) : null}
-      {profile.data === null ? (
+      ) : profile.data === null ? (
         <Text style={styles.subtitle}>{message('settings.accountSignedOut')}</Text>
       ) : profile.data === undefined ? (
         <Text style={styles.subtitle}>{message('common.loading')}</Text>

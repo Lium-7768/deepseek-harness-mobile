@@ -7,13 +7,14 @@ import { format, t as message } from '@/locale'
 import { useConnectionStore } from '@/state/connection'
 import { useThemedStyles } from '@/theme/hooks'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { Alert, ScrollView, Text } from 'react-native'
 
 import {
   CenteredState,
   QueryErrorNotice,
   SettingsFieldRow,
+  mergeSettingsNamespace,
   namespace,
   readModelSelection,
 } from '@/components/settings/settings-shared'
@@ -25,7 +26,7 @@ export function ModelSettings({
   connection: NonNullable<ReturnType<typeof useConnectionStore.getState>['connection']>
 }): React.JSX.Element {
   const styles = useThemedStyles(makeSettingsStyles)
-  const client = new MobileApi(connection)
+  const client = useMemo(() => new MobileApi(connection), [connection])
   const queryClient = useQueryClient()
   const models = useQuery({
     queryKey: queryKeys.models(connection.gatewayUrl, connection.deviceId),
@@ -54,8 +55,10 @@ export function ModelSettings({
           { op: 'unset', path: ['reasoningEffort'] },
         ],
       })
-      .then(() => {
-        void queryClient.invalidateQueries({ queryKey: queryKeys.settings(connection.gatewayUrl, connection.deviceId) })
+      .then((updated) => {
+        const key = queryKeys.settings(connection.gatewayUrl, connection.deviceId)
+        queryClient.setQueryData(key, (current: typeof settings.data) => mergeSettingsNamespace(current, updated))
+        void queryClient.invalidateQueries({ queryKey: key })
         Alert.alert(message('settings.modelSavedTitle'), message('settings.modelAppliesToNewSessions'))
       })
       .catch((error) =>
