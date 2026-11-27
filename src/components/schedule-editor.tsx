@@ -1,3 +1,4 @@
+import { mobileErrorMessage } from '@/api/mobile-api'
 import { NativeAnchoredPanel } from '@/components/native-anchored-panel'
 import { NativeActionButton } from '@/components/native-action-button'
 import { NativeMenuPanel } from '@/components/native-menu-panel'
@@ -9,7 +10,7 @@ import type { MobileScheduleCreateRequest, MobileScheduleTiming } from '@/types/
 import { useEffect, useState } from 'react'
 import { MONOSPACE_FONT } from '@/theme/platform'
 import { format } from '@/locale'
-import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native'
+import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native'
 
 /** The message key each timing kind prints as its label. */
 const KIND_LABELS = {
@@ -65,7 +66,10 @@ export function ScheduleEditor({
   const [error, setError] = useState<string | undefined>(undefined)
 
   useEffect(() => {
-    if (!open) return
+    if (!open) {
+      setPickerOpen(false)
+      return
+    }
     setTitle(initial?.title ?? '')
     setPrompt(initial?.prompt ?? '')
     const seed = initial?.timing ? formFromTiming(initial.timing, timeZone) : undefined
@@ -93,13 +97,13 @@ export function ScheduleEditor({
       await onCreate({ title: title.trim(), prompt: prompt.trim(), timing })
       onClose()
     } catch (reason) {
-      setError(reason instanceof Error ? reason.message : message('common.retry'))
+      setError(mobileErrorMessage(reason, message('common.retry')))
     }
   }
   const kindLabel = message(KIND_LABELS[kind])
   return (
     <NativeAnchoredPanel onClose={onClose} open={open}>
-      <View style={s.content}>
+      <ScrollView contentContainerStyle={s.content} keyboardDismissMode="on-drag" keyboardShouldPersistTaps="handled">
         <Text style={s.title}>{message('schedule.createTitle')}</Text>
         <TextInput
           accessibilityLabel={message('schedule.fieldTitle')}
@@ -266,7 +270,7 @@ export function ScheduleEditor({
             variant="secondary"
           />
         </View>
-      </View>
+      </ScrollView>
       <NativeMenuPanel
         groups={[
           {

@@ -1,3 +1,4 @@
+import { t as message } from '@/locale'
 import type { MobileScheduleEntry, MobileScheduleTiming } from '@/types/mobile'
 
 /** Every timing rule the Host accepts, in the order the phone offers them. */
@@ -5,13 +6,13 @@ export type TimingKind = 'after' | 'at' | 'cron' | 'daily' | 'every' | 'rrule' |
 
 /** The day names the weekly picker draws, Monday first like the Host's ISO weekdays. */
 export const WEEKDAY_LABELS: readonly { iso: number; label: string }[] = [
-  { iso: 1, label: '一' },
-  { iso: 2, label: '二' },
-  { iso: 3, label: '三' },
-  { iso: 4, label: '四' },
-  { iso: 5, label: '五' },
-  { iso: 6, label: '六' },
-  { iso: 7, label: '日' },
+  { iso: 1, label: message('schedule.weekdayMon') },
+  { iso: 2, label: message('schedule.weekdayTue') },
+  { iso: 3, label: message('schedule.weekdayWed') },
+  { iso: 4, label: message('schedule.weekdayThu') },
+  { iso: 5, label: message('schedule.weekdayFri') },
+  { iso: 6, label: message('schedule.weekdaySat') },
+  { iso: 7, label: message('schedule.weekdaySun') },
 ]
 
 /** One form field's raw text, as typed. */

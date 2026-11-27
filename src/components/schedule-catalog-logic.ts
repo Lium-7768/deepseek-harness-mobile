@@ -45,7 +45,10 @@ export function scheduleFrequencyLabel(task: MobileScheduleEntry): string | unde
         .map((day) => WEEKDAY_LABELS.find((item) => item.iso === day)?.label)
         .filter((item): item is string => item !== undefined)
         .join('、')
-      return format('schedule.frequencyWeekly', { days: days || '一', time: shortTime(task.time) })
+      return format('schedule.frequencyWeekly', {
+        days: days || message('schedule.weekdayMon'),
+        time: shortTime(task.time),
+      })
     }
     case 'cron':
       return task.expression ? format('schedule.frequencyCron', { expression: task.expression }) : undefined

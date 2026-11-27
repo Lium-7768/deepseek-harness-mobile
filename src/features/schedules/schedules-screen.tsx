@@ -26,7 +26,7 @@ import { useAppTheme, useThemedStyles } from '@/theme/hooks'
 import type { MobileScheduleCreateRequest, MobileScheduleEntry, MobileScheduleTiming } from '@/types/mobile'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { router } from 'expo-router'
-import { memo, useMemo, useRef, useState } from 'react'
+import { memo, useCallback, useMemo, useRef, useState } from 'react'
 import { Alert, FlatList, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native'
 
 /** Desktop-owned automation catalog; all visible controls invoke the corresponding schedule API. */
@@ -89,16 +89,36 @@ export default function SchedulesScreen(): React.JSX.Element {
       Alert.alert(message('schedule.failed'), mobileErrorMessage(error, message('common.retry')))
     },
   })
-  const update = (task: MobileScheduleEntry, action: 'pause' | 'resume' | 'delete'): void => {
-    if (gate.current) return
-    gate.current = true
-    void mutation
-      .mutateAsync({ task, action })
-      .catch(() => undefined)
-      .finally(() => {
-        gate.current = false
-      })
-  }
+  const mutateScheduleAsync = mutation.mutateAsync
+  const runScheduleMutate = runNow.mutate
+  const update = useCallback(
+    (task: MobileScheduleEntry, action: 'pause' | 'resume' | 'delete'): void => {
+      if (gate.current) return
+      gate.current = true
+      void mutateScheduleAsync({ task, action })
+        .catch(() => undefined)
+        .finally(() => {
+          gate.current = false
+        })
+    },
+    [mutateScheduleAsync],
+  )
+  const openDetail = useCallback((task: MobileScheduleEntry): void => setSelectedTask(task), [])
+  const handleRunNow = useCallback((task: MobileScheduleEntry): void => runScheduleMutate(task), [runScheduleMutate])
+  const cardDisabled = mutation.isPending || runNow.isPending
+  const keyExtractor = useCallback((task: MobileScheduleEntry) => task.id, [])
+  const renderScheduleItem = useCallback(
+    ({ item: task }: { item: MobileScheduleEntry }) => (
+      <ScheduleCard
+        task={task}
+        disabled={cardDisabled}
+        onOpenDetail={openDetail}
+        onRunNow={handleRunNow}
+        onUpdate={update}
+      />
+    ),
+    [cardDisabled, handleRunNow, openDetail, update],
+  )
   const catalogItems = catalog.data?.items ?? []
   const visibleItems = filterSchedules(catalogItems, statusFilter, query)
   const showRecommendations =
@@ -146,7 +166,7 @@ export default function SchedulesScreen(): React.JSX.Element {
         <FlatList
           contentContainerStyle={s.list}
           data={visibleItems}
-          keyExtractor={(task) => task.id}
+          keyExtractor={keyExtractor}
           keyboardDismissMode="on-drag"
           keyboardShouldPersistTaps="handled"
           ListHeaderComponent={
@@ -285,15 +305,7 @@ export default function SchedulesScreen(): React.JSX.Element {
               ) : null}
             </View>
           }
-          renderItem={({ item: task }) => (
-            <ScheduleCard
-              task={task}
-              disabled={mutation.isPending || runNow.isPending}
-              onOpenDetail={() => setSelectedTask(task)}
-              onRunNow={() => runNow.mutate(task)}
-              onUpdate={update}
-            />
-          )}
+          renderItem={renderScheduleItem}
         />
       )}
       <ScheduleEditor
@@ -321,8 +333,8 @@ const ScheduleCard = memo(function ScheduleCard({
 }: {
   task: MobileScheduleEntry
   disabled: boolean
-  onOpenDetail: () => void
-  onRunNow: () => void
+  onOpenDetail: (task: MobileScheduleEntry) => void
+  onRunNow: (task: MobileScheduleEntry) => void
   onUpdate: (task: MobileScheduleEntry, action: 'pause' | 'resume' | 'delete') => void
 }): React.JSX.Element {
   const theme = useAppTheme()
@@ -335,7 +347,7 @@ const ScheduleCard = memo(function ScheduleCard({
   // One `…` menu per task instead of three buttons: a list of automations should
   // read as a list, and only one row's actions are ever wanted at a time.
   const actions = [
-    { icon: 'edit-outline' as const, label: message('schedule.viewDetail'), onPress: onOpenDetail },
+    { icon: 'edit-outline' as const, label: message('schedule.viewDetail'), onPress: () => onOpenDetail(task) },
     { icon: 'paper-plane-outline' as const, label: message('schedule.runNow'), onPress: () => setConfirmingRun(true) },
     ...(task.status === 'ended'
       ? []
@@ -366,7 +378,7 @@ const ScheduleCard = memo(function ScheduleCard({
       android_ripple={{ borderless: false }}
       accessibilityRole="button"
       accessibilityLabel={task.title}
-      onPress={onOpenDetail}
+      onPress={() => onOpenDetail(task)}
       style={({ pressed }) => [s.card, pressed && s.pressed]}
     >
       <View style={s.heading}>
@@ -418,7 +430,7 @@ const ScheduleCard = memo(function ScheduleCard({
         onCancel={() => setConfirmingRun(false)}
         onConfirm={() => {
           setConfirmingRun(false)
-          onRunNow()
+          onRunNow(task)
         }}
       />
       <ConfirmSheet

@@ -184,4 +184,64 @@ describe('ScheduleDetailModal', () => {
     expect(texts(renderer)).toContain('总结昨天进展')
     expect(texts(renderer)).toContain('查看会话')
   })
+  it('preserves edits for colon-containing schedule ids and clears dirty immediately on save', async () => {
+    const colonTask: MobileScheduleEntry = { ...sampleTask, id: 'sched:daily:1' }
+    const updatedTask: MobileScheduleEntry = { ...colonTask, title: '更新后标题', updatedAt: 'v2' }
+    const editSchedule = vi.fn().mockResolvedValue(updatedTask)
+    const viewSchedule = vi.fn().mockResolvedValue(colonTask)
+    const api = {
+      withSignal: () => ({
+        viewSchedule,
+        scheduleHistory: vi.fn().mockResolvedValue({
+          id: 'sched:daily:1',
+          records: [],
+          earlierRecordsUnavailable: false,
+          earlierRecordsPruned: false,
+          retention: { days: 30, records: 100 },
+        }),
+      }),
+      editSchedule,
+      runSchedule: vi.fn().mockResolvedValue(colonTask),
+      updateSchedule: vi.fn().mockResolvedValue(undefined),
+    } as never
+
+    const renderer = await render(
+      createElement(
+        QueryClientProvider,
+        { client: cache },
+        createElement(ScheduleDetailModal, { api, initialTask: colonTask, onClose: vi.fn() }),
+      ),
+    )
+    await settle()
+
+    const titleInput = renderer.container.queryAll(
+      (node) => node.type === 'TextInput' && node.props.accessibilityLabel === '任务名称',
+    )[0]!
+    await act(async () => {
+      titleInput.props.onChangeText('更新后标题')
+    })
+    // Trigger a refetch of the same task while editing: edits must not be wiped.
+    await act(async () => {
+      await cache.invalidateQueries()
+    })
+    await settle()
+    const afterRefetch = renderer.container.queryAll(
+      (node) => node.type === 'TextInput' && node.props.accessibilityLabel === '任务名称',
+    )[0]!
+    expect(afterRefetch.props.value).toBe('更新后标题')
+
+    viewSchedule.mockResolvedValue(updatedTask)
+    const saveBtn = renderer.container.queryAll(
+      (node) => node.type === 'ActionButton' && node.props.label === '保存更改',
+    )[0]!
+    await act(async () => {
+      saveBtn.props.onPress()
+    })
+    await settle()
+
+    expect(editSchedule).toHaveBeenCalledWith('sched:daily:1', { title: '更新后标题' }, '2026-11-22T01:00:00.000Z')
+    expect(
+      renderer.container.queryAll((node) => node.type === 'ActionButton' && node.props.label === '保存更改'),
+    ).toHaveLength(0)
+  })
 })

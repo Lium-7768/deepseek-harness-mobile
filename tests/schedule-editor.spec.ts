@@ -35,8 +35,8 @@ describe('automation timing rules', () => {
 
   it('refuses a malformed time or a non-positive interval', () => {
     expect(timingOf({ ...EMPTY, kind: 'daily', time: '25:00', timeZone: 'UTC' })).toBeUndefined()
-    expect(timingOf({ hours: '', kind: 'daily', minutes: '', time: '09', timeZone: 'UTC' })).toBeUndefined()
-    expect(timingOf({ hours: '0', kind: 'every', minutes: '', time: '', timeZone: 'UTC' })).toBeUndefined()
+    expect(timingOf({ ...EMPTY, kind: 'daily', time: '09', timeZone: 'UTC' })).toBeUndefined()
+    expect(timingOf({ ...EMPTY, hours: '0', kind: 'every', timeZone: 'UTC' })).toBeUndefined()
   })
 })
 

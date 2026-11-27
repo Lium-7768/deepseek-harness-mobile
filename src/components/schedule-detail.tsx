@@ -22,7 +22,7 @@ import type {
 } from '@/types/mobile'
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { router } from 'expo-router'
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   KeyboardAvoidingView,
   Modal,
@@ -87,7 +87,7 @@ export function ScheduleDetailModal({
   })
 
   const task = detail.data ?? initialTask
-  const hydratedVersion = useRef<string | undefined>(undefined)
+  const hydratedVersion = useRef<{ id: string; version: string } | undefined>(undefined)
 
   const [title, setTitle] = useState('')
   const [prompt, setPrompt] = useState('')
@@ -100,49 +100,50 @@ export function ScheduleDetailModal({
   const [cron, setCron] = useState('0 9 * * *')
   const [rrule, setRrule] = useState('FREQ=DAILY')
 
-  const applyTaskToForm = (source: MobileScheduleEntry): void => {
-    const form = formFromScheduleEntry(source, timeZone)
-    setTitle(source.title)
-    setPrompt(source.prompt)
-    setKind(form.kind)
-    setTime(form.time)
-    setHours(form.hours)
-    setMinutes(form.minutes)
-    setDate(form.date)
-    setWeekdays(form.weekdays)
-    setCron(form.cron)
-    setRrule(form.rrule)
-    hydratedVersion.current = `${source.id}:${source.updatedAt ?? source.scheduledAt}`
-  }
+  const applyTaskToForm = useCallback(
+    (source: MobileScheduleEntry): void => {
+      const form = formFromScheduleEntry(source, timeZone)
+      setTitle(source.title)
+      setPrompt(source.prompt)
+      setKind(form.kind)
+      setTime(form.time)
+      setHours(form.hours)
+      setMinutes(form.minutes)
+      setDate(form.date)
+      setWeekdays(form.weekdays)
+      setCron(form.cron)
+      setRrule(form.rrule)
+      hydratedVersion.current = { id: source.id, version: source.updatedAt ?? source.scheduledAt }
+    },
+    [timeZone],
+  )
 
   useEffect(() => {
     if (!task) {
       hydratedVersion.current = undefined
       return
     }
-    const versionKey = `${task.id}:${task.updatedAt ?? task.scheduledAt}`
-    if (hydratedVersion.current === undefined || hydratedVersion.current.split(':')[0] !== task.id) {
+    const version = task.updatedAt ?? task.scheduledAt
+    if (hydratedVersion.current === undefined || hydratedVersion.current.id !== task.id) {
       setTab('rule')
       setNotice(undefined)
+      setConfirmRun(false)
+      setConfirmDelete(false)
+      setPickerOpen(false)
       applyTaskToForm(task)
-    } else if (hydratedVersion.current !== versionKey && !dirtyRef.current) {
+    } else if (hydratedVersion.current.version !== version && !dirtyRef.current) {
       applyTaskToForm(task)
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [task?.id, task?.updatedAt, task?.scheduledAt])
+  }, [applyTaskToForm, task])
 
-  const initialForm = useMemo(
-    () => (task ? formFromScheduleEntry(task, timeZone) : undefined),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [task?.id, task?.updatedAt, task?.kind, task?.scheduledAt, timeZone],
-  )
+  const initialForm = useMemo(() => (task ? formFromScheduleEntry(task, timeZone) : undefined), [task, timeZone])
   const currentTiming = timingOf({ cron, date, hours, kind, minutes, rrule, time, timeZone, weekdays })
   const initialTiming = initialForm ? timingOf(initialForm) : undefined
   const dirty = Boolean(
     task &&
     (title.trim() !== task.title ||
       prompt.trim() !== task.prompt ||
-      (initialTiming !== undefined && JSON.stringify(currentTiming) !== JSON.stringify(initialTiming))),
+      JSON.stringify(currentTiming) !== JSON.stringify(initialTiming)),
   )
   const dirtyRef = useRef(false)
   dirtyRef.current = dirty
@@ -176,6 +177,7 @@ export function ScheduleDetailModal({
       return api.editSchedule(task.id, patch, task.updatedAt ?? null)
     },
     onSuccess: async (updated) => {
+      cache.setQueryData(queryKeys.scheduleDetail(updated.id), updated)
       applyTaskToForm(updated)
       setNotice({ tone: 'info', text: message('schedule.detailSaved') })
       showSnackbar(message('schedule.detailSaved'))
